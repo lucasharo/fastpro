@@ -1,12 +1,15 @@
 // Varredura de cor literal fora de packages/tokens (17 §7.1; B-32, B-33).
 // Falha se houver hex (#rgb..#rrggbbaa), rgb()/rgba()/hsl()/hsla()/oklch() ou valor arbitrario
 // de cor em classes utilitarias. Excecao pontual na linha: comentario "check-hex:ignore".
-// TODO(H-002): ainda nao detecta NOMES de cor CSS (red, white, rebeccapurple...) em propriedades
-// de cor (color, background, border-color, fill, stroke), nem objetos de estilo com esses nomes.
-// Aceito com prazo na revisao da H-004; implementar junto de packages/tokens e do lint de UI.
+// Tambem detecta NOMES de cor CSS (red, tomato, white, black, rebeccapurple...) usados em
+// propriedades de cor (color, background, border*, outline, fill, stroke, *-shadow, atributos
+// SVG/JSX, objetos de estilo kebab-case ou camelCase) e em utilitarios no estilo Tailwind
+// (bg-red-500, text-white). "transparent" e "currentColor" sao permitidos. Limite: heuristica
+// por linha; nome de cor fora de propriedade de cor (ex.: variant: 'red') nao e detectado.
 import { listFiles, readText, hasExt, startsWithAny, report } from './lib/files.mjs';
+import { namedColorsIn } from './lib/css-colors.mjs';
 
-const EXTS = ['ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs', 'css', 'scss', 'svg'];
+const EXTS = ['ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs', 'css', 'scss', 'svg', 'html'];
 const IGNORED_PREFIXES = [
   'packages/tokens/',
   'docs/',
@@ -35,6 +38,9 @@ for (const file of listFiles(root)) {
     if (line.includes('check-hex:ignore')) return;
     for (const [re, kind] of PATTERNS) {
       if (re.test(line)) violations.push(`${file}:${i + 1} cor literal (${kind})`);
+    }
+    for (const name of new Set(namedColorsIn(line))) {
+      violations.push(`${file}:${i + 1} cor literal (nome de cor CSS: ${name})`);
     }
   });
 }

@@ -62,6 +62,39 @@ test('check-hex: aceita packages/tokens e codigo sem cor literal', () => {
   check('check-hex.mjs', { 'apps/web/src/a.ts': 'const href = "/x#section";\n' }, false);
 });
 
+test('check-hex: reprova NOMES de cor CSS em estilos e componentes', () => {
+  const bad = {
+    'apps/web/src/a.css': ['a { color: red; }\n', /nome de cor CSS: red/],
+    'apps/web/src/b.css': ['a { background-color: Tomato; }\n', /tomato/],
+    'apps/web/src/c.css': ['a { border: 1px solid white; }\n', /white/],
+    'apps/web/src/d.css': ['a { box-shadow: 0 0 4px 1px black, 0 0 1px blue; }\n', /black/],
+    'apps/web/src/e.tsx': ["const s = { color: 'rebeccapurple' };\n", /rebeccapurple/],
+    'apps/web/src/f.tsx': ["const s = { backgroundColor: 'white', padding: 4 };\n", /white/],
+    'apps/web/src/g.tsx': ['const x = <svg><path fill="red" /></svg>;\n', /red/],
+    'apps/web/src/h.tsx': ['const x = <Icon color="black" />;\n', /black/],
+    'apps/web/src/i.tsx': ['const c = "bg-red-500 text-white p-4";\n', /red|white/],
+    'apps/web/src/j.scss': ['.a { border-top-color: navy; }\n', /navy/],
+  };
+  for (const [path, [content, match]] of Object.entries(bad)) {
+    check('check-hex.mjs', { [path]: content }, true, match);
+  }
+});
+
+test('check-hex: aceita variaveis, transparent/currentColor e palavras que nao sao cor', () => {
+  const ok = {
+    'apps/web/src/a.css': 'a { color: var(--color-text-primary); background: transparent; }\n',
+    'apps/web/src/b.css': 'a { border: 1px solid currentColor; fill: none; outline: none; }\n',
+    'apps/web/src/c.tsx': "const s = { color: tokens.textPrimary, name: 'tan', variant: 'red' };\n",
+    'apps/web/src/d.css': 'a { background: url(red.png) no-repeat; text-decoration: underline; }\n',
+    'apps/web/src/e.tsx': 'const a = "text-center bg-surface border-border";\n',
+    'apps/web/src/f.css': '.red { --color-x: var(--color-primary); }\n',
+    // Nomes de cor so podem existir dentro de packages/tokens.
+    'packages/tokens/src/c.css': 'a { color: red; }\n',
+  };
+  for (const [path, content] of Object.entries(ok))
+    check('check-hex.mjs', { [path]: content }, false);
+});
+
 test('check-typography: reprova fonte e peso fora do permitido', () => {
   check('check-typography.mjs', { 'apps/web/a.css': 'a { font-family: Arial; }\n' }, true, /Arial/);
   check('check-typography.mjs', { 'apps/web/a.css': 'a { font-weight: 600; }\n' }, true, /600/);
