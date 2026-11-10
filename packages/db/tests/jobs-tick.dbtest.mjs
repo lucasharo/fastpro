@@ -213,12 +213,15 @@ test('T-H8-06: vault.secrets e vault.decrypted_secrets: sem privilegio para PUBL
     ],
     'acesso da chave de servidor ao Vault diferente do padrao da plataforma',
   );
-  // O segredo do tick nunca fica guardado no cofre (o operador o cria fora deste teste).
-  const guardado = await client.query(
-    'select count(*)::int as n from vault.secrets where name = $1',
-    [SEGREDO_TICK],
-  );
-  assert.equal(guardado.rows[0].n, 0, 'segredo do tick guardado no cofre');
+  // Segredo do tick no cofre (desenho H-008 §2, criado pelo operador por ambiente): so e permitido
+  // quando pg_net existe. Enquanto pg_net nao existir (estado degradado), ele nao pode estar no cofre.
+  if (!(await temExtensao('pg_net'))) {
+    const guardado = await client.query(
+      'select count(*)::int as n from vault.secrets where name = $1',
+      [SEGREDO_TICK],
+    );
+    assert.equal(guardado.rows[0].n, 0, 'segredo do tick guardado no cofre sem pg_net');
+  }
 });
 
 // --- Despachante (T-H8-07): sem chamada real, tudo dentro de transacao desfeita --------------------
