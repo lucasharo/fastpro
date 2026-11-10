@@ -1,9 +1,8 @@
 {
   "extends": "@fastpro/config/tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "src",
     "outDir": "dist",
     "types": ["node"]
   },
-  "include": ["src"]
+  "include": ["src", "test"]
 }
