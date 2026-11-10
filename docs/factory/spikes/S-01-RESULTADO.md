@@ -96,3 +96,29 @@ A ferramenta WebFetch não estava disponível; as páginas foram baixadas com `c
 - Permissão de apagar linhas de `auth.sessions` por SQL e se o `exp` mínimo/máximo configurável de `jwt_expiry` no Free é irrestrito.
 - Importação de chave de assinatura própria e aceitação por Storage/Realtime no Free (Caminho 3); coberto em parte por S-05.
 - Duração de 7 dias de ponta a ponta (apenas inferida de que o Free não impõe limite).
+
+## 8. Decisões adotadas em 2026-11-10
+
+Decisões delegadas pelo Orquestrador (recomendações do PO em `25-REFINO-S01.md` §4 e deste spike). As seções 1 a 7 acima permanecem como fonte, sem alteração.
+
+| # | Decisão | Origem | Efeito |
+|---|---|---|---|
+| D1 | Sem Docker nem Supabase CLI nesta máquina: a prova dos passos 2 a 6 (criar usuário, `generateLink`, `verifyOtp`, medir `exp`, revogar) será feita contra o projeto de **desenvolvimento** na nuvem, com usuários sintéticos criados e removidos, quando a execução for autorizada na H-011. Substitui a prova local da §1 de 25 (dúvida D-S01-1). | D-S01-1 | Prova pendente (ver §9) |
+| D2 | Revogação imediata por `sid` em **cada requisição** da API (`app_session.revoked_at`), mais `signOut` do Supabase quando houver o JWT; janela de até `jwt_expiry` só fora da API (Realtime, Storage). | D-S01-2 | H-014 |
+| D3 | Renovação **absoluta** de 7 dias: o uso não prorroga `expires_at`; só o token de acesso renova. | D-S01-3 | H-012, H-014 |
+| D4 | `jwt_expiry` = **900 s** (valor final confirmado em H-014). | D-S01-4 | Configuração |
+| D5 | Renovação **serializada por `sid`** (lock), por causa da tolerância de reuso de 10 s. | §3 item 4 | H-014 |
+| D6 | Novo desafio **não revoga** sessões existentes; "sair de todos" é o meio explícito. | D-S01-6 | H-011, H-014 |
+| D7 | Expiração de sessão **não altera dados** (pedidos, conversas, avaliações, rascunhos); só `app_session` muda. | D-S01-7 | H-014 |
+
+Esclarecimentos de desenho (decorrem do já documentado, sem mudar as fontes):
+
+- **Refresh token fora do JavaScript (Q7):** o token de renovação do Supabase fica no servidor ou em cookie HttpOnly gerido pela API; nunca acessível ao navegador (§3 item 1, R4).
+- **Criação do usuário no Auth (Q2):** `createUser` e `generateLink` ocorrem só depois de o desafio próprio ser validado (§5, H-011/H-012), nunca no envio do desafio; assim a resposta 202 segue uniforme e nenhuma conta é criada para e-mail arbitrário (RF-039).
+- **Caminho:** Caminho 1 como padrão; Caminho 3 como fallback se a prova pendente falhar (§4).
+
+## 9. Situação do spike
+
+**Concluído para desenho (APROVADO_ARQUITETURA).** O desenho de H-011 a H-014 pode prosseguir sobre o Caminho 1.
+
+**Prova pendente, critério de aceite de H-011 e H-012** (executar no projeto de desenvolvimento, com usuários sintéticos removidos ao final, sem imprimir tokens ou segredos): itens da §7 (NÃO VERIFICADO), em particular (a) sessão real por `createUser` + `generateLink` + `verifyOtp`, `exp` e claims com `session_id`; (b) reuso do `token_hash` falha; (c) hook de `sid` e bloqueio 403 em `token_refresh`; (d) `Sb-Forwarded-For` e limites reais de `/verify` e `/token`; (e) revogação por `app_session` e por `signOut`, com janela medida (CA-S01-10 a CA-S01-13); (f) recusa de renovação após `expires_at` (CA-S01-03/04). Se qualquer item crítico falhar, aplicar o Caminho 3 sem mudar a stack. A H-011 e a H-012 só fecham com esta evidência registrada.
