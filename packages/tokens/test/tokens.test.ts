@@ -99,7 +99,6 @@ describe('contraste WCAG 2.2', () => {
     const results = evaluatePairs(textContrastPairs);
     expect(results).toHaveLength(textContrastPairs.length * 2);
     for (const r of results) {
-      // eslint-disable-next-line no-console
       console.info(
         `[contraste] ${r.theme} ${r.pair.id}: ${r.ratio.toFixed(2)}:1 (min ${r.pair.minimum})`,
       );
@@ -126,7 +125,6 @@ describe('contraste WCAG 2.2', () => {
     ]);
     const results = evaluatePairs(informationalPairs);
     for (const r of results) {
-      // eslint-disable-next-line no-console
       console.info(
         `[contraste nao-texto] ${r.theme} ${r.pair.id}: ${r.ratio.toFixed(2)}:1 ${r.passes ? 'ok' : 'ABAIXO DE 3:1'}`,
       );
