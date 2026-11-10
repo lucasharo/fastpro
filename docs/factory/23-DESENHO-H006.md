@@ -67,7 +67,10 @@ Reservadas, **não semeadas aqui** (cada história liga o seu): `verification.de
 `private.audit_state_is_valid(jsonb) returns boolean` (IMMUTABLE), usada em CHECK:
 1. objeto **plano** (`jsonb_typeof = 'object'`), valores escalares (número, booleano, nulo ou string); sem objetos/arrays aninhados;
 2. string: até 64 caracteres, `^[A-Za-z0-9_.:-]*$` (sem `@`, espaço, `+`, `/`: e-mail, nome com sobrenome, texto de chat e endereço não cabem); rejeita string só de dígitos com 10–15 caracteres (telefone/CPF/CNPJ sem máscara; números devem ser números JSON) e o padrão `^\d{3}\.\d{3}\.\d{3}-\d{2}$`;
-3. chave (normalizada: minúscula, sem `_`/`-`) **não pode** conter: `email`, `mail`, `telefone`, `phone`, `celular`, `whatsapp`, `cpf`, `cnpj`, `rg`, `documento`, `nome`, `name`, `endereco`, `address`, `cep`, `logradouro`, `latitude`, `longitude`, `lat`, `lng`, `ip`, `useragent`, `mensagem`, `message`, `texto`, `text`, `body`, `conteudo`, `content`, `senha`, `password`, `token`, `secret`, `birth`, `nascimento`.
+3. chave **não pode** conter (regra da correção F-1, migração `20261110150000_audit_fix_forbidden_keys`, espelho `isForbiddenStateKey`). Normalização: `camelCase` vira palavras (separadas por `_`), minúsculas, e `_ . -` são fronteira de palavra.
+   - **termos longos** como substring da chave sem separadores: `email`, `mail`, `telefone`, `phone`, `celular`, `whatsapp`, `cpf`, `cnpj`, `documento`, `endereco`, `addr` (cobre `address` e `ipaddr`), `logradouro`, `latitude`, `longitude`, `useragent`, `mensagem`, `message`, `senha`, `password`, `token`, `secret`, `birth`, `nascimento`, `fullname`, `username`, `firstname`, `lastname`, `nome`;
+   - **termos curtos** como palavra em **qualquer** posição: `rg`, `name`, `cep`, `lat`, `lng`, `ip`, `body`, `conteudo`, `content`;
+   - `text` / `texto` como palavra em qualquer posição, **exceto** quando a última palavra é `version` / `versao` (identificador de versão, ex.: `consent_text_version`).
 
 Validação adicional no trigger: toda chave de `before/after_state` ∈ `action_catalog.state_keys` da ação (allowlist). Violação: `raise exception ... errcode 'AU002'` (nunca redige).
 

@@ -148,29 +148,33 @@ export function verifyChain(rows: readonly AuditChainRow[], head?: ChainHead): C
 
 // --- Estado sem PII (CA-09): rejeicao antecipada; o banco continua sendo a autoridade ------------
 
+// Termos longos: substring da chave normalizada (sem separadores).
 const FORBIDDEN_SUBSTRINGS =
-  /(email|mail|telefone|phone|celular|whatsapp|cpf|cnpj|documento|endereco|address|logradouro|latitude|longitude|useragent|mensagem|message|senha|password|token|secret|birth|nascimento)/;
-const FORBIDDEN_EDGE_WORDS = new Set([
+  /(email|mail|telefone|phone|celular|whatsapp|cpf|cnpj|documento|endereco|addr|logradouro|latitude|longitude|useragent|mensagem|message|senha|password|token|secret|birth|nascimento|fullname|username|firstname|lastname|nome)/;
+// Termos curtos: casam como PALAVRA em qualquer posicao (customer_name_hash, client_ip_hash...).
+const FORBIDDEN_WORDS = new Set([
   'rg',
-  'nome',
   'name',
   'cep',
   'lat',
   'lng',
   'ip',
-  'texto',
-  'text',
   'body',
   'conteudo',
   'content',
 ]);
+// text/texto: barrados em qualquer posicao, exceto quando a ultima palavra e version/versao
+// (identificador de versao, ex.: consent_text_version). Mantem as chaves semeadas validas.
+const TEXT_WORDS = new Set(['text', 'texto']);
+const VERSION_WORDS = new Set(['version', 'versao']);
 
-/** Espelho de private.audit_key_is_forbidden. */
+/** Espelho de private.audit_key_is_forbidden (mesma normalizacao: camelCase vira palavras). */
 export function isForbiddenStateKey(key: string): boolean {
-  const lower = key.toLowerCase();
-  if (FORBIDDEN_SUBSTRINGS.test(lower.replace(/[_.-]/g, ''))) return true;
-  const words = lower.split(/[_.-]+/);
-  return FORBIDDEN_EDGE_WORDS.has(words[0] ?? '') || FORBIDDEN_EDGE_WORDS.has(words.at(-1) ?? '');
+  const normalized = key.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+  if (FORBIDDEN_SUBSTRINGS.test(normalized.replace(/[_.-]/g, ''))) return true;
+  const words = normalized.split(/[_.-]+/);
+  if (words.some((w) => FORBIDDEN_WORDS.has(w))) return true;
+  return words.some((w) => TEXT_WORDS.has(w)) && !VERSION_WORDS.has(words.at(-1) ?? '');
 }
 
 const STRING_ALPHABET = /^[A-Za-z0-9_.:-]*$/;

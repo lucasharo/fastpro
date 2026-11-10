@@ -134,6 +134,45 @@ describe('U-03 assertAuditStateClean', () => {
       for (const k of keys) expect(isForbiddenStateKey(k), k).toBe(false);
     }
   });
+
+  it('F-1: termos curtos em qualquer posicao, camelCase e nomes compostos sao proibidos', () => {
+    for (const k of [
+      'customer_name_hash',
+      'full_name_normalized',
+      'client_ip_hash',
+      'customer_rg_number',
+      'client_cep_prefix',
+      'chat_body_hash',
+      'geo_lat_rounded',
+      'user_text_snapshot',
+      'chat_text',
+      'username',
+      'fullname',
+      'firstname',
+      'lastname',
+      'customerName',
+      'ipaddr',
+      'user_name',
+    ]) {
+      expect(isForbiddenStateKey(k), k).toBe(true);
+    }
+  });
+
+  it('F-1: chaves validas continuam aceitas (until_at, consent_text_version e parecidas)', () => {
+    for (const k of [
+      'until_at',
+      'consent_text_version',
+      'consent_texto_versao',
+      'status',
+      'approval_request_id',
+      'acceptance_id',
+      'granted',
+      'scope',
+      'refund_amount_cents',
+    ]) {
+      expect(isForbiddenStateKey(k), k).toBe(false);
+    }
+  });
 });
 
 function buildChain(n: number): AuditChainRow[] {

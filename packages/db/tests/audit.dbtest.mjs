@@ -8,7 +8,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { connect } from '../scripts/lib/env.mjs';
-import { computeRowHash, verifyChain, GENESIS_HASH } from '../dist/audit.js';
+import { computeRowHash, verifyChain, GENESIS_HASH, isForbiddenStateKey } from '../dist/audit.js';
 
 // Nomes montados em partes: o check-secrets so permite o literal em modulos especificos.
 const BLOCKED_ROLES = ['anon', 'authenticated', 'service' + '_role'];
@@ -272,6 +272,75 @@ test('D-06 catalogo semeia as 5 acoes do CA-14 e nenhuma chave semeada e proibid
     assert.equal(by[action].active, true);
   }
   for (const r of res.rows) assert.equal(r.clean, true, `${r.action} tem chave proibida`);
+});
+
+// F-1 (Reviewer): chaves que a regra anterior deixava passar. Todas devem ser barradas.
+const F1_FORBIDDEN = [
+  'customer_name_hash',
+  'full_name_normalized',
+  'client_ip_hash',
+  'customer_rg_number',
+  'client_cep_prefix',
+  'chat_body_hash',
+  'geo_lat_rounded',
+  'user_text_snapshot',
+  'username',
+  'fullname',
+  'customerName',
+  'ipaddr',
+];
+// Chaves validas (until_at, consent_text_version e chaves semeadas no catalogo): continuam aceitas.
+const F1_VALID = [
+  'until_at',
+  'consent_text_version',
+  'status',
+  'acceptance_id',
+  'refund_amount_cents',
+];
+
+test('D-08 F-1: predicado SQL barra as chaves com dado pessoal e aceita as validas (paridade com TS)', async () => {
+  for (const k of [...F1_FORBIDDEN, ...F1_VALID]) {
+    const r = await client.query('select private.audit_key_is_forbidden($1) as f', [k]);
+    assert.equal(r.rows[0].f, F1_FORBIDDEN.includes(k), `SQL barrou errado: ${k}`);
+    assert.equal(isForbiddenStateKey(k), r.rows[0].f, `paridade SQL x TS: ${k}`);
+  }
+});
+
+test('D-08b F-1: audit_append rejeita chave com dado pessoal (AU002) e aceita as chaves semeadas', async () => {
+  await inTx(async () => {
+    for (const k of F1_FORBIDDEN) {
+      // Mensagem "dado pessoal" distingue a rejeicao por PII da rejeicao por allowlist (ambas AU002).
+      await client.query('savepoint zz_pii');
+      try {
+        await assert.rejects(
+          append(client, { before: {}, after: { [k]: 'x' } }),
+          (err) => err.code === 'AU002' && /dado pessoal/.test(err.message),
+          `chave ${k} deveria ser barrada por dado pessoal`,
+        );
+      } finally {
+        await client.query('rollback to savepoint zz_pii');
+        await client.query('release savepoint zz_pii');
+      }
+    }
+    const cat = (
+      await client.query('select action, object_type, state_keys from audit.action_catalog')
+    ).rows;
+    assert.ok(cat.length >= 5, 'catalogo com as 5 acoes semeadas');
+    for (const row of cat) {
+      const after = Object.fromEntries(row.state_keys.map((k) => [k, 'v1']));
+      const res = await append(client, {
+        action: row.action,
+        objectType: row.object_type,
+        before: {},
+        after,
+      });
+      assert.match(
+        String(res.rows[0].id),
+        /^[0-9a-f-]{36}$/,
+        `${row.action} aceita as chaves semeadas`,
+      );
+    }
+  });
 });
 
 test('D-07 pre-condicao: o dono da migracao ignora RLS (ou ha politica de INSERT que o permita)', async () => {
