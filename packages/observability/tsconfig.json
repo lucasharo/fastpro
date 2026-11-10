@@ -1,0 +1,9 @@
+{
+  "extends": "@fastpro/config/tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "resolveJsonModule": true,
+    "types": ["node"]
+  },
+  "include": ["src", "test"]
+}

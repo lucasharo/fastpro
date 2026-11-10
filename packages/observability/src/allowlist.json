@@ -1,0 +1,32 @@
+{
+  "$comment": "Allowlist de campos de log (ADR-013; P8). Qualquer campo fora desta lista e descartado pelo logger e reprovado por scripts/check-logs.mjs. Nunca inclua e-mail, telefone, endereco, nome, CPF/CNPJ, token, chave, cabecalhos ou corpo de requisicao/chat. Para acrescentar um campo, justifique no PR.",
+  "fields": [
+    "request_id",
+    "correlation_id",
+    "principal_id",
+    "session_id",
+    "module",
+    "event",
+    "route",
+    "method",
+    "status",
+    "duration_ms",
+    "error_code",
+    "error_name",
+    "sqlstate",
+    "job_id",
+    "queue",
+    "attempt",
+    "count",
+    "resource_id",
+    "version"
+  ],
+  "idFields": [
+    "request_id",
+    "correlation_id",
+    "principal_id",
+    "session_id",
+    "job_id",
+    "resource_id"
+  ]
+}

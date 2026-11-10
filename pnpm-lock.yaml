@@ -77,6 +77,12 @@ importers:
         specifier: workspace:*
         version: link:../config
 
+  packages/observability:
+    devDependencies:
+      '@fastpro/config':
+        specifier: workspace:*
+        version: link:../config
+
   packages/testkit:
     devDependencies:
       '@fastpro/config':
