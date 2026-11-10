@@ -18,8 +18,11 @@ import {
 } from '../dist/jobs-tick.js';
 
 // Nomes montados em partes: o check-secrets so permite o literal em modulos especificos.
-const BLOCKED = ['anon', 'authenticated', 'service' + '_role', 'app_api', 'app_system'];
+const SERVICE_KEY_ROLE = 'service' + '_role';
+const BLOCKED = ['anon', 'authenticated', SERVICE_KEY_ROLE, 'app_api', 'app_system'];
 const CHECKED_ROLES = ['PUBLIC', ...BLOCKED];
+// Nome do segredo do tick no Vault (nunca deve estar guardado no cofre).
+const SEGREDO_TICK = 'jobs_tick_secret';
 // Titulares de privilegio da propria plataforma (dono das extensoes e do schema) — lista fixada.
 const PLATFORM_HOLDERS = ['postgres', 'supabase_admin', 'supabase_functions_admin'];
 const TICK_URL = 'https://tick.invalid/internal/jobs/tick';
@@ -182,17 +185,40 @@ test('T-H8-04: agenda exata: jobs-tick (* * * * *, comando fixo, sem segredo) e 
   assert.equal(byName['cron-purge'].schedule, '17 3 * * *');
 });
 
-test('T-H8-06: vault.secrets e vault.decrypted_secrets sem privilegio para PUBLIC e papeis de aplicacao', async () => {
+test('T-H8-06: vault.secrets e vault.decrypted_secrets: sem privilegio para PUBLIC e papeis de aplicacao; chave de servidor so no padrao da plataforma; sem segredo do tick no cofre', async () => {
   const res = await client.query(
     `select c.oid::regclass::text as objeto, case when a.grantee = 0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end as titular,
             a.privilege_type
        from pg_class c, aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) a
       where c.oid in ('vault.secrets'::regclass, 'vault.decrypted_secrets'::regclass)`,
   );
+  // PUBLIC e papeis de aplicacao (anon, authenticated, app_api, app_system): nenhum privilegio.
+  const naoPermitidos = BLOCKED.filter((r) => r !== SERVICE_KEY_ROLE);
   const offenders = res.rows
-    .filter((r) => r.titular === 'PUBLIC' || BLOCKED.includes(r.titular))
+    .filter((r) => r.titular === 'PUBLIC' || naoPermitidos.includes(r.titular))
     .map((r) => `${r.titular} ${r.privilege_type} em ${r.objeto}`);
   assert.deepEqual(offenders, [], `privilegio indevido no Vault: ${offenders.join('; ')}`);
+  // Chave de servidor: decisao humana (H-008, opcao A) aceita o acesso padrao da plataforma; nada alem disso.
+  const chave = res.rows
+    .filter((r) => r.titular === SERVICE_KEY_ROLE)
+    .map((r) => `${r.objeto}:${r.privilege_type}`)
+    .sort();
+  assert.deepEqual(
+    chave,
+    [
+      'vault.decrypted_secrets:DELETE',
+      'vault.decrypted_secrets:SELECT',
+      'vault.secrets:DELETE',
+      'vault.secrets:SELECT',
+    ],
+    'acesso da chave de servidor ao Vault diferente do padrao da plataforma',
+  );
+  // O segredo do tick nunca fica guardado no cofre (o operador o cria fora deste teste).
+  const guardado = await client.query(
+    'select count(*)::int as n from vault.secrets where name = $1',
+    [SEGREDO_TICK],
+  );
+  assert.equal(guardado.rows[0].n, 0, 'segredo do tick guardado no cofre');
 });
 
 // --- Despachante (T-H8-07): sem chamada real, tudo dentro de transacao desfeita --------------------
