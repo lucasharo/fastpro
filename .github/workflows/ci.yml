@@ -1,0 +1,89 @@
+name: CI
+
+# Roda em push para feature/init e em PR para release/** e main.
+# Sem segredos, sem Docker, sem deploy. Permissoes minimas do GITHUB_TOKEN.
+on:
+  push:
+    branches: [feature/init]
+  pull_request:
+    branches: ['release/**', main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verificacoes (Node 22.14, pnpm via Corepack)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TURBO_TELEMETRY_DISABLED: '1'
+      CI: 'true'
+    steps:
+      - name: Checkout (historico completo para a varredura de segredos)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Node 22.14.0
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.14.0'
+
+      - name: Ativar pnpm via Corepack (versao fixada em packageManager)
+        run: |
+          corepack enable
+          pnpm --version
+
+      - name: Instalar dependencias (lockfile congelado)
+        run: pnpm install --frozen-lockfile
+
+      - name: format:check
+        run: pnpm format:check
+
+      - name: lint (workspaces)
+        run: pnpm lint
+
+      - name: lint dos scripts
+        run: pnpm lint:scripts
+
+      - name: typecheck
+        run: pnpm typecheck
+
+      - name: test (workspaces)
+        run: pnpm test
+
+      - name: test dos scripts de verificacao
+        run: pnpm test:scripts
+
+      - name: build
+        run: pnpm build
+
+      - name: check:deps (dependencias entre workspaces)
+        run: pnpm check:deps
+
+      - name: check:boundaries (fronteiras de modulo)
+        run: pnpm check:boundaries
+
+      - name: check:hex (cor literal fora de tokens)
+        run: pnpm check:hex
+
+      - name: check:typography (Roboto 400/500/700)
+        run: pnpm check:typography
+
+      - name: check:env (.env.example so com nomes)
+        run: pnpm check:env
+
+      - name: check:attachments (chat sem anexos)
+        run: pnpm check:attachments
+
+      - name: check:secrets (arvore e historico)
+        run: pnpm check:secrets:history
+
+      - name: audit (dependencias, nivel alto ou critico)
+        run: pnpm audit --audit-level=high

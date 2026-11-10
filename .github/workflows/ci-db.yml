@@ -1,0 +1,18 @@
+name: CI DB (esqueleto desativado)
+
+# Esqueleto previsto no plano tecnico 19 §6. DESATIVADO: so dispara manualmente e o job esta
+# condicionado a false. Sera ativado em H-003 (ambiente de banco e pgTAP), sem Docker: o banco de
+# teste sera definido na historia, e nenhum segredo de producao pode ser usado aqui.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  db:
+    name: Banco (migracoes do zero + pgTAP) - desativado
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Desativado ate a historia H-003."
