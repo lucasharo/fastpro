@@ -1,0 +1,17 @@
+# Segredos e ambiente local (nunca versionar)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+# Dependências e builds
+node_modules/
+.next/
+dist/
+.turbo/
+.vercel/
+.supabase/
+coverage/
+# Sistema
+.DS_Store
+Thumbs.db
