@@ -44,8 +44,20 @@ async function inTx(fn, { asSystem = false } = {}) {
   }
 }
 
-const queueCount = async () =>
-  (await client.query('select count(*)::int as n from net.http_request_queue')).rows[0].n;
+// H-008 degradado: pg_cron e pg_net podem estar desativados pelo dono. Os testes que dependem deles
+// verificam o estado real (ou pulam, com motivo) em vez de falhar por esquema ausente.
+const temExtensao = async (nome) =>
+  (
+    await client.query('select exists (select 1 from pg_extension where extname = $1) as ok', [
+      nome,
+    ])
+  ).rows[0].ok;
+
+// Sem pg_net nao existe fila: a contagem e zero (nada pode ser enfileirado).
+const queueCount = async () => {
+  if (!(await temExtensao('pg_net'))) return 0;
+  return (await client.query('select count(*)::int as n from net.http_request_queue')).rows[0].n;
+};
 
 // --- Catalogo e privilegios -----------------------------------------------------------------------
 
@@ -84,6 +96,9 @@ test('T-H8-02: nenhum papel de aplicacao ou PUBLIC tem acesso a cron/net (titula
 test('T-H8-02b: papeis de aplicacao sem USAGE em cron/net e sem EXECUTE nas funcoes de cron/net', async () => {
   for (const role of CHECKED_ROLES.filter((r) => r !== 'PUBLIC')) {
     for (const schema of ['cron', 'net']) {
+      // Esquema ausente (H-008 degradado): nao ha USAGE a verificar; has_schema_privilege falharia.
+      const existe = await client.query('select to_regnamespace($1) is not null as ok', [schema]);
+      if (!existe.rows[0].ok) continue;
       const res = await client.query('select has_schema_privilege($1, $2, $3) as p', [
         role,
         schema,
@@ -122,6 +137,7 @@ test('T-H8-03: despachante e status sao SECURITY DEFINER com search_path vazio; 
 });
 
 test('T-H8-03b: jobs_tick_status (como app_system) le a agenda sem comando nem segredo', async () => {
+  const comCron = await temExtensao('pg_cron');
   await inTx(
     async () => {
       const r = (await client.query('select private.jobs_tick_status() as s')).rows[0].s;
@@ -131,15 +147,25 @@ test('T-H8-03b: jobs_tick_status (como app_system) le a agenda sem comando nem s
         'ultima_execucao',
         'ultimo_status',
       ]);
-      assert.equal(r.cron_instalado, true);
-      assert.equal(r.job_ativo, true);
+      if (comCron) {
+        assert.equal(r.cron_instalado, true);
+        assert.equal(r.job_ativo, true);
+      } else {
+        // H-008 degradado: sem pg_cron o status informa a ausencia e nenhuma agenda ativa.
+        assert.equal(r.cron_instalado, false);
+        assert.equal(r.job_ativo, false);
+      }
       assert.equal(JSON.stringify(r).includes('jobs_tick_dispatch'), false);
     },
     { asSystem: true },
   );
 });
 
-test('T-H8-04: agenda exata: jobs-tick (* * * * *, comando fixo, sem segredo) e cron-purge; nenhum outro job', async () => {
+test('T-H8-04: agenda exata: jobs-tick (* * * * *, comando fixo, sem segredo) e cron-purge; nenhum outro job', async (t) => {
+  if (!(await temExtensao('pg_cron'))) {
+    t.skip('pg_cron ausente neste ambiente (H-008 degradado): nao ha agenda para conferir');
+    return;
+  }
   const res = await client.query(
     'select jobname, schedule, command, active from cron.job order by jobname',
   );
@@ -198,6 +224,7 @@ test('T-H8-07b: com segredo e URL temporarios, exatamente 1 pedido na fila com c
     t.skip('segredos do tick ja existem neste ambiente; nao sao tocados por teste');
     return;
   }
+  const netOk = await temExtensao('pg_net');
   await inTx(async () => {
     const before = await queueCount();
     const valorDescartavel = randomBytes(32).toString('hex'); // valor descartavel, nunca impresso
@@ -212,6 +239,12 @@ test('T-H8-07b: com segredo e URL temporarios, exatamente 1 pedido na fila com c
       'teste H-008',
     ]);
     const r = await client.query('select private.jobs_tick_dispatch() as id');
+    if (!netOk) {
+      // H-008 degradado: sem pg_net o despachante e inerte mesmo com segredo e URL.
+      assert.equal(r.rows[0].id, null, 'sem pg_net nada e enfileirado');
+      assert.equal(await queueCount(), before);
+      return;
+    }
     assert.notEqual(r.rows[0].id, null);
     assert.equal((await queueCount()) - before, 1, 'exatamente 1 linha de fila');
     const row = (
@@ -435,18 +468,21 @@ test('T-H8-12: kind sem handler vira falha kind_desconhecido sem derrubar o laco
 
 // --- Tick C sem pg_cron (T-H8-16, T-H8-17) -----------------------------------------------------------
 
-test('T-H8-16: sem a agenda (cron.unschedule), o tick C ainda processa um job vencido', async () => {
+test('T-H8-16: sem a agenda (cron.unschedule, ou sem pg_cron), o tick C ainda processa um job vencido', async () => {
+  const comCron = await temExtensao('pg_cron');
   await inTx(async () => {
     const kind = 'test.h008.c';
     const id = (
       await client.query('select private.job_enqueue($1, $2) as id', [kind, 'c-' + randomUUID()])
     ).rows[0].id;
-    await client.query("select cron.unschedule('jobs-tick')");
-    assert.equal(
-      (await client.query("select count(*)::int as n from cron.job where jobname = 'jobs-tick'"))
-        .rows[0].n,
-      0,
-    );
+    if (comCron) {
+      await client.query("select cron.unschedule('jobs-tick')");
+      assert.equal(
+        (await client.query("select count(*)::int as n from cron.job where jobname = 'jobs-tick'"))
+          .rows[0].n,
+        0,
+      );
+    }
     const registry = new JobRegistry();
     registerJobHandler(registry, kind, tickProbeHandler);
     const report = await new TickService({
@@ -460,12 +496,14 @@ test('T-H8-16: sem a agenda (cron.unschedule), o tick C ainda processa um job ve
       'concluido',
     );
   });
-  // O rollback restaura a agenda.
-  assert.equal(
-    (await client.query("select count(*)::int as n from cron.job where jobname = 'jobs-tick'"))
-      .rows[0].n,
-    1,
-  );
+  // O rollback restaura a agenda (so existe com pg_cron).
+  if (comCron) {
+    assert.equal(
+      (await client.query("select count(*)::int as n from cron.job where jobname = 'jobs-tick'"))
+        .rows[0].n,
+      1,
+    );
+  }
 });
 
 test('T-H8-17: sem chamada nenhum job vencido e executado (contrato: sem trafego, sem tick)', async () => {

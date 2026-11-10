@@ -8,7 +8,8 @@ import { connect, MIGRATIONS_DIR } from '../scripts/lib/env.mjs';
 import { listMigrations } from '../scripts/lib/migrations.mjs';
 
 const PRODUCT_SCHEMAS = ['app', 'billing', 'audit', 'ops', 'private'];
-const EXPECTED_EXTENSIONS = ['postgis', 'pg_trgm', 'unaccent', 'citext', 'btree_gist', 'pg_net'];
+// pg_net e pg_cron (H-008) ficam fora: sao opcionais (podem estar desativados) e tem teste proprio.
+const EXPECTED_EXTENSIONS = ['postgis', 'pg_trgm', 'unaccent', 'citext', 'btree_gist'];
 
 // Esquemas verificados quanto a objetos relacionais: os do produto e o public (Data API).
 const CHECKED_SCHEMAS = [...PRODUCT_SCHEMAS, 'public'];
@@ -184,19 +185,24 @@ test('app_api/app_system sem senha definida (ou NAO_VERIFICAVEL se pg_authid for
   }
 });
 
-// H-008 (decisao do spike S-10): pg_cron e pg_net instalados. pg_net fica em extensions (com a
-// clausula da migracao); pg_cron fica em pg_catalog (a plataforma o instala la; medido no S-10).
-test('pg_cron (pg_catalog) e pg_net (extensions) instalados; esquemas cron e net existem (H-008)', async () => {
+// H-008 (decisao do spike S-10): pg_cron e pg_net instalados, com pg_net em extensions e pg_cron em
+// pg_catalog (medido no S-10). Estado degradado (o dono desativou as duas): nenhum esquema cron/net.
+// Uma so ausente e falha: o estado parcial nao e esperado.
+test('H-008: pg_cron e pg_net instalados (extensions/pg_catalog) ou ambos ausentes (sem esquemas cron/net)', async () => {
   const res = await client.query(
     'select e.extname, n.nspname from pg_extension e join pg_namespace n on n.oid = e.extnamespace ' +
       "where e.extname in ('pg_cron', 'pg_net')",
   );
   const found = Object.fromEntries(res.rows.map((r) => [r.extname, r.nspname]));
-  assert.equal(found.pg_cron, 'pg_catalog');
-  assert.equal(found.pg_net, 'extensions');
   const schemas = await client.query(
     "select nspname from pg_namespace where nspname in ('cron', 'net') order by 1",
   );
+  if (!found.pg_cron && !found.pg_net) {
+    assert.deepEqual(schemas.rows, [], 'estado degradado: nao deveria haver esquemas cron/net');
+    return;
+  }
+  assert.equal(found.pg_cron, 'pg_catalog');
+  assert.equal(found.pg_net, 'extensions');
   assert.deepEqual(
     schemas.rows.map((r) => r.nspname),
     ['cron', 'net'],

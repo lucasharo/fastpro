@@ -34,12 +34,21 @@ semeadas), funcoes `private.audit_append` (unica porta de escrita, SECURITY DEFI
 (a auditoria do banco compartilhado nao pode ser apagada); precisam de `pnpm build` em `packages/db`
 (importam o espelho TypeScript compilado).
 
+## Estado (H-008, degradado)
+
+Migracoes `20261110160000_platform_enable_job_tick` e `20261110170000_platform_tick_degrade_without_extensions`
+(ambas aplicadas). O dono desativou `pg_net` e `pg_cron` no painel do Supabase (acesso indevido fechado):
+nao ha extensoes, esquemas `cron`/`net`, agenda nem segredo. Nesse estado o despachante do tick A
+(`private.jobs_tick_dispatch`) e inerte e devolve `null`. O tick C (oportunista) nao depende de `pg_cron`.
+Reativar exige decisao do dono; a agenda da 160000 nao e recriada sozinha (a migracao ja consta como aplicada).
+
 ## Pendencias
 
 1. Login e senha de `app_api`/`app_system`: passo manual fora das migracoes, lendo as variaveis
    `DB_PASSWORD_APP_API` e `DB_PASSWORD_APP_SYSTEM`; depende do pooler (usuario `papel.<ref>`) e
    do teste de `set_config` por transacao (S-02.5 / S-09).
-2. `pg_cron` e `pg_net`: ficam para o spike S-10. `pgtap`: nao habilitado (testes em Node).
+2. `pg_cron` e `pg_net`: desativados pelo dono (ver Estado H-008); reativacao depende de decisao do dono.
+   `pgtap`: nao habilitado (testes em Node).
 3. CI de banco: `ci-db.yml` desativado; host direto e IPv6 e o pooler esta pendente. Nao ha banco
    efemero: os testes sao somente leitura ou usam transacao com rollback.
 4. Dados de dominio e seed sintetico: historias seguintes (H-005 em diante).
