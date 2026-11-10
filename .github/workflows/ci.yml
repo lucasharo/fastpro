@@ -2,11 +2,10 @@ name: CI
 
 # Roda em push para feature/init e em PR para release/** e main.
 # Sem segredos, sem Docker, sem deploy. Permissoes minimas do GITHUB_TOKEN.
+# Builds e testes agora rodam LOCALMENTE (decisão 46). Disparo automático desligado;
+# o workflow fica disponível só para execução manual.
 on:
-  push:
-    branches: [feature/init]
-  pull_request:
-    branches: ['release/**', main]
+  workflow_dispatch:
 
 permissions:
   contents: read
