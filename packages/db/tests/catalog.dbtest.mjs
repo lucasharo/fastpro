@@ -8,7 +8,7 @@ import { connect, MIGRATIONS_DIR } from '../scripts/lib/env.mjs';
 import { listMigrations } from '../scripts/lib/migrations.mjs';
 
 const PRODUCT_SCHEMAS = ['app', 'billing', 'audit', 'ops', 'private'];
-const EXPECTED_EXTENSIONS = ['postgis', 'pg_trgm', 'unaccent', 'citext', 'btree_gist'];
+const EXPECTED_EXTENSIONS = ['postgis', 'pg_trgm', 'unaccent', 'citext', 'btree_gist', 'pg_net'];
 
 // Esquemas verificados quanto a objetos relacionais: os do produto e o public (Data API).
 const CHECKED_SCHEMAS = [...PRODUCT_SCHEMAS, 'public'];
@@ -184,9 +184,21 @@ test('app_api/app_system sem senha definida (ou NAO_VERIFICAVEL se pg_authid for
   }
 });
 
-test('pg_cron e pg_net seguem desabilitados (decisao do spike S-10)', async () => {
+// H-008 (decisao do spike S-10): pg_cron e pg_net instalados. pg_net fica em extensions (com a
+// clausula da migracao); pg_cron fica em pg_catalog (a plataforma o instala la; medido no S-10).
+test('pg_cron (pg_catalog) e pg_net (extensions) instalados; esquemas cron e net existem (H-008)', async () => {
   const res = await client.query(
-    "select extname from pg_extension where extname in ('pg_cron', 'pg_net')",
+    'select e.extname, n.nspname from pg_extension e join pg_namespace n on n.oid = e.extnamespace ' +
+      "where e.extname in ('pg_cron', 'pg_net')",
   );
-  assert.deepEqual(res.rows, []);
+  const found = Object.fromEntries(res.rows.map((r) => [r.extname, r.nspname]));
+  assert.equal(found.pg_cron, 'pg_catalog');
+  assert.equal(found.pg_net, 'extensions');
+  const schemas = await client.query(
+    "select nspname from pg_namespace where nspname in ('cron', 'net') order by 1",
+  );
+  assert.deepEqual(
+    schemas.rows.map((r) => r.nspname),
+    ['cron', 'net'],
+  );
 });
