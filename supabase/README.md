@@ -1,7 +1,34 @@
 # supabase/
 
-Reservado para migracoes SQL versionadas, `seed.sql` (dados sinteticos) e testes pgTAP
-(`tests/database/`), conforme `docs/factory/19-PLANO-TECNICO-DEV.md` §1 (ajuste 1: fica na raiz,
-nao em `packages/db`). Sem Docker: o desenvolvimento usa o projeto Supabase na nuvem (gratuito).
+Migracoes SQL versionadas (`migrations/`), desfazimentos manuais (`rollbacks/`), futuro `seed.sql`
+(dados sinteticos) e testes de catalogo em `packages/db/tests/` (plano tecnico 19 §1, ajuste 1:
+fica na raiz). Sem Docker: o desenvolvimento usa o projeto Supabase na nuvem (gratuito).
 
-Nenhuma migracao ou configuracao e criada pela historia H-001 (ambiente: H-003).
+## Convencoes
+
+- Nome: `AAAAMMDDHHMMSS_<modulo>_<verbo>_<objeto>.sql`; um arquivo por mudanca; idempotente
+  (`if not exists`); nunca editar migracao ja aplicada; expand/contract (contrair em PR posterior).
+- Desfazer, quando possivel: `rollbacks/<mesmo nome>.down.sql`, executado manualmente.
+- Toda tabela nos esquemas `app`, `billing`, `audit`, `ops`, `private` habilita e forca RLS na
+  mesma migracao e so recebe grants minimos para `app_api`/`app_system` (nunca `anon`,
+  `authenticated` ou `PUBLIC`). Verificado por `pnpm db:test`.
+- Executor: `packages/db/scripts/db.mjs` (usa `pg` fixado). Conexao: `DATABASE_URL_MIGRATIONS`
+  (ambiente ou `.env.local`). Nenhum valor e impresso.
+
+## Estado (H-003)
+
+Migracao `20261110120000_platform_create_baseline.sql`: extensoes `postgis`, `pg_trgm`,
+`unaccent`, `citext`, `btree_gist` (esquema `extensions`); esquemas `app`, `billing`, `audit`,
+`ops`, `private`; tabela de controle `ops.schema_migration` (RLS habilitada e forcada); revoke de
+`PUBLIC`/`anon`/`authenticated`/`service_role` nos esquemas do produto e nos privilegios padrao;
+papeis `app_api` (sem BYPASSRLS) e `app_system` (BYPASSRLS), ambos `NOLOGIN` e sem senha.
+
+## Pendencias
+
+1. Login e senha de `app_api`/`app_system`: passo manual fora das migracoes, lendo as variaveis
+   `DB_PASSWORD_APP_API` e `DB_PASSWORD_APP_SYSTEM`; depende do pooler (usuario `papel.<ref>`) e
+   do teste de `set_config` por transacao (S-02.5 / S-09).
+2. `pg_cron` e `pg_net`: ficam para o spike S-10. `pgtap`: nao habilitado (testes em Node).
+3. CI de banco: `ci-db.yml` desativado; host direto e IPv6 e o pooler esta pendente. Nao ha banco
+   efemero: os testes sao somente leitura ou usam transacao com rollback.
+4. Dados de dominio e seed sintetico: historias seguintes (H-005 em diante).

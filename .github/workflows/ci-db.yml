@@ -3,6 +3,8 @@ name: CI DB (esqueleto desativado)
 # Esqueleto previsto no plano tecnico 19 §6. DESATIVADO: so dispara manualmente e o job esta
 # condicionado a false. Sera ativado em H-003 (ambiente de banco e pgTAP), sem Docker: o banco de
 # teste sera definido na historia, e nenhum segredo de producao pode ser usado aqui.
+# H-003: os testes de banco (pnpm db:test) rodam so localmente por enquanto (host direto IPv6 e
+# pooler pendentes); nenhum segredo foi adicionado ao GitHub. Ver supabase/README.md.
 on:
   workflow_dispatch:
 
@@ -15,4 +17,4 @@ jobs:
     if: ${{ false }}
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Desativado ate a historia H-003."
+      - run: echo 'Desativado - testes de banco rodam so localmente, ver supabase/README.md'

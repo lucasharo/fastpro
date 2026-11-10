@@ -59,6 +59,25 @@ O CI (`.github/workflows/ci.yml`) roda tudo isso em push para `feature/init` e e
 `release/**` e `main`, sem segredos e sem Docker. `ci-db.yml` e `nightly-concurrency.yml` sao
 esqueletos desativados.
 
+## Banco de dados: como aplicar e conferir
+
+O banco de desenvolvimento e o projeto Supabase gratuito na nuvem (sem Docker). A conexao fica
+em `.env.local` (variavel `DATABASE_URL_MIGRATIONS`, nunca versionada). As mudancas no banco sao
+arquivos SQL em `supabase/migrations/`, aplicados em ordem e registrados em `ops.schema_migration`.
+
+```bash
+pnpm db:migrate -- --dry-run   # ensaio: roda as pendentes e DESFAZ tudo (nada fica gravado)
+pnpm db:migrate                # aplica as pendentes, uma transacao por migracao
+pnpm db:status                 # lista aplicadas e pendentes (somente leitura)
+pnpm db:test                   # testes de catalogo (extensoes, esquemas, RLS, papeis)
+```
+
+Regras: nunca edite uma migracao ja aplicada (o executor acusa); toda tabela nova nos esquemas
+`app`, `billing`, `audit`, `ops` e `private` deve habilitar e forcar RLS na mesma migracao (o
+`db:test` reprova se faltar). Os testes de banco rodam so localmente por enquanto: o host direto
+do Supabase e somente IPv6 e o pooler ainda nao foi configurado, entao o `ci-db.yml` segue
+desativado e nenhum segredo vai para o GitHub. Detalhes em `supabase/README.md`.
+
 ## Variaveis de ambiente
 
 Copie `.env.example` para `.env.local` (ignorado pelo Git) e preencha localmente. O

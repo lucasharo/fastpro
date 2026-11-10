@@ -2,7 +2,7 @@
   "name": "@fastpro/db",
   "version": "0.0.0",
   "private": true,
-  "description": "Placeholder: cliente SQL tipado (migracoes ficam em supabase/)",
+  "description": "Executor de migracoes SQL (supabase/migrations) e testes de catalogo do banco",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -19,6 +19,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "devDependencies": {
-    "@fastpro/config": "workspace:*"
+    "@fastpro/config": "workspace:*",
+    "pg": "8.23.1"
   }
 }
