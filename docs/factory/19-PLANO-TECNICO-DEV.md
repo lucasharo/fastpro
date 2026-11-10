@@ -325,7 +325,7 @@ Regras para todos: resultado vai em `docs/factory/spikes/S-xx-RESULTADO.md` do r
 
 ## 5. Convenções de branch, PR e commit
 
-> **SUPERADO PARCIALMENTE (decisão 44, 2026-11-10):** fluxo obrigatório `feature/*` -> `release/*` -> `main`, sempre por PR; `main` = produção, `release/*` = DEV/TST (hoje `release/0.1`); rebase/merge na `release/*`, não na `main`. Sem Docker (Supabase na nuvem). Onde esta seção disser `main`, ler `release/*` para o trabalho de desenvolvimento.
+> **SUPERADO PARCIALMENTE (decisão 44, 2026-11-10):** trabalho sempre em `feature/init` (branches auxiliares só se necessário, com merge em `feature/init`); depois `feature/init` -> `release/*` -> `main`, sempre por PR; `main` = produção, `release/*` = DEV/TST (hoje `release/0.1`). Sem Docker (Supabase na nuvem). Onde esta seção disser `main`, ler `release/*` para o trabalho de desenvolvimento.
 
 ### 5.1 Branches
 - `main` protegida: sem push direto, sem force-push, PR obrigatório, checks obrigatórios, histórico linear (a proteção real é configurada no GitHub pelo Orquestrador/usuário no Gate 2; este texto não a impõe).

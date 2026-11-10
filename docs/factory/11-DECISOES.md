@@ -181,3 +181,5 @@ Resposta do usuário: "Vamos seguir com essas tecnologias" + decisão sobre foto
 | Nº | Decisão [APROVADO pelo usuário] |
 |---|---|
 | 44 | **Gate 3 autorizado** (início do desenvolvimento, Onda 0). **Sem Docker:** usar apenas o projeto Supabase na nuvem. **Fluxo de branches:** `feature/*` -> `release/*` -> `main`; `main` = produção (PRD), `release/*` = DEV/TST, `feature/*` = trabalho; merges em `release/*` e `main` sempre por Pull Request. Executado: branch `release/0.1` criada a partir da `main` e dois rulesets ativos no GitHub (PR obrigatório, sem force-push, sem exclusão) em `main` e `release/*`. Aprovações exigidas: 0 (o dono é o único mantenedor; o merge é humano). |
+
+| 45 | **[APROVADO pelo usuário]** O trabalho é **sempre em `feature/init`**; branches auxiliares só se necessário e com merge nela. Caminho à produção: `feature/init` -> `release/*` -> `main`, por PR. Substitui o modelo `feature/H-xxx` -> `release/*` da decisão 44. A `feature/init` não tem proteção (commits diretos permitidos). |
