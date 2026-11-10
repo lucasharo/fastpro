@@ -118,6 +118,39 @@ test('check-logs: reprova console.*, campos fora da allowlist e interpolacao sen
   }
 });
 
+test('check-logs: stdout/stderr, console por alias/colchetes, receptores e metodos extras', () => {
+  const bad = [
+    ["process.stdout.write('x');\n", /stdout\/stderr/, 'apps/api/src/s1.ts'],
+    ['process.stderr.write(msg);\n', /stdout\/stderr/, 'packages/domain/src/s2.ts'],
+    ["process['stdout'].write('x');\n", /stdout\/stderr/, 'apps/api/src/s3.ts'],
+    ["console['log']('x');\n", /console/, 'apps/api/src/c1.ts'],
+    ["const c = console;\nc.log('x');\n", /console/, 'apps/api/src/c2.ts'],
+    ['const { log } = console;\n', /console/, 'apps/api/src/c3.ts'],
+    ["globalThis.console.info('x');\n", /console/, 'apps/api/src/c4.ts'],
+    ["req.log.info('x', { email });\n", /"email"/, 'apps/api/src/r1.ts'],
+    ["app.log.info('x', { phone });\n", /"phone"/, 'apps/api/src/r2.ts'],
+    ["logger?.info('x', { cpf });\n", /"cpf"/, 'apps/api/src/r3.ts'],
+    ["logger['info']('x', { cpf });\n", /"cpf"/, 'apps/api/src/r4.ts'],
+    ["logger.log('x');\n", /metodo ".log"/, 'apps/api/src/m1.ts'],
+    ["logger.trace('x');\n", /metodo ".trace"/, 'apps/api/src/m2.ts'],
+    ["logger.verbose('x');\n", /metodo ".verbose"/, 'apps/api/src/m3.ts'],
+    [
+      "const l = logger.child({ module: 'a' });\nl.info('x', { email });\n",
+      /"email"/,
+      'apps/api/src/a1.ts',
+    ],
+    ["console.log('x');\n", /console/, 'apps/api/api/index.ts'],
+    ["console.log('x');\n", /console/, 'apps/api/src/e1.mjs'],
+    ["console.log('x');\n", /console/, 'apps/api/src/e2.cts'],
+    ["console.log('x');\n", /console/, 'apps/api/src/e3.mts'],
+    ["console.log('x'); // check-logs:ignore\n", /sem motivo/, 'apps/api/src/i1.ts'],
+    ["console.log('x'); // check-logs:ignore -\n", /sem motivo/, 'apps/api/src/i2.ts'],
+  ];
+  for (const [content, match, path] of bad) {
+    check('check-logs.mjs', { [path]: content }, true, match);
+  }
+});
+
 test('check-logs: aceita logger com allowlist, ids e testes', () => {
   const ok = {
     'apps/api/src/a.ts':
@@ -126,7 +159,12 @@ test('check-logs: aceita logger com allowlist, ids e testes', () => {
       "const l = logger.child({ module: 'billing' });\nl.error('falha', { error_code: code }, err);\n",
     'apps/api/src/c.ts': 'logger.warn(`tentativa ${attempt} de ${max}`, { attempt, queue });\n',
     'apps/api/src/d.ts':
-      "const x = Math.log(2); // Math.log nao e logger\nconsole.log('ok'); // check-logs:ignore\n",
+      "const x = Math.log(2); // Math.log nao e logger\nconsole.log('ok'); // check-logs:ignore - saida de diagnostico do bootstrap\n",
+    'apps/api/src/d2.ts':
+      "// check-logs:ignore - CLI de manutencao, nao e codigo de servidor\nconsole.warn('uso: x');\n",
+    'packages/observability/src/sink.ts': "process.stdout.write('linha\\n');\n",
+    'apps/api/api/index.ts': "logger.info('ok', { status: 200 });\n",
+    'apps/api/src/i.cts': "logger.info('ok', { request_id: requestId, status: 200 });\n",
     'apps/api/src/e.test.ts': "console.log('teste'); logger.info('x', { email });\n",
     'apps/web/tests/f.ts': "console.log('fora de src');\n",
     'scripts/g.mjs': "console.log('scripts podem');\n",

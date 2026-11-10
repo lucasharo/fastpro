@@ -1,14 +1,18 @@
 // Varredura estatica de logs (H-007; ADR-013; 17 §7.4; B-41; T-11). Em codigo de producao
-// (apps/*/src e packages/*/src, exceto testes), reprova:
-//  1. console.log/info/warn/error/debug/trace/dir (use o logger de @fastpro/observability);
-//  2. chamadas do logger (log./logger./*Logger./*Log. + debug|info|warn|error|fatal|child) com:
+// (apps/*/src, apps/*/api e packages/*/src; .ts .tsx .js .jsx .mjs .cjs .mts .cts; sem testes), reprova:
+//  1. qualquer uso de console (console.log, console['log'], alias, desestruturacao, globalThis.console);
+//  2. process.stdout/stderr.write fora de packages/observability (use o logger);
+//  3. chamadas de logger (receptores log/logger/*Logger/*Log, aliases de child()/createLogger(),
+//     prefixos como this./req./app., acesso por "?." e ['metodo']) com:
+//     - metodo inexistente (.log, .trace, .verbose, .fatal...; so debug/info/warn/error/child);
 //     - campos fora da allowlist (packages/observability/src/allowlist.json);
 //     - campos que nao sao objeto literal, spread (...x), chave computada ou valor objeto/array;
 //     - JSON.stringify nos argumentos;
 //     - interpolacao/concatenacao/valor com expressao sensivel (email, telefone, cpf, token,
 //       senha, endereco, nome, body, headers, cookie, req, message...).
-// Heuristica estatica (sem AST). Excecao pontual: comentario "check-logs:ignore" na linha da
-// chamada ou na anterior. Limite: receptores com outros nomes (ex.: req.log) nao sao vistos.
+// Heuristica estatica (sem AST). Excecao pontual: "check-logs:ignore <motivo>" na linha da
+// ocorrencia ou na anterior; sem motivo a propria marca e violacao. Limite: receptores com outros
+// nomes (ex.: const x = obterLogger()) nao sao vistos; a regra ESLint no-console reforca o item 1.
 import { readFileSync } from 'node:fs';
 import { listFiles, readText, hasExt, report } from './lib/files.mjs';
 
@@ -27,9 +31,34 @@ function isSensitive(expr) {
   const words = expr.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/_/g, ' ');
   return SENSITIVE_WORDS.test(words) || SENSITIVE_ACCESS.test(expr);
 }
-const CONSOLE = /\bconsole\s*\.\s*(?:log|info|warn|error|debug|trace|dir)\s*\(/;
-const LOGCALL =
-  /(?<![\w$.])(?:this\.)?(?:log|logger|[A-Za-z_$][\w$]*(?:Logger|Log))\.(debug|info|warn|error|fatal|child)\s*\(/g;
+// Qualquer uso do identificador console (chamada, ["log"], ?., alias, desestruturacao) e global.console.
+const CONSOLE =
+  /(?<![\w$.'"`])console\b|\b(?:globalThis|window|global|self)\s*(?:\??\.|\[)\s*['"`]?console\b/;
+// Escrita direta em stdout/stderr (so o sink padrao de @fastpro/observability pode).
+const STDIO = /\bprocess\s*(?:\??\s*\.\s*|\[\s*['"`])std(?:out|err)\b/;
+// A API do logger so tem estes metodos; log/trace/verbose/fatal... nao existem.
+const LOGGER_METHODS = new Set(['debug', 'info', 'warn', 'error', 'child']);
+// "check-logs:ignore" exige um motivo depois (>= 3 caracteres).
+const IGNORE_MARK = 'check-logs:ignore';
+const IGNORE_REASON = /check-logs:ignore\s*(?:[-:—]\s*)?\S.{2,}/;
+
+/**
+ * Regex das chamadas de logger: receptores log/logger/*Logger/*Log e aliases criados por
+ * child()/createLogger() no arquivo; aceita prefixo (this., req., app.), "?." e ['metodo'].
+ */
+function loggerCallRegex(text) {
+  const names = new Set(['log', 'logger']);
+  const alias =
+    /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=\n]+)?=\s*(?:[\w$.?]*\.)?(?:child|createLogger)\s*\(/g;
+  for (const m of text.matchAll(alias)) names.add(m[1]);
+  const recv = `(?:${[...names].join('|')}|[A-Za-z_$][\\w$]*(?:Logger|Log))`;
+  const id = '[A-Za-z_$][\\w$]*';
+  return new RegExp(
+    `(?<![\\w$.])(?:${id}\\s*\\??\\.\\s*)*${recv}\\s*` +
+      `(?:\\??\\.\\s*(${id})|\\??\\.?\\s*\\[\\s*['"\`](${id})['"\`]\\s*\\])\\s*\\??\\.?\\s*\\(`,
+    'g',
+  );
+}
 
 /** Texto do argumento sem literais de string; templates mantem apenas as expressoes ${...}. */
 function expressionsOf(arg) {
@@ -130,12 +159,11 @@ const violations = [];
 let scanned = 0;
 let calls = 0;
 
+const SCOPE = /^(?:apps\/[^/]+\/(?:src|api)\/|packages\/[^/]+\/src\/)/;
+const EXTS = ['ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs', 'mts', 'cts'];
+
 for (const file of listFiles(root)) {
-  if (!/^(?:apps|packages)\/[^/]+\/src\//.test(file)) continue;
-  if (
-    !hasExt(file, ['ts', 'tsx', 'js', 'jsx', 'mjs']) ||
-    /\.(?:test|spec)\.|__tests__/.test(file)
-  ) {
+  if (!SCOPE.test(file) || !hasExt(file, EXTS) || /\.(?:test|spec)\.|__tests__/.test(file)) {
     continue;
   }
   const text = readText(root, file);
@@ -144,27 +172,41 @@ for (const file of listFiles(root)) {
   const lines = text.split('\n');
   const lineOf = (index) => text.slice(0, index).split('\n').length;
   const ignored = (ln) =>
-    lines[ln - 1]?.includes('check-logs:ignore') || lines[ln - 2]?.includes('check-logs:ignore');
+    [lines[ln - 1], lines[ln - 2]].some((l) => l !== undefined && IGNORE_REASON.test(l));
+  const isObservability = file.startsWith('packages/observability/');
 
   lines.forEach((line, i) => {
+    if (line.includes(IGNORE_MARK) && !IGNORE_REASON.test(line)) {
+      violations.push(`${file}:${i + 1} ${IGNORE_MARK} sem motivo (escreva o motivo depois)`);
+    }
     if (/^\s*(?:\/\/|\*|\/\*)/.test(line)) return;
     if (CONSOLE.test(line) && !ignored(i + 1)) {
-      violations.push(`${file}:${i + 1} console.* em codigo de producao (use o logger)`);
+      violations.push(`${file}:${i + 1} uso de console em codigo de producao (use o logger)`);
+    }
+    if (!isObservability && STDIO.test(line) && !ignored(i + 1)) {
+      violations.push(`${file}:${i + 1} escrita direta em stdout/stderr (use o logger)`);
     }
   });
 
-  for (const m of text.matchAll(LOGCALL)) {
+  for (const m of text.matchAll(loggerCallRegex(text))) {
     const ln = lineOf(m.index);
     if (ignored(ln)) continue;
+    const method = m[1] ?? m[2];
     const inside = balancedArgs(text, m.index + m[0].length);
     if (inside === null) continue;
     calls++;
     const where = `${file}:${ln}`;
+    if (!LOGGER_METHODS.has(method)) {
+      violations.push(
+        `${where} metodo ".${method}" nao existe no logger (use debug/info/warn/error)`,
+      );
+      continue;
+    }
     const args = splitTopLevel(inside);
     if (/JSON\.stringify\s*\(/.test(inside)) {
       violations.push(`${where} JSON.stringify em chamada de log`);
     }
-    const isChild = m[1] === 'child';
+    const isChild = method === 'child';
     const msg = isChild ? undefined : args[0];
     const fields = isChild ? args[0] : args[1];
     if (msg !== undefined && isSensitive(expressionsOf(msg))) {
