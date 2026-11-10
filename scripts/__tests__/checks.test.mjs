@@ -342,15 +342,15 @@ test('check-secrets: nomes camelCase/minusculos e pares chave:valor entre aspas'
 
 test('check-secrets: usos legitimos nao sao falso positivo', () => {
   const ok = (path, line) => check('check-secrets.mjs', { [path]: line }, false);
-  ok('packages/config/src/env.ts', 'SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),\n');
+  ok('packages/config/src/env.ts', 'SUPABASE_SECRET_KEY: z.string().min(1),\n');
   ok('packages/config/src/env.ts', 'MP_WEBHOOK_SECRET: z.string().min(16),\n');
   ok(
     'apps/api/src/modules/media/storage.ts',
-    'const k = process.env.SUPABASE_SERVICE_ROLE_KEY; // service_role isolado\n',
+    'const k = process.env.SUPABASE_SECRET_KEY; // service_role isolado\n',
   );
   ok(
     'apps/api/src/modules/media/storage.ts',
-    "const k = process.env['SUPABASE_SERVICE_ROLE_KEY'];\n",
+    "const k = process.env['SUPABASE_SECRET_KEY'];\n",
   );
   ok('apps/api/src/modules/identity/admin.ts', 'const name = "service_role";\n');
   ok('apps/api/src/a.ts', 'const token: string = req.headers.authorization;\n');

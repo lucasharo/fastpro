@@ -82,7 +82,7 @@ function scanLine(path, line) {
     if (re.test(line)) found.push(kind);
   }
   found.push(...assignments(line));
-  if (/service[_-]?role/i.test(line) && !startsWithAny(path, SERVICE_ROLE_ALLOWED)) {
+  if (/service[_-]?role|SUPABASE_SECRET_KEY/i.test(line) && !startsWithAny(path, SERVICE_ROLE_ALLOWED)) {
     found.push('referencia a service_role fora de modulo permitido');
   }
   return found;
