@@ -47,7 +47,8 @@ pnpm format:check
 ### Verificacoes automaticas (H-004)
 
 ```bash
-pnpm check:all               # deps, hex, tipografia, .env.example, fronteiras, anexos, segredos
+pnpm check:all               # deps, hex, tipografia, .env.example, fronteiras, anexos, logs, segredos
+pnpm check:logs              # logs sem PII: so @fastpro/observability, campos da allowlist
 pnpm check:secrets:history   # segredos tambem no historico git
 pnpm test:scripts            # testes dos proprios scripts de verificacao
 pnpm lint:scripts

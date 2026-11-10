@@ -88,6 +88,9 @@ jobs:
       - name: check:attachments (chat sem anexos)
         run: pnpm check:attachments
 
+      - name: check:logs (logs sem PII, allowlist de campos)
+        run: pnpm check:logs
+
       - name: check:secrets (arvore e historico)
         run: pnpm check:secrets:history
 

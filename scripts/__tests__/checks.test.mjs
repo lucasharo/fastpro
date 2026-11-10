@@ -95,6 +95,48 @@ test('check-hex: aceita variaveis, transparent/currentColor e palavras que nao s
     check('check-hex.mjs', { [path]: content }, false);
 });
 
+test('check-logs: reprova console.*, campos fora da allowlist e interpolacao sensivel', () => {
+  const bad = [
+    ["console.log('x');\n", /console/],
+    ["console.error('x', err);\n", /console/],
+    ["logger.info('x', { email: user.email });\n", /fora da allowlist: "email"/],
+    ["logger.info('x', { phone });\n", /fora da allowlist: "phone"/],
+    ["this.logger.warn('x', { cpf: '1' });\n", /"cpf"/],
+    ["const l = log.child({ name: 'x' });\n", /"name"/],
+    ['logger.info(`cliente ${user.email} criado`);\n', /interpolacao sensivel/],
+    ["logger.info('cliente ' + customerPhone);\n", /interpolacao sensivel/],
+    ["logger.info('x', { status: req.body.x });\n", /expressao sensivel/],
+    ["logger.info('x', { route: request.headers.host });\n", /expressao sensivel/],
+    ["logger.info('x', { ...req.body });\n", /spread/],
+    ["logger.info('x', payload);\n", /objeto literal/],
+    ["logger.info('x', { module: { a: 1 } });\n", /valor objeto/],
+    ["logger.error('x', { status: 500 }, JSON.stringify(err.message));\n", /JSON\.stringify/],
+    ["logger.info(\n  'x',\n  {\n    status: 200,\n    token: t,\n  },\n);\n", /"token"/],
+  ];
+  for (const [i, [content, match]] of bad.entries()) {
+    check('check-logs.mjs', { [`apps/api/src/m${i}.ts`]: content }, true, match);
+  }
+});
+
+test('check-logs: aceita logger com allowlist, ids e testes', () => {
+  const ok = {
+    'apps/api/src/a.ts':
+      "logger.info('aceite registrado', { module: 'requests', status: 200, duration_ms: ms, request_id: requestId });\n",
+    'apps/api/src/b.ts':
+      "const l = logger.child({ module: 'billing' });\nl.error('falha', { error_code: code }, err);\n",
+    'apps/api/src/c.ts': 'logger.warn(`tentativa ${attempt} de ${max}`, { attempt, queue });\n',
+    'apps/api/src/d.ts':
+      "const x = Math.log(2); // Math.log nao e logger\nconsole.log('ok'); // check-logs:ignore\n",
+    'apps/api/src/e.test.ts': "console.log('teste'); logger.info('x', { email });\n",
+    'apps/web/tests/f.ts': "console.log('fora de src');\n",
+    'scripts/g.mjs': "console.log('scripts podem');\n",
+    'packages/tokens/src/h.ts': '// console.log aqui e so comentario\nexport const a = 1;\n',
+  };
+  for (const [path, content] of Object.entries(ok)) {
+    check('check-logs.mjs', { [path]: content }, false);
+  }
+});
+
 test('check-typography: reprova fonte e peso fora do permitido', () => {
   check('check-typography.mjs', { 'apps/web/a.css': 'a { font-family: Arial; }\n' }, true, /Arial/);
   check('check-typography.mjs', { 'apps/web/a.css': 'a { font-weight: 600; }\n' }, true, /600/);

@@ -20,9 +20,10 @@
     "check:env": "node scripts/check-env-example.mjs",
     "check:boundaries": "node scripts/check-module-boundaries.mjs",
     "check:attachments": "node scripts/check-no-attachments.mjs",
+    "check:logs": "node scripts/check-logs.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
     "check:secrets:history": "node scripts/check-secrets.mjs --history",
-    "check:all": "pnpm check:deps && pnpm check:hex && pnpm check:typography && pnpm check:env && pnpm check:boundaries && pnpm check:attachments && pnpm check:secrets",
+    "check:all": "pnpm check:deps && pnpm check:hex && pnpm check:typography && pnpm check:env && pnpm check:boundaries && pnpm check:attachments && pnpm check:logs && pnpm check:secrets",
     "audit:deps": "pnpm audit --audit-level=high",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
