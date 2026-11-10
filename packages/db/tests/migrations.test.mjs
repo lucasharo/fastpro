@@ -70,4 +70,16 @@ describe('env', () => {
     });
     expect(safeError(srv)).toBe('42P01: relation does not exist');
   });
+
+  it('safeError mostra so o codigo em erros de autenticacao (28xxx)', () => {
+    for (const code of ['28P01', '28000']) {
+      const auth = Object.assign(
+        new Error('password authentication failed for user "postgres.abcdefgh"'),
+        { code, severity: 'FATAL' },
+      );
+      const out = safeError(auth);
+      expect(out).toBe(`${code}: falha de autenticacao`);
+      expect(out).not.toMatch(/postgres\.abcdefgh|password/);
+    }
+  });
 });

@@ -10,15 +10,50 @@ import { listMigrations } from '../scripts/lib/migrations.mjs';
 const PRODUCT_SCHEMAS = ['app', 'billing', 'audit', 'ops', 'private'];
 const EXPECTED_EXTENSIONS = ['postgis', 'pg_trgm', 'unaccent', 'citext', 'btree_gist'];
 
-// Tabelas dos esquemas do produto sem RLS habilitada E forcada.
-const TABLES_WITHOUT_RLS = `
-  select n.nspname || '.' || c.relname as tabela
+// Esquemas verificados quanto a objetos relacionais: os do produto e o public (Data API).
+const CHECKED_SCHEMAS = [...PRODUCT_SCHEMAS, 'public'];
+
+// Objetos relacionais (tabelas r/p, views v, views materializadas m, tabelas estrangeiras f) fora
+// do padrao: tabelas precisam de RLS habilitada E forcada; views precisam de security_invoker
+// (senao ignoram a RLS das tabelas base); views materializadas e tabelas estrangeiras nao suportam
+// RLS e por isso sao reprovadas; nenhum objeto pode dar acesso a anon, authenticated ou PUBLIC.
+// Objetos pertencentes a extensoes ficam de fora (nao sao do produto).
+const NON_COMPLIANT_OBJECTS = `
+  select n.nspname || '.' || c.relname as objeto, c.relkind::text as tipo,
+         array_remove(array[
+           case when c.relkind in ('r', 'p') and not (c.relrowsecurity and c.relforcerowsecurity)
+                then 'sem RLS habilitada e forcada' end,
+           case when c.relkind = 'v'
+                 and not coalesce('security_invoker=true' = any(c.reloptions), false)
+                then 'view sem security_invoker' end,
+           case when c.relkind in ('m', 'f')
+                then 'view materializada/tabela estrangeira nao suporta RLS' end,
+           case when has_table_privilege('anon', c.oid,
+                  'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+                then 'acessivel a anon' end,
+           case when has_table_privilege('authenticated', c.oid,
+                  'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+                then 'acessivel a authenticated' end,
+           case when exists (
+                  select 1 from aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) a
+                   where a.grantee = 0)
+                then 'acessivel a PUBLIC' end
+         ], null) as motivos
     from pg_class c
     join pg_namespace n on n.oid = c.relnamespace
    where n.nspname = any($1)
-     and c.relkind in ('r', 'p')
-     and not (c.relrowsecurity and c.relforcerowsecurity)
+     and c.relkind in ('r', 'p', 'v', 'm', 'f')
+     and not exists (select 1 from pg_depend d
+                      where d.classid = 'pg_class'::regclass and d.objid = c.oid
+                        and d.deptype = 'e')
    order by 1`;
+
+async function nonCompliant() {
+  const res = await client.query(NON_COMPLIANT_OBJECTS, [CHECKED_SCHEMAS]);
+  return res.rows
+    .filter((r) => r.motivos.length > 0)
+    .map((r) => `${r.objeto} (${r.tipo}): ${r.motivos.join(', ')}`);
+}
 
 let client;
 
@@ -63,28 +98,35 @@ test('extensoes esperadas estao instaladas no esquema extensions', async () => {
   }
 });
 
-test('nenhuma tabela do produto sem RLS habilitada e forcada', async () => {
-  const res = await client.query(TABLES_WITHOUT_RLS, [PRODUCT_SCHEMAS]);
-  assert.deepEqual(
-    res.rows.map((r) => r.tabela),
-    [],
-  );
+test('nenhum objeto (tabela, view, view materializada, tabela estrangeira) fora do padrao nos esquemas do produto e em public', async () => {
+  assert.deepEqual(await nonCompliant(), []);
 });
 
-test('autoteste: o teste de RLS reprova uma tabela criada sem RLS (rollback)', async () => {
+test('autoteste: a verificacao reprova tabela sem RLS, view, view materializada e exposicao a anon (rollback)', async () => {
   await client.query('begin');
   try {
     await client.query('create table app.zz_teste_sem_rls (id int)');
-    const res = await client.query(TABLES_WITHOUT_RLS, [PRODUCT_SCHEMAS]);
-    assert.deepEqual(
-      res.rows.map((r) => r.tabela),
-      ['app.zz_teste_sem_rls'],
-    );
+    await client.query('create view app.zz_teste_view as select 1 as id');
+    await client.query('create materialized view app.zz_teste_mview as select 1 as id');
+    await client.query('create table public.zz_teste_publica (id int)');
+    await client.query('alter table public.zz_teste_publica enable row level security');
+    await client.query('alter table public.zz_teste_publica force row level security');
+    await client.query('grant select on public.zz_teste_publica to anon');
+    const found = await nonCompliant();
+    const byName = (name) => found.find((f) => f.startsWith(name + ' '));
+    assert.match(byName('app.zz_teste_sem_rls'), /sem RLS habilitada e forcada/);
+    assert.match(byName('app.zz_teste_view'), /view sem security_invoker/);
+    assert.match(byName('app.zz_teste_mview'), /nao suporta RLS/);
+    assert.match(byName('public.zz_teste_publica'), /acessivel a anon/);
+    assert.equal(found.length, 4, `objetos inesperados: ${found.join('; ')}`);
   } finally {
     await client.query('rollback');
   }
-  const check = await client.query("select to_regclass('app.zz_teste_sem_rls') as t");
-  assert.equal(check.rows[0].t, null, 'a tabela de teste deveria ter sido desfeita');
+  const check = await client.query(
+    `select to_regclass('app.zz_teste_sem_rls') as a, to_regclass('app.zz_teste_view') as b,
+            to_regclass('app.zz_teste_mview') as c, to_regclass('public.zz_teste_publica') as d`,
+  );
+  assert.deepEqual(check.rows[0], { a: null, b: null, c: null, d: null });
 });
 
 test('papeis da plataforma (anon, authenticated, chave de servico) e PUBLIC nao acessam os esquemas do produto', async () => {
@@ -108,9 +150,9 @@ test('papeis da plataforma (anon, authenticated, chave de servico) e PUBLIC nao 
   }
 });
 
-test('papeis app_api (sem BYPASSRLS) e app_system (BYPASSRLS) existem, sem superusuario', async () => {
+test('papeis app_api (sem BYPASSRLS) e app_system (BYPASSRLS) existem, sem superusuario, sem login e sem heranca', async () => {
   const res = await client.query(
-    `select rolname, rolsuper, rolbypassrls, rolcreaterole, rolcreatedb
+    `select rolname, rolsuper, rolbypassrls, rolcreaterole, rolcreatedb, rolcanlogin, rolinherit
        from pg_roles where rolname in ('app_api', 'app_system') order by rolname`,
   );
   const roles = Object.fromEntries(res.rows.map((r) => [r.rolname, r]));
@@ -119,9 +161,26 @@ test('papeis app_api (sem BYPASSRLS) e app_system (BYPASSRLS) existem, sem super
   assert.equal(roles.app_api.rolbypassrls, false);
   assert.equal(roles.app_system.rolbypassrls, true);
   for (const r of Object.values(roles)) {
-    assert.equal(r.rolsuper, false);
-    assert.equal(r.rolcreaterole, false);
-    assert.equal(r.rolcreatedb, false);
+    assert.equal(r.rolsuper, false, `${r.rolname} nao pode ser superusuario`);
+    assert.equal(r.rolcreaterole, false, `${r.rolname} nao pode criar papeis`);
+    assert.equal(r.rolcreatedb, false, `${r.rolname} nao pode criar bancos`);
+    assert.equal(r.rolcanlogin, false, `${r.rolname} deve ser NOLOGIN ate o passo manual`);
+    assert.equal(r.rolinherit, false, `${r.rolname} deve ser NOINHERIT`);
+  }
+});
+
+// Ausencia de senha: verificada via pg_authid (rolpassword) quando o papel de migracao consegue
+// le-lo. Se um ambiente nao permitir (pg_authid ilegivel), fica registrada como NAO_VERIFICAVEL
+// (teste ignorado com aviso); sem login (teste acima) a senha seria inutil de qualquer forma.
+test('app_api/app_system sem senha definida (ou NAO_VERIFICAVEL se pg_authid for ilegivel)', async (t) => {
+  const res = await client.query("select has_table_privilege('pg_authid', 'SELECT') as pode");
+  if (res.rows[0].pode) {
+    const pw = await client.query(
+      "select rolname from pg_authid where rolname in ('app_api','app_system') and rolpassword is not null",
+    );
+    assert.deepEqual(pw.rows, [], 'papeis de aplicacao nao deveriam ter senha definida');
+  } else {
+    t.skip('NAO_VERIFICAVEL: pg_authid nao e legivel pelo papel de migracao');
   }
 });
 

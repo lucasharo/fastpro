@@ -33,9 +33,14 @@ export function loadConnectionString(root = REPO_ROOT, env = process.env) {
   throw new Error('DATABASE_URL_MIGRATIONS nao definida (ambiente ou .env.local)');
 }
 
-/** Descricao segura de um erro: so codigo SQLSTATE/rede e, para erros do servidor, a mensagem. */
+/**
+ * Descricao segura de um erro: so codigo SQLSTATE/rede e, para erros do servidor, a mensagem.
+ * Erros de autenticacao (SQLSTATE classe 28) mostram apenas o codigo: a mensagem original pode
+ * conter o usuario do projeto.
+ */
 export function safeError(err) {
   if (err && typeof err === 'object' && 'severity' in err) {
+    if (/^28/.test(String(err.code ?? ''))) return `${err.code}: falha de autenticacao`;
     return `${err.code ?? 'erro'}: ${String(err.message)}`;
   }
   if (err && typeof err === 'object' && 'code' in err && err.code) {
