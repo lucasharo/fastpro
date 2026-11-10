@@ -1,6 +1,9 @@
 // Varredura de cor literal fora de packages/tokens (17 §7.1; B-32, B-33).
 // Falha se houver hex (#rgb..#rrggbbaa), rgb()/rgba()/hsl()/hsla()/oklch() ou valor arbitrario
 // de cor em classes utilitarias. Excecao pontual na linha: comentario "check-hex:ignore".
+// TODO(H-002): ainda nao detecta NOMES de cor CSS (red, white, rebeccapurple...) em propriedades
+// de cor (color, background, border-color, fill, stroke), nem objetos de estilo com esses nomes.
+// Aceito com prazo na revisao da H-004; implementar junto de packages/tokens e do lint de UI.
 import { listFiles, readText, hasExt, startsWithAny, report } from './lib/files.mjs';
 
 const EXTS = ['ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs', 'css', 'scss', 'svg'];

@@ -2,14 +2,18 @@
 // Uso: node scripts/check-secrets.mjs [--history]
 //  - sem flag: varre arquivos versionados/nao ignorados (nunca .env.local, que e ignorado);
 //  - --history: varre tambem as linhas adicionadas em todo o historico (git log -p).
-// Limitacoes: regex proprio, sem entropia; cobre formatos conhecidos e atribuicoes de variaveis
+//    Falha ao ler o historico (erro do git, estouro de buffer) FAZ O SCRIPT FALHAR.
+// Limitacoes: regex proprio, sem entropia; cobre formatos conhecidos e atribuicoes a nomes
 // sensiveis. Nao substitui gitleaks/OSV (avaliar adicionar depois; licenca e limites
 // [NAO VERIFICADO] nesta fase).
 import { execFileSync } from 'node:child_process';
 import { listFiles, readText, startsWithAny, report } from './lib/files.mjs';
 
 const SELF_IGNORED = ['scripts/check-secrets.mjs', 'scripts/__tests__/', 'pnpm-lock.yaml'];
-// service_role so e permitido em documentacao, scripts, SQL/config do Supabase e no .env.example.
+// A REFERENCIA ao nome service_role so e permitida em documentacao, scripts, SQL/config do
+// Supabase, .env.example e nos locais previstos no plano (19 §1.1): modulos isolados de
+// Storage/Auth admin (media, identity) e a validacao de env em packages/config.
+// Valores atribuidos continuam sendo verificados em qualquer lugar.
 const SERVICE_ROLE_ALLOWED = [
   'docs/',
   'scripts/',
@@ -20,8 +24,12 @@ const SERVICE_ROLE_ALLOWED = [
   'CLAUDE.md',
   'GEMINI.md',
   '.env.example',
+  'apps/api/src/modules/media/',
+  'apps/api/src/modules/identity/',
+  'packages/config/',
 ];
 
+const HEX_LONG = /(?<![0-9A-Fa-f])[0-9A-Fa-f]{64,}(?![0-9A-Fa-f])/;
 const SECRET_PATTERNS = [
   [/-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY(?: BLOCK)?-----/, 'chave privada'],
   [/\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/, 'JWT'],
@@ -30,23 +38,50 @@ const SECRET_PATTERNS = [
   [/\bre_[A-Za-z0-9]{20,}\b/, 'chave Resend'],
   [/\b(?:APP_USR|TEST)-[0-9]{6,}-[0-9]{6}-[0-9a-f]{32}-[0-9]+/, 'token Mercado Pago'],
   [/\b(?:sk|pk)\.eyJ[A-Za-z0-9_-]{20,}/, 'token Mapbox'],
-  [/\bsb_secret_[A-Za-z0-9_-]{20,}/, 'chave secreta Supabase'],
+  [/\bsb_(?:secret|publishable)_[A-Za-z0-9_-]{16,}/, 'chave Supabase (sb_secret_/sb_publishable_)'],
+  [/\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{16,}/, 'chave secreta de provedor (sk_live_/sk_test_)'],
+  [/\bwhsec_[A-Za-z0-9+/=_-]{16,}/, 'segredo de webhook (whsec_)'],
+  [/\bBearer\s+[A-Za-z0-9._~+/-]{20,}=*/, 'cabecalho Bearer com token'],
+  [HEX_LONG, 'valor hexadecimal longo (>= 64 digitos)'],
   [
     /\bpostgres(?:ql)?:\/\/[^:\s/@]+:(?![<$%{]|\s|your|password|xxx|changeme|\*+)[^@\s]{4,}@/i,
     'URL de banco com senha',
   ],
 ];
-// NOME_SENSIVEL=valor (arquivo .env commitado, YAML, shell). Valor placeholder e ignorado.
-const ASSIGN =
-  /^\s*(?:export\s+)?([A-Z][A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|API_KEY|SERVICE_ROLE_KEY|PEPPER|HMAC_KEY|ENC_KEY_V\d+|_KEY))\s*[=:]\s*['"]?([^\s'"#]{8,})/;
+
+// Atribuicao NOME = valor / NOME: valor / "nome": "valor" (env, YAML, JSON, TS). O nome e
+// avaliado sem diferenciar maiusculas (pepper, webhookSecret, SESSION_COOKIE_SECRET).
+const PAIR = /([A-Za-z_][A-Za-z0-9_.-]*)['"]?\s*[:=]\s*(['"`]?)([^\s'"`,;#)}\]]*)/g;
+const SENSITIVE_NAME =
+  /secret|token|passw(?:or)?d|pepper|hmac|api[_-]?key|private[_-]?key|service[_-]?role|enc[_-]?key|signing[_-]?key/i;
+const KEY_SUFFIX = /[a-z0-9]Key$|_KEY$|_key$/;
+// Valores que nao sao segredo: modelos, expressoes de leitura/validacao de env e referencias.
 const PLACEHOLDER =
-  /^(?:<.*>|\$\{?.*|%.*|x{3,}|\*{3,}|changeme|your[-_].*|example.*|placeholder.*|dummy.*|\.{3})$/i;
+  /^(?:<.*|\$.*|%.*|x{3,}|\*{3,}|changeme.*|your[-_].*|example.*|placeholder.*|dummy.*|\.{3}|z\..*|process\.env.*|import\.meta.*|env\..*|config\..*|secrets\..*)$/i;
+
+function assignments(line) {
+  const found = [];
+  for (const m of line.matchAll(PAIR)) {
+    const [, name, quote, value] = m;
+    if (!(SENSITIVE_NAME.test(name) || KEY_SUFFIX.test(name))) continue;
+    if (value === '' || PLACEHOLDER.test(value)) continue;
+    const upper = /^[A-Z][A-Z0-9_]*$/.test(name);
+    const looksSecret = quote
+      ? (value.length >= 12 && /\d/.test(value)) || value.length >= 20
+      : value.length >= 8 && (upper || /\d/.test(value));
+    if (looksSecret) found.push(`valor atribuido a ${name}`);
+  }
+  return found;
+}
 
 function scanLine(path, line) {
   const found = [];
-  for (const [re, kind] of SECRET_PATTERNS) if (re.test(line)) found.push(kind);
-  const a = ASSIGN.exec(line);
-  if (a && !PLACEHOLDER.test(a[2])) found.push(`valor atribuido a ${a[1]}`);
+  for (const [re, kind] of SECRET_PATTERNS) {
+    // Hash declarado (ex.: 'SHA256 do ZIP: ...') nao e segredo.
+    if (re === HEX_LONG && /sha-?(?:256|512)\b/i.test(line)) continue;
+    if (re.test(line)) found.push(kind);
+  }
+  found.push(...assignments(line));
   if (/service[_-]?role/i.test(line) && !startsWithAny(path, SERVICE_ROLE_ALLOWED)) {
     found.push('referencia a service_role fora de modulo permitido');
   }
@@ -70,15 +105,23 @@ for (const file of listFiles(root)) {
 let mode = 'arvore de trabalho';
 if (process.argv.includes('--history')) {
   mode += ' + historico';
-  let log;
+  let log = '';
   try {
-    log = execFileSync('git', ['log', '-p', '--all', '-U0', '--no-color', '--format=commit %h'], {
-      cwd: root,
-      encoding: 'utf8',
-      maxBuffer: 256 * 1024 * 1024,
-    });
-  } catch {
-    log = '';
+    const count = Number(
+      execFileSync('git', ['rev-list', '--all', '--count'], { cwd: root, encoding: 'utf8' }).trim(),
+    );
+    if (count > 0) {
+      log = execFileSync('git', ['log', '-p', '--all', '-U0', '--no-color', '--format=commit %h'], {
+        cwd: root,
+        encoding: 'utf8',
+        // CHECK_SECRETS_MAX_BUFFER existe so para testar a falha por estouro de buffer.
+        maxBuffer: Number(process.env.CHECK_SECRETS_MAX_BUFFER) || 256 * 1024 * 1024,
+      });
+    }
+  } catch (err) {
+    // Falha ao ler o historico NAO pode virar "ok": o gate precisa falhar.
+    console.error(`check-secrets: falha ao ler o historico git: ${err.code ?? err.message}`);
+    process.exit(2);
   }
   let commit = '?';
   let path = '';

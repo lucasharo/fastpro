@@ -23,6 +23,12 @@ jobs:
     env:
       TURBO_TELEMETRY_DISABLED: '1'
       CI: 'true'
+    # Acoes de terceiros: so as oficiais da organizacao "actions", fixadas pela tag major.
+    # Verificado em 2026-11-10 via API do GitHub (somente leitura): as tags apontam para commits:
+    #   actions/checkout   v7 = v7.0.1 -> 3d3c42e5aac5ba805825da76410c181273ba90b1
+    #   actions/setup-node v7 = v7.1.0 -> 949feb2413d6458794dcd2491c4babbbce0c15c1
+    # Fixar por SHA completo (em vez de @v7) e opcional: sha_pinning_required esta false no
+    # repositorio; reavaliar se a politica mudar.
     steps:
       - name: Checkout (historico completo para a varredura de segredos)
         uses: actions/checkout@v7

@@ -22,10 +22,11 @@ function fixture(files) {
   return dir;
 }
 
-function run(script, dir, args = []) {
+function run(script, dir, args = [], env = {}) {
   const r = spawnSync(process.execPath, [join(scriptsDir, script), ...args], {
     cwd: dir,
     encoding: 'utf8',
+    env: { ...process.env, ...env },
   });
   return { code: r.status, out: `${r.stdout}${r.stderr}` };
 }
@@ -199,6 +200,112 @@ test('check-secrets: service_role so em locais permitidos; placeholders passam',
     { 'a.env.txt': 'SESSION_COOKIE_SECRET=<defina-localmente>\nJOBS_TICK_SECRET=\n' },
     false,
   );
+});
+
+test('check-secrets: nomes camelCase/minusculos e pares chave:valor entre aspas', () => {
+  const hex64 = 'ab12cd34'.repeat(8);
+  const body = 'A1b2C3d4E5f6';
+  const cases = [
+    [`const pepper = "${hex64}";\n`, /pepper|hexadecimal/],
+    [`const webhookSecret = "whsec_${body}${body}";\n`, /whsec_|webhookSecret/],
+    [`const key = "${['sk', 'live', body + body].join('_')}";\n`, /sk_live_/],
+    [`fetch(u, { headers: { Authorization: "Bearer ${body}${body}.x" } });\n`, /Bearer/],
+    [`const pub = "${['sb', 'publishable', body + body].join('_')}";\n`, /sb_publishable_/],
+    [`{ "sessionCookieSecret": "${body}${body}" }\n`, /sessionCookieSecret/],
+    [`const apiKey = '${body}${body}';\n`, /apiKey/],
+    [`service_role_key: ${body}${body}\n`, /service_role_key/],
+  ];
+  for (const [line, match] of cases) {
+    check('check-secrets.mjs', { 'apps/api/src/a.ts': line }, true, match);
+  }
+  // Valor hexadecimal longo avulso (sem nome sensivel) tambem reprova.
+  check(
+    'check-secrets.mjs',
+    { 'apps/api/src/a.ts': `const x = "${hex64}";\n` },
+    true,
+    /hexadecimal/,
+  );
+});
+
+test('check-secrets: usos legitimos nao sao falso positivo', () => {
+  const ok = (path, line) => check('check-secrets.mjs', { [path]: line }, false);
+  ok('packages/config/src/env.ts', 'SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),\n');
+  ok('packages/config/src/env.ts', 'MP_WEBHOOK_SECRET: z.string().min(16),\n');
+  ok(
+    'apps/api/src/modules/media/storage.ts',
+    'const k = process.env.SUPABASE_SERVICE_ROLE_KEY; // service_role isolado\n',
+  );
+  ok(
+    'apps/api/src/modules/media/storage.ts',
+    "const k = process.env['SUPABASE_SERVICE_ROLE_KEY'];\n",
+  );
+  ok('apps/api/src/modules/identity/admin.ts', 'const name = "service_role";\n');
+  ok('apps/api/src/a.ts', 'const token: string = req.headers.authorization;\n');
+  ok('apps/api/src/a.ts', 'headers: { Authorization: `Bearer ${token}` },\n');
+  ok('apps/web/src/a.ts', 'const key = "chave";\nconst pepper = process.env.PEPPER_EMAIL_HMAC;\n');
+  ok('docs/a.md', 'SHA256 do arquivo: ' + 'ab12cd34'.repeat(8) + '\n');
+  // Fora dos locais permitidos, service_role segue reprovado mesmo como nome.
+  check(
+    'check-secrets.mjs',
+    { 'apps/api/src/modules/billing/a.ts': 'const r = "service_role";\n' },
+    true,
+    /service_role/,
+  );
+});
+
+test('check-secrets --history: falha de leitura do historico FALHA (nao vira ok)', () => {
+  const dir = fixture({ 'a.txt': 'ok\n' });
+  try {
+    const git = (...a) =>
+      execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.test', ...a], {
+        cwd: dir,
+      });
+    git('add', '-A');
+    git('commit', '-q', '-m', 'x');
+    assert.equal(run('check-secrets.mjs', dir, ['--history']).code, 0);
+    const r = run('check-secrets.mjs', dir, ['--history'], { CHECK_SECRETS_MAX_BUFFER: '16' });
+    assert.notEqual(r.code, 0, r.out);
+    assert.match(r.out, /falha ao ler o historico/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('check-secrets --history: repositorio sem commits passa', () => {
+  const dir = fixture({ 'a.txt': 'ok\n' });
+  try {
+    assert.equal(run('check-secrets.mjs', dir, ['--history']).code, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('check-module-boundaries: resolve import relativo contra o diretorio do arquivo', () => {
+  const m = 'apps/api/src/modules';
+  const mb = 'check-module-boundaries.mjs';
+  // Dentro do proprio modulo: livre, em qualquer profundidade.
+  check(mb, { [`${m}/billing/domain/a.ts`]: "import { e } from '../domain/entity';\n" }, false);
+  check(mb, { [`${m}/billing/a.ts`]: "import { e } from './domain/entity';\n" }, false);
+  check(mb, { [`${m}/billing/a/b/c.ts`]: "import { e } from '../../domain/entity';\n" }, false);
+  // Outro modulo pelo index: livre; profundo: reprova (relativo e por modules/).
+  check(mb, { [`${m}/requests/a.ts`]: "import { c } from '../catalog/index';\n" }, false);
+  check(mb, { [`${m}/requests/x/a.ts`]: "import { c } from '../../catalog';\n" }, false);
+  check(
+    mb,
+    { [`${m}/requests/a.ts`]: "import { c } from '../catalog/infra/repo';\n" },
+    true,
+    /profundo/,
+  );
+  check(
+    mb,
+    { [`${m}/billing/a.ts`]: "import { x } from '../../modules/requests/internal/x';\n" },
+    true,
+    /requests/,
+  );
+  // billing nunca importa requests/distribution/selection/chat (de qualquer profundidade).
+  check(mb, { [`${m}/billing/a.ts`]: "import { c } from '../../chat';\n" }, true, /billing/);
+  check(mb, { [`${m}/billing/domain/a.ts`]: "import { c } from '../../chat';\n" }, true, /billing/);
+  check(mb, { [`${m}/billing/a.ts`]: "import { c } from '../selection';\n" }, true, /billing/);
 });
 
 test('check-secrets --history: acha segredo removido depois', () => {
