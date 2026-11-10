@@ -44,6 +44,20 @@ pnpm check:deps      # regra de dependencia entre workspaces (placeholder)
 pnpm format:check
 ```
 
+### Verificacoes automaticas (H-004)
+
+```bash
+pnpm check:all               # deps, hex, tipografia, .env.example, fronteiras, anexos, segredos
+pnpm check:secrets:history   # segredos tambem no historico git
+pnpm test:scripts            # testes dos proprios scripts de verificacao
+pnpm lint:scripts
+pnpm audit:deps              # pnpm audit --audit-level=high
+```
+
+O CI (`.github/workflows/ci.yml`) roda tudo isso em push para `feature/init` e em PR para
+`release/**` e `main`, sem segredos e sem Docker. `ci-db.yml` e `nightly-concurrency.yml` sao
+esqueletos desativados.
+
 ## Variaveis de ambiente
 
 Copie `.env.example` para `.env.local` (ignorado pelo Git) e preencha localmente. O
