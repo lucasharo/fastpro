@@ -1,0 +1,10 @@
+{
+  "name": "@fastpro/config",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Configuracao compartilhada (tsconfig base; eslint/vitest/env entram em historias futuras)",
+  "type": "module",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json"
+  }
+}
