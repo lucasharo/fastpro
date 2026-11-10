@@ -348,10 +348,7 @@ test('check-secrets: usos legitimos nao sao falso positivo', () => {
     'apps/api/src/modules/media/storage.ts',
     'const k = process.env.SUPABASE_SECRET_KEY; // service_role isolado\n',
   );
-  ok(
-    'apps/api/src/modules/media/storage.ts',
-    "const k = process.env['SUPABASE_SECRET_KEY'];\n",
-  );
+  ok('apps/api/src/modules/media/storage.ts', "const k = process.env['SUPABASE_SECRET_KEY'];\n");
   ok('apps/api/src/modules/identity/admin.ts', 'const name = "service_role";\n');
   ok('apps/api/src/a.ts', 'const token: string = req.headers.authorization;\n');
   ok('apps/api/src/a.ts', 'headers: { Authorization: `Bearer ${token}` },\n');
