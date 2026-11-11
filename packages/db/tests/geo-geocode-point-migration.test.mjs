@@ -31,7 +31,7 @@ describe('T-H021-04a CHECK do selo permanente e do estado (CA-4, G-05 estatico)'
   it('a tabela existe e o ponto exige o selo permanente', () => {
     expect(geocodePoint).not.toBe('');
     expect(geocodePoint).toContain(
-      "constraint geocode_point_selo_permanente check (exact_point is null or geocode_mode = 'permanent')",
+      "constraint geocode_point_selo_permanente check (exact_point is null or geocode_mode is not distinct from 'permanent')",
     );
   });
 
@@ -104,7 +104,7 @@ describe('T-H021-06 proveniencia e ausencia de coordenada fora da tabela (I-28, 
     expect(lower(sql)).not.toMatch(/grant\s[^;]*app\.geocode_(point|budget)/);
     // O papel de servico do Supabase e o quarto da lista (nome omitido aqui de proposito: ver check:secrets).
     expect(lower(sql)).toMatch(
-      /revoke all on app\.geocode_point, app\.geocode_budget\s+from public, anon, authenticated, \w+, app_api, app_system/,
+      /revoke all on app\.geocode_point, app\.geocode_budget\s+from public, anon, authenticated, \w+, app_api, app_system, app_backup_reader/,
     );
   });
 

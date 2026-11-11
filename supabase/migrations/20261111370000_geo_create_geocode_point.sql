@@ -19,7 +19,8 @@ create table if not exists app.geocode_point (
   geocoded_at   timestamptz,
   created_at    timestamptz not null default clock_timestamp(),
   constraint geocode_point_subject_hash_key unique (subject_kind, subject_id, address_hash),
-  constraint geocode_point_selo_permanente check (exact_point is null or geocode_mode = 'permanent'),
+  -- is not distinct from: com geocode_mode nulo a comparacao seria nula e o CHECK aceitaria (nulo passa).
+  constraint geocode_point_selo_permanente check (exact_point is null or geocode_mode is not distinct from 'permanent'),
   constraint geocode_point_estado_ponto check ((state = 'ok') = (exact_point is not null)),
   constraint geocode_point_precisao_ok check (state <> 'ok' or precision is not null),
   constraint geocode_point_caixa_brasil check (
@@ -47,5 +48,6 @@ alter table app.geocode_point  force row level security;
 alter table app.geocode_budget enable row level security;
 alter table app.geocode_budget force row level security;
 
+-- app_backup_reader recebe SELECT por privilegio padrao do schema app; a leitura direta e revogada (desenho §2.3).
 revoke all on app.geocode_point, app.geocode_budget
-  from public, anon, authenticated, service_role, app_api, app_system;
+  from public, anon, authenticated, service_role, app_api, app_system, app_backup_reader;
