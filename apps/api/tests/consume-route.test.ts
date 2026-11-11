@@ -249,6 +249,19 @@ describe('T-H012-04 link valido: 200 com cookie da etapa', () => {
 });
 
 describe('rota condicionada e metodo', () => {
+  it('o caminho com prefixo /api (mesma origem, pagina) chega ao mesmo handler', async () => {
+    const { porta, repo } = await subir();
+    const r = await pedir(
+      porta,
+      'POST',
+      '/api' + CAMINHO,
+      JSON_OK,
+      JSON.stringify({ token: TOKEN_VALIDO }),
+    );
+    expect(r.status).toBe(200);
+    expect(repo.calls).toBe(1);
+  });
+
   it('sem opcao consume a rota nao existe (404)', async () => {
     const { porta } = await subir(true);
     expect((await postar(porta, JSON.stringify({ token: TOKEN_VALIDO }))).status).toBe(404);
