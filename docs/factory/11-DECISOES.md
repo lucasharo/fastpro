@@ -93,7 +93,7 @@ Numeração da lista de 9 perguntas apresentada pelo Orquestrador (AMB-21..29 do
 | Nº | Decisão [APROVADO pelo usuário] |
 |---|---|
 | 14 | O "Aceitar trabalho" envia ao cliente a mensagem **"Estou disponível para trabalhar"** (texto da mensagem automática de sistema, PRD RF-075). O aviso "FastPro apenas conecta; não é contrato" **não foi confirmado** (pendente; texto jurídico em L2/L7). |
-| 15 | **Sim.** Lançamento real bloqueado até existir domínio. Até lá: Mailpit local para testes; envio real pelo Resend autorizado pelo usuário durante o desenvolvimento, **somente para o e-mail da conta cadastrada** (decisão do usuário, 2026-11-11; substitui a menção ao "modo de teste" da T8). |
+| 15 | **Sim.** Lançamento real bloqueado até existir domínio. Até lá: envio pelo Resend, **somente para a conta cadastrada** (decisão do usuário, 2026-11-11; substitui a menção ao "modo de teste" da T8). |
 | 16 | **Vercel mantida** (H1). A verificação dos termos do plano gratuito (uso comercial) e do NestJS em função única continua como item a confirmar na leitura da documentação oficial (pergunta 12), antes da primeira cobrança. |
 | 17 | **Sim.** O novo período começa a contar no **fim do período anterior**, sem lacuna (SD-16). |
 | 18 | **Adiado:** periodicidade do backup manual vai para o TODO (`12-TODO.md`). |

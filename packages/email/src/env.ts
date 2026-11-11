@@ -1,10 +1,10 @@
 // H-093 | Variaveis de e-mail. So nomes aparecem aqui; valores nunca entram em codigo, erro ou log.
 // Lista fechada de APP_ENV: valores de docs/factory/19-PLANO-TECNICO-DEV.md §7 (local, preview,
-// staging, production) mais "test" para CI. Dev/CI aceitam so Mailpit; os demais so Resend.
+// staging, production) mais "test" para CI. Todos os ambientes usam o Resend (decisao do usuario,
+// 2026-11-11: o Mailpit saiu do projeto).
 export const APP_ENVS = ['local', 'test', 'preview', 'staging', 'production'] as const;
 export type AppEnv = (typeof APP_ENVS)[number];
-export const DEV_APP_ENVS: readonly AppEnv[] = ['local', 'test'];
-export const EMAIL_PROVIDERS = ['mailpit', 'resend'] as const;
+export const EMAIL_PROVIDERS = ['resend'] as const;
 
 export interface EmailEnv {
   readonly APP_ENV?: string | undefined;

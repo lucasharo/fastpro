@@ -9,5 +9,4 @@ export * from './renderer.js';
 export * from './auth-renderer.js';
 export * from './transports.js';
 export * from './resend.js';
-export * from './mailpit.js';
 export * from './select.js';

@@ -21,7 +21,7 @@ globalThis.fetch = () => {
 
 const NOW = '2099-01-01T12:00:00.000Z';
 
-/** Provedor simulado que se apresenta com o nome de um adaptador (mailpit ou resend). */
+/** Provedor simulado que se apresenta com o nome de um adaptador (resend). */
 class NamedProvider extends FakeEmailProvider {
   constructor(name) {
     super();
@@ -80,16 +80,16 @@ async function rowOf(id) {
   ).rows[0];
 }
 
-test('T-H93-01: aceito pelo adaptador Mailpit grava o provedor mailpit (CA-H093-03)', () =>
+test('T-H93-01: aceito pelo adaptador Resend grava o provedor resend (CA-H093-03)', () =>
   tx(async () => {
-    const provider = new NamedProvider('mailpit');
+    const provider = new NamedProvider('resend');
     const s = setup(provider);
     const id = await insertRow(s.rec);
     provider.queue({ kind: 'aceito', providerMessageId: '<id@fastpro.invalid>' });
     await processOutbox(s.deps, id, s.pacer);
     const row = await rowOf(id);
     assert.equal(row.state, 'enviado');
-    assert.equal(row.provider, 'mailpit');
+    assert.equal(row.provider, 'resend');
     assert.equal(provider.calls.length, 1);
   }));
 

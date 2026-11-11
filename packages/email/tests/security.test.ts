@@ -9,7 +9,6 @@ import {
   createMinimalRenderer,
   EmailConfigError,
   HttpTransportError,
-  SmtpFailure,
 } from '../src/index.js';
 import type { EmailEnv } from '../src/index.js';
 import { FakeHttp, FakeSmtp, response } from './doubles.js';
@@ -18,13 +17,22 @@ const KEY = 'chave-ficticia-0009';
 const CHAVE_EVENTO = 'nc:evento-1:usuario-77:aviso:escopo-9';
 const CLIENTE = 'cliente.exemplo@fastpro.test';
 const ACCOUNT = 'conta.titular@fastpro.test';
-const HOST_MARCADO = 'smtp.segredo-de-teste.test';
+const VALOR_MARCADO = 'valor-marcado.segredo-de-teste';
 
 const RESEND_ENV: EmailEnv = {
   APP_ENV: 'production',
   EMAIL_PROVIDER: 'resend',
   EMAIL_FROM: 'Equipe <avisos@fastpro.test>',
   RESEND_VERIFIED_DOMAIN: 'fastpro.test',
+  RESEND_API_KEY: KEY,
+};
+
+/** Ambiente de desenvolvimento: mesmo Resend, com remetente de teste e destinatario da conta. */
+const DEV_RESEND_ENV: EmailEnv = {
+  APP_ENV: 'local',
+  EMAIL_PROVIDER: 'resend',
+  EMAIL_FROM: 'onboarding@resend.dev',
+  RESEND_ACCOUNT_RECIPIENT: ACCOUNT,
   RESEND_API_KEY: KEY,
 };
 
@@ -88,11 +96,12 @@ describe('varredura: Resend nao vaza destino, chave ou corpo fora da lista', () 
   });
 
   it('o destinatario da conta de teste nao aparece nos resultados de recusa', async () => {
+    const http = new FakeHttp();
     const provider = createEmailProvider(
       { ...RESEND_ENV, EMAIL_FROM: 'onboarding@resend.dev', RESEND_ACCOUNT_RECIPIENT: ACCOUNT },
       {
         smtp: new FakeSmtp(),
-        http: new FakeHttp(),
+        http,
         renderer: createMinimalRenderer(),
         clock: new FakeClock(),
       },
@@ -100,29 +109,42 @@ describe('varredura: Resend nao vaza destino, chave ou corpo fora da lista', () 
     const res = await provider.send(message('outra.pessoa@fastpro.test'));
     expect(res).toEqual({ kind: 'recusa_permanente', code: 'destinatario_nao_permitido' });
     expect(JSON.stringify(res)).not.toContain('outra.pessoa');
+    expect(http.requests).toHaveLength(0);
   });
 });
 
-describe('varredura: Mailpit e erros de partida', () => {
-  it('resultados e falhas do SMTP nao carregam o destino', async () => {
-    const smtp = new FakeSmtp().queue(
-      new SmtpFailure('resposta', 550),
-      new SmtpFailure('conexao_recusada'),
-      new Error(`falha para ${CLIENTE}`),
-    );
-    const provider = createEmailProvider(
-      {
-        APP_ENV: 'test',
-        EMAIL_PROVIDER: 'mailpit',
-        EMAIL_FROM: 'avisos@fastpro.test',
-        SMTP_HOST: '127.0.0.1',
-        SMTP_PORT: '1025',
-      },
-      { smtp, http: new FakeHttp(), renderer: createMinimalRenderer(), clock: new FakeClock() },
-    );
-    const results = [];
-    for (let i = 0; i < 3; i++) results.push(await provider.send(message()));
-    expect(JSON.stringify(results)).not.toContain(CLIENTE);
+describe('varredura: ambiente de desenvolvimento usa o Resend com as mesmas travas', () => {
+  it('destino fora da conta e recusado antes da API, em local', async () => {
+    const http = new FakeHttp();
+    const provider = createEmailProvider(DEV_RESEND_ENV, {
+      smtp: new FakeSmtp(),
+      http,
+      renderer: createMinimalRenderer(),
+      clock: new FakeClock(),
+    });
+    const res = await provider.send(message('outra.pessoa@fastpro.test'));
+    expect(res).toEqual({ kind: 'recusa_permanente', code: 'destinatario_nao_permitido' });
+    expect(JSON.stringify(res)).not.toContain('outra.pessoa');
+    expect(http.requests).toHaveLength(0);
+  });
+
+  it('sem chave, a conta de teste falha fechada antes da API, em local', async () => {
+    const http = new FakeHttp();
+    const semChave: EmailEnv = {
+      APP_ENV: 'local',
+      EMAIL_PROVIDER: 'resend',
+      EMAIL_FROM: 'onboarding@resend.dev',
+      RESEND_ACCOUNT_RECIPIENT: ACCOUNT,
+    };
+    const provider = createEmailProvider(semChave, {
+      smtp: new FakeSmtp(),
+      http,
+      renderer: createMinimalRenderer(),
+      clock: new FakeClock(),
+    });
+    const res = await provider.send(message(ACCOUNT));
+    expect(res).toEqual({ kind: 'nao_configurado', code: 'segredo_ausente' });
+    expect(http.requests).toHaveLength(0);
   });
 
   it('erros de configuracao nao mostram o valor da variavel', () => {
@@ -130,10 +152,9 @@ describe('varredura: Mailpit e erros de partida', () => {
       createEmailProvider(
         {
           APP_ENV: 'test',
-          EMAIL_PROVIDER: 'mailpit',
+          EMAIL_PROVIDER: VALOR_MARCADO,
           EMAIL_FROM: 'a@fastpro.test',
-          SMTP_HOST: HOST_MARCADO,
-          SMTP_PORT: '1025',
+          RESEND_API_KEY: KEY,
         },
         {
           smtp: new FakeSmtp(),
@@ -145,7 +166,7 @@ describe('varredura: Mailpit e erros de partida', () => {
       throw new Error('deveria recusar');
     } catch (err) {
       expect(err).toBeInstanceOf(EmailConfigError);
-      expect((err as Error).message).not.toContain(HOST_MARCADO);
+      expect((err as Error).message).not.toContain(VALOR_MARCADO);
       expect((err as Error).message).not.toContain(CLIENTE);
     }
   });

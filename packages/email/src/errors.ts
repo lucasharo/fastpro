@@ -4,10 +4,6 @@ export const CODE_PATTERN = /^[a-z][a-z0-9_]{0,59}$/;
 export const CONFIG_ERROR_CODES = [
   'app_env_invalido',
   'email_provider_invalido',
-  'email_provider_incompativel_com_ambiente',
-  'smtp_host_nao_local',
-  'smtp_porta_invalida',
-  'email_from_invalido',
 ] as const;
 export type EmailConfigErrorCode = (typeof CONFIG_ERROR_CODES)[number];
 
