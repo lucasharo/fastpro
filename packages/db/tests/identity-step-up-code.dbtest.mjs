@@ -195,6 +195,84 @@ test('T-H014-24 codigo certo grava recent_auth_at e consome o desafio na mesma t
     assert.equal((await recentAuth(client, s.sessionId)).getTime(), antes.getTime());
   }));
 
+// CA-13 (51 CA-H014-13; 52 §4.3): o codigo de step_up vale 15 min. No limite exato (agora = expires_at)
+// ja nao vale; 1 s antes vale; 1 s depois nao vale. Cada caso tem o seu desafio (tx desfeita).
+test('T-H014-24 CA-13 codigo de step_up grava validade de exatamente 15 min', () =>
+  tx(async () => {
+    const s = await sessaoAtiva(client);
+    const id = randomUUID();
+    await pedir(client, { sid: s.sessionId, email: s.email, id, codigo: CODIGO, nowMs: NOW, ipKey: sha(randomUUID()) });
+    const { rows } = await client.query('select expires_at from app.auth_challenge where id = $1', [id]);
+    assert.equal(rows[0].expires_at.getTime(), NOW + 15 * 60 * SEG);
+  }));
+
+test('T-H014-24 CA-13 codigo de step_up vale em 15 min menos 1 s', () =>
+  tx(async () => {
+    const s = await sessaoAtiva(client);
+    const ipKey = sha(randomUUID());
+    const id = randomUUID();
+    await pedir(client, { sid: s.sessionId, email: s.email, id, codigo: CODIGO, nowMs: NOW, ipKey });
+    const antes = await recentAuth(client, s.sessionId);
+    const r = await verificar(client, {
+      sid: s.sessionId,
+      email: s.email,
+      id,
+      codigo: CODIGO,
+      nowMs: NOW + 15 * 60 * SEG - SEG,
+      ipKey,
+      emailKey: sha(`ek|${ipKey}`),
+    });
+    assert.equal(r.out_resultado, 'ok');
+    assert.ok((await recentAuth(client, s.sessionId)).getTime() > antes.getTime(), 'recent_auth_at avancou');
+  }));
+
+for (const [rotulo, atraso] of [
+  ['limite exato (15 min)', 15 * 60 * SEG],
+  ['15 min e 1 s', 15 * 60 * SEG + SEG],
+]) {
+  test(`T-H014-24 CA-13 codigo de step_up nao vale no ${rotulo}`, () =>
+    tx(async () => {
+      const s = await sessaoAtiva(client);
+      const ipKey = sha(randomUUID());
+      const id = randomUUID();
+      await pedir(client, { sid: s.sessionId, email: s.email, id, codigo: CODIGO, nowMs: NOW, ipKey });
+      const antes = await recentAuth(client, s.sessionId);
+      const r = await verificar(client, {
+        sid: s.sessionId,
+        email: s.email,
+        id,
+        codigo: CODIGO,
+        nowMs: NOW + atraso,
+        ipKey,
+        emailKey: sha(`ek|${ipKey}`),
+      });
+      assert.notEqual(r.out_resultado, 'ok');
+      assert.equal((await desafio(client, id)).consumed_at, null, 'desafio nao consumido');
+      assert.equal((await recentAuth(client, s.sessionId)).getTime(), antes.getTime(), 'recent_auth_at intacto');
+    }));
+}
+
+// CA-15 (51 CA-H014-15; 52 §4.1): leitura comum pela guarda nao renova a janela de 30 min nem adia o prazo.
+test('T-H014-04 CA-15 leitura comum pela guarda nao altera recent_auth_at nem expires_at', () =>
+  tx(async () => {
+    const s = await sessaoAtiva(client);
+    const expiraAntes = (
+      await client.query('select expires_at from app.app_session where id = $1', [s.sessionId])
+    ).rows[0].expires_at.getTime();
+    for (const minutos of [5, 20, 29, 45]) {
+      const g = (
+        await client.query('select * from private.app_session_get($1, $2::timestamptz)', [s.hash, iso(NOW + minutos * 60 * SEG)])
+      ).rows[0];
+      assert.equal(g.out_session_id, s.sessionId);
+      assert.equal(g.out_recent_auth_at.getTime(), NOW, `recent_auth_at parado em ${minutos} min`);
+    }
+    assert.equal((await recentAuth(client, s.sessionId)).getTime(), NOW);
+    const expiraDepois = (
+      await client.query('select expires_at from app.app_session where id = $1', [s.sessionId])
+    ).rows[0].expires_at.getTime();
+    assert.equal(expiraDepois, expiraAntes);
+  }));
+
 test('T-H014-24 5 erros invalidam o desafio; recent_auth_at nao muda e o certo ja nao passa', () =>
   tx(async () => {
     const s = await sessaoAtiva(client);

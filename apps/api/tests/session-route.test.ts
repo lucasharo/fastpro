@@ -103,6 +103,7 @@ class RepoMemoria implements SessionRepositoryPort {
         n += 1;
       }
     }
+    this.revogacoes += n;
     return n;
   }
 
@@ -366,12 +367,22 @@ describe('T-H014-07 novo acesso por link nao revoga a sessao anterior', () => {
   it('a sessao antiga continua valida depois de uma nova etapa convertida para a mesma pessoa', async () => {
     const repo = new RepoMemoria();
     const c = cenario(repo, 'E'.repeat(43));
-    const base = await servidor(opcoes(repo));
+    // A porta so e chamada depois que a guarda aceita a sessao: registra o sid que passou.
+    const aprovadas: string[] = [];
+    const proof: StepUpProofPort = {
+      verify: async (sessao) => {
+        aprovadas.push(sessao.sessionId);
+        return { ok: true };
+      },
+    };
+    const base = await servidor(opcoes(repo, proof));
     const conv1 = await pedir(base, 'POST', '/v1/auth/session', {
       corpo: '{}',
       headers: { Cookie: cookie('__Host-fp_ident', c.segredoEtapa) },
     });
+    expect(conv1.status).toBe(200);
     const sess1 = /__Host-fp_sess=([^;]+)/.exec(setCookies(conv1)[0] ?? '')?.[1] ?? '';
+    const antiga = repo.linhas[0];
 
     const segundaEtapa = 'F'.repeat(43);
     repo.add({
@@ -390,13 +401,54 @@ describe('T-H014-07 novo acesso por link nao revoga a sessao anterior', () => {
       headers: { Cookie: cookie('__Host-fp_ident', segundaEtapa) },
     });
     expect(conv2.status).toBe(200);
+    const sess2 = /__Host-fp_sess=([^;]+)/.exec(setCookies(conv2)[0] ?? '')?.[1] ?? '';
+    expect(sess2).not.toBe(sess1);
 
+    // Guarda de recurso (step-up com prova aceita): a sessao antiga passa e recebe 204.
     const ainda = await pedir(base, 'POST', '/v1/auth/step-up', {
       corpo: '{"method":"code","code":"123456"}',
       headers: { Cookie: cookie('__Host-fp_sess', sess1) },
     });
-    // Sem porta de prova a rota nao existe; a sessao antiga ainda passa a guarda (nao e 401).
-    expect(ainda.status).toBe(404);
+    expect(ainda.status).toBe(204);
+    expect(aprovadas).toEqual([antiga?.id]);
+
+    const nova = await pedir(base, 'POST', '/v1/auth/step-up', {
+      corpo: '{"method":"code","code":"123456"}',
+      headers: { Cookie: cookie('__Host-fp_sess', sess2) },
+    });
+    expect(nova.status).toBe(204);
+
+    // Nenhuma revogacao: as duas linhas seguem ativas e sem revoked_at.
+    expect(antiga?.stage).toBe('ativa');
+    expect(antiga?.revokedAt).toBeNull();
+    expect(repo.linhas.filter((l) => l.stage === 'ativa')).toHaveLength(2);
+    expect(repo.linhas.every((l) => l.revokedAt === null)).toBe(true);
+    expect(repo.revogacoes).toBe(0);
+  });
+});
+
+describe('T-H014-04 atividade comum nao renova a janela de 30 min (repositorio em memoria)', () => {
+  it('leituras pela guarda nao alteram recent_auth_at nem expires_at', async () => {
+    const repo = new RepoMemoria();
+    const seg = 'W'.repeat(43);
+    const linha = repo.add({
+      userId: randomUUID(),
+      hash: hashSessionSecret(seg),
+      stage: 'ativa',
+      expiresAt: T0 + 7 * DIA,
+      absoluteExpiresAt: T0 + 7 * DIA,
+      recentAuthAt: T0,
+      authMethod: 'link',
+      revokedAt: null,
+      userActive: true,
+    });
+    for (const t of [T0 + 5 * MIN, T0 + 20 * MIN, T0 + 30 * MIN]) {
+      const s = await repo.authenticate(hashSessionSecret(seg), t);
+      expect(s?.recentAuthAtMs).toBe(T0);
+    }
+    expect(linha.recentAuthAt).toBe(T0);
+    expect(linha.expiresAt).toBe(T0 + 7 * DIA);
+    expect(repo.revogacoes).toBe(0);
   });
 });
 
