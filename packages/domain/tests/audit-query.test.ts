@@ -62,18 +62,19 @@ interface RegistroLimite {
   readonly atMs: number;
 }
 
-/** Limite em memoria: conta as consultas do admin com instante >= sinceMs (mesmo contrato da porta). */
+/** Limite em memoria com o contrato da porta: conta as vagas do admin na janela e consome uma se couber. */
 function limitesFake(registros: readonly RegistroLimite[] = []) {
   const lista: RegistroLimite[] = [...registros];
-  const counts = vi.fn(
-    async (adminUserId: string, sinceMs: number) =>
-      lista.filter((r) => r.adminUserId === adminUserId && r.atMs >= sinceMs).length,
-  );
-  const record = vi.fn(async (adminUserId: string, nowMs: number) => {
+  const take = vi.fn(async (adminUserId: string, nowMs: number) => {
+    const usadas = lista.filter(
+      (r) => r.adminUserId === adminUserId && r.atMs >= nowMs - AUDIT_QUERY_RATE_WINDOW_MS,
+    ).length;
+    if (usadas >= AUDIT_QUERY_RATE_LIMIT) return false;
     lista.push({ adminUserId, atMs: nowMs });
+    return true;
   });
-  const limits: AuditQueryRateLimit = { counts, record };
-  return { limits, counts, record };
+  const limits: AuditQueryRateLimit = { take };
+  return { limits, take };
 }
 
 /** Dependencias do manipulador: porta de consulta falsa e limite em memoria (vazio por padrao). */
@@ -314,7 +315,7 @@ describe('T-H104-06 limite de consultas: 30 em 5 min por admin, 429 sem leitura 
     expect(recusada.status).toBe(429);
     expect(recusada.body).toEqual({ code: 'muitas_consultas' });
     expect(port.query).toHaveBeenCalledTimes(AUDIT_QUERY_RATE_LIMIT);
-    expect(lim.record).toHaveBeenCalledTimes(AUDIT_QUERY_RATE_LIMIT);
+    expect(lim.take).toHaveBeenCalledTimes(AUDIT_QUERY_RATE_LIMIT + 1);
   });
 
   it('janela de 5 min: registro com 5 min e 1 ms nao conta; registro com exatos 5 min conta', async () => {
@@ -354,18 +355,18 @@ describe('T-H104-06 limite de consultas: 30 em 5 min por admin, 429 sem leitura 
       agora,
     );
     await handleAuditQuery({ row: linhaAuditor(), secret: 's', body: corpo({ limit: 0 }) }, dep(port, lim.limits), agora);
-    expect(lim.record).not.toHaveBeenCalled();
+    expect(lim.take).not.toHaveBeenCalled();
     expect(port.query).not.toHaveBeenCalled();
   });
 
-  it('consulta aceita registra o admin e o instante antes da leitura', async () => {
+  it('consulta aceita consome a vaga do admin e o instante antes da leitura', async () => {
     const lim = limitesFake();
     const port = portaFake();
     await handleAuditQuery(req(), dep(port, lim.limits), agora);
-    expect(lim.record).toHaveBeenCalledWith('u-auditor-sintetico', agora);
+    expect(lim.take).toHaveBeenCalledWith('u-auditor-sintetico', agora);
     expect(port.query).toHaveBeenCalledTimes(1);
-    const ordemRegistro = lim.record.mock.invocationCallOrder[0] ?? Number.NaN;
+    const ordemVaga = lim.take.mock.invocationCallOrder[0] ?? Number.NaN;
     const ordemLeitura = port.query.mock.invocationCallOrder[0] ?? Number.NaN;
-    expect(ordemRegistro).toBeLessThan(ordemLeitura);
+    expect(ordemVaga).toBeLessThan(ordemLeitura);
   });
 });

@@ -4,7 +4,6 @@
 // A rota de producao NAO e registrada aqui (etapa 4 da H-104): so a regra e o manipulador.
 
 import { decideAdminGuard } from './guard.js';
-import { auditQueryBlocked, AUDIT_QUERY_RATE_WINDOW_MS } from './policy.js';
 import type { AdminGuardRecord, AuditQueryRateLimit } from './ports.js';
 import {
   ADMIN_NOT_FOUND,
@@ -221,9 +220,9 @@ export async function handleAuditQuery(
   if (!parsed.ok) return parsed.response;
   if (req.secret === null) return ADMIN_NOT_FOUND;
 
-  const usadas = await deps.limits.counts(guard.userId, nowMs - AUDIT_QUERY_RATE_WINDOW_MS);
-  if (auditQueryBlocked(usadas)) return ADMIN_QUERY_RATE_LIMITED;
-  await deps.limits.record(guard.userId, nowMs);
+  // Conferencia e consumo da vaga numa operacao atomica do banco (63 R-2): sem vaga, nega sem ler e sem trilha.
+  const vaga = await deps.limits.take(guard.userId, nowMs);
+  if (!vaga) return ADMIN_QUERY_RATE_LIMITED;
 
   let page: AuditQueryPage;
   try {

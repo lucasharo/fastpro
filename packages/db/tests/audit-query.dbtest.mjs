@@ -11,7 +11,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID, createHash } from 'node:crypto';
 import { connect } from '../scripts/lib/env.mjs';
-import { PgAuditQueryPort } from '../dist/admin-audit.js';
+import { PgAuditQueryPort, PgAuditQueryRateLimit } from '../dist/admin-audit.js';
 
 let client;
 before(async () => {
@@ -496,4 +496,50 @@ test('T-H104-30 adaptador PgAuditQueryPort: hash do segredo, pagina e entrada na
     await client.query('rollback to savepoint sp_adapter');
     await client.query('release savepoint sp_adapter');
   });
+});
+
+/** Chave do contador de consultas (mesma formula da funcao private.audit_query_rate_take). */
+const chaveRate = (admin) => sha(`audit_query|${admin}`);
+
+test('T-H104-31 limite atomico no banco (serial): 30 vagas em 5 min, 31a recusada, janela reabre', async () => {
+  await tx(async () => {
+    const admin = randomUUID();
+    const limite = new PgAuditQueryRateLimit(client);
+    const now = Date.now();
+    for (let i = 0; i < 30; i++) {
+      assert.equal(await limite.take(admin, now), true, `vaga ${i + 1} concedida`);
+    }
+    assert.equal(await limite.take(admin, now), false, '31a consulta recusada');
+    assert.equal(await limite.take(admin, now + 299_000), false, 'ainda dentro da janela de 5 min');
+    assert.equal(await limite.take(admin, now + 301_000), true, 'fora da janela de 5 min, vaga de volta');
+    // Outro admin tem o proprio contador.
+    assert.equal(await limite.take(randomUUID(), now), true, 'limite e por admin');
+  });
+});
+
+test('T-H104-32 concorrencia: 64 consultas em 16 conexoes concorrentes deixam passar exatamente 30', async () => {
+  const admin = randomUUID();
+  const agora = Date.now();
+  const conexoes = await Promise.all(Array.from({ length: 16 }, () => connect()));
+  try {
+    const resultados = await Promise.all(
+      conexoes.map(async (c) => {
+        const limite = new PgAuditQueryRateLimit(c);
+        const saida = [];
+        for (let i = 0; i < 4; i++) saida.push(await limite.take(admin, agora));
+        return saida;
+      }),
+    );
+    const aceitas = resultados.flat().filter(Boolean).length;
+    assert.equal(aceitas, 30, 'exatamente 30 vagas, sem passar do limite sob concorrencia');
+    const soma = await client.query(
+      'select coalesce(sum(count), 0)::int as n from ops.rate_counter where key_hmac = $1',
+      [chaveRate(admin)],
+    );
+    assert.equal(soma.rows[0].n, 30, 'contador persistido com 30 consumos');
+  } finally {
+    // Chave sintetica de um admin inexistente: removida ao final (banco de dev compartilhado).
+    await client.query('delete from ops.rate_counter where key_hmac = $1', [chaveRate(admin)]);
+    await Promise.all(conexoes.map((c) => c.end()));
+  }
 });

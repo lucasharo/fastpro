@@ -106,14 +106,13 @@ export interface AdminLoginLimits {
 }
 
 /**
- * Limite de consultas da auditoria (H-104, 63 R-2 e D-H104-9), mesmo formato do limite de login (H-015):
- * contador por admin. O dominio passa o inicio da janela (agora - 5 min); o adaptador conta as consultas
- * aceitas com instante >= sinceMs. A conferencia e o registro devem ser atomicos no banco (adaptador
- * pendente: ver relatorio da Issue 113).
+ * Limite de consultas da auditoria (H-104, 63 R-2 e D-H104-9): 30 consultas em 5 min por admin.
+ * Uma operacao so, atomica no banco: confere a janela e, se couber, consome a vaga. Devolve true (vaga
+ * consumida) ou false (acima do limite; nada e lido nem gravado na trilha). Conferir e consumir em
+ * chamadas separadas nao e atomico, por isso a porta e uma so. Adaptador: PgAuditQueryRateLimit.
  */
 export interface AuditQueryRateLimit {
-  counts(adminUserId: string, sinceMs: number): Promise<number>;
-  record(adminUserId: string, nowMs: number): Promise<void>;
+  take(adminUserId: string, nowMs: number): Promise<boolean>;
 }
 
 export interface AdminLogEntry {
