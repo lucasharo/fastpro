@@ -11,6 +11,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID, createHash } from 'node:crypto';
 import { connect } from '../scripts/lib/env.mjs';
+import { PgAuditQueryPort } from '../dist/admin-audit.js';
 
 let client;
 before(async () => {
@@ -446,5 +447,53 @@ test('T-H104-26 validacao no banco (ADM31): nada e lido nem gravado', async () =
       assert.equal(err?.code, 'ADM31', `${nome} deve ser ADM31`);
     }
     assert.equal(await contaConsultas(ator), 0, 'nenhuma entrada gravada pelas recusas');
+  });
+});
+
+test('T-H104-30 adaptador PgAuditQueryPort: hash do segredo, pagina e entrada na mesma transacao', async () => {
+  await tx(async () => {
+    const now = Date.now();
+    const ator = await staffComPapel('auditor');
+    const bruto = randomUUID(); // segredo em claro: so o hash vai ao banco (como a API faz)
+    await client.query('select private.admin_session_open($1, $2, $3, $4::timestamptz) as ok', [
+      randomUUID(),
+      ator,
+      sha(bruto),
+      new Date(now).toISOString(),
+    ]);
+    const objeto = randomUUID();
+    await semear(randomUUID(), 'consent.changed', 'contact_consent', objeto, {}, { scope: 'x', granted: 'sim' });
+    const porta = new PgAuditQueryPort(client);
+    const base = {
+      actorUserId: ator,
+      secret: bruto,
+      fromMs: now - HORA,
+      toMs: now + HORA,
+      action: null,
+      objectType: 'contact_consent',
+      objectId: objeto,
+      cursor: 0,
+      limit: 50,
+      nowMs: now,
+    };
+
+    const pagina = await porta.query(base);
+    assert.equal(pagina.eventos.length, 1, 'um evento do objeto semeado');
+    assert.equal(pagina.eventos[0].object_id, objeto);
+    assert.equal(pagina.tem_mais, false);
+    assert.equal(Object.keys(pagina.eventos[0]).length, 12, 'lista fechada de 12 campos');
+    assert.equal(pagina.eventos[0].prev_hash, undefined, 'sem prev_hash');
+    assert.equal(pagina.eventos[0].row_hash, undefined, 'sem row_hash');
+    const n = await client.query(
+      "select count(*)::int as n from audit.audit_event where object_type = 'audit_query' and object_id = $1::uuid and action = 'audit.queried'",
+      [pagina.consulta_id],
+    );
+    assert.equal(n.rows[0].n, 1, 'a consulta gravou exatamente uma entrada');
+
+    // Segredo errado: o banco recusa com ADM30 (a API traduz para 404). Savepoint mantem a transacao.
+    await client.query('savepoint sp_adapter');
+    await assert.rejects(porta.query({ ...base, secret: randomUUID() }), (err) => err.code === 'ADM30');
+    await client.query('rollback to savepoint sp_adapter');
+    await client.query('release savepoint sp_adapter');
   });
 });

@@ -7,3 +7,5 @@ export * from './notifications.js';
 export * from './challenge-consume.js';
 // H-014 | Repositorio da sessao de 7 dias (funcoes private.app_session_*).
 export * from './session.js';
+// H-104 (#113) | Adaptadores Pg da consulta a auditoria (private.audit_query).
+export * from './admin-audit.js';
