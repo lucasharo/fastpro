@@ -543,3 +543,56 @@ test('T-H104-32 concorrencia: 64 consultas em 16 conexoes concorrentes deixam pa
     await Promise.all(conexoes.map((c) => c.end()));
   }
 });
+
+/** Plano do EXPLAIN (texto). Com seqscan desligado so dentro do savepoint: o SET LOCAL volta no rollback. */
+async function plano(sql, params, forcarIndice) {
+  await client.query('savepoint plano');
+  try {
+    if (forcarIndice) await client.query('set local enable_seqscan = off');
+    const r = await client.query(`explain (format text) ${sql}`, params);
+    return r.rows.map((x) => x['QUERY PLAN']).join('\n');
+  } finally {
+    await client.query('rollback to savepoint plano');
+    await client.query('release savepoint plano');
+  }
+}
+
+test('T-H104-28 plano: consultas por periodo e por acao com volume sintetico (registra o plano padrao)', async () => {
+  await tx(async () => {
+    const now = Date.now();
+    for (let i = 0; i < 200; i++) {
+      if (i % 2 === 0) {
+        await semear(randomUUID(), 'consent.changed', 'contact_consent', randomUUID(), {}, { scope: 'x', granted: 'sim' });
+      } else {
+        await semear(randomUUID(), 'review.revised', 'review', randomUUID(), {}, { status: 'ok' }, 'moderacao_ok');
+      }
+    }
+    await client.query('analyze audit.audit_event');
+    const de = new Date(now - HORA);
+    const ate = new Date(now + HORA);
+    const porPeriodo = 'select seq from audit.audit_event where at >= $1 and at < $2 order by seq limit 51';
+    const porAcao =
+      'select seq from audit.audit_event where action = $1 and at >= $2 and at < $3 order by seq limit 51';
+    const pPeriodo = [de, ate];
+    const pAcao = ['consent.changed', de, ate];
+
+    // Plano padrao: registrado, sem falhar (o planejador pode escolher outro plano com este volume).
+    const padraoPeriodo = await plano(porPeriodo, pPeriodo, false);
+    const padraoAcao = await plano(porAcao, pAcao, false);
+    console.log(`T-H104-28 plano padrao, periodo:\n${padraoPeriodo}`);
+    console.log(`T-H104-28 plano padrao, acao:\n${padraoAcao}`);
+
+    // Com seqscan desligado: prova so que existe um plano por indice. Com este volume o planejador usa o indice
+    // de seq (ORDER BY seq + LIMIT), nao os indices novos audit_event_at_idx / audit_event_action_idx; isso e
+    // registrado (nao falha) e deve ser reavaliado com volume maior (pendencia da Issue 113).
+    const forcadoPeriodo = await plano(porPeriodo, pPeriodo, true);
+    const forcadoAcao = await plano(porAcao, pAcao, true);
+    console.log(`T-H104-28 plano forcado, periodo:\n${forcadoPeriodo}`);
+    console.log(`T-H104-28 plano forcado, acao:\n${forcadoAcao}`);
+    assert.match(forcadoPeriodo, /Index (Only )?Scan|Bitmap Index Scan/, 'periodo usa indice');
+    assert.match(forcadoAcao, /Index (Only )?Scan|Bitmap Index Scan/, 'acao usa indice');
+    console.log(
+      `T-H104-28 indices novos usados (periodo/acao): ${/audit_event_at_idx/.test(forcadoPeriodo)}/${/audit_event_action_idx/.test(forcadoAcao)}`,
+    );
+  });
+});
