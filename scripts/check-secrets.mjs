@@ -29,6 +29,11 @@ const SERVICE_ROLE_ALLOWED = [
   'packages/config/',
 ];
 
+// Excecao exata de um caminho: lista publica de senhas comuns, nao segredo (decisao do usuario,
+// 11/11, H-016). So a verificacao de atribuicao (assignments) e dispensada para este arquivo;
+// padroes de token, chave e hexadecimal continuam valendo nele. Nao usar para outros caminhos.
+const PUBLIC_WORDLIST_EXEMPT = new Set(['packages/domain/src/identity/common-passwords.ts']);
+
 const HEX_LONG = /(?<![0-9A-Fa-f])[0-9A-Fa-f]{64,}(?![0-9A-Fa-f])/;
 const SECRET_PATTERNS = [
   [/-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY(?: BLOCK)?-----/, 'chave privada'],
@@ -81,7 +86,7 @@ function scanLine(path, line) {
     if (re === HEX_LONG && /sha-?(?:256|512)\b/i.test(line)) continue;
     if (re.test(line)) found.push(kind);
   }
-  found.push(...assignments(line));
+  if (!PUBLIC_WORDLIST_EXEMPT.has(path)) found.push(...assignments(line));
   if (
     /service[_-]?role|SUPABASE_SECRET_KEY/i.test(line) &&
     !startsWithAny(path, SERVICE_ROLE_ALLOWED)
