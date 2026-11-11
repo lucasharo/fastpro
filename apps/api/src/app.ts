@@ -5,6 +5,17 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { isTickAuthorized, TICK_BODY_LIMIT_BYTES, TICK_PATH } from '@fastpro/db';
 import { CONSUME_PATH } from '@fastpro/domain';
 import { handleConsume, type ConsumeRouteOptions } from './consume-route.js';
+import {
+  handleSessionConvert,
+  handleSessionLogout,
+  handleSessionLogoutAll,
+  handleStepUp,
+  SESSION_CONVERT_PATH,
+  SESSION_LOGOUT_ALL_PATH,
+  SESSION_LOGOUT_PATH,
+  STEP_UP_PATH,
+  type SessionRouteOptions,
+} from './session-route.js';
 
 /** Limite de corpo da aplicacao (CA-07): 4 MB inclusivo. Acima disso a resposta e 413. */
 export const APP_BODY_LIMIT_BYTES = 4 * 1024 * 1024;
@@ -21,6 +32,8 @@ export interface AppOptions {
   readonly tickSecret: string | undefined;
   /** Consumo do link (H-012). Sem esta opcao a rota nao existe (404). */
   readonly consume?: ConsumeRouteOptions;
+  /** Sessao de 7 dias e step-up (H-014). Sem esta opcao as rotas nao existem (404). */
+  readonly session?: SessionRouteOptions;
 }
 
 export interface BodyReadResult {
@@ -100,6 +113,13 @@ export async function handleRequest(
   if (req.method === 'POST' && path === CONSUME_PATH && opts.consume) {
     await handleConsume(req, res, opts.consume);
     return;
+  }
+  if (req.method === 'POST' && opts.session) {
+    const sessao = opts.session;
+    if (path === SESSION_CONVERT_PATH) return handleSessionConvert(req, res, sessao);
+    if (path === SESSION_LOGOUT_PATH) return handleSessionLogout(req, res, sessao);
+    if (path === SESSION_LOGOUT_ALL_PATH) return handleSessionLogoutAll(req, res, sessao);
+    if (path === STEP_UP_PATH && sessao.proof !== undefined) return handleStepUp(req, res, sessao);
   }
   send(res, 404, NO_STORE, '');
 }
