@@ -42,7 +42,7 @@ function resultadoPara(rota: AdminRouteSpec | null, papeis: readonly string[]): 
 describe('T-H102-05 matriz de rotas do registro H-102 x papel', () => {
   it('mapa de papeis e identico a semente do banco (superadmin nao herda as demais)', () => {
     expect(ADMIN_ROLE_PERMISSIONS).toEqual({
-      superadmin: ['admin.role.manage', 'catalog.manage'],
+      superadmin: ['admin.role.manage', 'catalog.manage', 'case.authorize_sensitive'],
       verificacao: ['verification.review'],
       moderador: ['moderation.decide'],
       financeiro: ['finance.refund.request', 'finance.refund.approve'],
