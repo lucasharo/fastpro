@@ -120,7 +120,7 @@ describe('T-H012-31 clique: um POST, so com o token', () => {
     botao.disparar();
     expect(chamadas.fetch).toHaveLength(1);
     const [url, opcoes] = chamadas.fetch[0] ?? ['', {}];
-    expect(url).toBe('/v1/auth/challenges/consume');
+    expect(url).toBe('/api/v1/auth/challenges/consume');
     expect(opcoes.method).toBe('POST');
     expect(opcoes.body).toBe(JSON.stringify({ token: TOKEN }));
     expect(opcoes.headers).toEqual({ 'Content-Type': 'application/json' });
@@ -172,8 +172,11 @@ describe('T-H012-32 pagina estatica e cabecalhos do desenho', () => {
 
   it('vercel.json: /acesso traz os cabecalhos de 46 §5 (exceto Content-Type)', () => {
     const cfg = JSON.parse(lerArquivo('../vercel.json')) as {
+      cleanUrls?: boolean;
       headers: Array<{ source: string; headers: Array<{ key: string; value: string }> }>;
     };
+    // /acesso serve acesso.html sem extensao (I-2), e o cabecalho vale para esse caminho.
+    expect(cfg.cleanUrls).toBe(true);
     const bloco = cfg.headers.find((h) => h.source === '/acesso');
     expect(bloco).toBeDefined();
     const mapa = Object.fromEntries((bloco?.headers ?? []).map((h) => [h.key, h.value]));

@@ -6,7 +6,8 @@
   'use strict';
 
   var CAMINHO_PAGINA = '/acesso';
-  var CAMINHO_CONSUMO = '/v1/auth/challenges/consume';
+  // Mesma origem: o web encaminha /api/* a API (08 §16, ADR-018). A API tira o prefixo /api.
+  var CAMINHO_CONSUMO = '/api/v1/auth/challenges/consume';
   var ESPERA_BOTAO_MS = 1000;
 
   var MENSAGENS = {
