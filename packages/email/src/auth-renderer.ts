@@ -48,12 +48,41 @@ export function renderAccessEmail(params: Readonly<Record<string, unknown>>): Re
   };
 }
 
-/** Envolve o renderizador base: acesso_login usa o texto do desafio; os demais seguem o base. */
+/** H-014 (52 §4.3): codigo de step-up. Corpo traz SOMENTE o codigo e os minutos; nunca link. */
+export const STEPUP_TEMPLATE = 'acesso_stepup';
+export const STEPUP_SUBJECT = 'Codigo de confirmacao do FastPro';
+
+export function renderStepUpEmail(params: Readonly<Record<string, unknown>>): RenderedEmail {
+  const { code, minutos } = params;
+  if (
+    typeof code !== 'string' ||
+    !CODE_RE.test(code) ||
+    typeof minutos !== 'number' ||
+    !Number.isInteger(minutos) ||
+    minutos < 1 ||
+    minutos > 60
+  ) {
+    throw new AuthRenderError();
+  }
+  return {
+    subject: STEPUP_SUBJECT,
+    text: [
+      'Use o codigo abaixo para confirmar a acao no FastPro.',
+      '',
+      `Codigo (valido por ${minutos} minutos, uso unico): ${code}`,
+      '',
+      'Se voce nao pediu esta confirmacao, ignore esta mensagem.',
+    ].join('\n'),
+  };
+}
+
+/** Envolve o renderizador base: acesso_login e acesso_stepup tem texto proprio; os demais seguem o base. */
 export function createAuthAwareRenderer(base: EmailRenderer): EmailRenderer {
   return {
     render(templateKey, params) {
-      if (templateKey !== ACCESS_TEMPLATE) return base.render(templateKey, params);
-      return renderAccessEmail(params);
+      if (templateKey === ACCESS_TEMPLATE) return renderAccessEmail(params);
+      if (templateKey === STEPUP_TEMPLATE) return renderStepUpEmail(params);
+      return base.render(templateKey, params);
     },
   };
 }

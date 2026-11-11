@@ -42,7 +42,27 @@ export type StepUpProofResult =
 
 /** Porta de prova. Implementada pelo codigo (H-014) e pela senha (H-016); nunca grava recent_auth_at sozinha. */
 export interface StepUpProofPort {
-  verify(session: SessionRecord, body: StepUpRequest, nowMs: number): Promise<StepUpProofResult>;
+  /** clientIp: endereco do pedido, para os limites de H-015 (nulo se ausente). */
+  verify(
+    session: SessionRecord,
+    body: StepUpRequest,
+    nowMs: number,
+    clientIp?: string | null,
+  ): Promise<StepUpProofResult>;
+}
+
+export const STEP_UP_CHALLENGE_PATH = '/v1/auth/step-up/challenge';
+
+/** Resultado do pedido do codigo de step-up (adaptador em @fastpro/db, requestStepUpCode). */
+export type StepUpChallengeOutcome =
+  | { readonly resultado: 'criado'; readonly outboxId: string }
+  | {
+      readonly resultado: 'limite' | 'espera' | 'teto' | 'negado';
+      readonly retryAfterSeconds: number | null;
+    };
+
+export interface StepUpChallengePort {
+  request(session: SessionRecord, clientIp: string | null): Promise<StepUpChallengeOutcome>;
 }
 
 export interface SessionRouteOptions {
@@ -54,6 +74,11 @@ export interface SessionRouteOptions {
   readonly newSecret: () => string;
   /** Porta de prova do step-up. Sem ela, POST /v1/auth/step-up nao existe (404). */
   readonly proof?: StepUpProofPort;
+  /** Pedido do codigo de step-up e envio agendado. Sem ele, POST .../step-up/challenge nao existe (404). */
+  readonly challenge?: {
+    readonly port: StepUpChallengePort;
+    readonly dispatch: { schedule(outboxId: string): void };
+  };
 }
 
 function cabecalho(valor: string | string[] | undefined): string | undefined {
@@ -238,6 +263,71 @@ export async function handleSessionLogoutAll(
 }
 
 /**
+ * POST /v1/auth/step-up/challenge: pede o codigo de step-up por e-mail (52 §4.2, §4.3). Corpo {} e
+ * sessao ativa por link; senao 401 (sessao) ou 422 metodo_invalido (sessao por senha). Recusa de limite:
+ * 429 com Retry-After; o envio so e agendado depois de criado o desafio. Resposta 202 sem o codigo.
+ */
+export async function handleStepUpChallenge(
+  req: IncomingMessage,
+  res: ServerResponse,
+  opts: SessionRouteOptions,
+): Promise<void> {
+  try {
+    const cabecalhos = checkConsumeHeaders(
+      {
+        origin: cabecalho(req.headers.origin),
+        secFetchSite: cabecalho(req.headers['sec-fetch-site']),
+        contentType: cabecalho(req.headers['content-type']),
+      },
+      siteOriginOf(opts.siteUrl),
+    );
+    if (!cabecalhos.ok) {
+      enviarJson(res, cabecalhos.status, { code: cabecalhos.code });
+      return;
+    }
+    const { text, bytes } = await lerCorpo(req, CORPO_LIMITE);
+    if (!corpoVazio(text, bytes)) {
+      enviarJson(res, 422, { code: 'pedido_invalido' });
+      return;
+    }
+    const sessao = await sessaoDoPedido(req, opts);
+    if (sessao === null) {
+      enviarJson(res, 401, UNAUTHENTICATED_BODY);
+      return;
+    }
+    if (sessao.authMethod !== 'link') {
+      enviarJson(res, 422, { code: 'metodo_invalido' });
+      return;
+    }
+    if (opts.challenge === undefined) {
+      enviarJson(res, 404, { code: 'nao_encontrado' });
+      return;
+    }
+    const r = await opts.challenge.port.request(sessao, req.socket.remoteAddress ?? null);
+    if (r.resultado === 'criado') {
+      try {
+        opts.challenge.dispatch.schedule(r.outboxId);
+      } catch {
+        // Contingencia: o job de envio criado junto com a saida entrega no proximo tick.
+      }
+      enviarJson(res, 202, { status: 'enviado' });
+      return;
+    }
+    if (r.resultado === 'negado') {
+      enviarJson(res, 401, UNAUTHENTICATED_BODY);
+      return;
+    }
+    res.writeHead(429, {
+      ...CABECALHOS_PADRAO,
+      'Retry-After': String(r.retryAfterSeconds ?? 60),
+    });
+    res.end(JSON.stringify({ code: 'muitos_pedidos' }));
+  } catch {
+    indisponivel(res);
+  }
+}
+
+/**
  * POST /v1/auth/step-up: contrato unico (52 §4.2). Corpo de chaves exatas por metodo; o metodo tem de
  * ser o da sessao (422 metodo_invalido). Sessao invalida: 401 nao_autenticado. Prova ok: 204.
  */
@@ -280,7 +370,7 @@ export async function handleStepUp(
       return;
     }
     const agora = opts.clock.nowMs();
-    const prova = await opts.proof.verify(sessao, corpo, agora);
+    const prova = await opts.proof.verify(sessao, corpo, agora, req.socket.remoteAddress ?? null);
     if (!prova.ok) {
       enviarJson(res, prova.status, { code: prova.code });
       return;

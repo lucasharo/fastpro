@@ -11,9 +11,11 @@ import {
   handleSessionLogout,
   handleSessionLogoutAll,
   handleStepUp,
+  handleStepUpChallenge,
   SESSION_CONVERT_PATH,
   SESSION_LOGOUT_ALL_PATH,
   SESSION_LOGOUT_PATH,
+  STEP_UP_CHALLENGE_PATH,
   STEP_UP_PATH,
   type SessionRouteOptions,
 } from './session-route.js';
@@ -127,6 +129,9 @@ export async function handleRequest(
     if (path === SESSION_LOGOUT_PATH) return handleSessionLogout(req, res, sessao);
     if (path === SESSION_LOGOUT_ALL_PATH) return handleSessionLogoutAll(req, res, sessao);
     if (path === STEP_UP_PATH && sessao.proof !== undefined) return handleStepUp(req, res, sessao);
+    if (path === STEP_UP_CHALLENGE_PATH && sessao.challenge !== undefined) {
+      return handleStepUpChallenge(req, res, sessao);
+    }
   }
   send(res, 404, NO_STORE, '');
 }
