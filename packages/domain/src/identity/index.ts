@@ -8,3 +8,6 @@ export * from './rate-limit.js';
 export * from './session.js';
 // H-014 | Step-up: acoes criticas, requireRecentAuth e contrato do step-up (logica pura).
 export * from './step-up.js';
+// H-016 | Politica de senha do profissional (minimo 8, teto 72 bytes, lista local de comuns; logica pura).
+export * from './password.js';
+export * from './common-passwords.js';
