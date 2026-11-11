@@ -49,7 +49,15 @@ for (const f of files) {
   }
 }
 
-const ALLOWED_RUNTIME = new Set(['NODE_ENV', 'CI', 'PORT', 'npm_package_version']);
+// Variaveis do proprio sistema operacional/runtime: nao sao configuracao do app.
+const ALLOWED_RUNTIME = new Set([
+  'NODE_ENV',
+  'CI',
+  'PORT',
+  'npm_package_version',
+  'PATH',
+  'SystemRoot',
+]);
 for (const f of files) {
   if (
     !hasExt(f, ['ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs']) ||
