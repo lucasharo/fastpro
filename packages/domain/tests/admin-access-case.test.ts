@@ -24,7 +24,7 @@ const abrir = (over: Partial<Parameters<typeof decideAccessCaseOpen>[0]> = {}) =
     hasOpenPermission: true,
     totpAtMs: T0,
     nowMs: T0,
-    conversationId: 'conv-1',
+    conversationId: '3f2a9c1e-7b4d-4e8a-9c2f-1a2b3c4d5e6f',
     justification: JUST_OK,
     ...over,
   });
@@ -47,9 +47,13 @@ describe('T-H073-01 abrir caso', () => {
     expect(abrir({ justification: 'a'.repeat(500) })).toBeNull();
   });
 
-  it('sem conversa indicada: 422 conversa_invalida', () => {
+  it('sem conversa indicada ou identificador que nao e UUID: 422 conversa_invalida', () => {
     expect(abrir({ conversationId: null })?.body).toEqual({ code: 'conversa_invalida' });
     expect(abrir({ conversationId: '' })?.status).toBe(422);
+    for (const id of ['conv-1', "1' or '1'='1", '00000000-0000-0000-0000-00000000000', 42]) {
+      expect(abrir({ conversationId: id })?.body, String(id)).toEqual({ code: 'conversa_invalida' });
+    }
+    expect(abrir({ conversationId: '3f2a9c1e-7b4d-4e8a-9c2f-1a2b3c4d5e6f' })).toBeNull();
   });
 
   it('prova do segundo fator a 29:59 passa; a 30:00 exige nova prova (403 step_up_required)', () => {

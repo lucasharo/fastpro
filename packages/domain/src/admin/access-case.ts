@@ -18,6 +18,13 @@ export const STEP_UP_REQUIRED: AdminResponse = adminReply(403, { code: 'step_up_
 export const CONVERSA_INVALIDA: AdminResponse = adminReply(422, { code: 'conversa_invalida' });
 export const JUSTIFICATIVA_INVALIDA: AdminResponse = adminReply(422, { code: 'justificativa_invalida' });
 
+const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Identificador de conversa: UUID no formato canonico. Qualquer outra coisa e recusada antes do banco. */
+export function isConversationId(raw: unknown): raw is string {
+  return typeof raw === 'string' && UUID_FORMAT.test(raw);
+}
+
 /** Justificativa valida (apos trim): 20 a 500 caracteres. Qualquer outro tipo e invalido. */
 export function isAccessJustificationValid(raw: unknown): boolean {
   if (typeof raw !== 'string') return false;
@@ -38,9 +45,7 @@ export interface AccessOpenInput {
 export function decideAccessCaseOpen(input: AccessOpenInput): AdminResponse | null {
   if (!input.hasOpenPermission || input.totpAtMs === null) return ADMIN_PERMISSION_DENIED;
   if (!isTotpRecent(input.totpAtMs, input.nowMs)) return STEP_UP_REQUIRED;
-  if (typeof input.conversationId !== 'string' || input.conversationId.length === 0) {
-    return CONVERSA_INVALIDA;
-  }
+  if (!isConversationId(input.conversationId)) return CONVERSA_INVALIDA;
   if (!isAccessJustificationValid(input.justification)) return JUSTIFICATIVA_INVALIDA;
   return null;
 }

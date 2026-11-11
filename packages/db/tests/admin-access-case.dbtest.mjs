@@ -115,6 +115,11 @@ test('T-H073-20 RLS forcada; app_system sem UPDATE, DELETE nem TRUNCATE no regis
     assert.equal(await priv('app_system', 'app.sensitive_access_log', 'delete'), false);
     assert.equal(await priv('app_system', 'app.sensitive_access_log', 'truncate'), false);
     assert.equal(await priv('app_system', 'app.access_case', 'delete'), false);
+    // Escritas so por funcao security definer (revisao da #83): app_system nao insere nem atualiza.
+    assert.equal(await priv('app_system', 'app.access_case', 'insert'), false);
+    assert.equal(await priv('app_system', 'app.access_case', 'update'), false);
+    assert.equal(await priv('app_system', 'app.sensitive_access_log', 'insert'), false);
+    assert.equal(await priv('app_system', 'app.access_case', 'select'), true);
     // A chave de servico nao e testada aqui: scripts/check-secrets.mjs so admite o nome em modulos listados.
     // Ela fica coberta pelas permissoes de T-H102-20 (admin-rbac.dbtest.mjs).
     for (const role of ['anon', 'authenticated', 'app_api']) {
@@ -287,4 +292,151 @@ test('CA-H073-05 fechar e revogar: o solicitante encerra; quem autoriza revoga; 
     const depois = await falha('select private.access_case_gate($1, $2, $3, $4, $5)',
       [c.abre, c.sAbre, c.caso, c.conversa, at(T0 + 5 * MIN)]);
     assert.equal(depois?.code, 'ADM20', 'caso fechado nega na hora');
+  }));
+
+// ---- Revisao da #83: lacunas de teste ----------------------------------------------------------------
+
+/** Papel adicional (concedido na origem bootstrap, sem aprovacao: so para preparo de teste). */
+async function papel(userId, role) {
+  await client.query(
+    `insert into app.admin_user_role (id, user_id, role_code, granted_by, grant_origin, granted_at, approval_request_id)
+     values (gen_random_uuid(), $1, $2, null, 'bootstrap', now(), null)`,
+    [userId, role],
+  );
+}
+
+const contagem = async () => ({
+  log: (await client.query('select count(*)::int as n from app.sensitive_access_log')).rows[0].n,
+  aud: (await client.query('select count(*)::int as n from audit.audit_event')).rows[0].n,
+});
+
+// T-H073-21 (ampliado) | cada negacao do gate: ADM20 e nenhuma linha de log nem de auditoria
+test('T-H073-21 gate: pendente, outra conversa e sessao revogada negam com ADM20 sem gravar nada', () =>
+  tx(async () => {
+    const abre = await staffComPapel('suporte');
+    const sAbre = await sessao(abre, T0, 'pend-a');
+    const convPend = randomUUID();
+    const pendente = await abrir(abre, sAbre, convPend, T0);
+    const antes1 = await contagem();
+    const e1 = await falha('select private.access_case_gate($1,$2,$3,$4,$5)', [abre, sAbre, pendente, convPend, at(T0 + MIN)]);
+    assert.equal(e1?.code, 'ADM20', 'caso pendente');
+    assert.deepEqual(await contagem(), antes1, 'pendente: sem log nem auditoria');
+
+    const c = await casoAprovado();
+    const ok = await falha('select private.access_case_gate($1,$2,$3,$4,$5)', [c.abre, c.sAbre, c.caso, c.conversa, at(T0 + 2 * MIN)]);
+    assert.equal(ok, null, 'controle: caso ativo le');
+
+    const antes2 = await contagem();
+    const e2 = await falha('select private.access_case_gate($1,$2,$3,$4,$5)', [c.abre, c.sAbre, c.caso, randomUUID(), at(T0 + 2 * MIN)]);
+    assert.equal(e2?.code, 'ADM20', 'outra conversa');
+    assert.deepEqual(await contagem(), antes2, 'outra conversa: sem log nem auditoria');
+
+    await client.query(`update app.admin_session set revoked_at = $2 where secret_hash = $1`, [c.sAbre, at(T0 + 2 * MIN)]);
+    const e3 = await falha('select private.access_case_gate($1,$2,$3,$4,$5)', [c.abre, c.sAbre, c.caso, c.conversa, at(T0 + 3 * MIN)]);
+    assert.equal(e3?.code, 'ADM20', 'sessao revogada');
+    assert.deepEqual(await contagem(), antes2, 'sessao revogada: sem log nem auditoria');
+  }));
+
+test('T-H073-21 gate: sessao vencida (8 h) nega mesmo com caso ativo; a mesma leitura com a sessao viva passa', () =>
+  tx(async () => {
+    const abre = await staffComPapel('suporte');
+    const aprova = await staffComPapel('superadmin');
+    const sAbre = await sessao(abre, T0, 'venc-a');
+    const conv = randomUUID();
+    const caso = await abrir(abre, sAbre, conv, T0);
+    const sAprova = await sessao(aprova, T0 + 478 * MIN, 'venc-b');
+    await client.query('select private.access_case_approve($1,$2,$3,$4)', [aprova, sAprova, caso, at(T0 + 479 * MIN)]);
+    // Caso ativo de 479 a 509 min; a sessao de abertura vence em 480 min (8 h).
+    const viva = await falha('select private.access_case_gate($1,$2,$3,$4,$5)', [abre, sAbre, caso, conv, at(T0 + 479 * MIN + MIN / 2)]);
+    assert.equal(viva, null, 'controle: sessao viva le');
+    const antes = await contagem();
+    const vencida = await falha('select private.access_case_gate($1,$2,$3,$4,$5)', [abre, sAbre, caso, conv, at(T0 + 480 * MIN)]);
+    assert.equal(vencida?.code, 'ADM20', 'sessao vencida no instante exato');
+    assert.equal((await contagem()).log, antes.log + 0, 'sem log novo na negacao');
+  }));
+
+test('T-H073-21 gate: papel revogado depois da aprovacao nega a leitura com ADM20', () =>
+  tx(async () => {
+    const c = await casoAprovado();
+    await client.query(
+      `update app.admin_user_role set revoked_at = $3, revoked_by = $2
+        where user_id = $1 and role_code = 'suporte' and revoked_at is null`,
+      [c.abre, c.aprova, at(T0 + 2 * MIN)]);
+    const antes = await contagem();
+    const err = await falha('select private.access_case_gate($1,$2,$3,$4,$5)', [c.abre, c.sAbre, c.caso, c.conversa, at(T0 + 3 * MIN)]);
+    assert.equal(err?.code, 'ADM20');
+    assert.deepEqual(await contagem(), antes);
+  }));
+
+// T-H073-22 (check de 30 min com insert direto)
+test('T-H073-22 check de 30 min: insert direto com expires_at de 31 min e recusado; 30 min exatos passam', () =>
+  tx(async () => {
+    const sup = await staffComPapel('suporte');
+    const ap = await staffComPapel('superadmin');
+    const reqErrada = randomUUID();
+    const reqCerta = randomUUID();
+    for (const id of [reqErrada, reqCerta]) {
+      await client.query(
+        `insert into app.approval_request (id, action_type, subject_user_id, detail_code, requested_by,
+           required_approvals, status, created_at, expires_at, consumed_at)
+         values ($1, 'acesso_conversa', null, null, $2, 1, 'consumida', $3, $4, $3)`,
+        [id, sup, at(T0), at(T0 + 24 * 60 * MIN)]);
+    }
+    const inserir = (reqId, expiraMin) => falha(
+      `insert into app.access_case (id, opened_by, authorized_by, justification, scope_kind, scope_id,
+          approval_request_id, created_at, approved_at, expires_at)
+       values ($1, $2, $3, $4, 'conversation', $5, $6, $7, $8, $9)`,
+      [randomUUID(), sup, ap, JUST, randomUUID(), reqId, at(T0), at(T0 + MIN), at(T0 + MIN + expiraMin * MIN)]);
+    const errada = await inserir(reqErrada, 31);
+    assert.equal(errada?.code, '23514', 'expires_at = approved_at + 31 min e recusado');
+    const certa = await inserir(reqCerta, 30);
+    assert.equal(certa, null, 'expires_at = approved_at + 30 min passa');
+  }));
+
+// T-H073-23 (catalogo): acao desativada nao leva a leitura
+test('T-H073-23 catalogo: com access_case.conversation_read desativada, o gate falha, nao le e nao grava log', () =>
+  tx(async () => {
+    const c = await casoAprovado();
+    await client.query(`update audit.action_catalog set active = false where action = 'access_case.conversation_read'`);
+    await client.query('create temp table conversa_teste2 (id uuid primary key, texto text) on commit drop');
+    const antes = await contagem();
+    const err = await falha('select private.access_case_gate($1,$2,$3,$4,$5)', [c.abre, c.sAbre, c.caso, c.conversa, at(T0 + 2 * MIN)]);
+    assert.equal(err?.code, 'ADM20');
+    assert.deepEqual(await contagem(), antes, 'nenhuma linha de log nem de auditoria');
+    const { rows } = await client.query('select count(*)::int as n from app.sensitive_access_log where case_id = $1', [c.caso]);
+    assert.equal(rows[0].n, 0);
+  }));
+
+// T-H073-24 (aprovacao no banco): autoaprovacao e voto repetido
+test('T-H073-24 autoaprovacao no banco: quem abriu o caso nao o aprova mesmo tendo a permissao (42501)', () =>
+  tx(async () => {
+    const pessoa = await staffComPapel('suporte');
+    await papel(pessoa, 'superadmin');
+    const s = await sessao(pessoa, T0, 'auto-a');
+    const conv = randomUUID();
+    const caso = await abrir(pessoa, s, conv, T0);
+    const err = await falha('select private.access_case_approve($1,$2,$3,$4)', [pessoa, s, caso, at(T0 + MIN)]);
+    assert.equal(err?.code, '42501');
+    const { rows: [c] } = await client.query('select approved_at from app.access_case where id = $1', [caso]);
+    assert.equal(c.approved_at, null, 'o caso continua pendente');
+  }));
+
+test('T-H073-24 voto repetido no banco: o mesmo aprovador nao vota duas vezes no mesmo pedido (23505)', () =>
+  tx(async () => {
+    const sup = await staffComPapel('suporte');
+    const ap = await staffComPapel('superadmin');
+    const reqId = randomUUID();
+    await client.query(
+      `insert into app.approval_request (id, action_type, subject_user_id, detail_code, requested_by,
+         required_approvals, status, created_at, expires_at)
+       values ($1, 'acesso_conversa', null, null, $2, 1, 'pendente', $3, $4)`,
+      [reqId, sup, at(T0), at(T0 + 24 * 60 * MIN)]);
+    const primeiro = await falha(
+      'insert into app.approval_vote (id, approval_request_id, approver_id, voted_at) values (gen_random_uuid(), $1, $2, $3)',
+      [reqId, ap, at(T0 + MIN)]);
+    assert.equal(primeiro, null);
+    const segundo = await falha(
+      'insert into app.approval_vote (id, approval_request_id, approver_id, voted_at) values (gen_random_uuid(), $1, $2, $3)',
+      [reqId, ap, at(T0 + 2 * MIN)]);
+    assert.equal(segundo?.code, '23505');
   }));
