@@ -3,8 +3,9 @@
 // caracteres, comparacao em tempo constante e limite de 1 KB do corpo. Nao ha acesso ao banco aqui.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { isTickAuthorized, TICK_BODY_LIMIT_BYTES, TICK_PATH } from '@fastpro/db';
-import { CONSUME_PATH } from '@fastpro/domain';
+import { ADDRESS_SUGGEST_PATH, CONSUME_PATH } from '@fastpro/domain';
 import { handleConsume, type ConsumeRouteOptions } from './consume-route.js';
+import { handleAddressSuggest, type GeoRouteOptions } from './geo/address-suggest-route.js';
 import {
   handleSessionConvert,
   handleSessionLogout,
@@ -34,6 +35,8 @@ export interface AppOptions {
   readonly consume?: ConsumeRouteOptions;
   /** Sessao de 7 dias e step-up (H-014). Sem esta opcao as rotas nao existem (404). */
   readonly session?: SessionRouteOptions;
+  /** Autocomplete de endereco temporario (H-020). Sem esta opcao a rota nao existe (404). */
+  readonly geo?: GeoRouteOptions;
 }
 
 export interface BodyReadResult {
@@ -112,6 +115,10 @@ export async function handleRequest(
   }
   if (req.method === 'POST' && path === CONSUME_PATH && opts.consume) {
     await handleConsume(req, res, opts.consume);
+    return;
+  }
+  if (req.method === 'POST' && path === ADDRESS_SUGGEST_PATH && opts.geo) {
+    await handleAddressSuggest(req, res, opts.geo);
     return;
   }
   if (req.method === 'POST' && opts.session) {
