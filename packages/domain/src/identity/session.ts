@@ -83,3 +83,53 @@ export function isSessionUsable(row: SessionRow, nowMs: number): boolean {
   if (!(nowMs < row.absoluteExpiresAtMs)) return false;
   return row.userActive;
 }
+
+/**
+ * Valor de um cookie pelo nome, no cabecalho Cookie. Ausente ou repetido (ambiguo): undefined.
+ * Lê so o nome pedido; o cookie da etapa nunca serve como sessao (52 §2, CA-H014-06).
+ */
+export function cookieValue(header: string | undefined, name: string): string | undefined {
+  if (header === undefined || header === '') return undefined;
+  const achados: string[] = [];
+  for (const par of header.split(';')) {
+    const i = par.indexOf('=');
+    if (i < 0) continue;
+    if (par.slice(0, i).trim() === name) achados.push(par.slice(i + 1).trim());
+  }
+  return achados.length === 1 ? achados[0] : undefined;
+}
+
+export const SESSION_CONVERT_PATH = '/v1/auth/session';
+export const SESSION_LOGOUT_PATH = '/v1/auth/logout';
+export const SESSION_LOGOUT_ALL_PATH = '/v1/auth/logout-all';
+export const STEP_UP_PATH = '/v1/auth/step-up';
+
+/** Sessao lida do banco para a API (sid, dono, prova recente e metodo). */
+export interface SessionRecord {
+  readonly sessionId: string;
+  readonly userId: string;
+  /** recent_auth_at em ms; nulo nunca ocorre numa sessao ativa, mas o tipo e honesto. */
+  readonly recentAuthAtMs: number | null;
+  readonly authMethod: AuthMethod;
+}
+
+/**
+ * Porta do repositorio de sessao (implementada em @fastpro/db com as funcoes private.app_session_*).
+ * Recebe so hashes do segredo, nunca o segredo em claro.
+ */
+export interface SessionRepositoryPort {
+  /** Converte a etapa (hash antigo) em sessao ativa com hash novo. Nulo quando nega (uma so linha). */
+  convertStage(
+    oldHash: string,
+    newHash: string,
+    nowMs: number,
+  ): Promise<{ readonly sessionId: string; readonly userId: string; readonly absoluteExpiresAtMs: number } | null>;
+  /** Guarda de sessao (52 §2). Nulo para qualquer falha: sem cookie, desconhecida, vencida, revogada, bloqueada. */
+  authenticate(hash: string, nowMs: number): Promise<SessionRecord | null>;
+  /** Revoga uma sessao ativa. Idempotente. */
+  revoke(sessionId: string, nowMs: number): Promise<boolean>;
+  /** Revoga todas as linhas nao revogadas da pessoa (ativas e etapas). Devolve quantas. */
+  revokeAll(userId: string, nowMs: number): Promise<number>;
+  /** Grava a prova recente (so avanca). */
+  markRecentAuth(sessionId: string, nowMs: number): Promise<boolean>;
+}

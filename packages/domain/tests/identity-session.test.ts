@@ -12,6 +12,7 @@ import {
   STEP_UP_WINDOW_SECONDS,
   UNAUTHENTICATED_BODY,
   checkStepUpMethod,
+  cookieValue,
   clearCookieHeader,
   decideConversion,
   isCriticalAction,
@@ -257,5 +258,25 @@ describe('T-H014-08 contrato unico do step-up, com dois metodos', () => {
     expect(checkStepUpMethod('link', 'password')).toBe(false);
     expect(checkStepUpMethod('password', 'password')).toBe(true);
     expect(checkStepUpMethod('password', 'code')).toBe(false);
+  });
+});
+
+describe('T-H014-03 (parte) leitura do cookie de sessao por nome', () => {
+  it('le so o nome pedido, entre outros cookies', () => {
+    expect(cookieValue(`a=1; ${SESSION_COOKIE_NAME}=${SECRET}; b=2`, SESSION_COOKIE_NAME)).toBe(
+      SECRET,
+    );
+  });
+
+  it('o cookie da etapa nunca serve como sessao', () => {
+    expect(cookieValue(`${IDENT_COOKIE_NAME}=${SECRET}`, SESSION_COOKIE_NAME)).toBeUndefined();
+  });
+
+  it('ausente, vazio ou repetido (ambiguo) nao vale', () => {
+    expect(cookieValue(undefined, SESSION_COOKIE_NAME)).toBeUndefined();
+    expect(cookieValue('', SESSION_COOKIE_NAME)).toBeUndefined();
+    expect(
+      cookieValue(`${SESSION_COOKIE_NAME}=${SECRET}; ${SESSION_COOKIE_NAME}=${SECRET}`, SESSION_COOKIE_NAME),
+    ).toBeUndefined();
   });
 });
