@@ -4,3 +4,7 @@ export * from './challenge.js';
 export * from './consume.js';
 // H-015 | Limites e anti-enumeracao (logica pura; HMAC fica em @fastpro/db).
 export * from './rate-limit.js';
+// H-014 | Sessao de 7 dias: cookie, Max-Age, conversao e guarda (logica pura).
+export * from './session.js';
+// H-014 | Step-up: acoes criticas, requireRecentAuth e contrato do step-up (logica pura).
+export * from './step-up.js';
