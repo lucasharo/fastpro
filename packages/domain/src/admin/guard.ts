@@ -54,7 +54,14 @@ export interface AdminGuardDeps {
   readonly baseUrl: string;
 }
 
-/** Fluxo completo da guarda: rota, origem, uma consulta ao banco e a decisao. */
+/**
+ * Fluxo completo da guarda. Ordem (54 §3 e §4, revisao da #111):
+ *  1. rota inexistente -> 404;
+ *  2. rota publica -> so a checagem de Origin (403 origem_invalida) e segue;
+ *  3. rota nao publica: sessao e papel ativo (404) ANTES da Origin, uma consulta ao banco;
+ *  4. Origin da mutacao (403 origem_invalida), sem efeito;
+ *  5. permissao da rota (403 permission_denied).
+ */
 export async function guardAdminRequest(
   req: AdminGuardRequest,
   deps: AdminGuardDeps,
@@ -63,12 +70,19 @@ export async function guardAdminRequest(
   const route = resolveAdminRoute(deps.registry, req.method, req.path);
   if (route === null) return { kind: 'recusada', response: ADMIN_NOT_FOUND };
 
+  if (route.permission === 'publica') {
+    const origemPublica = checkAdminMutation(req.method, req.headers, deps.baseUrl);
+    return origemPublica !== null ? { kind: 'recusada', response: origemPublica } : { kind: 'publica' };
+  }
+
+  if (req.secret === null) return { kind: 'recusada', response: ADMIN_NOT_FOUND };
+  const row = await deps.repo.guard(req.secret, nowMs);
+
+  const sessao = decideAdminGuard(row, 'sessao', nowMs);
+  if (sessao.kind === 'recusada') return sessao;
+
   const origem = checkAdminMutation(req.method, req.headers, deps.baseUrl);
   if (origem !== null) return { kind: 'recusada', response: origem };
 
-  if (route.permission === 'publica') return { kind: 'publica' };
-  if (req.secret === null) return { kind: 'recusada', response: ADMIN_NOT_FOUND };
-
-  const row = await deps.repo.guard(req.secret, nowMs);
   return decideAdminGuard(row, route.permission, nowMs);
 }

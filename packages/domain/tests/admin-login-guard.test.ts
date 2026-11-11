@@ -187,8 +187,9 @@ describe('T-H102-04 guarda admin', () => {
     expect(world.calls.guard).toBe(1);
   });
 
-  it('origem invalida em mutacao: 403 origem_invalida antes da guarda, sem consultar o repositorio', async () => {
+  it('mutacao com origem invalida e sessao valida: 403 origem_invalida, depois da checagem de sessao e sem escrita', async () => {
     const { world, secret } = await sessaoDe(['superadmin']);
+    const invitesAntes = world.invites.length;
     const semOrigem = await guardAdminRequest(
       req(secret, '/v1/admin/invites', 'POST', { ...CABECALHOS_OK, origin: 'https://outro.example.test' }),
       deps(world),
@@ -201,6 +202,38 @@ describe('T-H102-04 guarda admin', () => {
       world.clock,
     );
     expect(semJson).toEqual({ kind: 'recusada', response: ADMIN_ORIGIN_INVALID });
-    expect(world.calls.guard).toBe(0);
+    expect(world.calls.guard).toBe(2);
+    expect(world.invites.length).toBe(invitesAntes);
+  });
+
+  it('rota nao publica sem sessao valida: 404 mesmo com origem invalida (sessao e papel antes da Origin)', async () => {
+    const { world } = await sessaoDe(['superadmin']);
+    const semCookie = await guardAdminRequest(
+      req(null, '/v1/admin/invites', 'POST', { ...CABECALHOS_OK, origin: 'https://outro.example.test' }),
+      deps(world),
+      world.clock,
+    );
+    expect(semCookie).toEqual({ kind: 'recusada', response: ADMIN_NOT_FOUND });
+    const cookieDeCliente = await guardAdminRequest(
+      req(randomBytes(32).toString('base64url'), '/v1/admin/invites', 'POST', {
+        ...CABECALHOS_OK,
+        origin: 'https://outro.example.test',
+      }),
+      deps(world),
+      world.clock,
+    );
+    expect(cookieDeCliente).toEqual({ kind: 'recusada', response: ADMIN_NOT_FOUND });
+    // Sem cookie a guarda nem consulta o banco; com cookie desconhecido, consulta uma vez.
+    expect(world.calls.guard).toBe(1);
+  });
+
+  it('rota publica com origem invalida: 403 origem_invalida (a checagem de Origin vale para mutacao publica)', async () => {
+    const { world } = await sessaoDe(['superadmin']);
+    const r = await guardAdminRequest(
+      req(null, '/v1/admin/auth/login', 'POST', { ...CABECALHOS_OK, origin: 'https://outro.example.test' }),
+      deps(world),
+      world.clock,
+    );
+    expect(r).toEqual({ kind: 'recusada', response: ADMIN_ORIGIN_INVALID });
   });
 });
