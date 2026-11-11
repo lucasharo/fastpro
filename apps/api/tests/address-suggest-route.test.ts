@@ -368,7 +368,7 @@ describe('T-H020-A adaptador Mapbox temporario (teste 3, §6)', () => {
       chamadas.push({ url: String(url), init: init ?? {} });
       return new Response(JSON.stringify({ features: FEATURES_BRUTAS }), { status: 200 });
     }) as typeof fetch;
-    const adapter = createMapboxTempAdapter({ token: 'TOKEN-SINTETICO-0000', fetchImpl });
+    const adapter = createMapboxTempAdapter({ token: 'example-token-sintetico', fetchImpl });
     const r = await adapter.suggest('Rua Alfa');
     expect(r.ok).toBe(true);
     expect(chamadas).toHaveLength(1);
@@ -388,18 +388,18 @@ describe('T-H020-A adaptador Mapbox temporario (teste 3, §6)', () => {
 
   it('falhas viram codigo fixo, sem mensagem nem URL da biblioteca', async () => {
     const lancado = createMapboxTempAdapter({
-      token: 'TOKEN-SINTETICO-0000',
+      token: 'example-token-sintetico',
       fetchImpl: (async () => {
-        throw new Error('falha com TOKEN-SINTETICO-0000 e ' + CANARIO);
+        throw new Error('falha com example-token-sintetico e ' + CANARIO);
       }) as typeof fetch,
     });
     const r1 = await lancado.suggest('Rua Alfa');
     expect(r1).toEqual({ ok: false, code: 'provider_timeout' });
-    expect(JSON.stringify(r1)).not.toMatch(/TOKEN|Canario/);
+    expect(JSON.stringify(r1)).not.toMatch(/example-token|Canario/);
 
     const http = (status: number) =>
       createMapboxTempAdapter({
-        token: 'TOKEN-SINTETICO-0000',
+        token: 'example-token-sintetico',
         fetchImpl: (async () => new Response('corpo', { status })) as typeof fetch,
       }).suggest('Rua Alfa');
     expect(await http(429)).toEqual({ ok: false, code: 'provider_429' });
@@ -407,7 +407,7 @@ describe('T-H020-A adaptador Mapbox temporario (teste 3, §6)', () => {
     expect(await http(401)).toEqual({ ok: false, code: 'provider_auth' });
 
     const malformado = createMapboxTempAdapter({
-      token: 'TOKEN-SINTETICO-0000',
+      token: 'example-token-sintetico',
       fetchImpl: (async () => new Response('{nao-json', { status: 200 })) as typeof fetch,
     });
     expect(await malformado.suggest('Rua Alfa')).toEqual({ ok: false, code: 'provider_shape' });
