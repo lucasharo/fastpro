@@ -25,6 +25,7 @@ Conta de profissional com e-mail e senha no Supabase Auth; e-mail de verificaç�
 - **CA-H016-07 [PROPOSTA].** Dado o link de verificação, quando o profissional o confirma com ação na página (POST), então o e-mail fica verificado; abrir o link (GET) não consome o link (padrão D8). Validade e uso único conforme D-H016-2.
 - **CA-H016-08 [PROPOSTA].** Dado um link expirado ou já usado, quando aberto, então é recusado e a tela oferece reenvio, sem revelar se o e-mail existe.
 - **CA-H016-09 [PROPOSTA, RF-040].** Dado reenvios seguidos do e-mail de verificação, quando excedem o intervalo mínimo ou o teto por e-mail e IP, então a resposta é 429 com `Retry-After`.
+- **CA-H016-23 [PROPOSTA; D-H012-6, H-012].** Dado um e-mail que já tem usuário criado por link de cliente (H-012) ou por outro cadastro não verificado, quando um profissional cadastra esse e-mail, então a verificação não é herdada: a conta de profissional nasce com e-mail não verificado e exige nova verificação, e a verificação de um usuário existente não muda. Motivo: quem pré-cadastra com o e-mail de outra pessoa não ganha "e-mail verificado" porque a pessoa usou um link de cliente (R-3 de 46-DESENHO-H012).
 
 ### 2.3 Login
 
