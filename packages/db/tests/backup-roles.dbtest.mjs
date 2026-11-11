@@ -3,7 +3,10 @@
 // nao deixam nada gravado. Executar: pnpm db:test (banco de desenvolvimento).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { connect } from '../scripts/lib/env.mjs';
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { connect, REPO_ROOT } from '../scripts/lib/env.mjs';
 
 const PRODUCT_SCHEMAS = ['app', 'billing', 'audit', 'ops', 'private'];
 const READER = 'app_backup_reader';
@@ -224,15 +227,62 @@ test('T-BK-11 (tentativa com rollback): papel de leitura consegue ler a tabela d
   assert.deepEqual(outcomes, ['ok'], 'leitura da tabela de controle deveria ser permitida');
 });
 
-test('papeis do backup e do keep-alive sem senha definida (ou NAO_VERIFICAVEL se pg_authid for ilegivel)', async (t) => {
-  const res = await client.query("select has_table_privilege('pg_authid', 'SELECT') as pode");
-  if (res.rows[0].pode) {
-    const pw = await client.query(
-      'select rolname from pg_authid where rolname = any($1) and rolpassword is not null',
-      [[READER, KEEPALIVE]],
-    );
-    assert.deepEqual(pw.rows, [], 'papeis do backup e do keep-alive nao deveriam ter senha');
-  } else {
-    t.skip('NAO_VERIFICAVEL: pg_authid nao e legivel pelo papel de migracao');
+// Decisao do dono: os papeis TEM senha, definida fora do codigo. Este teste NAO consulta pg_authid,
+// NAO le, NAO imprime e NAO usa senha. Confere so: (1) nenhum arquivo versionado define senha ou
+// credencial para esses papeis (so caminhos sao impressos em caso de falha); (2) atributos de
+// privilegio: nada de superusuario, CREATEROLE ou CREATEDB, e BYPASSRLS so no papel de backup.
+test('papeis de backup e keep-alive: senha definida pelo dono, fora do codigo (sem ler nem usar a senha)', async () => {
+  const versionados = execFileSync('git', ['ls-files'], {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+  })
+    .split(/\r?\n/)
+    .filter(Boolean);
+  // Definicao de senha de papel: so um marcador de exemplo (ex.: <senha>) e aceito; literal real reprova.
+  // O valor e avaliado aqui dentro do teste e nunca e impresso.
+  const DEFINE_SENHA = new RegExp(
+    `ALTER\\s+ROLE\\s+(${READER}|${KEEPALIVE})\\b[^;]*?\\bPASSWORD\\s*(?:'([^']*)')?`,
+    'gi',
+  );
+  const URL_COM_SENHA = /postgres(?:ql)?:\/\/[^\s:/@]+:([^\s@/]+)@/i;
+  const PLACEHOLDER = /^(senha|password|\*+|x+|\.\.\.|\[.*\]|<.*>|\$\{.*\}|process\.env.*)$/i;
+  const suspeitos = [];
+  for (const rel of versionados) {
+    let texto;
+    try {
+      texto = readFileSync(join(REPO_ROOT, rel), 'utf8');
+    } catch {
+      continue;
+    }
+    if (texto.includes('\u0000')) continue;
+    for (const m of texto.matchAll(DEFINE_SENHA)) {
+      if (m[2] === undefined || !PLACEHOLDER.test(m[2])) suspeitos.push(rel);
+    }
+    const url = URL_COM_SENHA.exec(texto);
+    if (url && !PLACEHOLDER.test(url[1] ?? '')) suspeitos.push(rel);
   }
+  assert.deepEqual(
+    [...new Set(suspeitos)],
+    [],
+    'arquivo versionado com senha ou credencial para o papel de backup ou keep-alive',
+  );
+
+  const atributos = await client.query(
+    'select rolname, rolsuper, rolcreaterole, rolcreatedb, rolbypassrls from pg_roles where rolname = any($1) order by rolname',
+    [[READER, KEEPALIVE]],
+  );
+  const roles = Object.fromEntries(atributos.rows.map((r) => [r.rolname, r]));
+  assert.ok(roles[READER] && roles[KEEPALIVE], 'os dois papeis devem existir');
+  for (const r of Object.values(roles)) {
+    assert.equal(r.rolsuper, false, `${r.rolname} nao pode ser superusuario`);
+    assert.equal(r.rolcreaterole, false, `${r.rolname} nao pode ter CREATEROLE`);
+    assert.equal(r.rolcreatedb, false, `${r.rolname} nao pode ter CREATEDB`);
+  }
+  assert.equal(
+    roles[READER].rolbypassrls,
+    true,
+    'o papel de backup le o dump completo (BYPASSRLS)',
+  );
+  assert.equal(roles[KEEPALIVE].rolbypassrls, false, 'o keep-alive nunca tem BYPASSRLS');
 });

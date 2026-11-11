@@ -370,8 +370,8 @@ test('reivindicacao: a linha so e reivindicada uma vez enquanto o lease e valido
   inTx(async () => {
     const id = (
       await client.query(
-        "insert into ops.email_outbox (recipient_user_id, category, class, email_type, template, dedupe_key) values ($1, 'acesso', 'auth', 'acesso_login', 'acesso_login', $2) returning id",
-        [randomUUID(), `test.h092.c:${randomUUID()}`],
+        "insert into ops.email_outbox (recipient_user_id, category, class, email_type, template, dedupe_key, next_attempt_at) values ($1, 'acesso', 'auth', 'acesso_login', 'acesso_login', $2, $3::timestamptz) returning id",
+        [randomUUID(), `test.h092.c:${randomUUID()}`, at(0)],
       )
     ).rows[0].id;
     const primeira = (
