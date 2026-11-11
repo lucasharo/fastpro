@@ -1,4 +1,4 @@
-// H-104 (#113) | Consulta a auditoria pelo Auditor (docs/factory/63-DESENHO-H104.md §1 a §4). Logica pura,
+// H-104 (Issue 113) | Consulta a auditoria pelo Auditor (docs/factory/63-DESENHO-H104.md §1 a §4). Logica pura,
 // sem I/O: validacao do corpo (422), decisao de autoridade (404/403) antes de qualquer leitura, mapa
 // dos erros do banco e projecao fechada dos campos de cada evento (CA-H104-04).
 // A rota de producao NAO e registrada aqui (etapa 4 da H-104): so a regra e o manipulador.

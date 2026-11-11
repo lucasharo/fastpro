@@ -1,4 +1,4 @@
-// H-104 (#113) | Testes do dominio da consulta a auditoria (docs/factory/63-DESENHO-H104.md §5):
+// H-104 (Issue 113) | Testes do dominio da consulta a auditoria (docs/factory/63-DESENHO-H104.md §5):
 // T-H104-01 (validacao 422), T-H104-02 (404 e 403 sem chamar o banco), T-H104-04 (falha fecha, 503),
 // T-H104-05 (sentinelas e lista fechada de campos). T-H104-03 (matriz de rotas) depende da rota de
 // producao, que nao e ligada nesta etapa: NAO coberto aqui. Sem rede, sem banco, relogio injetado.
