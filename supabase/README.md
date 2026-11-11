@@ -55,3 +55,13 @@ Reativar exige decisao do dono; a agenda da 160000 nao e recriada sozinha (a mig
 5. Auditoria (H-006): os testes T-21 (`40001` em REPEATABLE READ) e T-23 (estresse com 20 commits)
    exigem COMMIT e ficam `skip` (rodam com `AUDIT_ALLOW_COMMIT=1` apenas em banco descartavel);
    dependem de um CI de banco (`ci-db.yml`, item 3).
+
+## Estado (H-010, parcial)
+
+Migracao `20261110180000_platform_create_backup_keepalive_roles` (aplicada no desenvolvimento): papeis
+`app_backup_reader` (leitura das tabelas e sequencias do produto, BYPASSRLS) e `app_keepalive` (sem
+privilegio em tabela, sem BYPASSRLS), ambos `NOLOGIN` e sem senha. Rollback manual em
+`supabase/rollbacks/`. Pendencia manual: login e senha dos dois papeis, definidos pelo dono fora do
+codigo (variaveis `DATABASE_URL_BACKUP_READ` e `DATABASE_URL_KEEPALIVE`, so nomes no `.env.example`).
+Sem login, o backup real e o keep-alive real nao podem rodar; o teste de catalogo
+(`packages/db/tests/backup-roles.dbtest.mjs`) cobre os privilegios.

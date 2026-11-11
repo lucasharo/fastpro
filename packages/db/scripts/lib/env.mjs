@@ -23,14 +23,31 @@ export function parseEnv(text) {
   return out;
 }
 
-export function loadConnectionString(root = REPO_ROOT, env = process.env) {
-  if (env.DATABASE_URL_MIGRATIONS) return env.DATABASE_URL_MIGRATIONS;
+/** Valor de uma variavel (ambiente ou .env.local); undefined se ausente. Nunca imprime. */
+export function loadEnvValue(name, root = REPO_ROOT, env = process.env) {
+  if (env[name]) return env[name];
   const file = join(root, '.env.local');
   if (existsSync(file)) {
-    const value = parseEnv(readFileSync(file, 'utf8')).DATABASE_URL_MIGRATIONS;
+    const value = parseEnv(readFileSync(file, 'utf8'))[name];
     if (value) return value;
   }
+  return undefined;
+}
+
+export function loadConnectionString(root = REPO_ROOT, env = process.env) {
+  const value = loadEnvValue('DATABASE_URL_MIGRATIONS', root, env);
+  if (value) return value;
   throw new Error('DATABASE_URL_MIGRATIONS nao definida (ambiente ou .env.local)');
+}
+
+/** Cliente pg para uma string de conexao informada (usado pelo backup e pelo keep-alive). */
+export function clientFor(connectionString, applicationName, statementTimeoutMs = 0) {
+  return new pg.Client({
+    connectionString,
+    connectionTimeoutMillis: 15000,
+    application_name: applicationName,
+    statement_timeout: statementTimeoutMs,
+  });
 }
 
 /**
