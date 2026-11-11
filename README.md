@@ -97,9 +97,17 @@ cópias de segurança feitas à mão.
 confere a cópia antes de dar como pronta. Só leitura: usa o perfil `app_backup_reader`, que não
 escreve nada no banco. A estrutura do banco não entra na cópia: ela está nos arquivos de migração.
 
-**Antes de usar:** o dono do banco precisa definir a senha dos perfis `app_backup_reader` e
-`app_keepalive` no painel do Supabase, fora do código. Depois, no seu `.env.local` (nunca no Git),
-preencha as variáveis, que estão no `.env.example` só com os nomes:
+**Antes de usar:** o dono do banco precisa habilitar o login e definir a senha dos perfis
+`app_backup_reader` e `app_keepalive`, fora do código, num único comando com o valor escolhido por ele
+(login e senha vão juntos, no mesmo comando):
+
+```sql
+alter role app_backup_reader with login password '<senha escolhida pelo dono>';
+alter role app_keepalive with login password '<senha escolhida pelo dono>';
+```
+
+Não guarde essa senha em arquivo do projeto. Depois, no seu `.env.local` (nunca no Git), preencha
+as variáveis, que estão no `.env.example` só com os nomes:
 
 - `DATABASE_URL_BACKUP_READ` e `DATABASE_URL_KEEPALIVE`: endereços de conexão de cada perfil.
 - `BACKUP_EXPECTED_DB_REF`: o identificador do projeto de desenvolvimento. O backup só roda nele.

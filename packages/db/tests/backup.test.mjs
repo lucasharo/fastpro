@@ -106,6 +106,9 @@ describe('T-BK-03: exportacao completa com verificacao', () => {
     expect(manifest.schemas_excluidos).toContain('auth');
     expect(manifest.ultima_migracao).toBe('20261110180000');
     expect(manifest.chave).toBe('BACKUP_PASSPHRASE');
+    // Leitura em uma unica transacao de leitura repetivel, com a string exata (conferida no banco falso).
+    expect(db.state.statements[0]).toBe('begin isolation level repeatable read read only');
+    expect(db.state.statements.at(-1)).toBe('commit');
     expect(logLines().at(-1)).toMatchObject({ resultado: 'ok', operacao: 'export' });
     expect(await verifyBackup({ manifestPath: res.manifesto, passphrase: PASS, startGpg })).toEqual(
       [],

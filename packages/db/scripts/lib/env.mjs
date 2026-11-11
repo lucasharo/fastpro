@@ -40,13 +40,16 @@ export function loadConnectionString(root = REPO_ROOT, env = process.env) {
   throw new Error('DATABASE_URL_MIGRATIONS nao definida (ambiente ou .env.local)');
 }
 
-/** Cliente pg para uma string de conexao informada (usado pelo backup e pelo keep-alive). */
+/**
+ * Cliente pg para uma string de conexao informada (usado pelo backup e pelo keep-alive). Sem
+ * statementTimeoutMs o limite e o do papel (ALTER ROLE ... SET); nunca um 0 que o sobrescreva.
+ */
 export function clientFor(connectionString, applicationName, statementTimeoutMs = 0) {
   return new pg.Client({
     connectionString,
     connectionTimeoutMillis: 15000,
     application_name: applicationName,
-    statement_timeout: statementTimeoutMs,
+    ...(statementTimeoutMs > 0 ? { statement_timeout: statementTimeoutMs } : {}),
   });
 }
 
