@@ -5,13 +5,19 @@
 import { randomUUID } from 'node:crypto';
 import {
   ChallengeInputError,
+  CHALLENGE_MAX_CODE_ATTEMPTS,
   CHALLENGE_TTL_SECONDS,
+  RATE_GLOBAL_VALUE,
   assertChallengePurpose,
   normalizeChallengeEmail,
+  normalizeClientIp,
+  rateKeyMessage,
+  rateLimited,
   type ChallengePurpose,
   type ClockPort,
   type EmailMessage,
   type EmailProviderPort,
+  type RateLimits,
   type RecipientDirectoryPort,
   type RecipientResolution,
   type SendResult,
@@ -71,6 +77,50 @@ export interface ChallengeStore {
   create(input: CreateChallengeInput): Promise<CreateChallengeResult>;
   findRow(id: string, nowMs: number): Promise<ChallengeRow | null>;
   markDelivered(id: string, nowMs: number): Promise<void>;
+  /** H-015: pedido com limites de IP e global (private.auth_challenge_request). Opcional em H-011. */
+  request?(input: RequestLimitInput): Promise<RequestChallengeResult>;
+  /** H-015: tentativa de codigo com bloqueio (private.auth_code_attempt). Opcional em H-011. */
+  attemptCode?(input: AttemptCodeInput): Promise<AttemptCodeResult>;
+  /** Desafio vivo do par e-mail + intencao (private.auth_challenge_ativo_id), ou null. */
+  activeId?(emailHash: string, purpose: ChallengePurpose, nowMs: number): Promise<string | null>;
+}
+
+/** H-015 | Entrada do pedido com limites (50 §1.3 item 3). Chaves sao HMAC; nunca IP em claro. */
+export interface RequestLimitInput extends CreateChallengeInput {
+  readonly ipHmac: string;
+  readonly ipKey: string;
+  readonly globalHKey: string;
+  readonly globalDKey: string;
+  readonly limits: RateLimits;
+}
+
+export type RequestChallengeResult =
+  | CreateChallengeResult
+  | { readonly resultado: 'limite'; readonly retryAfterSeconds: number; readonly motivo: string };
+
+/** H-015 | Entrada da tentativa de codigo (50 §1.3 item 4). */
+export interface AttemptCodeInput {
+  readonly challengeId: string | null;
+  readonly emailHash: string;
+  readonly purpose: ChallengePurpose;
+  readonly codeHmac: string;
+  readonly nowMs: number;
+  readonly ipKey: string;
+  readonly emailKey: string;
+  readonly limits: RateLimits;
+}
+
+export type AttemptCodeResult = {
+  readonly resultado: 'ok' | 'errado' | 'invalido' | 'bloqueado_codigo' | 'bloqueado_ip';
+  readonly retryAfterSeconds: number | null;
+};
+
+async function enqueuePurge(client: SqlClient, nowMs: number): Promise<void> {
+  // Expurgo diario (39 §2): um job por dia, idempotente pela chave do dia.
+  await client.query('select private.job_enqueue($1, $2, null, null, 5)', [
+    PURGE_KIND,
+    `${PURGE_KIND}:${iso(nowMs).slice(0, 10)}`,
+  ]);
 }
 
 /** Adaptador Pg do store. Cada metodo e uma chamada SQL atomica. */
@@ -152,6 +202,99 @@ export class PgChallengeStore implements ChallengeStore {
       [id, iso(nowMs)],
     );
   }
+
+  /** H-015: pedido com limites. Chama private.auth_challenge_request (uma transacao, 50 §1.3). */
+  async request(input: RequestLimitInput): Promise<RequestChallengeResult> {
+    const res = await this.client.query(
+      'select * from private.auth_challenge_request($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)',
+      [
+        input.id,
+        input.emailHash,
+        input.purpose,
+        input.linkHash,
+        input.codeHmac,
+        input.emailEnc,
+        input.secretsEnc,
+        input.draftId,
+        input.ipHmac,
+        iso(input.nowMs),
+        input.ipKey,
+        input.globalHKey,
+        input.globalDKey,
+        input.limits.pedidoIpHora,
+        input.limits.pedidoGlobalHora,
+        input.limits.pedidoGlobalDia,
+      ],
+    );
+    const r = res.rows[0] as
+      | {
+          out_resultado: string;
+          out_challenge_id: string | null;
+          out_outbox_id: string | null;
+          out_retry_after: number | null;
+          out_motivo: string | null;
+        }
+      | undefined;
+    if (!r) throw new Error('auth_challenge_request_sem_resultado');
+    if (r.out_resultado === 'criado' && r.out_challenge_id && r.out_outbox_id) {
+      await enqueuePurge(this.client, input.nowMs);
+      return { resultado: 'criado', challengeId: r.out_challenge_id, outboxId: r.out_outbox_id };
+    }
+    if (r.out_resultado === 'limite' && r.out_retry_after !== null && r.out_motivo) {
+      return {
+        resultado: 'limite',
+        retryAfterSeconds: Number(r.out_retry_after),
+        motivo: r.out_motivo,
+      };
+    }
+    if (
+      (r.out_resultado === 'espera' || r.out_resultado === 'teto') &&
+      r.out_retry_after !== null
+    ) {
+      return { resultado: r.out_resultado, retryAfterSeconds: Number(r.out_retry_after) };
+    }
+    throw new Error('auth_challenge_request_resultado_inesperado');
+  }
+
+  /** H-015: tentativa de codigo com bloqueio. Chama private.auth_code_attempt. */
+  async attemptCode(input: AttemptCodeInput): Promise<AttemptCodeResult> {
+    const res = await this.client.query(
+      'select * from private.auth_code_attempt($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
+      [
+        input.challengeId,
+        input.emailHash,
+        input.purpose,
+        input.codeHmac,
+        CHALLENGE_MAX_CODE_ATTEMPTS,
+        iso(input.nowMs),
+        input.ipKey,
+        input.emailKey,
+        input.limits.codigoIpHora,
+        input.limits.erroCodigoDia,
+      ],
+    );
+    const r = res.rows[0] as
+      | { out_resultado: string; out_retry_after: number | null }
+      | undefined;
+    if (!r) throw new Error('auth_code_attempt_sem_resultado');
+    const resultado = r.out_resultado as AttemptCodeResult['resultado'];
+    if (!['ok', 'errado', 'invalido', 'bloqueado_codigo', 'bloqueado_ip'].includes(resultado)) {
+      throw new Error('auth_code_attempt_resultado_inesperado');
+    }
+    return {
+      resultado,
+      retryAfterSeconds: r.out_retry_after === null ? null : Number(r.out_retry_after),
+    };
+  }
+
+  async activeId(emailHash: string, purpose: ChallengePurpose, nowMs: number): Promise<string | null> {
+    const res = await this.client.query(
+      'select private.auth_challenge_ativo_id($1, $2, $3::timestamptz) as id',
+      [emailHash, purpose, iso(nowMs)],
+    );
+    const r = res.rows[0] as { id: string | null } | undefined;
+    return r?.id ?? null;
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -171,15 +314,25 @@ export interface ChallengeSecrets {
   readonly pepperCode: string;
 }
 
+/** H-015 | Limites do pedido e da verificacao (50 §1, §4). Chaves de IP usam PEPPER_IP_HMAC. */
+export interface RateContext {
+  readonly pepperIp: string;
+  readonly limits: RateLimits;
+  /** Metricas de contagem (50 §2.7). Nunca recebe e-mail, IP ou codigo. */
+  readonly metric?: (name: string, labels: Readonly<Record<string, string>>) => void;
+}
+
 export interface RequestChallengeDeps {
   readonly store: ChallengeStore;
   readonly secrets: ChallengeSecrets;
   readonly clock: ClockPort;
   readonly dispatch: OutboxDispatchPort;
+  /** Quando presente, o pedido usa os limites de H-015 (exige store.request). */
+  readonly rate?: RateContext;
 }
 
 export interface ChallengeHttpResponse {
-  readonly status: 202 | 422 | 429;
+  readonly status: 200 | 202 | 422 | 429;
   readonly headers: Readonly<Record<string, string>>;
   readonly body: Readonly<Record<string, unknown>>;
 }
@@ -190,6 +343,7 @@ const NO_STORE = { 'Cache-Control': 'no-store' } as const;
 export async function requestChallenge(
   deps: RequestChallengeDeps,
   body: unknown,
+  clientIp?: string | null,
 ): Promise<ChallengeHttpResponse> {
   const raw = body !== null && typeof body === 'object' ? (body as Record<string, unknown>) : {};
 
@@ -217,7 +371,7 @@ export async function requestChallenge(
   const id = randomUUID();
   const token = generateChallengeToken();
   const code = generateChallengeCode();
-  const result = await deps.store.create({
+  const base: CreateChallengeInput = {
     id,
     emailHash: challengeHmacHex(deps.secrets.pepperEmail, email),
     purpose,
@@ -231,7 +385,25 @@ export async function requestChallenge(
     ),
     draftId,
     nowMs: deps.clock.nowMs(),
-  });
+  };
+
+  let result: RequestChallengeResult;
+  if (deps.rate) {
+    if (!deps.store.request) throw new Error('store_sem_limites');
+    const ip = normalizeClientIp(clientIp);
+    if (ip.ausente) deps.rate.metric?.('rate.ip_ausente', {});
+    const pepper = deps.rate.pepperIp;
+    result = await deps.store.request({
+      ...base,
+      ipHmac: challengeHmacHex(pepper, ip.value),
+      ipKey: challengeHmacHex(pepper, rateKeyMessage('pedido', 'ip', ip.value)),
+      globalHKey: challengeHmacHex(pepper, rateKeyMessage('pedido', 'global_h', RATE_GLOBAL_VALUE)),
+      globalDKey: challengeHmacHex(pepper, rateKeyMessage('pedido', 'global_d', RATE_GLOBAL_VALUE)),
+      limits: deps.rate.limits,
+    });
+  } else {
+    result = await deps.store.create(base);
+  }
 
   if (result.resultado === 'criado') {
     try {
@@ -242,12 +414,66 @@ export async function requestChallenge(
     return { status: 202, headers: NO_STORE, body: { status: 'recebido' } };
   }
 
-  const retry = result.retryAfterSeconds;
-  return {
-    status: 429,
-    headers: { ...NO_STORE, 'Retry-After': String(retry) },
-    body: { code: 'muitos_pedidos', retry_after_seconds: retry },
-  };
+  // 429 (50 §2.2): mesma forma para qualquer e-mail, vinda do dominio. Motivo nunca vai ao cliente.
+  const recusa = rateLimited('pedido', result.retryAfterSeconds);
+  return { status: 429, headers: recusa.headers, body: JSON.parse(recusa.body) as Record<string, unknown> };
+}
+
+/** Entrada da verificacao do codigo (sem rota HTTP ainda; H-013 monta a tela). */
+export interface VerifyChallengeDeps {
+  readonly store: ChallengeStore;
+  readonly secrets: ChallengeSecrets;
+  readonly clock: ClockPort;
+  readonly rate: RateContext;
+}
+
+/**
+ * Verificacao do codigo (50 §2.5, §3). Errado e invalido geram a mesma resposta; bloqueio do e-mail
+ * ou do IP geram 429 com Retry-After. Quem chama deve sempre informar o e-mail (50 §8, H-013).
+ */
+export async function verifyChallengeCode(
+  deps: VerifyChallengeDeps,
+  input: { readonly email: string; readonly code: string; readonly purpose: ChallengePurpose; readonly clientIp?: string | null },
+): Promise<ChallengeHttpResponse> {
+  if (!deps.store.attemptCode || !deps.store.activeId) throw new Error('store_sem_limites');
+  let email: string;
+  try {
+    email = normalizeChallengeEmail(input.email);
+  } catch {
+    return { status: 422, headers: NO_STORE, body: { code: 'codigo_invalido' } };
+  }
+  if (!/^\d{6}$/.test(input.code)) {
+    return { status: 422, headers: NO_STORE, body: { code: 'codigo_invalido' } };
+  }
+
+  const now = deps.clock.nowMs();
+  const pepperEmail = deps.secrets.pepperEmail;
+  const pepperIp = deps.rate.pepperIp;
+  const emailHash = challengeHmacHex(pepperEmail, email);
+  // Sem desafio ativo, o codigo ainda passa pelo mesmo caminho (mesmo trabalho, mesmo contador).
+  const ativo = await deps.store.activeId(emailHash, input.purpose, now);
+  const ip = normalizeClientIp(input.clientIp);
+  if (ip.ausente) deps.rate.metric?.('rate.ip_ausente', {});
+
+  const r = await deps.store.attemptCode({
+    challengeId: ativo,
+    emailHash,
+    purpose: input.purpose,
+    codeHmac: challengeHmacHex(deps.secrets.pepperCode, `${ativo ?? randomUUID()}|${input.code}`),
+    nowMs: now,
+    ipKey: challengeHmacHex(pepperIp, rateKeyMessage('codigo', 'ip', ip.value)),
+    emailKey: challengeHmacHex(pepperEmail, rateKeyMessage('erro_codigo', 'email', email)),
+    limits: deps.rate.limits,
+  });
+
+  if (r.resultado === 'ok') {
+    return { status: 200, headers: NO_STORE, body: { status: 'codigo_ok' } };
+  }
+  if (r.resultado === 'bloqueado_codigo' || r.resultado === 'bloqueado_ip') {
+    const recusa = rateLimited('codigo', r.retryAfterSeconds ?? 1);
+    return { status: 429, headers: recusa.headers, body: JSON.parse(recusa.body) as Record<string, unknown> };
+  }
+  return { status: 422, headers: NO_STORE, body: { code: 'codigo_invalido' } };
 }
 
 /** Envio de uma saida ja criada, com o pacer padrao (chamado pelo dispatch, depois da resposta). */
