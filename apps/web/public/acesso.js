@@ -1,4 +1,4 @@
-// H-012 | Pagina /acesso (docs/factory/46-DESENHO-H012.md, §1, §5; CA-H012-01..03).
+// H-012 (H-014: converte a etapa em sessao apos o consumo) | Pagina /acesso (docs/factory/46-DESENHO-H012.md, §1, §5; CA-H012-01..03).
 // Nao chama a API ao carregar. O token vem do fragmento (#t=...), fica so na memoria deste script,
 // sai da barra de endereco e so segue no POST disparado pelo clique do usuario. Nada vai para
 // localStorage, sessionStorage ou cookie. Sem tela de produto: textos fixos e genericos.
@@ -8,6 +8,8 @@
   var CAMINHO_PAGINA = '/acesso';
   // Mesma origem: o web encaminha /api/* a API (08 §16, ADR-018). A API tira o prefixo /api.
   var CAMINHO_CONSUMO = '/api/v1/auth/challenges/consume';
+  // H-014: depois do 200 do consumo, a pagina converte a etapa em sessao (sem novo clique; 52 §1.1).
+  var CAMINHO_SESSAO = '/api/v1/auth/session';
   var ESPERA_BOTAO_MS = 1000;
 
   var MENSAGENS = {
@@ -72,7 +74,30 @@
         body: JSON.stringify({ token: valor })
       }).then(
         function (resposta) {
-          aviso.textContent = mensagemPara(resposta.status);
+          if (resposta.status !== 200) {
+            aviso.textContent = mensagemPara(resposta.status);
+            return;
+          }
+          // Consumo aceito: converte a etapa (cookie da etapa vai junto; mesma origem).
+          return buscar(CAMINHO_SESSAO, {
+            method: 'POST',
+            credentials: 'same-origin',
+            cache: 'no-store',
+            redirect: 'error',
+            referrerPolicy: 'no-referrer',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}'
+          }).then(
+            function (sessao) {
+              if (sessao.status === 200) aviso.textContent = MENSAGENS.confirmado;
+              else if (sessao.status === 401) aviso.textContent = MENSAGENS.invalido;
+              else if (sessao.status === 503) aviso.textContent = MENSAGENS.indisponivel;
+              else aviso.textContent = MENSAGENS.generico;
+            },
+            function () {
+              aviso.textContent = MENSAGENS.generico;
+            }
+          );
         },
         function () {
           aviso.textContent = MENSAGENS.generico;

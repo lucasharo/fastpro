@@ -30,7 +30,11 @@ interface Mundo {
 }
 
 /** Monta o DOM simulado, roda o script e devolve o que ele fez. respostaStatus 'erro' = rede. */
-function carregar(hash: string, respostaStatus: number | 'erro' = 200): Mundo {
+function carregar(
+  hash: string,
+  respostaStatus: number | 'erro' = 200,
+  respostaSessao?: number,
+): Mundo {
   const listeners: Array<() => void> = [];
   const botao = {
     id: 'confirmar',
@@ -66,6 +70,9 @@ function carregar(hash: string, respostaStatus: number | 'erro' = 200): Mundo {
     fetch(url: string, opcoes: Record<string, unknown>) {
       chamadas.fetch.push([url, opcoes]);
       if (respostaStatus === 'erro') return Promise.reject(new Error('rede_simulada'));
+      if (url === '/api/v1/auth/session' && respostaSessao !== undefined) {
+        return Promise.resolve({ status: respostaSessao });
+      }
       return Promise.resolve({ status: respostaStatus });
     },
     setTimeout(fn: () => void, ms: number) {
@@ -198,5 +205,42 @@ describe('T-H012-33 o consumo nao aciona geracao nem verificacao de sessao (so H
     for (const caminho of arquivos) {
       expect(lerArquivo(caminho), caminho).not.toMatch(/generateLink|verifyOtp/);
     }
+  });
+});
+
+describe('T-H014 pagina /acesso converte a etapa em sessao apos o consumo', () => {
+  it('consumo 200: chama POST /v1/auth/session com {} e mesma origem, sem novo clique', async () => {
+    const { botao, chamadas, aviso } = carregar(`#t=${TOKEN}`, 200, 200);
+    botao.disparar();
+    await esperarMicrotarefas();
+    expect(chamadas.fetch.map(([u]) => u)).toEqual([
+      '/api/v1/auth/challenges/consume',
+      '/api/v1/auth/session',
+    ]);
+    const sessao = chamadas.fetch[1]?.[1] ?? {};
+    expect(sessao.method).toBe('POST');
+    expect(sessao.body).toBe('{}');
+    expect(sessao.credentials).toBe('same-origin');
+    expect(sessao.redirect).toBe('error');
+    expect(aviso.textContent).toBe('Acesso confirmado. A próxima etapa será liberada em breve.');
+  });
+
+  it('consumo negado (400): nenhuma chamada de sessao', async () => {
+    const { botao, chamadas } = carregar(`#t=${TOKEN}`, 400);
+    botao.disparar();
+    await esperarMicrotarefas();
+    expect(chamadas.fetch.map(([u]) => u)).toEqual(['/api/v1/auth/challenges/consume']);
+  });
+
+  it.each([
+    [401, 'Este link não pode mais ser usado. Peça um novo acesso.'],
+    [503, 'Não foi possível concluir o acesso agora. Peça um novo acesso em alguns minutos.'],
+    [500, 'Não foi possível concluir o acesso. Peça um novo acesso.'],
+  ] as const)('sessao respondeu %s: mensagem prevista, sem cookie no script', async (status, texto) => {
+    const { botao, aviso, chamadas } = carregar(`#t=${TOKEN}`, 200, status);
+    botao.disparar();
+    await esperarMicrotarefas();
+    expect(aviso.textContent).toBe(texto);
+    expect(chamadas.armazenou).toEqual([]);
   });
 });
