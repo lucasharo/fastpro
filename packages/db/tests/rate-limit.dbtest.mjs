@@ -157,7 +157,7 @@ test('T-H015-20 permissoes: so app_system acessa ops.code_lock e as funcoes nova
 
     const fns = [
       'private.auth_code_attempt(uuid,text,text,text,integer,timestamptz,text,text,integer,integer)',
-      'private.auth_challenge_request(uuid,text,text,text,text,bytea,bytea,uuid,text,timestamptz,text,text,text,integer,integer,integer)',
+      'private.auth_challenge_request(uuid,text,text,text,text,bytea,bytea,uuid,text,timestamptz,text,text,text,integer,integer,integer,uuid)',
       'private.rl_check(text,integer,integer,integer,timestamptz)',
       'private.rl_hit(text,integer,timestamptz)',
       'private.rate_purge(timestamptz)',
