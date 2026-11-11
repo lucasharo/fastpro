@@ -635,3 +635,61 @@ test('guarda: devolve papeis e permissoes do banco; conta pendente ou sem papel 
       'select out_user_id from private.admin_guard($1, $2)', [seg, iso(NOW)])).rows;
     assert.equal(desativado.length, 0, 'conta desativada nao passa na proxima requisicao');
   }));
+
+// ---------------------------------------------------------------------------------------------
+// Revisao da #111: app_system nao apaga linhas de papel, convite e sessao; o expurgo e so pela funcao.
+// ---------------------------------------------------------------------------------------------
+
+test('T-H102-20 app_system sem DELETE em admin_user_role, admin_invite e admin_session; com SELECT, INSERT e UPDATE', () =>
+  tx(async () => {
+    const { rows } = await client.query(`
+      select
+        has_table_privilege('app_system', 'app.admin_user_role', 'delete') as role_delete,
+        has_table_privilege('app_system', 'app.admin_invite', 'delete') as invite_delete,
+        has_table_privilege('app_system', 'app.admin_session', 'delete') as session_delete,
+        has_table_privilege('app_system', 'app.admin_user_role', 'select') as role_select,
+        has_table_privilege('app_system', 'app.admin_invite', 'update') as invite_update,
+        has_table_privilege('app_system', 'app.admin_session', 'insert') as session_insert`);
+    assert.deepEqual(rows[0], {
+      role_delete: false,
+      invite_delete: false,
+      session_delete: false,
+      role_select: true,
+      invite_update: true,
+      session_insert: true,
+    });
+  }));
+
+test('T-H102-20 expurgo de sessao vencida so pela funcao private.admin_session_purge', () =>
+  tx(async () => {
+    const u = await staffAtivo();
+    await papel(u.id, 'auditor');
+    const seg = sha(`purga:${randomUUID()}`);
+    await client.query('select private.admin_session_open($1, $2, $3, $4)',
+      [randomUUID(), u.id, seg, iso(horas(-9))]);
+    const { rows: [r] } = await client.query('select private.admin_session_purge($1) as n', [iso(NOW)]);
+    assert.ok(r.n >= 1, 'a funcao remove a sessao vencida');
+    const { rows: [left] } = await client.query(
+      'select count(*)::int as n from app.admin_session where secret_hash = $1', [seg]);
+    assert.equal(left.n, 0);
+  }));
+
+test('bootstrap continuidade: com um Superadmin ativo aceita o segundo; um terceiro convite vivo e recusado (ADM10)', () =>
+  tx(async () => {
+    const { rows: [n] } = await client.query(
+      `select count(distinct r.user_id)::int as n from app.admin_user_role r
+         join app.admin_staff s on s.user_id = r.user_id and s.status = 'ativo'
+        where r.role_code = 'superadmin' and r.revoked_at is null`);
+    assert.equal(n.n, 0, 'precondicao: base de desenvolvimento sem Superadmin ativo');
+
+    await superadmin();
+    const emailDois = `${randomUUID()}@example.test`;
+    const ok = await emitirConvite({ invitedBy: null, email: emailDois, roles: ['superadmin'], mode: 'continuidade' });
+    assert.equal((await convite(ok.token)).state, 'emitido');
+
+    const emailTres = `${randomUUID()}@example.test`;
+    const terceiro = await falha(
+      `select private.admin_invite_issue($1, 'ativacao', $2, $3, $4, $5, '{superadmin}', null, null, 'continuidade', now())`,
+      [randomUUID(), emailTres, sha(`hmac:${emailTres}`), Buffer.from('e'), sha(randomUUID())]);
+    assert.equal(terceiro?.code, 'ADM10', 'segundo convite de bootstrap vivo com outro e-mail e recusado');
+  }));
