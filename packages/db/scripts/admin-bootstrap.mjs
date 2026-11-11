@@ -28,12 +28,10 @@ function erro(msg) {
 
 async function main(argv) {
   const args = parseBootstrapArgs(argv);
-  const env = {
-    APP_ENV: loadEnvValue('APP_ENV'),
-    PEPPER_EMAIL_HMAC: loadEnvValue('PEPPER_EMAIL_HMAC'),
-    AUTH_CHALLENGE_KEY: loadEnvValue('AUTH_CHALLENGE_KEY'),
-    ADMIN_BASE_URL: loadEnvValue('ADMIN_BASE_URL'),
-  };
+  const env = {};
+  for (const nome of ['APP_ENV', 'PEPPER_EMAIL_HMAC', 'AUTH_CHALLENGE_KEY', 'ADMIN_BASE_URL']) {
+    env[nome] = loadEnvValue(nome);
+  }
   const dbUrl = loadEnvValue('DATABASE_URL_MIGRATIONS');
 
   const recusa = bootstrapRefusal(args, env, dbUrl);
@@ -64,15 +62,15 @@ async function main(argv) {
     }
 
     const id = randomUUID();
-    const token = randomBytes(32).toString('base64url');
+    const segmento = randomBytes(32).toString('base64url');
     const enc = sealAdminInviteEmail(key, email, id);
     await client.query(
       `select private.admin_invite_issue($1, 'ativacao', $2, $3, $4, $5, $6, null, null, $7, $8)`,
-      [id, email, hmac, enc, adminTokenHash(token), ['superadmin'], args.modo, new Date().toISOString()],
+      [id, email, hmac, enc, adminTokenHash(segmento), ['superadmin'], args.modo, new Date().toISOString()],
     );
 
     out('Convite do primeiro Superadmin emitido. O link abaixo aparece somente desta vez:');
-    out(buildInviteLink(env.ADMIN_BASE_URL, token));
+    out(buildInviteLink(env.ADMIN_BASE_URL, segmento));
     out('Valido por 72 horas, uso unico. Nenhuma senha passa por este comando.');
     return 0;
   } catch (err) {

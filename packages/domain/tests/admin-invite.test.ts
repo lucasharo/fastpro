@@ -224,3 +224,30 @@ describe('T-H102-02 ativacao com TOTP', () => {
     expect(world.invites[0]?.state).toBe('emitido');
   });
 });
+
+describe('T-H102-01 uso unico do convite (revisao da #111)', () => {
+  it('convite usado nao reativa: passo 1 e passo 2 repetidos sao recusados, sem nova conta, papel ou sessao', async () => {
+    const world = createFakeWorld();
+    const token = tokenNovo();
+    world.seedInvite({ token, email: 'uso@example.test', roleCodes: ['auditor'] });
+    const passo1 = await startAdminInvite({ token, password: SENHA }, depsDe(world, token), SYNTH_NOW);
+    const codigo = totp6(String(passo1.body.segredo), Math.floor(SYNTH_NOW / 1000));
+    const ativo = await confirmAdminInvite({ token, password: SENHA, code: codigo }, depsDe(world, token), SYNTH_NOW);
+    expect(ativo.status).toBe(200);
+
+    const contasAntes = world.staff.size;
+    const papeisAntes = world.roles.size;
+    const repetePasso1 = await startAdminInvite({ token, password: SENHA }, depsDe(world, token), SYNTH_NOW);
+    const repetePasso2 = await confirmAdminInvite(
+      { token, password: SENHA, code: codigo },
+      depsDe(world, token),
+      SYNTH_NOW,
+    );
+    expect(repetePasso1).toEqual(ADMIN_INVITE_INVALID);
+    expect(repetePasso2).toEqual(ADMIN_INVITE_INVALID);
+    expect(world.staff.size).toBe(contasAntes);
+    expect(world.roles.size).toBe(papeisAntes);
+    expect(world.sessions.size).toBe(0);
+    expect(world.provider.tokensDiscarded).toBeGreaterThan(0);
+  });
+});

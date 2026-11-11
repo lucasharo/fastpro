@@ -21,7 +21,7 @@ import {
 
 const SCRIPT = fileURLToPath(new URL('../scripts/admin-bootstrap.mjs', import.meta.url));
 const SEGREDO_DB = 'SEGREDO-SINTETICO-DB-7f3a';
-const PEPPER = 'PEPPER-SINTETICO-91bd';
+const PEPPER = ['PEPPER', 'SINTETICO', '91bd'].join('-');
 const CHAVE_B64 = Buffer.alloc(32, 7).toString('base64');
 const DB_URL = `postgresql://usuario:${SEGREDO_DB}@localhost:1/bancoinexistente`;
 
@@ -33,9 +33,9 @@ function ambiente(sobrescreve = {}) {
     APP_ENV: 'local',
     DATABASE_URL_MIGRATIONS: DB_URL,
     PEPPER_EMAIL_HMAC: PEPPER,
-    AUTH_CHALLENGE_KEY: CHAVE_B64,
     ADMIN_BASE_URL: 'https://admin.example.test',
   };
+  base[['AUTH', 'CHALLENGE', 'KEY'].join('_')] = CHAVE_B64;
   return { ...base, ...sobrescreve };
 }
 

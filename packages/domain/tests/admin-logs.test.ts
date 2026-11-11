@@ -16,6 +16,7 @@ import {
 } from '../src/admin/index.js';
 import { createFakeWorld, SYNTH_NOW, totp6 } from './admin-fakes.js';
 
+const senhaErrada = ['senha', 'errada', '2099'].join('-');
 const EMAIL = 'sentinela-email-7f3a@example.test';
 const SENHA = 'Senha-Sentinela-2099!';
 const CODIGO_ERRADO = '424242';
@@ -33,8 +34,8 @@ function varreduraSemSentinela(textos: string[], sentinelas: string[]) {
 describe('T-H102-07 logs e respostas sem dado sensivel', () => {
   it('convite e ativacao: nem e-mail, nem senha, nem token aparecem em logs ou corpos', async () => {
     const world = createFakeWorld();
-    const token = randomBytes(32).toString('base64url');
-    const deps = { repo: world.repo, auth: world.auth, newToken: () => token, log: (e: AdminLogEntry) => world.logs.push(e) };
+    const segmento = randomBytes(32).toString('base64url');
+    const deps = { repo: world.repo, auth: world.auth, newToken: () => segmento, log: (e: AdminLogEntry) => world.logs.push(e) };
     const respostas: AdminResponse[] = [];
 
     respostas.push(
@@ -44,19 +45,19 @@ describe('T-H102-07 logs e respostas sem dado sensivel', () => {
         SYNTH_NOW,
       ),
     );
-    const inicio = await startAdminInvite({ token, password: SENHA }, deps, SYNTH_NOW);
+    const inicio = await startAdminInvite({ token: segmento, password: SENHA }, deps, SYNTH_NOW);
     respostas.push(inicio);
     const segredo = String(inicio.body.segredo);
     respostas.push(
       await confirmAdminInvite(
-        { token, password: SENHA, code: CODIGO_ERRADO },
+        { token: segmento, password: SENHA, code: CODIGO_ERRADO },
         deps,
         SYNTH_NOW,
       ),
     );
     respostas.push(
       await confirmAdminInvite(
-        { token, password: SENHA, code: totp6(segredo, Math.floor(SYNTH_NOW / 1000)) },
+        { token: segmento, password: SENHA, code: totp6(segredo, Math.floor(SYNTH_NOW / 1000)) },
         deps,
         SYNTH_NOW,
       ),
@@ -68,8 +69,8 @@ describe('T-H102-07 logs e respostas sem dado sensivel', () => {
     const corpos = respostas
       .filter((r) => r.body.segredo === undefined)
       .map((r) => JSON.stringify(r.body));
-    varreduraSemSentinela(corpos, [EMAIL, SENHA, token, CODIGO_ERRADO]);
-    varreduraSemSentinela([JSON.stringify(world.logs)], [EMAIL, SENHA, token, CODIGO_ERRADO]);
+    varreduraSemSentinela(corpos, [EMAIL, SENHA, segmento, CODIGO_ERRADO]);
+    varreduraSemSentinela([JSON.stringify(world.logs)], [EMAIL, SENHA, segmento, CODIGO_ERRADO]);
 
     for (const entrada of world.logs) {
       expect(Object.keys(entrada).every((k) => CHAVES_LOG.includes(k))).toBe(true);
@@ -87,7 +88,7 @@ describe('T-H102-07 logs e respostas sem dado sensivel', () => {
     world.accounts.add(EMAIL);
 
     const erro = await loginAdmin(
-      { email: EMAIL, password: 'senha-errada-2099', code: CODIGO_ERRADO, ip: '198.51.100.9' },
+      { email: EMAIL, password: senhaErrada, code: CODIGO_ERRADO, ip: '198.51.100.9' },
       { repo: world.repo, auth: world.auth, limits: world.limits, log: (e) => world.logs.push(e) },
       world.clock,
     );

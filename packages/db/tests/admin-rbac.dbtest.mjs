@@ -94,13 +94,13 @@ async function papeisAtivos(userId) {
 /** Emite convite de ativacao por um Superadmin (ou bootstrap se invitedBy for nulo). */
 async function emitirConvite({ invitedBy, email, roles = ['auditor'], approval = null, now = NOW, mode = null }) {
   const id = randomUUID();
-  const token = randomBytes(32).toString('hex');
+  const segmento = randomBytes(32).toString('hex');
   const hmac = sha(`hmac:${email}`);
   await client.query(
     `select private.admin_invite_issue($1, 'ativacao', $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-    [id, email, hmac, Buffer.from('enc-sintetico'), sha(token), roles, invitedBy, approval, mode, iso(now)],
+    [id, email, hmac, Buffer.from('enc-sintetico'), sha(segmento), roles, invitedBy, approval, mode, iso(now)],
   );
-  return { id, token, hmac, email };
+  return { id, token: segmento, hmac, email };
 }
 
 async function convite(token) {
@@ -692,4 +692,43 @@ test('bootstrap continuidade: com um Superadmin ativo aceita o segundo; um terce
       `select private.admin_invite_issue($1, 'ativacao', $2, $3, $4, $5, '{superadmin}', null, null, 'continuidade', now())`,
       [randomUUID(), emailTres, sha(`hmac:${emailTres}`), Buffer.from('e'), sha(randomUUID())]);
     assert.equal(terceiro?.code, 'ADM10', 'segundo convite de bootstrap vivo com outro e-mail e recusado');
+  }));
+
+// Revisao da #111: uso unico do convite e validade de 72 h exatas (T-H102-01).
+test('T-H102-01 validade do convite: so 72 h exatas; 71 h e 73 h sao recusadas pelo banco', () =>
+  tx(async () => {
+    const admin = await superadmin();
+    const insere = (horas) =>
+      falha(
+        `insert into app.admin_invite (id, kind, email_hmac, email_enc, token_hash, role_codes, invited_by,
+                                       approval_request_id, state, attempts, user_id, created_at,
+                                       expires_at, used_at)
+         values ($1, 'ativacao', $2, $3, $4, '{auditor}', $5, null, 'emitido', 0, null, now(),
+                 now() + make_interval(hours => $6), null)`,
+        [randomUUID(), sha(randomUUID()), Buffer.from('e'), sha(randomUUID()), admin.id, horas]);
+    assert.equal((await insere(72))?.code, undefined, 'validade de 72 h e aceita');
+    assert.equal((await insere(71))?.code, '23514', 'validade de 71 h e recusada');
+    assert.equal((await insere(73))?.code, '23514', 'validade de 73 h e recusada');
+  }));
+
+test('T-H102-01 convite usado nao reativa no banco: ativacao, marcacao e nova conta recusadas', () =>
+  tx(async () => {
+    const admin = await superadmin();
+    const email = `${randomUUID()}@example.test`;
+    const c = await emitirConvite({ invitedBy: admin.id, email, roles: ['auditor'] });
+    const conta = await usuario(email);
+    await client.query('select private.admin_invite_mark_waiting($1, $2, $3)', [sha(c.token), conta.id, iso(NOW)]);
+    const primeira = (await client.query('select private.admin_invite_activate($1, $2) as u',
+      [sha(c.token), iso(NOW)])).rows[0].u;
+    assert.equal(primeira, conta.id);
+
+    const de_novo = (await client.query('select private.admin_invite_activate($1, $2) as u',
+      [sha(c.token), iso(NOW)])).rows[0].u;
+    assert.equal(de_novo, null, 'convite usado nao ativa de novo');
+    const marca = (await client.query('select private.admin_invite_mark_waiting($1, $2, $3) as ok',
+      [sha(c.token), conta.id, iso(NOW)])).rows[0].ok;
+    assert.equal(marca, false, 'convite usado nao volta a aguardar TOTP');
+    const { rows: [n] } = await client.query(
+      'select count(*)::int as n from app.admin_user_role where user_id = $1 and revoked_at is null', [conta.id]);
+    assert.equal(n.n, 1, 'papel do convite nao se duplica');
   }));

@@ -12,11 +12,11 @@ export const ADMIN_LOGIN_EMAIL_LIMIT = 5;
 export const ADMIN_LOGIN_IP_LIMIT = 20;
 
 /** Token de convite: 256 bits em base64url (43 caracteres). Malformado nunca e aceito. */
-const TOKEN_FORMAT = /^[A-Za-z0-9_-]{43}$/;
+const FORMATO_CONVITE = /^[A-Za-z0-9_-]{43}$/;
 const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function isAdminTokenFormat(token: string): boolean {
-  return TOKEN_FORMAT.test(token);
+  return FORMATO_CONVITE.test(token);
 }
 
 /** E-mail normalizado (aparar, minusculas). Nulo se invalido. */

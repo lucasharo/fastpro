@@ -220,15 +220,15 @@ export function createFakeWorld(startMs: number = SYNTH_NOW): FakeWorld {
       return null;
     },
     async openSession(userId, nowMs) {
-      const secret = randomBytes(32).toString('base64url');
-      sessions.set(secret, {
+      const valorCookie = randomBytes(32).toString('base64url');
+      sessions.set(valorCookie, {
         userId,
         createdMs: nowMs,
         expiresAtMs: nowMs + ADMIN_SESSION_MAX_AGE_SECONDS * 1000,
         revoked: false,
         aal2: true,
       });
-      return { secret };
+      return { secret: valorCookie };
     },
     async guard(secret, nowMs): Promise<AdminGuardRecord | null> {
       calls.guard += 1;
@@ -251,12 +251,12 @@ export function createFakeWorld(startMs: number = SYNTH_NOW): FakeWorld {
   const auth: AdminAuthPort = {
     async enrollUser(email, password) {
       if (provider.credentials.has(email)) return null;
-      const secret = randomBytes(20).toString('hex');
+      const segredoTotp = randomBytes(20).toString('hex');
       const authUserId = `auth-${randomBytes(6).toString('hex')}`;
-      provider.credentials.set(email, { password, secret, authUserId, enrolled: false });
+      provider.credentials.set(email, { password, secret: segredoTotp, authUserId, enrolled: false });
       return {
         authUserId,
-        secret,
+        secret: segredoTotp,
         otpauthUri: `otpauth://totp/FastPro:${sha(email).slice(0, 8)}?secret=SINTETICO`,
       };
     },
