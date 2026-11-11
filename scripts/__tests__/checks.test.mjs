@@ -450,7 +450,7 @@ test('check-no-email-switch --selftest: acusa as fixtures ruins e aprova a limpa
   try {
     const r = run('check-no-email-switch.mjs', dir, ['--selftest']);
     assert.equal(r.code, 0, r.out);
-    assert.match(r.out, /selftest ok: 17\/17 fixtures ruins acusadas, 1\/1 limpa aprovada/);
+    assert.match(r.out, /selftest ok: 19\/19 fixtures ruins acusadas, 1\/1 limpa aprovada/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

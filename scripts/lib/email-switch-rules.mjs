@@ -26,7 +26,9 @@ const VERIFICADOR = ['scripts/check-no-email-switch.mjs', 'scripts/lib/email-swi
 // N1: grupo E (quem envia) e grupo S (quem liga/desliga). Identificador com os dois = violacao.
 const E_PADROES = [
   'mail',
+  'mails',
   'email',
+  'emails',
   'notif*',
   'aviso*',
   'send*',
@@ -248,9 +250,13 @@ const lineOf = (texto, idx) => texto.slice(0, idx).split('\n').length;
 // Excecao fixa (49 §4 FP-1, lista do Reviewer): o proprio verificador referenciado em package.json.
 // Os nomes sao o script `check:email-switch` e o arquivo `check-no-email-switch.mjs`.
 const EXCECOES_NOME = { 'package.json': ['check:email-switch', 'check-no-email-switch.mjs'] };
+// Casa so o nome inteiro: nao pode vir seguido de letra, digito, _, -, . ou : (check:email-switch-off segue acusado).
 function semExcecao(caminho, linha) {
   let saida = linha;
-  for (const nome of EXCECOES_NOME[caminho] ?? []) saida = saida.replaceAll(nome, '');
+  for (const nome of EXCECOES_NOME[caminho] ?? []) {
+    const escapado = nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    saida = saida.replace(new RegExp(`(?<![\\w.:-])${escapado}(?![\\w.:-])`, 'g'), '');
+  }
   return saida;
 }
 

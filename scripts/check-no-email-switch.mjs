@@ -98,6 +98,18 @@ const FIXTURES = [
   },
   { id: 'F-16a', esperado: ['FC'], arquivos: {} },
   { id: 'F-16b', esperado: ['FC'], arquivos: { 'apps/web/src/x.ts': 'const a = 1;\n' } },
+  // Plural do grupo E (49 §1.1 N1): emails e mails tambem contam.
+  {
+    id: 'F-17',
+    esperado: ['N1'],
+    arquivos: { 'apps/api/src/f17.ts': 'const emailsEnabled = true;\n' },
+  },
+  // Excecao do package.json casa so o nome exato: sufixo "-off" continua acusado.
+  {
+    id: 'F-18',
+    esperado: ['N1'],
+    arquivos: { 'package.json': '    "check:email-switch-off": "node scripts/x.mjs",\n' },
+  },
 ];
 
 const LIMPA = {
