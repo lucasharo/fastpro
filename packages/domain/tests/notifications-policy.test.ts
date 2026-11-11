@@ -72,7 +72,8 @@ describe('T-H92-01 politica por categoria', () => {
   it('resumo de aceite e de mensagem tem tipo proprio', () => {
     expect(summaryTypeFor('aceite')).toBe('aceite_resumo');
     expect(summaryTypeFor('mensagem')).toBe('mensagem_resumo');
-    expect(Object.keys(EMAIL_TYPE_POLICY)).toHaveLength(14);
+    // 15 desde H-014 (acesso_stepup, 52 §4.3): contagem fixa que muda ao acrescentar um tipo.
+    expect(Object.keys(EMAIL_TYPE_POLICY)).toHaveLength(15);
   });
 });
 
