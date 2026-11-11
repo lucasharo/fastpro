@@ -8,6 +8,7 @@ import {
   alertLevelFor,
   assertCombination,
   assertSafeTemplateParams,
+  NOTIFICATION_EFFECTIVE_FROM_MS,
   isDigestCategory,
   summaryTypeFor,
   windowSecondsFrom,
@@ -349,6 +350,17 @@ export async function dispatchOutbox(
   const events = await store.pendingEvents(DISPATCH_BATCH);
   let falhas = 0;
   for (const ev of events) {
+    // H-100 (49 §1.2): evento anterior ao marco de vigencia so recebe dispatched_at (sem regra, item,
+    // linha ou envio). Data ilegivel nao e despachada: conta como falha e tenta de novo (falha fechada).
+    const ocorrido = Date.parse(ev.occurredAt);
+    if (Number.isNaN(ocorrido)) {
+      falhas += 1;
+      continue;
+    }
+    if (ocorrido < NOTIFICATION_EFFECTIVE_FROM_MS) {
+      await store.markDispatched(ev.id);
+      continue;
+    }
     const rule = d.registry.forEvent(ev.type);
     if (!rule) {
       // Sem regra registrada: marca como despachado sem efeito (35 DD-7, CA-12).

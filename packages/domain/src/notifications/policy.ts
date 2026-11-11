@@ -2,6 +2,12 @@
 // Logica pura, sem I/O. A classe e declarada por email_type (lembrete de trial e categoria acesso,
 // classe lembrete). Combinacao nao listada e recusada (falha fechada).
 
+// H-100 | Marco de vigencia do pipeline (docs/factory/49-DESENHO-H100.md, D-1; decisao 27).
+// Eventos de outbox anteriores a este instante so recebem dispatched_at: nenhum item, linha de envio
+// ou chamada ao provedor (RF-122, sem e-mails retroativos). Literal fixo: nao vem de ambiente nem de
+// configuracao; o verificador check:email-switch reprova qualquer outra origem.
+export const NOTIFICATION_EFFECTIVE_FROM_MS = Date.UTC(2026, 10, 11);
+
 export const CATEGORIES = [
   'aceite',
   'mensagem',
