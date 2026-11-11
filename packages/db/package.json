@@ -20,6 +20,8 @@
   },
   "devDependencies": {
     "@fastpro/config": "workspace:*",
-    "pg": "8.23.1"
+    "pg": "8.23.1",
+    "@fastpro/domain": "workspace:*",
+    "@fastpro/testkit": "workspace:*"
   }
 }

@@ -19,6 +19,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "devDependencies": {
-    "@fastpro/config": "workspace:*"
+    "@fastpro/config": "workspace:*",
+    "@fastpro/domain": "workspace:*"
   }
 }
