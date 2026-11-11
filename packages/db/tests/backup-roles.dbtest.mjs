@@ -75,7 +75,8 @@ test('papeis existem, sem superusuario, sem login, sem heranca, sem criacao de p
     assert.equal(r.rolsuper, false, `${r.rolname} nao pode ser superusuario`);
     assert.equal(r.rolcreaterole, false, `${r.rolname} nao pode criar papeis`);
     assert.equal(r.rolcreatedb, false, `${r.rolname} nao pode criar bancos`);
-    assert.equal(r.rolcanlogin, false, `${r.rolname} deve ser NOLOGIN ate o passo manual`);
+    // Login ativo e permitido: o dono habilitou o login dos papeis de backup e keep-alive (passo
+    // manual do H-010, sem senha no codigo). Nao e verificado aqui.
     assert.equal(r.rolinherit, false, `${r.rolname} deve ser NOINHERIT`);
   }
   // Leitura do backup precisa de BYPASSRLS (dump completo); o keep-alive nunca.
