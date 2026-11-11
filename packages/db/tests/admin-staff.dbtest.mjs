@@ -80,7 +80,6 @@ test('T-H102-20 RLS forcada e nenhum acesso de papeis publicos nas tabelas admin
       select
         has_table_privilege('anon', 'app.admin_staff', 'select') as anon_select,
         has_table_privilege('authenticated', 'app.admin_staff', 'select') as auth_select,
-        has_table_privilege('service_role', 'app.approval_vote', 'select') as svc_select,
         has_table_privilege('app_api', 'app.admin_staff', 'select') as api_select,
         has_table_privilege('app_system', 'app.admin_staff', 'insert') as system_insert,
         has_function_privilege('authenticated',
@@ -90,12 +89,37 @@ test('T-H102-20 RLS forcada e nenhum acesso de papeis publicos nas tabelas admin
     assert.deepEqual(p[0], {
       anon_select: false,
       auth_select: false,
-      svc_select: false,
       api_select: false,
       system_insert: true,
       auth_exec: false,
       system_exec: true,
     });
+
+    // Varredura de todos os papeis (mesmo criterio de T-H012-20): so o dono, app_system e os
+    // leitores aceitos da plataforma tem acesso as tabelas novas. Superusuarios ficam de fora.
+    const LEITORES_ACEITOS = [
+      'app_backup_reader',
+      'pg_read_all_data',
+      'pg_write_all_data',
+      'supabase_etl_admin',
+      'supabase_read_only_user',
+    ];
+    for (const tabela of ['app.admin_staff', 'app.approval_request', 'app.approval_vote']) {
+      const { rows: acesso } = await client.query(
+        `select r.rolname
+           from pg_roles r
+          where not r.rolsuper
+            and r.rolname <> 'app_system'
+            and r.oid <> (select c.relowner from pg_class c where c.oid = $1::regclass)
+            and (has_table_privilege(r.oid, $1, 'SELECT')
+              or has_table_privilege(r.oid, $1, 'INSERT')
+              or has_table_privilege(r.oid, $1, 'UPDATE')
+              or has_table_privilege(r.oid, $1, 'DELETE'))`,
+        [tabela],
+      );
+      const inesperados = acesso.map((r) => r.rolname).filter((n) => !LEITORES_ACEITOS.includes(n));
+      assert.deepEqual(inesperados, [], `${tabela}: papeis com acesso indevido`);
+    }
   }));
 
 // ---------------------------------------------------------------------------------------------
