@@ -158,7 +158,7 @@ Todos os RF aprovados ou delegados têm história, exceto RF-121 (fora de escopo
 | | RF-119 | H-062, H-099 |
 | | RF-120 | H-095, H-098 |
 | | RF-121 | **Fora de escopo (sem história, intencional)** |
-| | RF-122 | H-094, H-095, H-100 |
+| | RF-122 | H-094, H-095 |
 | M12 Avaliações | RF-125 | H-086 |
 | | RF-126 | H-087 |
 | | RF-127 | H-091 |
@@ -186,7 +186,7 @@ Todos os RF aprovados ou delegados têm história, exceto RF-121 (fora de escopo
 | | RF-163 | H-120 |
 | | RF-164 | H-118, H-122 |
 
-Observação: RF-122 aparece em H-094 (cota), H-095 (aceite) e H-100 (teste de catálogo). RF-041 usa o e-mail de login com prioridade (H-097).
+Observação: RF-122 aparece em H-094 (cota) e H-095 (aceite). RF-041 usa o e-mail de login com prioridade (H-097).
 
 ---
 
@@ -216,7 +216,7 @@ Observação: RF-122 aparece em H-094 (cota), H-095 (aceite) e H-100 (teste de c
 | I-20 | Concessão monotônica e idempotente | H-045, H-048, H-049 | B-05, B-06 |
 | I-21 | Contadores derivados = recontagem | H-005 | Monitor diário |
 | I-22 | Retirar aceite não libera vaga; sem DELETE | H-061 | C-17 |
-| I-23 | Todo e-mail previsto gera linha no outbox; sem interruptor nem reenvio | H-095, H-100 | N-01 a N-05, N-07 |
+| I-23 | Todo e-mail previsto gera linha no outbox; sem interruptor nem reenvio | H-095 | N-01 a N-05, N-07 |
 | I-24 | Cota por destinatário; `auth` nunca descartado | H-094 | N-08, Q-01, Q-11 |
 | I-25 | Pix e cartão; sem boleto; carência 72 h | H-047, H-050 | B-01 a B-10 |
 | I-26 | Nenhum preço, prazo ou valor em pedido, aceite ou mensagem | H-064 | T-17 |
@@ -272,7 +272,7 @@ Observação: RF-122 aparece em H-094 (cota), H-095 (aceite) e H-100 (teste de c
 | F-01 a F-12 | Falhas | H-117 (e histórias de origem) |
 | I-01 a I-30 | Invariantes | §3 |
 | B-01 a B-10 | Billing e carência 72 h | H-045 a H-052 |
-| N-01 a N-10 | E-mails | H-092 a H-100, H-093 |
+| N-01 a N-10 | E-mails | H-092 a H-099, H-093 |
 | G-01 a G-07 | Geocodificação | H-020 a H-022, H-036 |
 | P-01 a P-06 | Fotos | H-026, H-027, H-056 |
 | M-01, M-02 | Chat sem anexos | H-067 |

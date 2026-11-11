@@ -205,7 +205,7 @@ Bloqueio: <se houver>
 | 108 | H-097 | [E11] E-mail de login com prioridade | `epic:E11`, `wave:4`, `size:M`, `type:feature` | H-011, H-093, H-094 | Objetivo: síncrono, prioridade máxima. Refs: RF-041. Testes: N-05, F-12 |
 | 109 | H-098 | [E11] E-mails de seleção, cancelamento e desistência | `epic:E11`, `wave:4`, `size:M`, `type:feature` | H-092, H-093, H-077 | Objetivo: sem dado sensível; recheque de estado. Refs: RF-118, RF-120. Testes: N-04, N-06 |
 | 110 | H-099 | [E11] Lembretes de prazo, trial e ciclo | `epic:E11`, `wave:4`, `size:M`, `type:feature`, `block:juridico-L2`, `block:juridico-L3` | H-092, H-008, H-044 | Objetivo: T-24h e vencimento. Refs: RF-064, RF-119. Testes: N-04. Parte de cobrança depende de L2/L3 |
-| 111 | H-100 | [E11] Teste de ausência de interruptor | `epic:E11`, `wave:3`, `size:P`, `type:infra` | H-092 | Objetivo: sem flag, rota ou backfill. Refs: RF-122, RF-154, decisão 27. Testes: N-07 |
+| 111 | H-100 | [E11] Teste de ausência de interruptor (**cancelada em 2026-11-11**: não haverá interruptor) | `epic:E11`, `wave:3`, `size:P`, `type:infra` | H-092 | Objetivo: cancelada. Refs: RF-122, RF-154, decisão 27. Testes: N-07 (não aplicável) |
 | 112 | H-101 | [E11] Canal "no site" | `epic:E11`, `wave:3`, `size:P`, `type:feature` | H-068, H-094 | Objetivo: indicador de não lida independente de e-mail. Refs: RF-115, R-27. Testes: Q-01 |
 
 ## 14. Épico E12 — Admin, RBAC, auditoria e financeiro

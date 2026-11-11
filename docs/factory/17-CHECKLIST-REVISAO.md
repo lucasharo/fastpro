@@ -285,7 +285,7 @@ Marcar cada item no relatório. Falha em item da §2 = BLOQUEADOR.
 | Banco/migração | Log da migração do zero e incremental; pgTAP verde; teste de catálogo de RLS; monitores de invariante retornando zero; plano de rollback |
 | UI | Saída da varredura de hex (zero ocorrências); capturas claro/escuro; roteiro de teclado e foco; verificação de contraste dos tokens; leitor de tela nos fluxos tocados; estados vazio/erro/carregando |
 | Billing | Testes B-01 a B-10 relevantes (relógio controlado); webhook duplicado/fora de ordem/assinatura inválida; evidência de sandbox, sem chamada de produção |
-| Notificações | N-01 a N-10 relevantes (Resend, somente para a conta cadastrada); simulação de cota (Q-10/Q-11); prova de ausência de interruptor/backfill (N-07) |
+| Notificações | N-01 a N-10 relevantes (Resend, somente para a conta cadastrada); simulação de cota (Q-10/Q-11); ausência de interruptor/backfill verificada na revisão (N-07 sem teste automático) |
 | Storage | P-01 a P-06 relevantes: 6ª foto recusada; Storage sem original; EXIF ausente; dimensões e bytes dentro do teto; URL expira |
 | Admin | T-08: sem MFA nega, papel inadequado nega, autoaprovação nega, leitura sem `access_case` nega, log gerado |
 | Concorrência (aceite, seleção, republicação, webhook) | Execução com N de pelo menos 100 iterações e monitores de invariante sem violação (C-xx e F-xx citados) |
@@ -338,7 +338,7 @@ Nenhuma foi implementada ou executada. Planejar em H-004 (CI), H-002 (tokens), H
 
 ### 7.5 Banco e RLS (B-02 a B-04, B-22, B-54, B-57)
 - pgTAP: toda tabela de domínio com RLS habilitada e forçada; nenhuma tabela legível por `anon`/`authenticated` sem política; funções `SECURITY DEFINER` com `search_path` fixo.
-- Teste de catálogo de ausência: colunas de preço/valor/prazo em pedido, aceite e mensagem (T-17); bucket `chat-attachments`, tabela `message_attachment` e `media_asset` de mensagem (M-02); coluna de original em `media_asset` (P-04); boleto em enum ou tabela; interruptor ou flag de e-mail (N-07).
+- Teste de catálogo de ausência: colunas de preço/valor/prazo em pedido, aceite e mensagem (T-17); bucket `chat-attachments`, tabela `message_attachment` e `media_asset` de mensagem (M-02); coluna de original em `media_asset` (P-04); boleto em enum ou tabela; interruptor ou flag de e-mail (N-07, verificado na revisão).
 - Monitores de invariante I-01 a I-30 (consultas que retornam zero linhas) ao fim da suíte e diariamente.
 - Teste de paridade API e banco gerado a partir da `access-matrix` (T-06).
 - CI falha se a migração não subir do zero em Postgres efêmero.

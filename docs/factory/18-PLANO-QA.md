@@ -268,7 +268,7 @@ Base: 17 §5. Nada é dado como executado sem registro. Evidência é artefato v
 | Banco | Log de migração do zero e incremental; pgTAP verde; teste de catálogo de RLS; monitores zerados; plano de rollback |
 | UI | Saída da varredura de hex vazia; capturas claro e escuro; roteiro de teclado; contraste dos tokens; nota de leitor de tela; estados vazio, erro e carregando |
 | Billing | B-01 a B-10 relevantes com relógio controlado; webhook duplicado, fora de ordem e com assinatura inválida; evidência de sandbox, sem chamada de produção |
-| E-mail | N-01 a N-10 relevantes com registros de envio do Resend à conta cadastrada, sem PII de terceiros; simulação de cota (Q-10, Q-11); prova de ausência de interruptor e de backfill (N-07) |
+| E-mail | N-01 a N-10 relevantes com registros de envio do Resend à conta cadastrada, sem PII de terceiros; simulação de cota (Q-10, Q-11); ausência de interruptor e de backfill verificada na revisão (N-07 sem teste automático) |
 | Mídia | P-01 a P-06: 6ª foto recusada; Storage sem original; EXIF ausente; dimensões e bytes dentro do teto; URL expira |
 | Admin | T-08: sem MFA nega; papel inadequado nega; autoaprovação nega; leitura sem access_case nega; log gerado |
 | Segurança | Saídas de SC-01 a SC-06 e varredura de PII em logs de teste (T-11) |

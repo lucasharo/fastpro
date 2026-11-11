@@ -191,7 +191,7 @@ Ordem [PROPOSTA]:
 3. **H-065** [M] (somente esquema `conversation` + `recompute_conversations`, ver §3.7) e **H-064** [P] corpo vazio do aceite.
 4. **H-058** [G] aceitar trabalho (lock do pedido, conversa e mensagem de sistema no mesmo COMMIT) -> **H-059** [M] vagas 4+4 -> **H-060** [M] "Chamar mais profissionais" -> **H-061** [M] retirada -> **H-062** [M] encerramento -> **H-063** [P].
 5. **H-066** [M] mensagens de texto -> **H-067** [P] bloqueio total de anexos -> **H-068** [M] mensagem automática "Estou disponível para trabalhar" -> **H-069** [P] -> **H-072** [P] -> **H-070** [M] Realtime como sinal (S-05) -> **H-071** [M] denúncia/bloqueio -> **H-073** [M] acesso excepcional.
-6. **H-095** [M] e-mail de aceite, **H-100** [P] teste de catálogo "sem interruptor", **H-101** [P] canal no site.
+6. **H-095** [M] e-mail de aceite, **H-101** [P] canal no site.
 Saída M1: C-01..C-04b, C-16, M-01, M-02, T-16, T-17, EE-01..EE-03 verdes; N≥100 nas corridas.
 **Esta é a primeira entrega web** (decisão 40): pedido -> aceite -> chat de texto; cobrança real só no M4.
 

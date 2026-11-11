@@ -3,7 +3,7 @@
 | # | Item | Origem | Quando |
 |---|---|---|---|
 | 1 | Definir periodicidade do backup manual do Supabase gratuito (sugestão do Architect: semanal e antes de migração destrutiva) | pergunta 18 / SD-17 | Antes de usar dados reais |
-| 2 | Obter e configurar domínio e verificar no Resend; ligar interruptores de e-mail | pergunta 15/21 | Antes do lançamento |
+| 2 | Obter e configurar domínio e verificar no Resend; ligar envio de e-mail (sem interruptor) | pergunta 15/21 | Antes do lançamento |
 | 3 | Verificar na documentação oficial limites e termos de Vercel (uso comercial, NestJS serverless), Supabase, Resend, Mapbox (licença de geocodificação, SD-02) e Mercado Pago | pergunta 12/16 | Quando a lista de perguntas fechar |
 | 4 | (Superado pela decisão 27: e-mails ativos no código; envio real depende do domínio) | pergunta 27 | Antes do lançamento |
 | 5 | Texto jurídico do aviso "FastPro apenas conecta" nos termos de uso (decisão 22) | pergunta 22 / L2, L7 | Revisão jurídica |

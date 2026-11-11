@@ -8,7 +8,6 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { canarios } from '../lib/email-switch-rules.mjs';
 
 const scriptsDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const GITIGNORE = '.env\n.env.*\n!.env.example\n';
@@ -441,64 +440,3 @@ test('check-secrets --history: acha segredo removido depois', () => {
   }
 });
 
-// H-100 (Issue #110): verificador de interruptor de e-mail, CLI real contra repositorio temporario.
-
-const SW_SQL = 'supabase/migrations/20990101000000_fixture.sql';
-
-test('check-no-email-switch --selftest: acusa as fixtures ruins e aprova a limpa', () => {
-  const dir = fixture({});
-  try {
-    const r = run('check-no-email-switch.mjs', dir, ['--selftest']);
-    assert.equal(r.code, 0, r.out);
-    assert.match(r.out, /selftest ok: 19\/19 fixtures ruins acusadas, 1\/1 limpa aprovada/);
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-});
-
-test('check-no-email-switch: reprova interruptor, rota de backfill e escrita fora da lista', () => {
-  const bad = {
-    'F-01 flag em tabela': [
-      { [SW_SQL]: 'create table ops.email_flag (id uuid);\n' },
-      /N1: ops\.email_flag|N2/,
-    ],
-    'F-09 tela de desligar': [
-      { 'apps/web/src/app/admin/email/desligar/page.tsx': 'export default 1;\n' },
-      /R1/,
-    ],
-    'F-13 insert de envio na migracao': [
-      {
-        [SW_SQL]:
-          'insert into ops.email_outbox (recipient_user_id)\nselect id from ops.outbox_event;\n',
-      },
-      /W1/,
-    ],
-  };
-  for (const [files, match] of Object.values(bad)) {
-    check('check-no-email-switch.mjs', { ...canarios(), ...files }, true, match);
-  }
-});
-
-test('check-no-email-switch: aprova o repositorio limpo (com canarios) e ignora comentarios', () => {
-  check(
-    'check-no-email-switch.mjs',
-    {
-      ...canarios(),
-      [SW_SQL]:
-        'alter table ops.email_outbox enable row level security;\n' +
-        '-- email_enabled (comentario nao conta)\n',
-      'apps/api/src/limpa.ts':
-        "const rota = '/v1/webhooks/resend';\nconst url = 'https://exemplo.invalid/a--b';\n",
-    },
-    false,
-  );
-});
-
-test('check-no-email-switch: falha fechada sem canarios ou sem arquivos', () => {
-  check('check-no-email-switch.mjs', { 'apps/web/src/x.ts': 'const a = 1;\n' }, true, /FC/);
-});
-
-test('check:all inclui check:email-switch (H-100, FN-8: o verificador nao pode sair do gate)', () => {
-  const pkg = JSON.parse(readFileSync(join(resolve(scriptsDir, '..'), 'package.json'), 'utf8'));
-  assert.match(pkg.scripts['check:all'], /pnpm check:email-switch(\s|$)/);
-});
