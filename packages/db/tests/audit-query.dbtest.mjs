@@ -3,7 +3,10 @@
 // (rollback); nunca COMMIT. Valores sinteticos (@example.test). Sem rede, sem e-mail.
 // NAO COBERTO AQUI (pendente, ver relatorio da Issue 113): T-H104-27 (imutabilidade, ja coberta pela
 // bateria de H-006 em audit.dbtest.mjs) e T-H104-28 (plano de consulta com volume).
-// Papel revogado no meio da chamada: o banco devolve 42501 (a API ja devolve 404 antes, pela guarda).
+// Papel revogado no meio da transacao: se era o unico papel ativo, admin_guard nao devolve linha e a
+// funcao levanta ADM30 (API: 404); se o admin ainda tinha outro papel ativo, a linha existe e
+// admin_has_permission(audit.read) e falso: 42501 (API: 403). A API ja barra antes, pela guarda, quando
+// o papel esta revogado no momento da requisicao (CA-H104-07).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID, createHash } from 'node:crypto';
@@ -75,6 +78,33 @@ async function sessao(userId, nowMs) {
   ]);
   assert.equal(rows[0].ok, true, 'sessao de teste aberta');
   return secret;
+}
+
+/** Papel adicional ativo (bootstrap, sem concedente), para o caso de admin com mais de um papel. */
+async function papelExtra(userId, role) {
+  await client.query(
+    `insert into app.admin_user_role (id, user_id, role_code, granted_by, grant_origin, granted_at, approval_request_id)
+     values (gen_random_uuid(), $1, $2, null, 'bootstrap', now(), null)`,
+    [userId, role],
+  );
+}
+
+/** Sessao gravada direto em app.admin_session, sem auditoria: a fixture nao pode tomar o lock da cabeca. */
+async function sessaoDireta(userId, nowMs) {
+  const secret = sha(randomUUID());
+  const t = new Date(nowMs).toISOString();
+  await client.query(
+    `insert into app.admin_session (id, user_id, secret_hash, aal2_at, totp_at, created_at, expires_at)
+     values ($1, $2, $3, $4::timestamptz, $4::timestamptz, $4::timestamptz, $4::timestamptz + interval '8 hours')`,
+    [randomUUID(), userId, secret, t],
+  );
+  return secret;
+}
+
+/** Cabeca da cadeia (sem lock): ultimo seq e ultimo hash. */
+async function cabeca(c = client) {
+  const r = await c.query('select last_seq::text as seq, last_hash from audit.chain_head where id');
+  return r.rows[0];
 }
 
 /** Semeia um evento pela porta de escrita real (private.audit_append). Devolve seq e instante exato. */
@@ -281,28 +311,58 @@ test('T-H104-23 registro da consulta: filtros e contagem, sem conteudo lido; res
   });
 });
 
-test('T-H104-24 falha fecha no banco: sem dado devolvido e sem entrada quando a gravacao falha', async () => {
+test('T-H104-24 falha fecha no banco: sem dado devolvido, sem entrada e chain_head inalterado', async () => {
+  const headFora = await cabeca();
   await tx(async () => {
     const now = Date.now();
-    const win = await janela();
     const ator = await staffComPapel('auditor');
     const seg = await sessao(ator, now);
     await semear(randomUUID(), 'consent.changed', 'contact_consent', randomUUID(), {}, { scope: 'x', granted: 'sim' });
     await client.query("update audit.action_catalog set active = false where action = 'audit.queried'");
     const antes = await contaConsultas(ator);
+    const headAntes = await cabeca();
     const err = await falha(
       'select private.audit_query($1, $2, $3, $4, null, null, null, 0, 50, $5) as r',
       [ator, seg, new Date(now - HORA).toISOString(), new Date(now + HORA).toISOString(), new Date(now).toISOString()],
     );
     assert.ok(err, 'a consulta falha quando a entrada nao pode ser gravada');
     assert.equal(await contaConsultas(ator), antes, 'nenhuma entrada nova');
+    assert.deepEqual(await cabeca(), headAntes, 'chain_head inalterado apos a falha');
   });
+  assert.deepEqual(await cabeca(), headFora, 'apos o ROLLBACK, chain_head igual ao de antes da transacao');
 });
 
-test('T-H104-25 autoridade no banco: sessao inexistente, papel sem audit.read: negado, sem entrada', async () => {
+test('T-H104-24b falha fecha com lock_timeout: cabeca da cadeia travada por outra sessao (5 s, 55P03)', async () => {
+  const outra = await connect();
+  try {
+    await tx(async () => {
+      const now = Date.now();
+      const ator = await staffComPapel('auditor');
+      const seg = await sessaoDireta(ator, now);
+      await outra.query('begin');
+      try {
+        await outra.query('select last_seq from audit.chain_head where id for update');
+        const antes = await contaConsultas(ator);
+        const headAntes = await cabeca();
+        const err = await falha(
+          'select private.audit_query($1, $2, $3, $4, null, null, null, 0, 50, $5) as r',
+          [ator, seg, new Date(now - HORA).toISOString(), new Date(now + HORA).toISOString(), new Date(now).toISOString()],
+        );
+        assert.equal(err?.code, '55P03', 'a gravacao esgota o lock_timeout da cabeca');
+        assert.equal(await contaConsultas(ator), antes, 'nenhuma entrada nova');
+        assert.deepEqual(await cabeca(), headAntes, 'chain_head inalterado apos o lock_timeout');
+      } finally {
+        await outra.query('rollback');
+      }
+    });
+  } finally {
+    await outra.end();
+  }
+});
+
+test('T-H104-25 autoridade no banco: sessao inexistente, vencida, revogada, papel sem audit.read e revogacao imediata', async () => {
   await tx(async () => {
     const now = Date.now();
-    const win = await janela();
     const ator = await staffComPapel('auditor');
     const seg = await sessao(ator, now);
     const financeiro = await staffComPapel('financeiro');
@@ -313,16 +373,55 @@ test('T-H104-25 autoridade no banco: sessao inexistente, papel sem audit.read: n
     const args = (u, s) => [u, s, new Date(now - HORA).toISOString(), new Date(now + HORA).toISOString(), null, null, null, 0, 50, new Date(now).toISOString()];
     const sql = 'select private.audit_query($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) as r';
 
+    // Controle positivo: com sessao valida e audit.read a consulta passa. Sem ele, as negativas seriam vacuas.
+    const controle = await consulta(ator, seg, now, { from: new Date(now - HORA).toISOString(), to: new Date(now + HORA).toISOString() });
+    assert.ok(controle.consulta_id, 'controle: sessao valida e audit.read passam');
+    const antes = await contaConsultas(ator);
+    assert.equal(antes, 1, 'controle gravou uma entrada');
+
     const semSessao = await falha(sql, args(ator, sha('nao-existe')));
-    assert.equal(semSessao?.code, 'ADM30');
+    assert.equal(semSessao?.code, 'ADM30', 'sessao inexistente');
+
+    const segVencida = await sessao(ator, now - 9 * HORA);
+    const vencida = await falha(sql, args(ator, segVencida));
+    assert.equal(vencida?.code, 'ADM30', 'sessao vencida (expires_at antes de now)');
+
+    const segRevogada = await sessao(ator, now);
+    await client.query('update app.admin_session set revoked_at = now() where secret_hash = $1', [segRevogada]);
+    const revogada = await falha(sql, args(ator, segRevogada));
+    assert.equal(revogada?.code, 'ADM30', 'sessao revogada');
+
     const fin = await falha(sql, args(financeiro, segFin));
-    assert.equal(fin?.code, '42501');
+    assert.equal(fin?.code, '42501', 'financeiro sem audit.read');
     const sup = await falha(sql, args(superadmin, segSup));
     assert.equal(sup?.code, '42501', 'superadmin nao herda audit.read');
 
-    assert.equal(await contaConsultas(ator), 0);
-    assert.equal(await contaConsultas(financeiro), 0);
-    assert.ok(seg);
+    // Revogacao do unico papel dentro da transacao: a sessao continua valida, mas a proxima chamada cai (ADM30).
+    await client.query(
+      'update app.admin_user_role set revoked_at = now(), revoked_by = $2 where user_id = $1 and role_code = $3',
+      [ator, superadmin, 'auditor'],
+    );
+    const aposRevogar = await falha(sql, args(ator, seg));
+    assert.equal(aposRevogar?.code, 'ADM30', 'papel unico revogado: sem linha na guarda, ADM30 (efeito imediato)');
+
+    // Admin com outro papel ativo: a linha da guarda existe, mas audit.read falta: 42501.
+    const dual = await staffComPapel('auditor');
+    await papelExtra(dual, 'financeiro');
+    const segDual = await sessao(dual, now);
+    const controleDual = await consulta(dual, segDual, now, { from: new Date(now - HORA).toISOString(), to: new Date(now + HORA).toISOString() });
+    assert.ok(controleDual.consulta_id, 'controle: papel auditor ativo passa antes da revogacao');
+    const antesDual = await contaConsultas(dual);
+    await client.query(
+      'update app.admin_user_role set revoked_at = now(), revoked_by = $2 where user_id = $1 and role_code = $3',
+      [dual, superadmin, 'auditor'],
+    );
+    const dualSemAuditor = await falha(sql, args(dual, segDual));
+    assert.equal(dualSemAuditor?.code, '42501', 'outro papel ativo, sem audit.read: 42501');
+
+    // Nenhuma das recusas gravou entrada (so os dois controles).
+    assert.equal(await contaConsultas(ator), antes, 'nenhuma entrada nova para o Auditor depois do controle');
+    assert.equal(await contaConsultas(financeiro), 0, 'financeiro sem entrada');
+    assert.equal(await contaConsultas(dual), antesDual, 'nenhuma entrada nova depois da revogacao');
   });
 });
 
