@@ -9,3 +9,6 @@ export * from './challenge-consume.js';
 export * from './session.js';
 // H-104 (Issue 113) | Adaptadores Pg da consulta a auditoria (private.audit_query).
 export * from './admin-audit.js';
+
+// H-019 | Adaptadores Pg da busca de servico (limite de taxa e transacao curta).
+export * from './catalog-search.js';
