@@ -1,5 +1,7 @@
-// Logica pura do backup manual (H-010; desenho 28-DESENHO-H010.md §1). Sem conexao e sem processo:
-// nomes, manifesto, retencao, identificacao do alvo (BK-09), leitura do texto do restore e comparacao.
+// Logica pura do backup manual de DADOS (H-010; desenho 28-DESENHO-H010.md §1, ajustado pela decisao
+// do Orquestrador: sem binarios do PostgreSQL; a estrutura vem das migracoes versionadas).
+// Sem conexao e sem processo: nomes, formato do texto claro, verificacao, manifesto, retencao,
+// identificacao do alvo (BK-09) e pre-checagem de privilegios (BK-01, D4).
 // Nunca guarda nem imprime valor de variavel de ambiente, senha, frase-senha ou host.
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
@@ -15,19 +17,19 @@ export const EXCLUDED_SCHEMAS = [
   'pgsodium',
   'cron',
   'net',
-  'supabase_*',
-  'pg_*',
   'information_schema',
+  'pg_*',
 ];
-export const EXTENSIONS = ['postgis', 'pg_trgm', 'unaccent', 'citext', 'btree_gist'];
 export const WEEKLY_KEEP = 4; // D2: 4 semanais; as de migracao destrutiva nao entram no limite
 export const MAX_AGE_DAYS = 7; // BK-07: "vencido" a partir de 7 dias
 export const MOTIVOS = ['semanal', 'pre-migracao-destrutiva'];
 export const ARTIFACT_PREFIX = 'fastpro-dev-';
-export const ARTIFACT_SUFFIX = '.dump.gpg';
+export const ARTIFACT_SUFFIX = '.dados.gpg';
 export const MANIFEST_SUFFIX = '.manifest.json';
 export const PASSPHRASE_NAME = 'BACKUP_PASSPHRASE'; // so o nome vai ao manifesto, nunca o valor
 export const MIN_PASSPHRASE_LENGTH = 12;
+export const READER_ROLE = 'app_backup_reader';
+export const FORMAT = 'fastpro-dados-jsonl-1';
 
 const REF = /^[a-z0-9]{20}$/;
 
@@ -81,22 +83,99 @@ export function assertExpectedTarget(connectionString, expectedRef) {
   return true;
 }
 
-/** Credenciais e parametros do pg_dump/pg_restore a partir da URL (nunca na linha de comando). */
-export function pgEnvFromUrl(connectionString) {
-  const url = new URL(connectionString);
-  // Nome da variavel montado em partes: o valor vem da URL em tempo de execucao, nunca do codigo.
-  const passKey = ['PG', 'PASSWORD'].join('');
-  const env = {
-    PGHOST: url.hostname,
-    PGPORT: url.port || '5432',
-    PGUSER: decodeURIComponent(url.username),
-    PGDATABASE: decodeURIComponent(url.pathname.replace(/^\//, '')) || 'postgres',
-    PGCONNECT_TIMEOUT: '15',
-  };
-  env[passKey] = decodeURIComponent(url.password);
-  const sslmode = url.searchParams.get('sslmode');
-  if (sslmode) env.PGSSLMODE = sslmode;
-  return env;
+/**
+ * Pre-checagem do papel de leitura (D4, BK-01, T-BK-08, T-BK-09, T-BK-11). `info` vem de consultas
+ * ao catalogo: papel atual, BYPASSRLS, e para cada tabela de dominio se tem SELECT e se tem escrita.
+ * Lanca erro (sem detalhar nomes de tabela fora da lista) se algo estiver fora do desenho.
+ */
+export function assertReaderPrivileges(info) {
+  if (info.role !== READER_ROLE)
+    throw new Error('conexao nao e o papel de leitura do backup (recusado)');
+  if (info.bypassrls !== true) {
+    throw new Error('papel de leitura sem BYPASSRLS: o backup sairia incompleto (recusado)');
+  }
+  const semLeitura = info.tables.filter((t) => !t.select).length;
+  if (semLeitura > 0) {
+    throw new Error(`${semLeitura} tabela(s) de dominio sem SELECT ao papel de leitura (recusado)`);
+  }
+  const comEscrita = info.tables.filter((t) => t.write).length;
+  if (comEscrita > 0) throw new Error('papel de leitura tem privilegio de escrita (recusado)');
+  return true;
+}
+
+/** Linha de cabecalho de tabela no texto claro. */
+export function headerLine(table) {
+  return `${JSON.stringify({ tabela: table, inicio: 1 })}\n`;
+}
+
+/** Linha de uma tupla: a tupla ja vem como texto JSON (row_to_json::text). */
+export function rowLine(table, rowJson) {
+  return `{"tabela":${JSON.stringify(table)},"linha":${rowJson}}\n`;
+}
+
+/** Linha de fechamento com a contagem que o exportador declara para a tabela. */
+export function footerLine(table, count) {
+  return `${JSON.stringify({ tabela: table, fim: count })}\n`;
+}
+
+/**
+ * Le o texto claro linha a linha e confere: cada tabela tem cabecalho, as linhas batem com o "fim"
+ * declarado, e nao ha tabela sem fechamento. Retorna as contagens lidas e os problemas.
+ */
+export class PlainCounter {
+  constructor() {
+    this.counts = new Map();
+    this.declared = new Map();
+    this.open = null;
+    this.problems = [];
+  }
+
+  feed(line) {
+    if (line === '') return;
+    let obj;
+    try {
+      obj = JSON.parse(line);
+    } catch {
+      this.problems.push('linha invalida no texto claro');
+      return;
+    }
+    if (obj.inicio === 1) {
+      if (this.open !== null) this.problems.push(`tabela sem fechamento: ${this.open}`);
+      this.open = obj.tabela;
+      this.counts.set(obj.tabela, 0);
+    } else if (obj.fim !== undefined) {
+      if (this.open !== obj.tabela) this.problems.push(`fechamento fora de ordem: ${obj.tabela}`);
+      this.declared.set(obj.tabela, obj.fim);
+      this.open = null;
+    } else if (obj.linha !== undefined) {
+      if (this.open !== obj.tabela) this.problems.push(`linha fora de bloco: ${obj.tabela}`);
+      this.counts.set(obj.tabela, (this.counts.get(obj.tabela) ?? 0) + 1);
+    } else {
+      this.problems.push('linha desconhecida no texto claro');
+    }
+  }
+
+  finish() {
+    if (this.open !== null) this.problems.push(`tabela sem fechamento: ${this.open}`);
+    for (const [table, n] of this.counts) {
+      if (this.declared.get(table) !== n)
+        this.problems.push(`contagem interna divergente: ${table}`);
+    }
+    return { counts: this.counts, problems: this.problems };
+  }
+}
+
+/** Compara contagens esperadas (catalogo/manifesto) com as lidas. Retorna divergencias (sem valores). */
+export function compareCounts(expected, actual) {
+  const problems = [];
+  for (const [table, n] of Object.entries(expected)) {
+    if (!actual.has(table)) problems.push(`tabela ausente: ${table}`);
+    else if (actual.get(table) !== n) problems.push(`contagem divergente: ${table}`);
+  }
+  for (const table of actual.keys()) {
+    if (!(table in expected)) problems.push(`tabela extra: ${table}`);
+  }
+  return problems;
 }
 
 export function sha256Stream(path) {
@@ -109,116 +188,53 @@ export function sha256Stream(path) {
   });
 }
 
-/** Versao do pg_dump ("pg_dump (PostgreSQL) 17.11") em numero comparavel (170011). */
-export function versionNum(text) {
-  const m = /(\d+)(?:\.(\d+))?/.exec(text ?? '');
-  if (!m) return null;
-  const major = Number(m[1]);
-  const minor = Number(m[2] ?? 0);
-  return major >= 10 ? major * 10000 + minor : major * 10000 + minor * 100;
-}
-
 /**
- * Le as linhas do pg_restore --list e devolve o conjunto "esquema.tabela" com TABLE DATA.
- * Ex.: "1234; 0 16384 TABLE DATA app pedido owner".
+ * Situacao das exportacoes (BK-07, BK-08, D2). Cada manifesto recebe `valido` (arquivo existe e o
+ * hash do cifrado confere; calculado pelo chamador). Nunca apaga: so informa o excedente.
  */
-export function tablesFromRestoreList(text) {
-  const found = new Set();
-  for (const line of text.split(/\r?\n/)) {
-    const m = /\sTABLE DATA (\S+) (\S+) /.exec(line);
-    if (m) found.add(`${m[1]}.${m[2]}`);
-  }
-  return found;
-}
-
-/**
- * Conta linhas de dados em cada bloco "COPY esquema.tabela (...) FROM stdin;" ate a linha "\.".
- * Recebe linhas uma a uma (streaming), para nao manter o dump inteiro em memoria.
- */
-export class CopyCounter {
-  constructor() {
-    this.counts = new Map();
-    this.current = null;
-  }
-
-  feed(line) {
-    if (this.current === null) {
-      const m = /^COPY (\S+?)(?: \(|\s)[^\n]*FROM stdin;$/.exec(line);
-      if (m) {
-        this.current = unquote(m[1]);
-        this.counts.set(this.current, 0);
-      }
-      return;
-    }
-    if (line === '\\.') {
-      this.current = null;
-      return;
-    }
-    this.counts.set(this.current, this.counts.get(this.current) + 1);
-  }
-}
-
-function unquote(qualified) {
-  return qualified.replace(/"/g, '');
-}
-
-/** Compara contagens esperadas (manifesto/snapshot) com as lidas do dump. Retorna divergencias. */
-export function compareCounts(expected, actual) {
-  const problems = [];
-  for (const [table, n] of Object.entries(expected)) {
-    if (!actual.has(table)) problems.push(`tabela ausente no dump: ${table}`);
-    else if (actual.get(table) !== n) problems.push(`contagem divergente: ${table}`);
-  }
-  for (const table of actual.keys()) {
-    if (!(table in expected)) problems.push(`tabela extra no dump: ${table}`);
-  }
-  return problems;
-}
-
-/**
- * Situacao das exportacoes (BK-07, BK-08, D2). `manifests` = objetos lidos dos manifestos;
- * `isValid(m)` confere se o arquivo existe e o hash do cifrado confere (feito pelo chamador).
- * Nunca decide apagar: so informa o excedente.
- */
-export function retentionReport(manifests, isValid, now, currentMigration) {
+export function retentionReport(manifests, now, currentMigration) {
   const valid = manifests
-    .filter((m) => m.resultado === 'ok' && isValid(m))
+    .filter((m) => m.resultado === 'ok' && m.valido === true)
     .map((m) => ({ ...m, criadoEm: parseStamp(m.criado_em) }))
     .filter((m) => m.criadoEm)
     .sort((a, b) => b.criadoEm - a.criadoEm);
   const last = valid[0] ?? null;
-  const ageDays = last ? Math.floor((now - last.criadoEm) / 86400000) : null;
   const weekly = valid.filter((m) => m.motivo === 'semanal');
   return {
     ultimaValida: last
-      ? { arquivo: last.arquivo, criadoEm: last.criadoEm, idadeDias: ageDays }
+      ? {
+          arquivo: last.arquivo,
+          criadoEm: last.criadoEm,
+          idadeDias: Math.floor((now - last.criadoEm) / 86400000),
+        }
       : null,
     vencido: last === null || now - last.criadoEm >= MAX_AGE_DAYS * 86400000,
     excedente: weekly.slice(WEEKLY_KEEP).map((m) => m.arquivo),
     paraMigracao: valid.some((m) => m.ultima_migracao === currentMigration),
-    invalidas: manifests.filter((m) => m.resultado !== 'ok' || !isValid(m)).map((m) => m.arquivo),
+    invalidas: manifests
+      .filter((m) => !(m.resultado === 'ok' && m.valido === true))
+      .map((m) => m.arquivo),
   };
 }
 
 export function buildManifest(data) {
   return {
     schema_manifesto: 1,
+    formato: FORMAT,
     exec_id: data.execId,
     criado_em: stamp(data.criadoEm),
     resultado: data.resultado,
-    etapa_falha: data.etapaFalha ?? null,
     motivo: data.motivo,
     arquivo: data.arquivo,
     sha256_cifrado: data.sha256Cifrado,
     sha256_claro: data.sha256Claro,
     chave: PASSPHRASE_NAME,
     cifra: 'gpg --symmetric --cipher-algo AES256',
-    schemas_incluidos: [...DOMAIN_SCHEMAS, 'extensions'],
+    escopo: 'dados (estrutura versionada nas migracoes)',
+    schemas_incluidos: DOMAIN_SCHEMAS,
     schemas_excluidos: EXCLUDED_SCHEMAS,
-    extensoes: EXTENSIONS,
     ultima_migracao: data.ultimaMigracao,
     versao_servidor: data.versaoServidor,
-    versao_pg_dump: data.versaoPgDump,
     contagens: data.contagens,
   };
 }
