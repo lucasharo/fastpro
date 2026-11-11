@@ -14,6 +14,7 @@ import {
   windowSecondsFrom,
   WINDOW_SETTING,
   type Category,
+  type AlertLevel,
   type ClockPort,
   type DigestCategory,
   type EmailProviderPort,
@@ -49,6 +50,60 @@ export interface NotificationDeps {
   readonly clock: ClockPort;
   /** Producao: o banco decide o instante (clock_timestamp). Testes: false, com o ClockPort. */
   readonly useDbClock: boolean;
+  /**
+   * Ponto de injecao (H-094, 59-DESENHO §2.4): chamado so quando um contador SOBE de nivel (70 ou 85),
+   * uma vez por subida. So informa; o envio nao le isto. Sem dado pessoal: periodo, nivel e uso.
+   */
+  readonly onQuotaAlert?: (alerta: QuotaAlert) => void;
+}
+
+/** Evento de alerta de cota (H-094). Nao contem destinatario, endereco nem texto. */
+export interface QuotaAlert {
+  readonly period: 'dia_utc' | 'mes';
+  readonly level: 1 | 2;
+  readonly used: number;
+}
+
+/** Resultado da gravacao de alerta: se cada contador subiu de nivel nesta chamada. */
+export interface AlertsRecorded {
+  readonly diaSubiu: boolean;
+  readonly mesSubiu: boolean;
+  readonly nivelDia: AlertLevel;
+  readonly nivelMes: AlertLevel;
+}
+
+/** Monta o evento so quando ha nivel (0 nao alerta). */
+function quotaAlertFor(
+  period: QuotaAlert['period'],
+  level: AlertLevel,
+  used: number,
+): QuotaAlert | null {
+  if (level === 0) return null;
+  return { period, level, used };
+}
+
+/**
+ * Grava os niveis de alerta dos contadores do dia e do mes e emite onQuotaAlert so nas subidas
+ * (H-094, 59-DESENHO §2.2 e §4). Abaixo de 70% nos dois contadores nao ha escrita no banco.
+ */
+export async function registrarAlertasDeCota(
+  d: Pick<NotificationDeps, 'onQuotaAlert'>,
+  store: { recordAlerts(dia: AlertLevel, mes: AlertLevel): Promise<AlertsRecorded> },
+  usadoDia: number,
+  usadoMes: number,
+): Promise<void> {
+  const nivelDia = alertLevelFor(usadoDia, PROVIDER_LIMITS.dia);
+  const nivelMes = alertLevelFor(usadoMes, PROVIDER_LIMITS.mes);
+  if (nivelDia === 0 && nivelMes === 0) return;
+  const sobe = await store.recordAlerts(nivelDia, nivelMes);
+  if (sobe.diaSubiu) {
+    const a = quotaAlertFor('dia_utc', nivelDia, usadoDia);
+    if (a) d.onQuotaAlert?.(a);
+  }
+  if (sobe.mesSubiu) {
+    const a = quotaAlertFor('mes', nivelMes, usadoMes);
+    if (a) d.onQuotaAlert?.(a);
+  }
 }
 
 export type Drop = { readonly id: string; readonly motivo: Exclude<Verdict, 'valido'> };
@@ -330,11 +385,19 @@ export class PgNotificationStore {
     ]);
   }
 
-  async recordAlerts(levelDay: number, levelMonth: number): Promise<void> {
-    await this.db.query(
-      'select private.email_quota_registrar_alerta($1::smallint, $2::smallint, $3::timestamptz)',
+  async recordAlerts(levelDay: AlertLevel, levelMonth: AlertLevel): Promise<AlertsRecorded> {
+    const res = await this.db.query(
+      'select * from private.email_quota_registrar_alerta($1::smallint, $2::smallint, $3::timestamptz)',
       [levelDay, levelMonth, this.now()],
     );
+    const r = first(res.rows);
+    if (!r) return { diaSubiu: false, mesSubiu: false, nivelDia: 0, nivelMes: 0 };
+    return {
+      diaSubiu: r.out_dia_subiu === true,
+      mesSubiu: r.out_mes_subiu === true,
+      nivelDia: Number(r.out_nivel_dia) as AlertLevel,
+      nivelMes: Number(r.out_nivel_mes) as AlertLevel,
+    };
   }
 }
 
@@ -505,10 +568,7 @@ export async function processOutbox(
       );
       return;
     }
-    await store.recordAlerts(
-      alertLevelFor(r.usadoDia, PROVIDER_LIMITS.dia, 90),
-      alertLevelFor(r.usadoMes, PROVIDER_LIMITS.mes, 2700),
-    );
+    await registrarAlertasDeCota(d, store, r.usadoDia, r.usadoMes);
   }
 
   await pacer.wait();

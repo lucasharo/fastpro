@@ -44,15 +44,17 @@ export function decideQuota(
   return { allow: true, blockedBy: null };
 }
 
-export type AlertLevel = 0 | 1 | 2 | 3;
+/** Limiares de alerta em % do limite do provedor (H-094; 59-DESENHO §2.1). Sem 95%: o corte 90/2.700 e da classe critico. */
+export const ALERT_THRESHOLDS_PCT = Object.freeze({ nivel1: 70, nivel2: 85 });
+
+export type AlertLevel = 0 | 1 | 2;
 
 /**
- * Nivel de alerta de um contador: 1 ao chegar a 70%, 2 a 85%, 3 a 95% do limite, e 3 tambem ao
- * chegar ao degrau critico absoluto (90 no dia, 2.700 no mes; 35 §7).
+ * Nivel de alerta de um contador: 1 ao chegar a 70% do limite e 2 a partir de 85%. So informa:
+ * nao bloqueia envio (a decisao usa decideQuota com QUOTA_CUTS). Aritmetica inteira.
  */
-export function alertLevelFor(used: number, limit: number, criticalAt: number): AlertLevel {
-  if (used >= criticalAt || used * 100 >= limit * 95) return 3;
-  if (used * 100 >= limit * 85) return 2;
-  if (used * 100 >= limit * 70) return 1;
+export function alertLevelFor(used: number, limit: number): AlertLevel {
+  if (used * 100 >= limit * ALERT_THRESHOLDS_PCT.nivel2) return 2;
+  if (used * 100 >= limit * ALERT_THRESHOLDS_PCT.nivel1) return 1;
   return 0;
 }
