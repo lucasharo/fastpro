@@ -26,7 +26,7 @@ E-mail ──> GET /acesso#t=TOKEN   (o servidor vê só "/acesso"; o fragmento 
 - **POST** `/v1/auth/challenges/consume`, corpo JSON `{"token": string}` **e nada mais**.
   1. Cabeçalhos antes de ler o corpo: `Content-Type: application/json` (senão 415) e `Origin` igual à origem de `SITE_URL` (senão 403 `origem_invalida`, **sem consumir**); `Sec-Fetch-Site`, quando presente, deve ser `same-origin`. Sem CORS (nenhum `Access-Control-Allow-*`).
   2. Corpo ≤ 1 KiB e chaves exatamente `{token}`. Qualquer outra chave (inclusive `code`, `email`) ou `token` que não seja texto de até 512 caracteres → **422** `{"code":"pedido_invalido"}`, sem consumir e sem sessão (CA-H012-09).
-  3. `token_hash = SHA-256(token)` calculado **para qualquer texto** (formato errado não desvia o caminho) e **uma** chamada a `auth_challenge_consume_link` (CA-H012-06/08). A exclusividade vem do `FOR UPDATE` já testado em T-H011-23: 20 POSTs simultâneos → 1 `ok`.
+  3. Hash do token (SHA-256 do token) calculado **para qualquer texto** (formato errado não desvia o caminho) e **uma** chamada a `auth_challenge_consume_link` (CA-H012-06/08). A exclusividade vem do `FOR UPDATE` já testado em T-H011-23: 20 POSTs simultâneos → 1 `ok`.
   4. `invalido` → resposta uniforme (§2). `ok` → decifrar `email_enc` (AAD `email_enc`) → criar/vincular a conta (§4) → abrir a etapa de identificação (§3) → **200** `{"status":"identificado"}` com `Set-Cookie` da etapa.
 - **Ordem fixa e consumo primeiro.** O consumo precede a criação da conta, não o contrário: só assim o uso único é garantido pelo banco. O custo é a falha do §4.
 
