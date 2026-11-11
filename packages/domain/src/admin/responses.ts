@@ -45,3 +45,5 @@ export const ADMIN_CREDENTIALS_INVALID: AdminResponse = adminReply(401, {
 export const ADMIN_PERMISSION_DENIED: AdminResponse = adminReply(403, { code: 'permission_denied' });
 export const ADMIN_ORIGIN_INVALID: AdminResponse = adminReply(403, { code: 'origem_invalida' });
 export const ADMIN_RATE_LIMITED: AdminResponse = adminReply(429, { code: 'muitas_tentativas' });
+/** Consultas da auditoria acima do limite por admin (H-104, 63 R-2). Sem entrada na trilha. */
+export const ADMIN_QUERY_RATE_LIMITED: AdminResponse = adminReply(429, { code: 'muitas_consultas' });

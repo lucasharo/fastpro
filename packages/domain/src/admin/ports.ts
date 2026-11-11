@@ -105,6 +105,17 @@ export interface AdminLoginLimits {
   recordFailure(input: { readonly email: string; readonly ip: string }, nowMs: number): Promise<void>;
 }
 
+/**
+ * Limite de consultas da auditoria (H-104, 63 R-2 e D-H104-9), mesmo formato do limite de login (H-015):
+ * contador por admin. O dominio passa o inicio da janela (agora - 5 min); o adaptador conta as consultas
+ * aceitas com instante >= sinceMs. A conferencia e o registro devem ser atomicos no banco (adaptador
+ * pendente: ver relatorio da Issue 113).
+ */
+export interface AuditQueryRateLimit {
+  counts(adminUserId: string, sinceMs: number): Promise<number>;
+  record(adminUserId: string, nowMs: number): Promise<void>;
+}
+
 export interface AdminLogEntry {
   readonly evento: string;
   readonly resultado: string;

@@ -42,6 +42,15 @@ export function adminLoginBlocked(counts: { readonly email: number; readonly ip:
   return counts.email >= ADMIN_LOGIN_EMAIL_LIMIT || counts.ip >= ADMIN_LOGIN_IP_LIMIT;
 }
 
+/** Consultas a auditoria por admin (H-104, 63 R-2 e D-H104-9): 30 consultas em 5 min, mesmo padrao do H-015. */
+export const AUDIT_QUERY_RATE_LIMIT = 30;
+export const AUDIT_QUERY_RATE_WINDOW_MS = 5 * 60 * 1000;
+
+/** Recusa de consulta por limite: ao atingir o teto a consulta nao e feita e nao entra na trilha. */
+export function auditQueryBlocked(count: number): boolean {
+  return count >= AUDIT_QUERY_RATE_LIMIT;
+}
+
 /** Convite em uso: depois de quantas tentativas erradas o convite e invalidado. */
 export function adminCodeAttemptsExhausted(attempts: number): boolean {
   return attempts >= ADMIN_INVITE_MAX_CODE_ATTEMPTS;

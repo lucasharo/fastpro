@@ -1,18 +1,24 @@
 // H-104 (Issue 113) | Testes do dominio da consulta a auditoria (docs/factory/63-DESENHO-H104.md §5):
 // T-H104-01 (validacao 422), T-H104-02 (404 e 403 sem chamar o banco), T-H104-04 (falha fecha, 503),
-// T-H104-05 (sentinelas e lista fechada de campos). T-H104-03 (matriz de rotas) depende da rota de
-// producao, que nao e ligada nesta etapa: NAO coberto aqui. Sem rede, sem banco, relogio injetado.
+// T-H104-05 (sentinelas e lista fechada de campos), T-H104-06 (limite de 30 consultas em 5 min por admin,
+// 429 muitas_consultas sem leitura e sem trilha; porta AuditQueryRateLimit, D-H104-9 / 63 R-2).
+// T-H104-03 (matriz de rotas) depende da rota de producao, que nao e ligada nesta etapa: NAO coberto aqui.
+// Sem rede, sem banco, relogio injetado.
 import { describe, it, expect, vi } from 'vitest';
 import {
   ADMIN_NOT_FOUND,
   ADMIN_PERMISSION_DENIED,
+  ADMIN_QUERY_RATE_LIMITED,
   AUDIT_QUERY_EVENT_FIELDS,
   AUDIT_QUERY_MAX_MS,
+  AUDIT_QUERY_RATE_LIMIT,
+  AUDIT_QUERY_RATE_WINDOW_MS,
   handleAuditQuery,
   parseAuditQueryBody,
   type AdminGuardRecord,
   type AuditQueryPage,
   type AuditQueryPort,
+  type AuditQueryRateLimit,
 } from '../src/admin/index.js';
 
 const T0 = Date.parse('2099-01-01T12:00:00.000Z');
@@ -50,6 +56,31 @@ function portaFake(page?: Partial<AuditQueryPage>, erro?: unknown) {
   });
   return { query } as unknown as AuditQueryPort & { query: ReturnType<typeof vi.fn> };
 }
+
+interface RegistroLimite {
+  readonly adminUserId: string;
+  readonly atMs: number;
+}
+
+/** Limite em memoria: conta as consultas do admin com instante >= sinceMs (mesmo contrato da porta). */
+function limitesFake(registros: readonly RegistroLimite[] = []) {
+  const lista: RegistroLimite[] = [...registros];
+  const counts = vi.fn(
+    async (adminUserId: string, sinceMs: number) =>
+      lista.filter((r) => r.adminUserId === adminUserId && r.atMs >= sinceMs).length,
+  );
+  const record = vi.fn(async (adminUserId: string, nowMs: number) => {
+    lista.push({ adminUserId, atMs: nowMs });
+  });
+  const limits: AuditQueryRateLimit = { counts, record };
+  return { limits, counts, record };
+}
+
+/** Dependencias do manipulador: porta de consulta falsa e limite em memoria (vazio por padrao). */
+const dep = (port: AuditQueryPort, limits: AuditQueryRateLimit = limitesFake().limits) => ({
+  query: port,
+  limits,
+});
 
 describe('T-H104-01 validacao do corpo (422, sem eco do valor)', () => {
   it('corpo que nao e objeto e corpo_invalido', () => {
@@ -134,8 +165,8 @@ describe('T-H104-02 manipulador: 404 e 403 sem consultar o banco', () => {
 
   it('sem sessao (linha nula) ou sem segredo: 404 identico ao de rota inexistente', async () => {
     const port = portaFake();
-    const semLinha = await handleAuditQuery({ row: null, secret: 'segredo-sintetico', body: corpo() }, port, agora);
-    const semSegredo = await handleAuditQuery({ row: linhaAuditor(), secret: null, body: corpo() }, port, agora);
+    const semLinha = await handleAuditQuery({ row: null, secret: 'segredo-sintetico', body: corpo() }, dep(port), agora);
+    const semSegredo = await handleAuditQuery({ row: linhaAuditor(), secret: null, body: corpo() }, dep(port), agora);
     expect(semLinha).toEqual(ADMIN_NOT_FOUND);
     expect(semSegredo).toEqual(ADMIN_NOT_FOUND);
     expect(port.query).not.toHaveBeenCalled();
@@ -150,7 +181,7 @@ describe('T-H104-02 manipulador: 404 e 403 sem consultar o banco', () => {
       linhaAuditor({ roles: [] }),
     ];
     for (const row of casos) {
-      const res = await handleAuditQuery({ row, secret: 's', body: corpo() }, port, agora);
+      const res = await handleAuditQuery({ row, secret: 's', body: corpo() }, dep(port), agora);
       expect(res).toEqual(ADMIN_NOT_FOUND);
     }
     expect(port.query).not.toHaveBeenCalled();
@@ -160,10 +191,10 @@ describe('T-H104-02 manipulador: 404 e 403 sem consultar o banco', () => {
     const port = portaFake();
     const financeiro = linhaAuditor({ roles: ['financeiro'], permissions: ['case.open_sensitive'] });
     const superadmin = linhaAuditor({ roles: ['superadmin'], permissions: ['case.authorize_sensitive'] });
-    expect(await handleAuditQuery({ row: financeiro, secret: 's', body: corpo() }, port, agora)).toEqual(
+    expect(await handleAuditQuery({ row: financeiro, secret: 's', body: corpo() }, dep(port), agora)).toEqual(
       ADMIN_PERMISSION_DENIED,
     );
-    expect(await handleAuditQuery({ row: superadmin, secret: 's', body: corpo() }, port, agora)).toEqual(
+    expect(await handleAuditQuery({ row: superadmin, secret: 's', body: corpo() }, dep(port), agora)).toEqual(
       ADMIN_PERMISSION_DENIED,
     );
     expect(port.query).not.toHaveBeenCalled();
@@ -171,7 +202,11 @@ describe('T-H104-02 manipulador: 404 e 403 sem consultar o banco', () => {
 
   it('Auditor com corpo valido: 200 e a consulta recebe o ator e o segredo', async () => {
     const port = portaFake({ eventos: [] });
-    const res = await handleAuditQuery({ row: linhaAuditor(), secret: 'segredo-sintetico', body: corpo() }, port, agora);
+    const res = await handleAuditQuery(
+      { row: linhaAuditor(), secret: 'segredo-sintetico', body: corpo() },
+      dep(port),
+      agora,
+    );
     expect(res.status).toBe(200);
     expect(res.headers['Cache-Control']).toBe('no-store');
     expect(port.query).toHaveBeenCalledTimes(1);
@@ -181,7 +216,7 @@ describe('T-H104-02 manipulador: 404 e 403 sem consultar o banco', () => {
 
   it('negacao nunca chama o banco, mesmo com corpo invalido', async () => {
     const port = portaFake();
-    await handleAuditQuery({ row: null, secret: 's', body: null }, port, agora);
+    await handleAuditQuery({ row: null, secret: 's', body: null }, dep(port), agora);
     expect(port.query).not.toHaveBeenCalled();
   });
 });
@@ -191,7 +226,7 @@ describe('T-H104-04 falha fecha (503, sem dado, sem nova tentativa)', () => {
 
   it('erro de auditoria (cadeia indisponivel) devolve 503 sem linhas e sem repetir a leitura', async () => {
     const port = portaFake(undefined, Object.assign(new Error('lock timeout'), { code: '55P03' }));
-    const res = await handleAuditQuery({ row: linhaAuditor(), secret: 's', body: corpo() }, port, agora);
+    const res = await handleAuditQuery({ row: linhaAuditor(), secret: 's', body: corpo() }, dep(port), agora);
     expect(res.status).toBe(503);
     expect(res.body).toEqual({ code: 'auditoria_indisponivel' });
     expect('eventos' in res.body).toBe(false);
@@ -201,17 +236,17 @@ describe('T-H104-04 falha fecha (503, sem dado, sem nova tentativa)', () => {
   it('erros do banco mapeados: ADM30 vira 404, 42501 vira 403, ADM31 vira 422 com o codigo', async () => {
     const r404 = await handleAuditQuery(
       { row: linhaAuditor(), secret: 's', body: corpo() },
-      portaFake(undefined, Object.assign(new Error('sessao_invalida'), { code: 'ADM30' })),
+      dep(portaFake(undefined, Object.assign(new Error('sessao_invalida'), { code: 'ADM30' }))),
       agora,
     );
     const r403 = await handleAuditQuery(
       { row: linhaAuditor(), secret: 's', body: corpo() },
-      portaFake(undefined, Object.assign(new Error('permissao_negada'), { code: '42501' })),
+      dep(portaFake(undefined, Object.assign(new Error('permissao_negada'), { code: '42501' }))),
       agora,
     );
     const r422 = await handleAuditQuery(
       { row: linhaAuditor(), secret: 's', body: corpo() },
-      portaFake(undefined, Object.assign(new Error('filtro_invalido'), { code: 'ADM31' })),
+      dep(portaFake(undefined, Object.assign(new Error('filtro_invalido'), { code: 'ADM31' }))),
       agora,
     );
     expect(r404).toEqual(ADMIN_NOT_FOUND);
@@ -244,7 +279,7 @@ describe('T-H104-05 sentinelas e lista fechada de campos (CA-H104-04)', () => {
 
   it('cada evento sai com exatamente as 12 chaves da lista fechada e sem prev_hash, row_hash ou e-mail', async () => {
     const port = portaFake({ eventos: [evento(1), evento(2)], proximo_cursor: 2 });
-    const res = await handleAuditQuery({ row: linhaAuditor(), secret: 's', body: corpo() }, port, agora);
+    const res = await handleAuditQuery({ row: linhaAuditor(), secret: 's', body: corpo() }, dep(port), agora);
     expect(res.status).toBe(200);
     const eventos = (res.body as { eventos: Record<string, unknown>[] }).eventos;
     for (const e of eventos) {
@@ -261,5 +296,76 @@ describe('T-H104-05 sentinelas e lista fechada de campos (CA-H104-04)', () => {
     const r = parseAuditQueryBody(corpo({ object_type: valor }));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(JSON.stringify(r.response)).not.toContain(valor);
+  });
+});
+
+describe('T-H104-06 limite de consultas: 30 em 5 min por admin, 429 sem leitura e sem trilha (63 R-2)', () => {
+  const agora = T0;
+  const req = () => ({ row: linhaAuditor(), secret: 's', body: corpo() });
+
+  it('a 31a consulta na janela recebe 429 muitas_consultas e o banco so foi chamado 30 vezes', async () => {
+    const lim = limitesFake();
+    const port = portaFake();
+    for (let i = 0; i < AUDIT_QUERY_RATE_LIMIT; i++) {
+      expect((await handleAuditQuery(req(), dep(port, lim.limits), agora)).status).toBe(200);
+    }
+    const recusada = await handleAuditQuery(req(), dep(port, lim.limits), agora);
+    expect(recusada).toEqual(ADMIN_QUERY_RATE_LIMITED);
+    expect(recusada.status).toBe(429);
+    expect(recusada.body).toEqual({ code: 'muitas_consultas' });
+    expect(port.query).toHaveBeenCalledTimes(AUDIT_QUERY_RATE_LIMIT);
+    expect(lim.record).toHaveBeenCalledTimes(AUDIT_QUERY_RATE_LIMIT);
+  });
+
+  it('janela de 5 min: registro com 5 min e 1 ms nao conta; registro com exatos 5 min conta', async () => {
+    const antigos = Array.from({ length: AUDIT_QUERY_RATE_LIMIT }, () => ({
+      adminUserId: 'u-auditor-sintetico',
+      atMs: agora - AUDIT_QUERY_RATE_WINDOW_MS - 1,
+    }));
+    const fora = await handleAuditQuery(req(), dep(portaFake(), limitesFake(antigos).limits), agora);
+    expect(fora.status).toBe(200);
+
+    const naBorda = antigos.map((r) => ({ ...r, atMs: agora - AUDIT_QUERY_RATE_WINDOW_MS }));
+    const dentro = await handleAuditQuery(req(), dep(portaFake(), limitesFake(naBorda).limits), agora);
+    expect(dentro.status).toBe(429);
+  });
+
+  it('o limite e por admin: outro Auditor com a mesma janela continua consultando', async () => {
+    const cheio = Array.from({ length: AUDIT_QUERY_RATE_LIMIT }, () => ({
+      adminUserId: 'u-auditor-sintetico',
+      atMs: agora,
+    }));
+    const outro = linhaAuditor({ userId: 'u-auditor-b' });
+    const res = await handleAuditQuery(
+      { row: outro, secret: 's', body: corpo() },
+      dep(portaFake(), limitesFake(cheio).limits),
+      agora,
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it('negacoes (404, 403) e 422 nao consomem vaga e nao registram no limite', async () => {
+    const lim = limitesFake();
+    const port = portaFake();
+    await handleAuditQuery({ row: null, secret: 's', body: corpo() }, dep(port, lim.limits), agora);
+    await handleAuditQuery(
+      { row: linhaAuditor({ roles: ['financeiro'], permissions: ['case.open_sensitive'] }), secret: 's', body: corpo() },
+      dep(port, lim.limits),
+      agora,
+    );
+    await handleAuditQuery({ row: linhaAuditor(), secret: 's', body: corpo({ limit: 0 }) }, dep(port, lim.limits), agora);
+    expect(lim.record).not.toHaveBeenCalled();
+    expect(port.query).not.toHaveBeenCalled();
+  });
+
+  it('consulta aceita registra o admin e o instante antes da leitura', async () => {
+    const lim = limitesFake();
+    const port = portaFake();
+    await handleAuditQuery(req(), dep(port, lim.limits), agora);
+    expect(lim.record).toHaveBeenCalledWith('u-auditor-sintetico', agora);
+    expect(port.query).toHaveBeenCalledTimes(1);
+    const ordemRegistro = lim.record.mock.invocationCallOrder[0] ?? Number.NaN;
+    const ordemLeitura = port.query.mock.invocationCallOrder[0] ?? Number.NaN;
+    expect(ordemRegistro).toBeLessThan(ordemLeitura);
   });
 });

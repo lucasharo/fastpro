@@ -4,8 +4,15 @@
 // A rota de producao NAO e registrada aqui (etapa 4 da H-104): so a regra e o manipulador.
 
 import { decideAdminGuard } from './guard.js';
-import type { AdminGuardRecord } from './ports.js';
-import { ADMIN_NOT_FOUND, ADMIN_PERMISSION_DENIED, adminReply, type AdminResponse } from './responses.js';
+import { auditQueryBlocked, AUDIT_QUERY_RATE_WINDOW_MS } from './policy.js';
+import type { AdminGuardRecord, AuditQueryRateLimit } from './ports.js';
+import {
+  ADMIN_NOT_FOUND,
+  ADMIN_PERMISSION_DENIED,
+  ADMIN_QUERY_RATE_LIMITED,
+  adminReply,
+  type AdminResponse,
+} from './responses.js';
 
 export const AUDIT_QUERY_PERMISSION = 'audit.read';
 /** Teto fixo de 90 dias por consulta; espelho de private.audit_query (63 §4, D4). */
@@ -189,13 +196,21 @@ export interface AuditQueryRequest {
   readonly body: unknown;
 }
 
+/** Dependencias do manipulador: a consulta (banco) e o limite por admin (porta, 63 R-2). */
+export interface AuditQueryDeps {
+  readonly query: AuditQueryPort;
+  readonly limits: AuditQueryRateLimit;
+}
+
 /**
  * Manipulador da consulta. Ordem: autoridade (404 sem sessao/papel; 403 sem audit.read) sem tocar no
- * banco; validacao (422) sem tocar no banco; consulta; erros do banco mapeados (sem dado).
+ * banco; validacao (422) sem tocar no banco; limite por admin (429 muitas_consultas, sem leitura e sem
+ * entrada na trilha); consulta; erros do banco mapeados (sem dado). Negacoes, 422 e 429 nao contam no limite.
+ * Uma consulta aceita conta no limite antes da leitura: uma falha depois (503) tambem consome a vaga.
  */
 export async function handleAuditQuery(
   req: AuditQueryRequest,
-  port: AuditQueryPort,
+  deps: AuditQueryDeps,
   nowMs: number,
 ): Promise<AdminResponse> {
   const guard = decideAdminGuard(req.row, AUDIT_QUERY_PERMISSION, nowMs);
@@ -206,9 +221,13 @@ export async function handleAuditQuery(
   if (!parsed.ok) return parsed.response;
   if (req.secret === null) return ADMIN_NOT_FOUND;
 
+  const usadas = await deps.limits.counts(guard.userId, nowMs - AUDIT_QUERY_RATE_WINDOW_MS);
+  if (auditQueryBlocked(usadas)) return ADMIN_QUERY_RATE_LIMITED;
+  await deps.limits.record(guard.userId, nowMs);
+
   let page: AuditQueryPage;
   try {
-    page = await port.query({
+    page = await deps.query.query({
       ...parsed.query,
       actorUserId: guard.userId,
       secret: req.secret,
