@@ -16,7 +16,12 @@ import {
   type OpenStageInput,
 } from '@fastpro/domain';
 import type { SqlClient } from './jobs-tick.js';
-import { challengeSha256Hex } from './challenges-crypto.js';
+import {
+  challengeAad,
+  challengeSha256Hex,
+  loadChallengeKey,
+  openChallengeBlob,
+} from './challenges-crypto.js';
 
 // ---------------------------------------------------------------------------------------------
 // Portas do consumo (o consumo em si e a etapa vem de domain; o repositorio e daqui).
@@ -281,4 +286,34 @@ export function newIdentSecret(): string {
 
 export function newUuid(): string {
   return randomUUID();
+}
+
+// ---------------------------------------------------------------------------------------------
+// Composicao: liga o handler aos adaptadores Pg. A chave de cifra vem do ambiente (AUTH_CHALLENGE_KEY)
+// e nunca e registrada; sem ela a composicao falha com erro de configuracao, sem valor.
+// ---------------------------------------------------------------------------------------------
+
+export interface ConsumeWiring {
+  readonly client: SqlClient;
+  readonly authAdmin: AuthUserAdminPort;
+  readonly clock: Pick<ClockPort, 'nowMs'>;
+  readonly env?: NodeJS.ProcessEnv;
+  readonly accountDeadlineMs?: number;
+  readonly onFailure?: (codigo: ConsumeFailureCode) => void;
+}
+
+export function buildConsumeDeps(w: ConsumeWiring): ConsumeDeps {
+  const key = loadChallengeKey(w.env);
+  return {
+    repo: new PgConsumeRepository(w.client),
+    accounts: new PgCustomerAccounts(w.client, w.authAdmin),
+    stages: new PgSessionStageStore(w.client),
+    decryptEmail: (emailEnc, challengeId) =>
+      openChallengeBlob(key, emailEnc, challengeAad(challengeId, 'email_enc')),
+    clock: w.clock,
+    newSecret: newIdentSecret,
+    newSessionId: newUuid,
+    accountDeadlineMs: w.accountDeadlineMs,
+    onFailure: w.onFailure,
+  };
 }
