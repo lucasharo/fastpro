@@ -55,7 +55,7 @@ export interface AdminGuardDeps {
 }
 
 /**
- * Fluxo completo da guarda. Ordem (54 §3 e §4, revisao da #111):
+ * Fluxo completo da guarda. Ordem (54 §3 e §4, revisao da Issue 111):
  *  1. rota inexistente -> 404;
  *  2. rota publica -> so a checagem de Origin (403 origem_invalida) e segue;
  *  3. rota nao publica: sessao e papel ativo (404) ANTES da Origin, uma consulta ao banco;

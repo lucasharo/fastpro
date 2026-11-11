@@ -637,7 +637,7 @@ test('guarda: devolve papeis e permissoes do banco; conta pendente ou sem papel 
   }));
 
 // ---------------------------------------------------------------------------------------------
-// Revisao da #111: app_system nao apaga linhas de papel, convite e sessao; o expurgo e so pela funcao.
+// Revisao da Issue 111: app_system nao apaga linhas de papel, convite e sessao; o expurgo e so pela funcao.
 // ---------------------------------------------------------------------------------------------
 
 test('T-H102-20 app_system sem DELETE em admin_user_role, admin_invite e admin_session; com SELECT, INSERT e UPDATE', () =>
@@ -694,7 +694,7 @@ test('bootstrap continuidade: com um Superadmin ativo aceita o segundo; um terce
     assert.equal(terceiro?.code, 'ADM10', 'segundo convite de bootstrap vivo com outro e-mail e recusado');
   }));
 
-// Revisao da #111: uso unico do convite e validade de 72 h exatas (T-H102-01).
+// Revisao da Issue 111: uso unico do convite e validade de 72 h exatas (T-H102-01).
 test('T-H102-01 validade do convite: so 72 h exatas; 71 h e 73 h sao recusadas pelo banco', () =>
   tx(async () => {
     const admin = await superadmin();

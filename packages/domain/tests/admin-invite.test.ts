@@ -225,7 +225,7 @@ describe('T-H102-02 ativacao com TOTP', () => {
   });
 });
 
-describe('T-H102-01 uso unico do convite (revisao da #111)', () => {
+describe('T-H102-01 uso unico do convite (revisao da Issue 111)', () => {
   it('convite usado nao reativa: passo 1 e passo 2 repetidos sao recusados, sem nova conta, papel ou sessao', async () => {
     const world = createFakeWorld();
     const token = tokenNovo();
