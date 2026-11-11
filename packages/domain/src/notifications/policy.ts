@@ -57,7 +57,7 @@ export const EMAIL_TYPE_POLICY: Readonly<Record<string, EmailTypePolicy>> = Obje
   verificacao: { category: 'verificacao', mailClass: 'critico', params: [] },
   prazo_t24: { category: 'prazo', mailClass: 'lembrete', params: REQUEST },
   prazo_t0: { category: 'prazo', mailClass: 'lembrete', params: REQUEST },
-  acesso_login: { category: 'acesso', mailClass: 'auth', params: [] },
+  acesso_login: { category: 'acesso', mailClass: 'auth', params: ['challenge_ref'] },
   acesso_conta: { category: 'acesso', mailClass: 'auth', params: [] },
   acesso_trial: { category: 'acesso', mailClass: 'lembrete', params: [] },
   acesso_ciclo: { category: 'acesso', mailClass: 'lembrete', params: [] },
