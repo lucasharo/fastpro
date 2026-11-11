@@ -105,9 +105,9 @@ async function criarBase() {
   return b;
 }
 
-// --- T-H018-10: catalogo do banco (RLS forcada e view com security_invoker) -------------------------
+// --- T-H018-10: catalogo do banco (RLS forcada; leitura publica so por funcao, sem politica nem view) --
 
-test('T-H018-10 tabelas do catalogo com RLS habilitada e forcada; view publica com security_invoker', async () => {
+test('T-H018-10 tabelas do catalogo com RLS habilitada e forcada; sem politicas; leitura publica por funcao', async () => {
   const res = await client.query(
     `select c.relname, c.relrowsecurity, c.relforcerowsecurity
        from pg_class c join pg_namespace n on n.oid = c.relnamespace
@@ -119,45 +119,38 @@ test('T-H018-10 tabelas do catalogo com RLS habilitada e forcada; view publica c
     assert.equal(r.relrowsecurity, true, `${r.relname} sem RLS habilitada`);
     assert.equal(r.relforcerowsecurity, true, `${r.relname} sem RLS forcada`);
   }
-  const view = await client.query(
-    `select reloptions from pg_class c join pg_namespace n on n.oid = c.relnamespace
-      where n.nspname = 'app' and c.relname = 'catalog_public'`,
+  const pol = await client.query(
+    `select tablename from pg_policies where schemaname = 'app' and tablename = any($1)`,
+    [TABLES],
   );
-  assert.ok(view.rows[0].reloptions.includes('security_invoker=true'));
+  assert.deepEqual(pol.rows, [], 'nao deve haver politica de RLS nas tabelas do catalogo (decisao #31)');
+  const fn = await client.query(
+    `select p.prosecdef, p.proconfig from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'private' and p.proname = 'catalog_public_list'`,
+  );
+  assert.equal(fn.rows[0].prosecdef, true);
+  assert.ok(fn.rows[0].proconfig.some((x) => x.startsWith('search_path=')), 'search_path deve ser vazio');
 });
 
 // --- T-H018-14: leitura anonima ---------------------------------------------------------------------
 
-test('T-H018-14 leitura anonima: so grupos e servicos ativos; colunas internas e controle negados (42501)', () =>
+test('T-H018-14 leitura anonima: so pela funcao publica (so ativos, colunas publicas); tabelas negadas (42501)', () =>
   inTx(async () => {
     const b = await criarBase();
     await asAppApi({ type: 'anonymous' });
 
-    const groups = (await client.query('select id, name, position, active from app.service_group')).rows;
-    const visibleGroups = groups.map((g) => g.id);
-    assert.ok(visibleGroups.includes(b.gA), 'grupo ativo deveria aparecer');
-    assert.ok(!visibleGroups.includes(b.gB), 'grupo inativo nao deveria aparecer');
-
-    const services = (await client.query('select id, group_id, name, modality, regulated, active from app.service')).rows.map(
-      (s) => s.id,
-    );
-    assert.ok(services.includes(b.sA), 'servico de grupo ativo deveria aparecer');
-    assert.ok(!services.includes(b.sB), 'servico de grupo inativo nao deveria aparecer');
-
-    const syn = (await client.query('select term, active from app.service_synonym')).rows.map((r) => r.term);
-    assert.deepEqual(syn, ['termo teste ativo']);
-
+    await expectError('select id from app.service_group', [], '42501');
+    await expectError('select id from app.service', [], '42501');
+    await expectError('select term from app.service_synonym', [], '42501');
     await expectError('select council_body from app.service', [], '42501');
-    await expectError('select moderation_sensitive from app.service', [], '42501');
     await expectError('select seed_key from app.service_group', [], '42501');
-    await expectError('select * from app.service', [], '42501');
     await expectError('select id from app.catalog_revision', [], '42501');
     await expectError('select id from app.catalog_seed_run', [], '42501');
 
-    const view = (await client.query('select * from app.catalog_public')).rows;
-    assert.deepEqual(Object.keys(view[0] ?? {}).sort(), [...PUBLIC_VIEW_COLUMNS].sort());
-    assert.ok(view.some((r) => r.service_id === b.sA));
-    assert.ok(!view.some((r) => r.service_id === b.sB || r.group_id === b.gB));
+    const rows = (await client.query('select * from private.catalog_public_list()')).rows;
+    assert.deepEqual(Object.keys(rows[0] ?? {}).sort(), [...PUBLIC_VIEW_COLUMNS].sort());
+    assert.ok(rows.some((r) => r.service_id === b.sA), 'servico de grupo ativo deveria aparecer');
+    assert.ok(!rows.some((r) => r.service_id === b.sB || r.group_id === b.gB), 'grupo inativo nao aparece');
   }));
 
 // --- T-H018-15: escrita negada ----------------------------------------------------------------------
@@ -430,7 +423,7 @@ test('T-H018-21 council_body sem regulated e rejeitado; leitura publica nao traz
       'CT004',
     );
     await asAppApi({ type: 'anonymous' });
-    const rows = (await client.query('select * from app.catalog_public where service_id = $1', [b.sSens])).rows;
+    const rows = (await client.query('select * from private.catalog_public_list() where service_id = $1', [b.sSens])).rows;
     assert.equal(rows.length, 1, 'o servico sensivel ativo aparece na leitura publica');
     assert.deepEqual(Object.keys(rows[0]).sort(), [...PUBLIC_VIEW_COLUMNS].sort());
     assert.equal(

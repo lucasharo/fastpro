@@ -186,9 +186,20 @@ test('D-02b regressao: app_api executa apenas audit_append entre as funcoes de p
        join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'private' and has_function_privilege('app_api', p.oid, 'EXECUTE')`,
   );
+  // Excecoes EXPLICITAS do catalogo (H-018, decisao do Orquestrador no #31): as funcoes de escrita e
+  // listagem administrativa (catalog_*_save, catalog_admin_list) e a leitura publica
+  // (catalog_public_list) executam como app_api. Qualquer outra funcao de private segue proibida.
+  // Desenho: docs/factory/53-DESENHO-H018 §2 e §3.1.
   assert.deepEqual(
-    res.rows.map((r) => r.proname),
-    ['audit_append'],
+    res.rows.map((r) => r.proname).sort(),
+    [
+      'audit_append',
+      'catalog_admin_list',
+      'catalog_group_save',
+      'catalog_public_list',
+      'catalog_service_save',
+      'catalog_synonym_save',
+    ].sort(),
   );
   const ex = await client.query(
     `select p.oid::regprocedure::text as fn from pg_proc p

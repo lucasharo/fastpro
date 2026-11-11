@@ -251,16 +251,14 @@ describe('T-H018-06 contrato publico', () => {
     }
   });
 
-  it('a view publica da migracao expoe as mesmas colunas da lista de permissao', async () => {
+  it('a funcao publica da migracao (private.catalog_public_list) devolve exatamente as colunas da lista de permissao', async () => {
     const { CATALOG_PUBLIC_FIELDS } = await import('../../contracts/src/catalog.ts');
-    const m1 = readFileSync(
-      new URL('../../../supabase/migrations/20261111200000_catalog_create_service_catalog.sql', import.meta.url),
+    const m = readFileSync(
+      new URL('../../../supabase/migrations/20261111250000_catalog_public_list_function.sql', import.meta.url),
       'utf8',
     );
-    const view = m1.slice(m1.indexOf('create or replace view app.catalog_public'), m1.indexOf('comment on view app.catalog_public'));
-    // Apenas a lista de colunas (entre o primeiro "select" e o "from"): ignora "with (...) as select".
-    const selectList = view.slice(view.indexOf('select'), view.indexOf(' from app.service '));
-    const aliases = [...selectList.matchAll(/\bas\s+(\w+)/g)].map((m) => m[1]);
-    expect(aliases.sort()).toEqual([...CATALOG_PUBLIC_FIELDS].sort());
+    const head = m.slice(m.indexOf('returns table ('), m.indexOf('\nlanguage sql'));
+    const cols = [...head.matchAll(/^\s+(\w+)\s+\w+/gm)].map((x) => x[1]);
+    expect(cols.sort()).toEqual([...CATALOG_PUBLIC_FIELDS].sort());
   });
 });
