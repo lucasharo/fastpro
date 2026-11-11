@@ -25,6 +25,7 @@ function linha(papeis: readonly string[]): AdminGuardRecord {
     aal2: true,
     active: true,
     expiresAtMs: SYNTH_NOW + 3600_000,
+    totpAtMs: SYNTH_NOW,
   };
 }
 

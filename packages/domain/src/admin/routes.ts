@@ -17,6 +17,9 @@ export interface AdminRouteSpec {
   readonly permission: AdminPermission | 'sessao' | 'publica';
 }
 
+/** Caminho da confirmacao recente do segundo fator (H-073, 60 §4). */
+export const ADMIN_STEP_UP_PATH = '/v1/admin/session/step-up';
+
 /** Rotas deste desenho. Nenhuma e ligada a producao nesta etapa (54 §7, item 5). */
 export const ADMIN_ROUTES_H102: readonly AdminRouteSpec[] = [
   { method: 'GET', pattern: '/v1/admin/auth/session', permission: 'publica' },
@@ -32,6 +35,8 @@ export const ADMIN_ROUTES_H102: readonly AdminRouteSpec[] = [
     pattern: '/v1/admin/staff/:userId/mfa-reenroll-requests',
     permission: 'admin.role.manage',
   },
+  // H-073 (60 §4): confirmacao recente do segundo fator. Qualquer papel com sessao valida.
+  { method: 'POST', pattern: ADMIN_STEP_UP_PATH, permission: 'sessao' },
 ];
 
 /** Casa o caminho com o padrao; ':nome' casa um segmento nao vazio. */

@@ -26,6 +26,15 @@ export interface AdminGuardRecord {
   readonly aal2: boolean;
   readonly active: boolean;
   readonly expiresAtMs: number;
+  /** Ultima prova do segundo fator da sessao (H-073, 60 §4). */
+  readonly totpAtMs: number;
+}
+
+/** Conta da sessao (e-mail e identificador do provedor), so para a confirmacao de TOTP (H-073). */
+export interface AdminSessionSubject {
+  readonly userId: string;
+  readonly email: string;
+  readonly authUserId: string;
 }
 
 export interface AdminIssueInput {
@@ -63,6 +72,10 @@ export interface AdminRepository {
   openSession(userId: string, nowMs: number): Promise<{ readonly secret: string }>;
   /** Guarda de cada requisicao: uma consulta por requisicao (54 §3). */
   guard(secret: string, nowMs: number): Promise<AdminGuardRecord | null>;
+  /** Conta da sessao valida (mesmas regras da guarda), para a confirmacao de TOTP. Nulo = sem sessao. */
+  sessionSubject(secret: string, nowMs: number): Promise<AdminSessionSubject | null>;
+  /** Avanca totp_at da sessao valida ate nowMs (nunca recua) e audita. False = sessao invalida. */
+  stepUp(secret: string, nowMs: number): Promise<boolean>;
 }
 
 export interface AdminAuthAccount {

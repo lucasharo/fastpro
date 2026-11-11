@@ -414,8 +414,8 @@ test('T-H102-24 sessao: 8 h absolutas, aal2 obrigatorio, sem conta ativa ou pape
     assert.equal(semAal2?.code, '23502', 'aal2_at nao nulo');
 
     const prazoErrado = await falha(
-      `insert into app.admin_session (id, user_id, secret_hash, aal2_at, created_at, expires_at)
-       values ($1, $2, $3, now(), now(), now() + interval '9 hours')`, [randomUUID(), u.id, sha('v')]);
+      `insert into app.admin_session (id, user_id, secret_hash, aal2_at, totp_at, created_at, expires_at)
+       values ($1, $2, $3, now(), now(), now(), now() + interval '9 hours')`, [randomUUID(), u.id, sha('v')]);
     assert.equal(prazoErrado?.code, '23514', 'expires_at fora de 8 h');
   }));
 

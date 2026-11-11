@@ -17,6 +17,7 @@ import {
   type AdminLogEntry,
   type AdminLoginLimits,
   type AdminRepository,
+  type AdminSessionSubject,
 } from '../src/admin/index.js';
 
 export const SYNTH_NOW = Date.parse('2099-01-01T12:00:00.000Z');
@@ -69,6 +70,8 @@ export interface FakeSession {
   readonly expiresAtMs: number;
   revoked: boolean;
   readonly aal2: boolean;
+  /** Ultima prova do segundo fator (H-073): so avanca. */
+  totpAtMs: number;
 }
 
 export interface FakeWorld {
@@ -82,6 +85,8 @@ export interface FakeWorld {
   readonly staff: Map<string, { status: string; authUserId: string; origin: string }>;
   readonly roles: Map<string, Set<string>>;
   readonly accounts: Set<string>;
+  /** E-mail de cada usuario admin (userId -> e-mail), como o banco guarda em app_user. */
+  readonly emailByUser: Map<string, string>;
   readonly calls: { lookup: number; guard: number; issue: number };
   readonly provider: {
     readonly credentials: Map<string, { password: string; secret: string; authUserId: string; enrolled: boolean }>;
@@ -102,6 +107,7 @@ export function createFakeWorld(startMs: number = SYNTH_NOW): FakeWorld {
   const staff = new Map<string, { status: string; authUserId: string; origin: string }>();
   const roles = new Map<string, Set<string>>();
   const accounts = new Set<string>();
+  const emailByUser = new Map<string, string>();
   const calls = { lookup: 0, guard: 0, issue: 0 };
   const logs: AdminLogEntry[] = [];
   const provider: FakeWorld['provider'] = { credentials: new Map(), tokensDiscarded: 0 };
@@ -186,6 +192,7 @@ export function createFakeWorld(startMs: number = SYNTH_NOW): FakeWorld {
       if (!staff.has(userId)) {
         staff.set(userId, { status: 'pendente_mfa', authUserId: account.authUserId, origin: 'convite' });
       }
+      emailByUser.set(userId, account.email);
       accounts.add(account.email);
       inv.state = 'aguardando_totp';
       inv.userId = userId;
@@ -227,6 +234,7 @@ export function createFakeWorld(startMs: number = SYNTH_NOW): FakeWorld {
         expiresAtMs: nowMs + ADMIN_SESSION_MAX_AGE_SECONDS * 1000,
         revoked: false,
         aal2: true,
+        totpAtMs: nowMs,
       });
       return { secret: valorCookie };
     },
@@ -244,7 +252,25 @@ export function createFakeWorld(startMs: number = SYNTH_NOW): FakeWorld {
         aal2: s.aal2,
         active: st.status === 'ativo',
         expiresAtMs: s.expiresAtMs,
+        totpAtMs: s.totpAtMs,
       };
+    },
+    async sessionSubject(secret, nowMs): Promise<AdminSessionSubject | null> {
+      const s = sessions.get(secret);
+      if (s === undefined || s.revoked || s.expiresAtMs <= nowMs) return null;
+      const st = staff.get(s.userId);
+      const email = emailByUser.get(s.userId);
+      if (st === undefined || st.status !== 'ativo' || email === undefined) return null;
+      if (activeRoles(s.userId).length === 0) return null;
+      return { userId: s.userId, email, authUserId: st.authUserId };
+    },
+    async stepUp(secret, nowMs): Promise<boolean> {
+      const s = sessions.get(secret);
+      if (s === undefined || s.revoked || s.expiresAtMs <= nowMs) return false;
+      const st = staff.get(s.userId);
+      if (st === undefined || st.status !== 'ativo' || activeRoles(s.userId).length === 0) return false;
+      if (s.totpAtMs < nowMs) s.totpAtMs = nowMs;
+      return true;
     },
   };
 
@@ -301,6 +327,7 @@ export function createFakeWorld(startMs: number = SYNTH_NOW): FakeWorld {
     staff,
     roles,
     accounts,
+    emailByUser,
     calls,
     provider,
     limitState,
