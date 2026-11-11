@@ -85,6 +85,11 @@ describe('T-H012-02 cabecalhos antes do corpo', () => {
     expect(r.ok).toBe(false);
   });
 
+  it('Origin correto com Sec-Fetch-Site cross-site: 403 origem_invalida (S-2)', () => {
+    const r = checkConsumeHeaders({ ...bom, secFetchSite: 'cross-site' }, ORIGIN);
+    expect(r).toEqual({ ok: false, status: 403, code: 'origem_invalida' });
+  });
+
   it('recusa Content-Type diferente de JSON com 415', () => {
     const r = checkConsumeHeaders({ ...bom, contentType: 'text/plain' }, ORIGIN);
     expect(r).toEqual({ ok: false, status: 415, code: 'tipo_invalido' });
