@@ -81,14 +81,20 @@ test('T-H012-20 RLS forçada, sem acesso de papeis publicos; app_system so pelas
         has_table_privilege('anon', 'app.app_session', 'select') as anon_select,
         has_table_privilege('authenticated', 'app.app_session', 'select') as auth_select,
         has_table_privilege('app_system', 'app.app_session', 'insert') as system_insert,
+        has_table_privilege('app_system', 'app.app_session', 'delete') as system_session_delete,
+        has_table_privilege('app_system', 'app.app_user', 'delete') as system_user_delete,
         has_function_privilege('authenticated',
           'private.app_user_ensure(text,uuid,timestamptz)', 'execute') as auth_exec,
         has_function_privilege('app_system',
           'private.app_session_open_stage(uuid,uuid,uuid,text,uuid,text,timestamptz)', 'execute') as system_exec`);
+    // DELETE so em app_session (expurgo de etapas vencidas). app_user nunca e apagado pela H-012
+    // (revisao S-3, migracao 20261111160000).
     assert.deepEqual(p[0], {
       anon_select: false,
       auth_select: false,
       system_insert: true,
+      system_session_delete: true,
+      system_user_delete: false,
       auth_exec: false,
       system_exec: true,
     });
