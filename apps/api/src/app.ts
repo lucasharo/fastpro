@@ -3,6 +3,8 @@
 // caracteres, comparacao em tempo constante e limite de 1 KB do corpo. Nao ha acesso ao banco aqui.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { isTickAuthorized, TICK_BODY_LIMIT_BYTES, TICK_PATH } from '@fastpro/db';
+import { CONSUME_PATH } from '@fastpro/domain';
+import { handleConsume, type ConsumeRouteOptions } from './consume-route.js';
 
 /** Limite de corpo da aplicacao (CA-07): 4 MB inclusivo. Acima disso a resposta e 413. */
 export const APP_BODY_LIMIT_BYTES = 4 * 1024 * 1024;
@@ -17,6 +19,8 @@ const JSON_HEADERS = {
 export interface AppOptions {
   /** Segredo do tick (nome JOBS_TICK_SECRET). Ausente ou curto demais: o tick fica fechado (401). */
   readonly tickSecret: string | undefined;
+  /** Consumo do link (H-012). Sem esta opcao a rota nao existe (404). */
+  readonly consume?: ConsumeRouteOptions;
 }
 
 export interface BodyReadResult {
@@ -91,6 +95,10 @@ export async function handleRequest(
   }
   if (req.method === 'POST' && path === TICK_PATH) {
     await handleTick(req, res, opts);
+    return;
+  }
+  if (req.method === 'POST' && path === CONSUME_PATH && opts.consume) {
+    await handleConsume(req, res, opts.consume);
     return;
   }
   send(res, 404, NO_STORE, '');

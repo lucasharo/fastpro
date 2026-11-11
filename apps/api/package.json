@@ -19,7 +19,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@fastpro/db": "workspace:*"
+    "@fastpro/db": "workspace:*",
+    "@fastpro/domain": "workspace:*"
   },
   "devDependencies": {
     "@fastpro/config": "workspace:*"
