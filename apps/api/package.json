@@ -2,7 +2,7 @@
   "name": "@fastpro/api",
   "version": "0.0.0",
   "private": true,
-  "description": "Placeholder: NestJS monolito modular (historia futura)",
+  "description": "API da hospedagem Vercel (H-009): funcao unica com healthcheck e tick protegido",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -17,6 +17,9 @@
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@fastpro/db": "workspace:*"
   },
   "devDependencies": {
     "@fastpro/config": "workspace:*"

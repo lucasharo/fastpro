@@ -2,7 +2,7 @@
   "name": "@fastpro/web",
   "version": "0.0.0",
   "private": true,
-  "description": "Placeholder: Next.js cliente e profissional (historia futura)",
+  "description": "Web da hospedagem Vercel (H-009): estrutura estatica e cabecalhos; telas em historias futuras",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

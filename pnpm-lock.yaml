@@ -40,6 +40,10 @@ importers:
         version: link:../../packages/config
 
   apps/api:
+    dependencies:
+      '@fastpro/db':
+        specifier: workspace:*
+        version: link:../../packages/db
     devDependencies:
       '@fastpro/config':
         specifier: workspace:*
