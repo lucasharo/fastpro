@@ -202,13 +202,9 @@ describe('T-10 texto livre: a carga chega ao provedor intacta e a resposta e JSO
     expect(suggest.mock.calls.map((c) => c[0])).toEqual([CARGA_SQL, CARGA_XSS]);
   });
 
-  it('nao aplicavel: SQL direto nao existe nesta rota (o servico nao toca em banco; a parametrizacao e coberta em packages/db)', () => {
-    expect(true).toBe(true);
-  });
+  it.todo('nao aplicavel: SQL direto nao existe nesta rota (o servico nao toca em banco; a parametrizacao e coberta em packages/db)');
 
-  it('nao aplicavel: XSS armazenado em descricao de pedido e chat (nenhuma dessas rotas existe nesta versao)', () => {
-    expect(true).toBe(true);
-  });
+  it.todo('nao aplicavel: XSS armazenado em descricao de pedido e chat (nenhuma dessas rotas existe nesta versao)');
 });
 
 describe('T-10 SSRF: a URL do provedor e fixa; a carga so vai no parametro q', () => {
