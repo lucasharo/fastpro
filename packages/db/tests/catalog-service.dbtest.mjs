@@ -5,7 +5,13 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { connect } from '../scripts/lib/env.mjs';
+
+// Semente versionada (somente leitura). Os testes T-H018-11..13 a aplicam DENTRO de transacao com
+// rollback, com a funcao de aplicacao; nada e gravado. A aplicacao real e comando explicito.
+const SEED = JSON.parse(readFileSync(new URL('../../../supabase/seed/catalog/catalog.v1.json', import.meta.url), 'utf8'));
+const SEED_SYNONYMS = SEED.services.reduce((n, s) => n + s.synonyms.length, 0);
 
 let client;
 before(async () => {
@@ -449,3 +455,121 @@ test('T-H018-05 paridade: private.catalog_norm produz os pares fixos usados em c
     assert.equal(res.rows[0].n, expected, input);
   }
 });
+
+// --- T-H018-11, 12, 13: semente aplicada dentro de transacao (rollback). Funcao executada como app_system.
+
+async function aplicarSemente(seed) {
+  await client.query('set local role app_system');
+  const res = await client.query('select private.catalog_seed_apply($1::jsonb) as r', [JSON.stringify(seed)]);
+  return res.rows[0].r;
+}
+
+test('T-H018-11 semente na transacao: 25 grupos e contagens do arquivo; reaplicacao (mesmo checksum) = no-op', () =>
+  inTx(async () => {
+    const r1 = await aplicarSemente(SEED);
+    assert.equal(r1.status, 'aplicada');
+    assert.equal(r1.groups_inserted, 25);
+    assert.equal(r1.services_inserted, SEED.services.length);
+    assert.equal(r1.synonyms_inserted, SEED_SYNONYMS);
+    assert.equal(r1.skipped_conflict, 0);
+
+    await client.query('reset role');
+    // Verificacao imediata das invariantes adiadas (CA-02) com os dados da semente.
+    await client.query('set constraints all immediate');
+    const count = async () =>
+      (
+        await client.query(
+          `select (select count(*)::int from app.service_group) g,
+                  (select count(*)::int from app.service) s,
+                  (select count(*)::int from app.service_synonym) y`,
+        )
+      ).rows[0];
+    const after1 = await count();
+    assert.deepEqual(after1, { g: 25, s: SEED.services.length, y: SEED_SYNONYMS });
+    const names = (await client.query('select name from app.service_group order by position')).rows.map((r) => r.name);
+    assert.deepEqual(names, SEED.groups.map((g) => g.name));
+
+    const r2 = await aplicarSemente(SEED);
+    assert.equal(r2.status, 'ja_aplicada');
+    assert.equal(r2.groups_inserted + r2.services_inserted + r2.synonyms_inserted, 0);
+    await client.query('reset role');
+    assert.deepEqual(await count(), after1, 'reaplicacao nao pode duplicar nem alterar contagens');
+  }));
+
+test('T-H018-12 preservacao: alteracoes do administrador sobrevivem a reaplicacao da semente (novo checksum)', () =>
+  inTx(async () => {
+    await aplicarSemente(SEED);
+    await client.query('reset role');
+    const idOf = async (sql, params = []) => (await client.query(sql, params)).rows[0];
+    const g01 = (await idOf("select id from app.service_group where seed_key = 'g01'")).id;
+    const g02 = (await idOf("select id from app.service_group where seed_key = 'g02'")).id;
+    const g05 = (await idOf("select id from app.service_group where seed_key = 'g05'")).id;
+    const g03svc = await idOf(
+      `select id, version from app.service where group_id = (select id from app.service_group where seed_key = 'g03')
+        and active order by name limit 1`,
+    );
+    const g04svc = await idOf(
+      `select id, version from app.service where group_id = (select id from app.service_group where seed_key = 'g04')
+        and active order by name limit 1`,
+    );
+
+    await asAppApi(ADMIN);
+    await client.query('select private.catalog_group_save($1, 1, $2::jsonb)', [
+      g01,
+      JSON.stringify({ name: 'Grupo renomeado pelo admin' }),
+    ]);
+    await client.query('select private.catalog_group_save($1, 1, $2::jsonb)', [g02, JSON.stringify({ position: 99 })]);
+    await client.query('select private.catalog_service_save($1, $2, $3::jsonb)', [
+      g03svc.id,
+      g03svc.version,
+      '{"active":false}',
+    ]);
+    await client.query('select private.catalog_service_save($1, $2, $3::jsonb)', [
+      g04svc.id,
+      g04svc.version,
+      JSON.stringify({ group_id: g05 }),
+    ]);
+
+    // Mesmo conteudo com um sinonimo a mais: outro checksum, o caminho completo de insercao roda.
+    const modified = JSON.parse(JSON.stringify(SEED));
+    modified.services[0].synonyms = [...modified.services[0].synonyms, 'termo de teste preservacao'];
+    const r = await aplicarSemente(modified);
+    assert.equal(r.status, 'aplicada');
+    assert.equal(r.groups_inserted, 0);
+    assert.equal(r.services_inserted, 0);
+    assert.equal(r.synonyms_inserted, 1);
+
+    await client.query('reset role');
+    const g01row = await idOf('select name, version, seed_key from app.service_group where id = $1', [g01]);
+    assert.equal(g01row.name, 'Grupo renomeado pelo admin', 'nome do administrador deve ser preservado');
+    assert.equal(g01row.version, 2);
+    assert.equal((await idOf('select position from app.service_group where id = $1', [g02])).position, 99);
+    assert.equal((await idOf('select active from app.service where id = $1', [g03svc.id])).active, false);
+    assert.equal((await idOf('select group_id from app.service where id = $1', [g04svc.id])).group_id, g05);
+    const c = await idOf(
+      `select (select count(*)::int from app.service_group) g, (select count(*)::int from app.service) s`,
+    );
+    assert.deepEqual(c, { g: 25, s: SEED.services.length }, 'sem duplicatas');
+  }));
+
+test('T-H018-13 conflito por nome: grupo criado a mao com nome da semente e pulado e contado, sem erro', () =>
+  inTx(async () => {
+    const manualId = randomUUID();
+    await client.query(
+      `insert into app.service_group (id, name, position, active) values ($1, 'Reformas e construção', 500, false)`,
+      [manualId],
+    );
+    const r = await aplicarSemente(SEED);
+    const g01Services = SEED.services.filter((s) => s.group_key === 'g01').length;
+    assert.equal(r.status, 'aplicada');
+    assert.equal(r.groups_inserted, 24, 'o grupo g01 e pulado por conflito de nome');
+    assert.equal(r.skipped_conflict, 1 + g01Services, 'grupo pulado mais os servicos dele');
+    assert.equal(r.services_inserted, SEED.services.length - g01Services);
+
+    await client.query('reset role');
+    const manual = (await client.query('select seed_key, name from app.service_group where id = $1', [manualId])).rows[0];
+    assert.equal(manual.seed_key, null, 'o item manual nao recebe chave da semente');
+    assert.equal(manual.name, 'Reformas e construção');
+    const total = (await client.query('select count(*)::int as n from app.service_group')).rows[0].n;
+    assert.equal(total, 25);
+  }));
