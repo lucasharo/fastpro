@@ -110,7 +110,7 @@ Contrato:
 
 | Camada | Medida |
 |---|---|
-| Privilégio | `revoke all` em `audit.*` de PUBLIC/anon/authenticated/service_role/app_api/app_system. `app_system`: somente `SELECT` em `audit.audit_event` (verificação). `app_api`: **nenhum** privilégio de tabela (H-104 concede `SELECT` + política `audit.read` com `aal2`). Nenhum papel de aplicação recebe INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER. `chain_head` e `action_catalog`: nenhum grant |
+| Privilégio | `revoke all` em `audit.*` de PUBLIC/anon/authenticated/service_role/app_api/app_system. `app_system`: somente `SELECT` em `audit.audit_event` (verificação). `app_api`: **nenhum** privilégio de tabela, **e continua assim após a H-104**: a leitura pelo Auditor é por função `security definer` em `app_system` (`private.audit_query`, 63-DESENHO-H104 §1), alinhada a 54-DESENHO-H102 §1; não há `SELECT` nem política `audit.read` para `app_api` (decisão de 2026-11-11, substitui o texto anterior). Nenhum papel de aplicação recebe INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER. `chain_head` e `action_catalog`: nenhum grant |
 | Trigger | `tg_block_mutation`: BEFORE UPDATE OR DELETE FOR EACH ROW e BEFORE TRUNCATE FOR EACH STATEMENT, `RAISE ... ERRCODE 'AU001'`; `ENABLE ALWAYS` (dispara também com `session_replication_role = replica`). `AU001` é distinto de `42501` para não poluir a métrica de negações de RLS (08 §14) |
 | Detecção | `audit_verify_chain` (§2) |
 | Governança | teste de catálogo no CI reprova migração que remova trigger, habilitação `ALWAYS` ou privilégio |
@@ -177,6 +177,7 @@ Regressão: o teste existente "nenhuma política nos esquemas do produto" e o de
 4. **Throughput:** a cadeia única serializa as auditorias (lock até o COMMIT). Volume esperado do MVP (ações críticas administrativas e consentimentos) cabe com folga; risco se consentimento virar evento de massa. Mitigação futura: cadeia por fatia (coluna `chain_id`), sem alterar o contrato da função. Não implementar agora.
 5. **Particionamento mensal (09 PROPOSTA):** adiado, conforme dúvida 2 do refino. Se for feito depois, particionar por **faixa de `seq`** (não por `at`) para manter `unique(seq)` e `unique(row_hash)` válidos sem incluir a chave de partição.
 6. **Ordem na 08 §7 ("auditoria, outbox"):** recomendado auditar por último (item 4 da §3); mudança de ordem dentro da mesma transação, sem impacto semântico.
+7. **Leitura pelo Auditor (atualizado em 2026-11-11, H-104):** não há `SELECT` nem política `audit.read` para `app_api`; a leitura é a função `private.audit_query`, `security definer`, executável só por `app_system`, que revalida sessão e `audit.read` no banco e grava a própria consulta na trilha (63-DESENHO-H104). O teste D-02 permanece (`app_api` sem SELECT) e ganha o EXECUTE da nova função só para `app_system`.
 
 ## 8. Limites reconhecidos
 
