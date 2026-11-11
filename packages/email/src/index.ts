@@ -6,6 +6,7 @@ export * from './errors.js';
 export * from './address.js';
 export * from './idempotency.js';
 export * from './renderer.js';
+export * from './auth-renderer.js';
 export * from './transports.js';
 export * from './resend.js';
 export * from './mailpit.js';

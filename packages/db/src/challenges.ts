@@ -30,6 +30,7 @@ import {
 } from './challenges-crypto.js';
 
 export const ACCESS_TEMPLATE_KEY = 'acesso_login';
+export const PURGE_KIND = 'auth.challenge.purge';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const EMAIL_SHAPE_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -102,6 +103,11 @@ export class PgChallengeStore implements ChallengeStore {
       | undefined;
     if (!r) throw new Error('auth_challenge_create_sem_resultado');
     if (r.out_resultado === 'criado' && r.out_challenge_id && r.out_outbox_id) {
+      // Expurgo diario (39 §2): um job por dia, idempotente pela chave do dia.
+      await this.client.query('select private.job_enqueue($1, $2, null, null, 5)', [
+        PURGE_KIND,
+        `${PURGE_KIND}:${iso(input.nowMs).slice(0, 10)}`,
+      ]);
       return { resultado: 'criado', challengeId: r.out_challenge_id, outboxId: r.out_outbox_id };
     }
     if (
