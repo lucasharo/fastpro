@@ -130,6 +130,16 @@ test('T-H012-20 RLS forçada, sem acesso de papeis publicos; app_system so pelas
     }
   }));
 
+test('T-H012-20 consulta de privilegio: app_system sem DELETE em app_user e com DELETE em app_session', () =>
+  tx(async () => {
+    const { rows } = await client.query(`
+      select
+        has_table_privilege('app_system', 'app.app_user', 'DELETE') as system_user_delete,
+        has_table_privilege('app_system', 'app.app_session', 'DELETE') as system_session_delete`);
+    assert.equal(rows[0].system_user_delete, false, 'app_system nao apaga app_user');
+    assert.equal(rows[0].system_session_delete, true, 'app_system apaga app_session (expurgo)');
+  }));
+
 test('T-H012-20 challenge_id unico: um desafio nao abre segunda etapa; hash e estagio validos', () =>
   tx(async () => {
     const usuario = await client.query(

@@ -100,6 +100,11 @@ describe('T-H012-02 cabecalhos antes do corpo', () => {
 describe('T-H012-04 cookie da etapa (parte pura)', () => {
   const SECRET = 'B'.repeat(43);
 
+  it('o nome do cookie e exatamente __Host-fp_ident (prefixo __Host- exige Path=/, Secure, sem Domain)', () => {
+    expect(IDENT_COOKIE_NAME).toBe('__Host-fp_ident');
+    expect(identCookieHeader(SECRET).split('=')[0]).toBe('__Host-fp_ident');
+  });
+
   it('tem __Host-, HttpOnly, Secure, SameSite=Strict, Path=/ e 15 min, sem Domain', () => {
     const c = identCookieHeader(SECRET);
     expect(c.startsWith(`${IDENT_COOKIE_NAME}=${SECRET};`)).toBe(true);
