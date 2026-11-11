@@ -5611,9 +5611,9 @@
       "name": "Assessoria de investimentos",
       "modality": "online",
       "regulated": true,
-      "council_body": "CVM",
+      "council_body": null,
       "sensitive": true,
-      "active": false,
+      "active": true,
       "synonyms": [
         "consultor",
         "assessor de investimentos"
@@ -5625,9 +5625,9 @@
       "name": "Corretor de seguros",
       "modality": "ambos",
       "regulated": true,
-      "council_body": "SUSEP",
+      "council_body": null,
       "sensitive": false,
-      "active": false,
+      "active": true,
       "synonyms": [
         "seguro",
         "apólice"
@@ -7587,9 +7587,9 @@
       "name": "Ator / atriz",
       "modality": "presencial",
       "regulated": true,
-      "council_body": "DRT",
+      "council_body": null,
       "sensitive": false,
-      "active": false,
+      "active": true,
       "synonyms": [
         "elenco",
         "publicidade"

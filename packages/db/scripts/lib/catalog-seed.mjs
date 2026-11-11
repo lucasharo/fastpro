@@ -6,12 +6,12 @@
 export const SEED_VERSION = 'v1-provisorio';
 export const MODALITY_MAP = Object.freeze({ PR: 'presencial', ON: 'online', HI: 'ambos' });
 export const MODALITIES = Object.freeze(['presencial', 'online', 'ambos']);
-// Orgaos da lista do desenho 53 §4.1(1), mais CFP, CFTA, CVM, SUSEP, CORE e DRT (acrescentados pelo
-// coordenador no #31). Servico ligado a um desses orgaos entra inativo ([DECIDIDO]). CVM, SUSEP e DRT
-// sao reguladores, nao conselhos: decisao do coordenador, a revisar.
+// Somente conselhos profissionais: a lista do desenho 53 §4.1(1), mais CFP, CFTA e CORE (decisao do
+// Orquestrador no #31). Servico ligado a um desses orgaos entra inativo ([DECIDIDO]). Reguladores
+// (CVM, SUSEP, DRT e similares) ficam fora desta lista e entram ativos.
 export const COUNCILS = Object.freeze([
   'OAB', 'CRC', 'CRM', 'CRO', 'CRP', 'CREFITO', 'COREN', 'CRN', 'CREF', 'CRMV', 'CAU', 'CREA',
-  'CFT', 'CRECI', 'CRFa', 'CRF', 'CRQ', 'CFM', 'CFP', 'CFTA', 'CVM', 'SUSEP', 'CORE', 'DRT',
+  'CFT', 'CRECI', 'CRFa', 'CRF', 'CRQ', 'CFM', 'CFP', 'CFTA', 'CORE',
 ]);
 const COUNCIL_SET = new Set(COUNCILS);
 

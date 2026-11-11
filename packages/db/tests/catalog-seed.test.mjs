@@ -12,8 +12,8 @@ export const MEASURED = Object.freeze({
   cross_refs_discarded: 1,
   repeated_names: 5,
   services_total: 575,
-  services_active: 501,
-  council_inactive: 74,
+  services_active: 504,
+  council_inactive: 71,
   regulated: 196,
   sensitive: 26,
   synonyms_total: 1253,
@@ -105,10 +105,13 @@ describe('T-H018-03 regra do conselho', () => {
     }
   });
 
-  it('conselhos acrescentados pelo coordenador (CFP, CFTA, CVM, SUSEP, CORE, DRT) ficam inativos', () => {
+  it('conselhos profissionais acrescentados pelo Orquestrador (CFP, CFTA, CORE) ficam inativos; reguladores ficam ativos', () => {
     const tags = seed.services.filter((s) => s.council_body !== null).map((s) => s.council_body);
-    for (const t of ['CFP', 'CFTA', 'CVM', 'SUSEP', 'CORE', 'DRT']) {
+    for (const t of ['CFP', 'CFTA', 'CORE']) {
       expect(tags.some((x) => x.split(/[\s/]+/).includes(t)), t).toBe(true);
+    }
+    for (const t of ['CVM', 'SUSEP', 'DRT']) {
+      expect(tags.some((x) => x.split(/[\s/]+/).includes(t)), t).toBe(false);
     }
   });
 });
