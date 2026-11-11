@@ -6,6 +6,23 @@
 - **Scripts:** chamadas de teste em arquivos temporários fora do repositório; só a verificação local de assinatura ficou versionada em `docs/factory/spikes/s03/verify_signature.py` (dados sintéticos).
 - **EXEC-ID:** não gerado (`execctl.py` não acionado neste spike).
 
+## Rodada 2 — 2026-11-11 (DEV, Issue #6, WF-03, Desenvolvimento)
+
+- **Credencial:** a mesma de `.env.local` (`MERCADO_PAGO_ACCESS_TOKEN` e `MERCADO_PAGO_PK`), usada pelo script `testar_mp.py` fora do repositório; nenhum valor impresso. A classificação de teste foi a informada pelo usuário; o prefixo não foi usado para decidir nada.
+- **Respostas da API (só códigos e mensagens):**
+
+| Chamada | Resposta | Observação |
+|---|---|---|
+| `GET /users/me` | HTTP 200 | tags `user_product_seller`, `test_user`, `normal` |
+| `POST /v1/payments` Pix avulso | HTTP 401, "Unauthorized use of live credentials" | mesma recusa da rodada 1; nenhuma cobrança |
+| `POST /v1/card_tokens` (3 cartões de teste) | HTTP 400, "The request could not be completed." | na rodada 1 o token saiu com HTTP 201; causa não investigada |
+| Pagamento com cartão (aprovado, recusado, pendente) | NÃO EXECUTADO | sem token gerado |
+| Idempotência de pagamento (mesma chave, 2 vezes) | HTTP 401 nas duas | NÃO VERIFICADO |
+| `POST /preapproval` sem cartão | HTTP 201, `status=pending` | rodada 1 deu 400; a assinatura fica pendente de adesão e não gera cobrança. Ficou 1 assinatura pendente na conta de teste, sem cancelamento (decisão pendente do Orquestrador) |
+
+- **Conclusão:** a API recusa **pagamentos** (Pix e cartão) com a mensagem de credencial de produção, nas duas rodadas. Não houve tentativa de contornar a recusa nem de usar outra credencial. Estados de pagamento, Pix, cartão aprovado/recusado/pendente e webhook real seguem NÃO VERIFICADO.
+- **Implementação mínima (sem chamada real de pagamento):** `apps/api/src/billing/mercado-pago.ts` (cliente de assinatura, Pix, cartão e consulta; valores em centavos convertidos para reais; erro guarda só status e mensagem da API) e `apps/api/src/billing/webhook-signature.ts` (manifesto do spike). Testes locais com fetch falso em `apps/api/tests/billing-mercado-pago.test.ts`, com vetor gerado pelo `verify_signature.py`.
+
 ## Resultado por critério
 
 | CA | Resultado | Evidência (resumo, sem segredo) |
