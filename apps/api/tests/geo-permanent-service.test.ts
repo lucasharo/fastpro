@@ -254,11 +254,10 @@ describe('CA-5 | teto por pedido, breaker de gasto e painel', () => {
 // 3 vale para republicacao. O rascunho em si e de H-025 (ainda nao existe); aqui se prova o contrato do servico:
 // ele so age quando e chamado para publicar. Edicoes do rascunho nao o chamam (decisao 46).
 describe('CA-3 | edicoes antes da publicacao nao chamam o provedor; o teto vale para a cadeia publicada', () => {
-  it('dez edicoes sem publicar: zero consultas ao provedor e nenhum ponto gravado', () => {
+  // NAO e prova de CA-3: nao existe caminho de edicao no servico. A prova real (edicao do rascunho nao chama o
+  // provedor) depende de H-025 e fica registrada como pendencia.
+  it('estado inicial: nenhuma consulta antes de qualquer publicacao (nao e prova de CA-3)', () => {
     const { provider, store } = montar({});
-    // Cada edicao e so um novo texto no rascunho; nenhuma delas chama o servico de publicacao.
-    const edicoes = Array.from({ length: 10 }, (_, i) => `Rua Rascunho Editada ${i}, 10`);
-    expect(edicoes).toHaveLength(10);
     expect(provider.consultas).toHaveLength(0);
     expect(store.linhas).toHaveLength(0);
     expect(store.chamadasDoPedido('pedido-1')).toBe(0);
