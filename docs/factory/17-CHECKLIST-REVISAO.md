@@ -125,7 +125,7 @@ A coluna **Origem** liga cada critério à regra de projeto. Os critérios opera
 | B-47 | Carência de 72 h aplicada ao trial, ou não aplicada ao Pix; Pix `pendente` que estende acesso; trial que cria assinatura ou cobrança; segundo trial para a mesma identidade | I-14, I-25; B-01 a B-08 |
 | B-48 | Chamada ao Mercado Pago de produção ou cobrança real antes do marco M4 e do gate H-054. Em desenvolvimento, **somente sandbox com dados sintéticos** | Decisões 37, 40; H-054 |
 | B-49 | **Cota Resend**: envio sem contador por destinatário (`external_quota`); sem reserva para `auth` (10/dia e 300/mês); `auth` (link/código de login) descartável; mais de 5 envios/s; descarte por cota sem estado `adiado_cota`/reavaliação; limites diferentes de 100/dia UTC e 3.000/mês `[VERIFICADOS no 13]` | I-24; ADR-022; Q-01, Q-10, Q-11, N-08 |
-| B-50 | E-mail real saindo de dev/CI (deve ir ao Mailpit); adapter Resend enviando sem domínio verificado ou sem segredo (deve recusar e manter `pendente`); interruptor, tabela de flags, rota ou rotina de reenvio/backfill de e-mails (proibidos: e-mails nascem ativos e não retroativos) | I-23, I-27; decisões 23, 27; N-07, N-09, N-10 |
+| B-50 | E-mail para destino que não é a conta cadastrada, em dev ou teste (deve ser recusado antes da API; o envio em dev e teste é pelo Resend, somente para a conta cadastrada); adapter Resend enviando sem domínio verificado ou sem segredo (deve recusar e manter `pendente`); interruptor, tabela de flags, rota ou rotina de reenvio/backfill de e-mails (proibidos: e-mails nascem ativos e não retroativos) | I-23, I-27; decisões 23, 27; N-07, N-09, N-10 |
 | B-51 | **Mapbox permanente fora do ponto permitido**: `permanent=true` em autocomplete/digitação; mais de uma chamada por revisão; 4ª chamada por rascunho (teto 3); coordenada gravada sem `geocode_mode` igual a `permanent`; resultado temporário em cache, rascunho ou log; sem breaker de gasto; chamada permanente para visitante anônimo ou antes de e-mail verificado | I-28; decisões 29, 36; G-01 a G-07; R-36 |
 | B-52 | **Limites do plano gratuito** ignorados em solução nova: dependência de PostGIS/pg_cron/pg_net sem fallback `[NÃO VERIFICADO no Free; S-02]`; cron da Vercel Hobby (1x/dia) usado para algo mais frequente; tarefa acima de 300 s ou da memória do plano; consumo de egress/Storage/banco sem métrica e alerta; serviço ou conta paga introduzidos sem decisão do usuário | Restrição de orçamento; ADR-020; R-28, R-30, R-37, R-38 |
 | B-53 | Cobrança real ou página de pagamento em produção servida no Vercel Hobby (uso comercial proibido); gate de lançamento ignorado (domínio no Resend, Vercel Pro, backup, tarifas MP, L1 a L4 e L7) | R-28; H-054; H-121 |
@@ -229,7 +229,7 @@ Marcar cada item no relatório. Falha em item da §2 = BLOQUEADOR.
 
 - [ ] Todo evento com e-mail previsto gera linha em `email_outbox` com `dedupe_key`; envio via `EmailProviderPort` (I-23).
 - [ ] Sem interruptor, tabela de flags, rota ou ponto de ativação; sem reenvio ou backfill de aceites/mensagens antigas (B-50).
-- [ ] Dev/CI: adapter Mailpit, zero chamada externa; Resend recusa sem domínio verificado/segredo e mantém o item pendente (B-50).
+- [ ] Dev/teste: envio pelo Resend somente para a conta cadastrada (destino fora dela recusado antes da API); Resend recusa sem domínio verificado/segredo e mantém o item pendente (B-50).
 - [ ] Cota por destinatário (dia UTC e mês); alertas em 70, 85 e 95%; aviso a partir de 90/dia e 2.700/mês; reserva `auth` de 10/dia e 300/mês; itens `adiado_cota` reavaliados; limite de 5 envios/s com recuo em 429 (B-49).
 - [ ] Link/código de login: enviado na requisição, prioridade máxima, fora do tick, resposta uniforme 202; falha do provedor = fila com recuo, sem duplicação.
 - [ ] Agrupamento: cooldown de 15 min por (destinatário, categoria, escopo); primeiro aviso imediato, seguintes em resumo; resumo omitido se já visto; estado rechecado antes de enviar lembrete (selecionado/cancelado não envia).
@@ -285,7 +285,7 @@ Marcar cada item no relatório. Falha em item da §2 = BLOQUEADOR.
 | Banco/migração | Log da migração do zero e incremental; pgTAP verde; teste de catálogo de RLS; monitores de invariante retornando zero; plano de rollback |
 | UI | Saída da varredura de hex (zero ocorrências); capturas claro/escuro; roteiro de teclado e foco; verificação de contraste dos tokens; leitor de tela nos fluxos tocados; estados vazio/erro/carregando |
 | Billing | Testes B-01 a B-10 relevantes (relógio controlado); webhook duplicado/fora de ordem/assinatura inválida; evidência de sandbox, sem chamada de produção |
-| Notificações | N-01 a N-10 relevantes (Mailpit); simulação de cota (Q-10/Q-11); prova de ausência de interruptor/backfill (N-07) |
+| Notificações | N-01 a N-10 relevantes (Resend, somente para a conta cadastrada); simulação de cota (Q-10/Q-11); prova de ausência de interruptor/backfill (N-07) |
 | Storage | P-01 a P-06 relevantes: 6ª foto recusada; Storage sem original; EXIF ausente; dimensões e bytes dentro do teto; URL expira |
 | Admin | T-08: sem MFA nega, papel inadequado nega, autoaprovação nega, leitura sem `access_case` nega, log gerado |
 | Concorrência (aceite, seleção, republicação, webhook) | Execução com N de pelo menos 100 iterações e monitores de invariante sem violação (C-xx e F-xx citados) |

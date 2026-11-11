@@ -68,7 +68,7 @@ Cada invariante tem (a) onde é imposta, (b) como é verificada continuamente. "
 | I-24 | Cota do provedor: contagem **por destinatário** em `external_quota(email)`; acima do limiar só `auth` (e crítico) passam; `auth` nunca é descartado por política; a mensagem automática no chat independe do e-mail | contador + prioridade + reserva | N-08, Q-01, Q-11 | FA-003, FA-029 |
 | I-25 | `payment.method ∈ {cartao, pix}`; boleto inexistente; carência de 72 h = `period_end + 72 h` para pago sem `cancel_at_period_end`; trial sem carência | CHECK + função `commercial_access` | B-01..B-10 | FA-006 |
 | I-26 | Nenhuma tabela de pedido/aceite/mensagem guarda preço, prazo ou valor do serviço; sem campos extras no aceite | revisão de esquema (teste de catálogo) + 422 | T-17 | FA-011 |
-| I-27 | Em dev/CI todo e-mail vai ao **Mailpit local** (nenhum envio externo); envio real só com domínio verificado e segredo presente | adapter por ambiente (`EMAIL_PROVIDER`) | N-09, N-10 | FA-029 |
+| I-27 | Em dev e teste todo e-mail vai pelo **Resend**, somente para a conta cadastrada (destino fora dela é recusado antes da API); envio real só com domínio verificado e segredo presente | adapter por ambiente (`EMAIL_PROVIDER`) | N-09, N-10 | FA-029 |
 | I-28 | Toda coordenada persistida (`exact_point`, `base_point`) vem de geocodificação `permanent=true`; nenhum resultado temporário é gravado, em cache ou em log; no máximo 3 chamadas permanentes por rascunho | CHECK `geocode_mode` + única função de persistência + teto | G-01..G-04 | FA-001, FA-007 |
 | I-29 | No máximo 5 fotos por pedido/rascunho; cada uma persistida **só em versão reduzida** (≤ 1.280 px, bytes ≤ teto); sem original/*master* no Storage; a 6ª é recusada | trigger + CHECK + 422 `photo_limit` | P-01..P-05 | FA-001, FA-007 |
 | I-30 | O chat é somente texto: nenhum anexo (imagem ou PDF) existe em mensagem; não há bucket, tabela, URL assinada, miniatura nem marca d'água de chat | a API rejeita qualquer anexo + ausência de tabela/bucket | M-01, M-02 | FA-027, FA-028 |
@@ -220,7 +220,7 @@ Severidade: A (alta), M (média), B (baixa). Probabilidade: A/M/B.
 | R-30 | Cron do Hobby roda 1x/dia (±59 min): digest/lembretes atrasariam | M/A **VERIFICADO (doc 13)** | Sem depender do cron da Vercel: `pg_cron`/`pg_net` (R-38), plano B chamada externa, plano C tick oportunista; login e mensagem automática independem do tick | Resultado do S-10 |
 | R-31 | Limites de corpo/resposta/memória de função inviabilizam foto servida com marca d'água | M/M `[NÃO VERIFICADO]` | Derivada pequena; upload direto ao Storage; S-06/S-09 | Teste Q-08 |
 | R-32 | Backup manual atrasado ou perdido | A/M | Rotina e periodicidade em `12-TODO.md` (adiada); teste D-01 | Antes de dados reais |
-| R-33 | **Resend exige domínio verificado para enviar** (doc 13); sem domínio não há envio real nem login de usuários reais | A/A (VERIFICADO) | Mailpit em dev/CI; homologação só com endereços `resend.dev` (consomem cota); lançamento bloqueado até o domínio (decisão 15) | **Bloqueia login de usuários reais** |
+| R-33 | **Resend exige domínio verificado para enviar** (doc 13); sem domínio não há envio real nem login de usuários reais | A/A (VERIFICADO) | em dev e teste, envio pelo Resend somente para a conta cadastrada; homologação só com endereços `resend.dev` (consomem cota); lançamento bloqueado até o domínio (decisão 15) | **Bloqueia login de usuários reais** |
 | R-34 | Cota gratuita do Resend (100/dia UTC, 3.000/mês, por destinatário, 10 req/s) esgota com todos os e-mails habilitados | A/M | Contador e alertas (≥ 90/dia, ≥ 2.700/mês); reserva de 10/dia e 300/mês para `auth`; agrupamento 15 min; degradação (chat/site seguem); remetente ≤ 5/s | ≥ 70% em 3 dias ⇒ decisão de upgrade |
 | R-35 | Storage de 1 GB: 5 fotos × ≈ 0,5 MB ≈ 2,5 MB/pedido ⇒ ≈ 280 pedidos em ≈ 700 MB; documentos de verificação consomem o restante (chat sem anexos) | M/A (hipótese sobre limite VERIFICADO) | Redução no envio e só versão reduzida (decisão 31); chat sem imagens (decisão 32); gatilho de upgrade | ≥ 70% do Storage |
 | R-36 | Mapbox permanente: custo desde o 1º pedido e cartão obrigatório; abandono de rascunhos gera custo | M/M | Chamada só após e-mail verificado e revisão; teto 3; limite de gasto na conta; breaker; alternativa "permanente na publicação" | Gasto ≥ 70% do limite |
@@ -349,11 +349,11 @@ Relógio controlado no banco (`now()` simulado); instante do vencimento = `perio
 | B-10 | Pagamento antecipado de Pix antes do vencimento | novo período começa em `period_end` vigente; sem perda de dias |
 
 ## 9c. Testes de notificações por e-mail (N-xx) [Rodada 12 nº 27, T6]
-Ambiente de teste: Mailpit local, relógio controlado; nenhum envio externo. Segredos só por nome de variável.
+Ambiente de teste: relógio controlado; e-mail pelo Resend, somente para a conta cadastrada; nenhum outro destino. Segredos só por nome de variável.
 
 | ID | Cenário | Esperado |
 |---|---|---|
-| N-01 | Ocorre aceite | mensagem automática no chat **e** 1 linha em `email_outbox` (aviso de aceite) enviada pelo `EmailProviderPort`; capturada no Mailpit; sem endereço/telefone/e-mail de terceiros |
+| N-01 | Ocorre aceite | mensagem automática no chat **e** 1 linha em `email_outbox` (aviso de aceite) enviada pelo `EmailProviderPort`; entregue pelo Resend somente à conta cadastrada; sem endereço/telefone/e-mail de terceiros |
 | N-02 | 4 aceites do mesmo pedido em 15 min | 1º e-mail imediato; os demais agrupados em 1 resumo (economia de cota); aceite visto antes do resumo ⇒ resumo omitido; pedido selecionado/cancelado ⇒ sem resumo obsoleto |
 | N-03 | Mensagem humana não lida | e-mail imediato na primeira, seguintes agrupadas (15 min); a mensagem automática do aceite não aciona este aviso |
 | N-04 | Lembrete T-24h, vencimento, seleção, cancelamento, desistência, trial/ciclo, verificação | cada um enfileira e envia; lembretes rechecam o estado (selecionado/cancelado ⇒ não enviam) |
@@ -361,8 +361,8 @@ Ambiente de teste: Mailpit local, relógio controlado; nenhum envio externo. Seg
 | N-06 | Todos os tipos habilitados simultaneamente | nenhum duplicado (dedupe_key); `email_type` correto no corpo; contador de uso por destinatário incrementado |
 | N-07 | Procurar interruptor, tabela de flags, ponto de ativação ou rotina de reenvio | **não existem** (teste de catálogo e de rotas/jobs); aceites anteriores não geram e-mail retroativo |
 | N-08 | Cota: 85/90/100 destinatários no dia UTC; 2.700/3.000 no mês | alertas; acima do limiar só `auth`/crítico; demais `adiado_cota` e reavaliados; chat/site continuam; login nunca descartado |
-| N-09 | Dev/CI com Mailpit | e-mail capturado localmente; zero chamadas externas |
-| N-10 | Adapter Resend com domínio **não** verificado/segredo ausente | recusa enviar (erro explícito), nada é perdido (fica `pendente`); com `EMAIL_PROVIDER` de dev usa Mailpit |
+| N-09 | Dev/teste com Resend | envio só para a conta cadastrada; destino fora dela é recusado antes da API (zero chamadas) |
+| N-10 | Adapter Resend com domínio **não** verificado/segredo ausente | recusa enviar (erro explícito), nada é perdido (fica `pendente`); em dev e teste o envio segue pelo Resend, somente para a conta cadastrada |
 
 ## 9d. Testes de geocodificação e fotos (G-xx, P-xx) [decisões 29 e 30]
 Provedor Mapbox simulado em teste (respostas "temporária" e "permanente" distintas); nenhuma chamada externa.

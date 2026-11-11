@@ -10,8 +10,6 @@ export interface EmailEnv {
   readonly APP_ENV?: string | undefined;
   readonly EMAIL_PROVIDER?: string | undefined;
   readonly EMAIL_FROM?: string | undefined;
-  readonly SMTP_HOST?: string | undefined;
-  readonly SMTP_PORT?: string | undefined;
   readonly RESEND_API_KEY?: string | undefined;
   readonly RESEND_VERIFIED_DOMAIN?: string | undefined;
   /** E-mail da conta Resend do titular; unico destino aceito com o remetente de teste. */

@@ -42,18 +42,18 @@
 
 ### Revisão 4 — 2026-11-09 (Rodada 12, decisão 27; fatos do Resend em `13-VERIFICACAO-SERVICOS.md`)
 - **Todos os e-mails HABILITADOS no código (decisão 27):** aceite, mensagem não lida, lembretes de prazo (24 h e vencimento), seleção, cancelamento, desistência, lembretes de trial/ciclo, decisão de verificação e login (link/código). Supera a parte da decisão 23 que os mantinha "comentados/desativados" e a decisão 21 ("preparados mas não enviados"). **Permanece:** sem interruptor, sem tela/endpoint administrável, sem reenvio de aceites antigos (só eventos novos geram e-mail).
-- **Envio real depende do domínio verificado no Resend (decisão 15):** em desenvolvimento/CI o destino é o **Mailpit local**; nenhum usuário real recebe e-mail antes do domínio verificado (bloqueio de lançamento, não de desenvolvimento).
+- **Envio real depende do domínio verificado no Resend (decisão 15):** em desenvolvimento e teste o envio é pelo Resend, somente para a conta cadastrada (Mailpit removido em 2026-11-11); nenhum usuário real recebe e-mail antes do domínio verificado (bloqueio de lançamento, não de desenvolvimento).
 - **Cota gratuita do Resend como requisito não funcional (RNF-EMAIL, seção 8):** 100/dia (dia UTC), 3.000/mês, contado por destinatário; com degradação controlada (login prioritário; chat e site nunca dependem de e-mail).
 - Reescritos: RF-064, 073, 116, 118, 119, 122, 154 (e RF-041, 115 ajustados). AMB-31 respondida.
 - **Impactos (QA/Architect devem checar):**
   | Tema | Verificar |
   |---|---|
   | Nenhum e-mail ligado a flag, comentário ou ponto de ativação | 08 §12.2: ausência de tabela/tela/endpoint de flag; revisão de código sem envio comentado |
-  | Cada tipo de e-mail tem teste de que **é** enfileirado/enviado (ao Mailpit) | 11: aceite, mensagem não lida, lembrete 24 h, vencimento, seleção, cancelamento, desistência, trial/ciclo, verificação, login |
+  | Cada tipo de e-mail tem teste de que **é** enfileirado/enviado (pelo Resend, para a conta cadastrada) | 11: aceite, mensagem não lida, lembrete 24 h, vencimento, seleção, cancelamento, desistência, trial/ciclo, verificação, login |
   | Sem backfill: aceites/eventos anteriores à habilitação não geram e-mail | 08 §12.2; 11: teste de não retroatividade |
   | Cota: contador diário (UTC) e mensal, alertas, reserva para `auth`, degradação e reavaliação no dia seguinte | 08 §12.6; 11: teste a 90/dia e 100/dia (login passa; não críticos adiados; chat/site intactos) |
   | Digest de 15 min como economia de cota; limite ≤ 5 envios/s | 08 §12.3 e §12.6 |
-  | Sem domínio verificado nada real sai; Mailpit em dev/CI; `resend.dev` consome cota | 08 §12.5; ambientes e CI |
+  | Sem domínio verificado nada real sai; em dev e teste só a conta cadastrada recebe, pelo Resend; `resend.dev` consome cota | 08 §12.5; ambientes e CI |
   | Conteúdo dos e-mails sem dados sensíveis (RF-120) em todos os tipos | 11 |
 
 ### Revisão 6 — 2026-11-10 (decisão 33 C; supera partes da Rev. 5)
@@ -256,7 +256,7 @@ Matriz de visibilidade: doc 05 §6 (aprovada). Reproduzida nos RF-136..139.
 | RF-119 | Expiração: lembrete 24 h antes (se aberto) e aviso no vencimento. Sem prometer aceites. Canal e-mail **habilitado** (decisão 27; AMB-31 respondida), com baixa prioridade na degradação por cota (pode ser suprimido ou adiado; nunca o aviso na plataforma). | [APROVADO]; canal: decisão 27 | FA-012 |
 | RF-120 | E-mails e a mensagem automática não revelam endereço completo, anexos ou dados sensíveis. | [APROVADO] | FA-029, FA-030 |
 | RF-121 | Canais além de e-mail (push/SMS/WhatsApp) não estão aprovados. | [PROPOSTA] manter fora | — |
-| RF-122 | **Todos os e-mails estão HABILITADOS no código** (aceite, mensagem não lida, lembretes, seleção, cancelamento, desistência, trial/ciclo, verificação e login). **Não há interruptor, tela/endpoint administrável, ponto de ativação nem auditoria de flag.** **Não há reenvio nem e-mails retroativos de aceites antigos**: só eventos novos geram e-mail. O aviso de aceite sai com e-mail imediato no primeiro e agrupado depois (padrão 15 min), sem aviso obsoleto (RF-117) e sem dados privados (RF-120). O chat segue imediato e **independe de e-mail**. **Envio real depende do domínio verificado no Resend (decisão 15);** em desenvolvimento o e-mail vai ao Mailpit local. A cota gratuita é tratada como requisito não funcional (seção 8, RNF-EMAIL). Substitui o desenho com feature flag (AMB-25, ADR-022) e a desativação da decisão 23. | [APROVADO] (decisão 27; supera 21 e parte da 23) | FA-029 |
+| RF-122 | **Todos os e-mails estão HABILITADOS no código** (aceite, mensagem não lida, lembretes, seleção, cancelamento, desistência, trial/ciclo, verificação e login). **Não há interruptor, tela/endpoint administrável, ponto de ativação nem auditoria de flag.** **Não há reenvio nem e-mails retroativos de aceites antigos**: só eventos novos geram e-mail. O aviso de aceite sai com e-mail imediato no primeiro e agrupado depois (padrão 15 min), sem aviso obsoleto (RF-117) e sem dados privados (RF-120). O chat segue imediato e **independe de e-mail**. **Envio real depende do domínio verificado no Resend (decisão 15);** em desenvolvimento e teste o e-mail vai pelo Resend, somente para a conta cadastrada. A cota gratuita é tratada como requisito não funcional (seção 8, RNF-EMAIL). Substitui o desenho com feature flag (AMB-25, ADR-022) e a desativação da decisão 23. | [APROVADO] (decisão 27; supera 21 e parte da 23) | FA-029 |
 
 ### M12. Avaliações e reputação
 | ID | Requisito | Origem | FA |
@@ -348,7 +348,7 @@ Apps móveis na primeira fase; áudio no chat; pagamento/escrow e comissão sobr
 
 ## 6. Dependências e impacto (sem impor solução)
 - **Dados:** pedido, cadeia, participação/aceite, seleção, conclusão, conversa (incluindo mensagem de sistema), avaliação, consentimento, auditoria (doc 05 §1), mais assinatura/acesso comercial, catálogo (sem flag de e-mail; decisões 23 e 27). **Não há entidade de oferta.**
-- **APIs/serviços externos:** Mapbox (geocoding/autocomplete), Mercado Pago (assinatura, **Pix e cartão**, webhooks; sem boleto), e-mail transacional (Resend; todos os e-mails habilitados no código, sem flag; envio real exige domínio verificado, decisão 15; Mailpit local em desenvolvimento; cota gratuita de 100/dia e 3.000/mês, RNF-EMAIL), armazenamento privado de arquivos.
+- **APIs/serviços externos:** Mapbox (geocoding/autocomplete), Mercado Pago (assinatura, **Pix e cartão**, webhooks; sem boleto), e-mail transacional (Resend; todos os e-mails habilitados no código, sem flag; envio real exige domínio verificado, decisão 15; em desenvolvimento e teste, envio pelo Resend somente para a conta cadastrada; cota gratuita de 100/dia e 3.000/mês, RNF-EMAIL), armazenamento privado de arquivos.
 - **Arquitetura:** as invariantes (teto 8, seleção única, uma republicação ativa, aceite único, idempotência) devem ser garantidas no servidor; decisão de fonte de verdade da autorização é do Architect.
 - **Jurídico:** L1, L2, L3, L4, L7 antes de cobrança real. A carência de 72 h para Pix (H5) é decisão do usuário; a política de reembolso (L3) continua pendente.
 
@@ -356,7 +356,7 @@ Apps móveis na primeira fase; áudio no chat; pagamento/escrow e comissão sobr
 - O plano gratuito do Resend permite **100 e-mails/dia (dia UTC) e 3.000/mês**, contando **cada destinatário**; e-mails de teste `resend.dev` também consomem cota.
 - O sistema acompanha o uso diário e mensal e alerta perto dos limites (ex.: ≥ 90/dia, ≥ 2.700/mês).
 - **Degradação ao se aproximar/estourar a cota:** (1) o e-mail de **login/conta tem prioridade** sobre todos os demais; (2) e-mails críticos (seleção, cancelamento, desistência, verificação) vêm a seguir; (3) aviso de aceite e mensagem não lida depois; (4) lembretes por último, podendo ser suprimidos ou adiados e reavaliados no dia UTC seguinte (nunca enviados se obsoletos); (5) **o chat e o site continuam funcionando**, pois nada essencial depende de e-mail.
-- Nenhum e-mail real sai antes do domínio verificado (decisão 15); em desenvolvimento, Mailpit local.
+- Nenhum e-mail real sai antes do domínio verificado (decisão 15); em desenvolvimento e teste, envio pelo Resend somente para a conta cadastrada.
 - Critérios: FA-029 (cenários de cota).
 
 ## 7. Lacunas

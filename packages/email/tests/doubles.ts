@@ -1,11 +1,5 @@
-// H-093 | Dublês offline dos transportes HTTP e SMTP. Nenhum abre conexao.
-import type {
-  HttpRequest,
-  HttpResponse,
-  HttpTransport,
-  SmtpMail,
-  SmtpTransport,
-} from '../src/index.js';
+// H-093 | Dublê offline do transporte HTTP. Nenhum abre conexao.
+import type { HttpRequest, HttpResponse, HttpTransport } from '../src/index.js';
 
 export class FakeHttp implements HttpTransport {
   readonly requests: HttpRequest[] = [];
@@ -31,24 +25,6 @@ export function response(
   headers: Record<string, string> = {},
 ): HttpResponse {
   return { status, body, headers };
-}
-
-export class FakeSmtp implements SmtpTransport {
-  readonly mails: SmtpMail[] = [];
-  private readonly script: Array<number | Error> = [];
-
-  queue(...items: Array<number | Error>): this {
-    this.script.push(...items);
-    return this;
-  }
-
-  async sendMail(mail: SmtpMail): Promise<number> {
-    this.mails.push(mail);
-    const next = this.script.shift();
-    if (next === undefined) return 250;
-    if (next instanceof Error) throw next;
-    return next;
-  }
 }
 
 export function first<T>(items: readonly T[]): T {

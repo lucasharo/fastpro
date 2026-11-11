@@ -13,7 +13,7 @@
 
 - A matriz da §5 cobre os 35 FA com sete categorias de caso: Positivo (P), Negativo (N), Limite (L), Rede/falha (R), Concorrência (C), Autorização (A) e Acessibilidade (Y). IDs no formato `QA-FAnn-X`.
 - Pirâmide: a maior parte é unitária e de domínio; concorrência e RLS rodam em Postgres real (nunca mock); E2E só nas jornadas de M1 a M3; provedores externos (Mapbox, Mercado Pago, Resend) são sempre simulados em dev e CI.
-- Ambientes sem custo e sem conta: Supabase CLI com Docker local, Mailpit e simuladores. Sandbox do Mercado Pago, projetos na Vercel e no Supabase e Mapbox real exigem autorização de execução (BLQ-EXEC, BK-6).
+- Ambientes sem custo e sem conta: Supabase CLI com Docker local e simuladores. Sandbox do Mercado Pago, projetos na Vercel e no Supabase e Mapbox real exigem autorização de execução (BLQ-EXEC, BK-6).
 - Marcos: M1 exige C-01 a C-03, C-16, M-01 e M-02 verdes com N≥100 nos cenários de concorrência. M3 exige a suíte completa. M4 é decisão humana; o QA não emite CONCLUIR nem BLOQUEAR.
 - Lacunas e inconsistências documentais: §11. Três pontos bloqueiam apenas a execução de casos específicos; o restante são recomendações.
 
@@ -39,7 +39,7 @@
 | 7 | E2E web | Jornadas EE-01 a EE-09 (§6.3) em navegador real | Playwright | Local e CI; preview só smoke, sem e-mail | 3 em diante |
 | 8 | Acessibilidade | AX-01 a AX-09 (§6.4): triagem automatizada, teclado, leitor de tela manual, contraste dos tokens, zoom e reflow | @axe-core/playwright (triagem); script de contraste; roteiro manual | CI (triagem) e manual (evidência) | 3 nas telas tocadas; completo na 5 |
 | 9 | Segurança | T-01 a T-17 (negativos por chamada direta), B-05, B-06, B-14 a B-19, SC-01 a SC-06 (§6.6) | Scripts HTTP; OWASP ZAP baseline (local); gitleaks; OSV-Scanner ou `pnpm audit` | CI e local | 0 em diante; completa na 5 |
-| 10 | E-mail | N-01 a N-10, Q-01, Q-10, Q-11, F-04, F-12, C-13; captura pela API do Mailpit | Mailpit | Local e CI | 1 (N-05, N-09, N-10); 3 (N-01, N-03); 4 e 5 (demais) |
+| 10 | E-mail | N-01 a N-10, Q-01, Q-10, Q-11, F-04, F-12, C-13; registro de envio pela API do Resend, somente para a conta cadastrada | Resend (conta cadastrada) | Local e CI | 1 (N-05, N-09, N-10); 3 (N-01, N-03); 4 e 5 (demais) |
 | 11 | Billing (simulado e sandbox) | B-01 a B-10, C-11, T-09, F-07; assinatura inválida; consulta ao recurso; replay | Fixtures de webhook versionadas (RT-04); sandbox do MP após BLQ-EXEC | Local (simulado) e sandbox | 4 em diante |
 | 12 | Geocodificação (simulada) | G-01 a G-07, F-05, I-28; respostas "temporária" e "permanente" distintas | Simulador próprio do Mapbox | Local e CI, sem egress | 2 em diante |
 | 13 | Mídia | P-01 a P-06, T-07, F-09, F-11, Q-08, Q-12; EXIF; imagem-bomba; arquivo falso por extensão | Fixtures sintéticas geradas por script; ExifTool para verificar metadados [PROPOSTA] | Local e CI | 2 em diante |
@@ -53,9 +53,9 @@
 
 | ID | Ambiente | Componentes | Uso permitido | Restrições | Estado |
 |---|---|---|---|---|---|
-| A1 | Dev local | Supabase CLI e Docker (Postgres, Auth, Storage e Realtime locais), app local, Mailpit, simuladores de Mapbox, Mercado Pago e Resend, relógio controlado | Todas as camadas | Extensões locais podem diferir do plano Free (PostGIS, pg_cron, pg_net; RT-02). Egress externo bloqueado na suíte | Montável sem conta. Licença do Docker: [NÃO VERIFICADO] (RT-13) |
+| A1 | Dev local | Supabase CLI e Docker (Postgres, Auth, Storage e Realtime locais), app local, simuladores de Mapbox e Mercado Pago, Resend (somente para a conta cadastrada), relógio controlado | Todas as camadas | Extensões locais podem diferir do plano Free (PostGIS, pg_cron, pg_net; RT-02). Egress externo bloqueado na suíte | Montável sem conta. Licença do Docker: [NÃO VERIFICADO] (RT-13) |
 | A2 | CI | Mesmo conjunto do A1, em containers, sem segredos reais | Camadas 1 a 10, 12, 13 e 16; smoke da 14 | Minutos e limites de CI: [NÃO VERIFICADO] (RT-11). Nenhum segredo real | Depende de H-004 |
-| A3 | Preview na Vercel (Hobby) | Web e API em função única | Smoke e E2E de navegação, sem e-mail e sem cobrança | Hobby é só uso não comercial (R-28); e-mail real impossível sem domínio (R-33); Mailpit não é acessível a partir do preview (RT-06) | BLQ-EXEC (criar projeto) |
+| A3 | Preview na Vercel (Hobby) | Web e API em função única | Smoke e E2E de navegação, sem e-mail e sem cobrança | Hobby é só uso não comercial (R-28); e-mail real impossível sem domínio (R-33); e-mail só pelo Resend, para a conta cadastrada (Mailpit removido em 2026-11-11; RT-06 não se aplica mais) | BLQ-EXEC (criar projeto) |
 | A4 | Supabase Free remoto (projeto de teste) | Spikes S-02 e S-10; pooler; conexão | Spikes e smoke de conexão | Pausa após 1 semana sem uso (R-08); sem backup; 60 conexões diretas e 200 no pooler; sem dados reais | BLQ-EXEC |
 | A5 | Sandbox do Mercado Pago | Checkout hospedado e assinatura de teste | Casos B-xx em sandbox; decisão 37 (sandbox permitido) | Sem cobrança real. Sandbox em conta Hobby pendente de confirmação (BK-3). Proibido em produção (B-48) | BLQ-EXEC; BK-3 |
 | A6 | Mapbox real | Uma chamada de smoke com permanent=true, manual | Confirmar formato de resposta (S-04) | Cartão e limite de gasto (decisões 29 e 36); nunca em CI; resultado temporário nunca em cache | BLQ-EXEC (H-021) |
@@ -63,7 +63,7 @@
 
 Regras de ambiente:
 - Dev e CI usam somente A1 e A2. Qualquer chamada a host externo falha o teste (B-49, B-50, B-51).
-- Mailpit é o único destino de e-mail em dev e CI (I-27; N-09). Não usar resend.dev nem e-mail real de titular como destino de teste (13; RT-05).
+- Em dev e teste o envio é pelo Resend, somente para a conta cadastrada; destino fora dela é recusado (decisão 15, 2026-11-11; I-27; N-09). Mailpit removido em 2026-11-11.
 - O relógio controlado vale para o banco (função now). O mecanismo (função de teste em schema isolado ou libfaketime no container) não está definido (N14).
 
 ### 3.2 Dados sintéticos
@@ -162,7 +162,7 @@ Convenção: cada célula é um caso com ID QA-FAnn-X (X = P, N, L, R, C, A ou Y
 | FA | P (positivo) | N (negativo) | L (limite) | R (rede/falha) | C (concorrência) | A (autorização) | Y (a11y) | Base existente |
 |---|---|---|---|---|---|---|---|---|
 | FA-028 Reenvio sem duplicar; somente leitura | Texto reenviado após falha: uma mensagem e falha sinalizada | Envio em conversa somente leitura: negado; conversa restrita por segurança: aviso | client_message_id reutilizado com corpo diferente: 422 (B-27) | Queda após COMMIT antes da resposta: retry gera uma mensagem (C-12) | Reenvio cinco vezes (C-12) | Não participante: 404 | Estados enviando e falha anunciados por região viva [PROPOSTA] | C-12, C-18, I-13 |
-| FA-029 Notificações: chat imediato e e-mails habilitados; cota | Aceite enfileira e envia ao Mailpit: primeiro imediato, demais em resumo de 15 min | Sem domínio ou segredo: Resend recusa e item fica pendente (N-10); nenhum e-mail retroativo (N-07) | Cota de 89, 90 e 100 destinatários no dia UTC (Q-10); 2.699, 2.700 e 3.000 no mês (Q-11); virada UTC | Provedor fora por horas: pendente com recuo e sem duplicação (F-04); cota esgotada: login passa (F-12) | Dois ticks concorrentes: no máximo um e-mail por janela (C-13) | E-mail não expõe e-mail ou telefone de terceiros (N-01) | Não lida exibida no site sem depender de e-mail (H-101) | N-01 a N-10, Q-01, Q-10, Q-11, C-13, F-04, F-12 |
+| FA-029 Notificações: chat imediato e e-mails habilitados; cota | Aceite enfileira e envia pelo Resend (dev e teste: só a conta cadastrada): primeiro imediato, demais em resumo de 15 min | Sem domínio ou segredo: Resend recusa e item fica pendente (N-10); nenhum e-mail retroativo (N-07) | Cota de 89, 90 e 100 destinatários no dia UTC (Q-10); 2.699, 2.700 e 3.000 no mês (Q-11); virada UTC | Provedor fora por horas: pendente com recuo e sem duplicação (F-04); cota esgotada: login passa (F-12) | Dois ticks concorrentes: no máximo um e-mail por janela (C-13) | E-mail não expõe e-mail ou telefone de terceiros (N-01) | Não lida exibida no site sem depender de e-mail (H-101) | N-01 a N-10, Q-01, Q-10, Q-11, C-13, F-04, F-12 |
 | FA-030 E-mail nunca; telefone só com consentimento | Opt-in marcado e aceite: profissional vê o telefone só dentro daquela participação | Checkbox desmarcado: telefone não aparece; e-mail do cliente nunca aparece em resposta | Opt-in marcado sem telefone: opt-in inativo; revogação corta acesso futuro | n/a: sem integração externa | Revogação e revelação simultâneas: revelação negada depois da revogação | Elegível que não aceitou não vê telefone; republicação não herda consentimento | Checkbox com rótulo; estado padrão desmarcado | T-03, I-16, B-14, B-15 |
 | FA-031 Admin sem navegação livre | Auditor consulta trilha; caso autorizado com justificativa tem acesso e log | Sem MFA: negado; papel inadequado na API: 403; sem access_case: negado | Estorno de 20000 centavos (1 aprovação) e de 20001 (2 aprovações) (T-08) | Perda do dispositivo MFA: reenrolamento com dupla aprovação (R-21, D-07) | Duas aprovações do mesmo aprovador ao mesmo tempo: uma válida | Autoaprovação: negada; Auditor não altera | Console admin operável por teclado; telas mínimas por papel | T-08, I-15, I-18 |
 | FA-032 Estornos (bloqueado por L3) | Com estorno liberado (após L3): aprovado por Financeiro com uma aprovação | Solicitante aprova o próprio: negado; mesmo aprovador duas vezes: negado | 20000 centavos (uma aprovação) e 20001 (duas) | Falha no provedor durante o estorno: estado pendente sem duplicar [PROPOSTA; NÃO VERIFICADO no MP] | Duas aprovações simultâneas de aprovadores distintos: efeito único | Papel sem permissão: 403 | n/a | I-18, T-08 (teste de bloqueio enquanto L3 estiver pendente) |
@@ -204,7 +204,7 @@ Convenção: cada célula é um caso com ID QA-FAnn-X (X = P, N, L, R, C, A ou Y
 | EE-05 | Assinatura em sandbox: planos, Pix ou cartão (sem boleto), webhook simulado, acesso ativo, carência | 4 |
 | EE-06 | Republicação de pedido expirado e cancelamento | 4 |
 | EE-07 | Admin: MFA, caso autorizado com justificativa, log de leitura | 5 |
-| EE-08 | E-mail: aceite gera captura no Mailpit sem PII de terceiros | 3 e 4 |
+| EE-08 | E-mail: aceite gera envio pelo Resend, só para a conta cadastrada, sem PII de terceiros | 3 e 4 |
 | EE-09 | Falhas na UI: sem rede, tempo esgotado, 409 de version_mismatch, mensagens acionáveis | 5 |
 
 ### 6.4 Acessibilidade (AX), WCAG 2.2 AA
@@ -253,7 +253,7 @@ MON-01 a MON-30 correspondem a I-01 a I-30 (11 §1). Cada monitor é uma consult
 ### 6.8 Regras de teste para pagamento e e-mail
 
 - Billing: relógio do banco controlado; fixtures de webhook com assinatura gerada pelo segredo de teste; cenários de replay, fora de ordem e assinatura inválida (T-09; B-05).
-- E-mail: Mailpit como único destino; verificar que o destinatário é sintético e que o corpo não contém dado de terceiro (N-01; T-11).
+- E-mail: envio pelo Resend, somente para a conta cadastrada; verificar que o corpo não contém dado de terceiro (N-01; T-11).
 
 ## 7. Evidências exigidas
 
@@ -268,7 +268,7 @@ Base: 17 §5. Nada é dado como executado sem registro. Evidência é artefato v
 | Banco | Log de migração do zero e incremental; pgTAP verde; teste de catálogo de RLS; monitores zerados; plano de rollback |
 | UI | Saída da varredura de hex vazia; capturas claro e escuro; roteiro de teclado; contraste dos tokens; nota de leitor de tela; estados vazio, erro e carregando |
 | Billing | B-01 a B-10 relevantes com relógio controlado; webhook duplicado, fora de ordem e com assinatura inválida; evidência de sandbox, sem chamada de produção |
-| E-mail | N-01 a N-10 relevantes com capturas do Mailpit sem PII real; simulação de cota (Q-10, Q-11); prova de ausência de interruptor e de backfill (N-07) |
+| E-mail | N-01 a N-10 relevantes com registros de envio do Resend à conta cadastrada, sem PII de terceiros; simulação de cota (Q-10, Q-11); prova de ausência de interruptor e de backfill (N-07) |
 | Mídia | P-01 a P-06: 6ª foto recusada; Storage sem original; EXIF ausente; dimensões e bytes dentro do teto; URL expira |
 | Admin | T-08: sem MFA nega; papel inadequado nega; autoaprovação nega; leitura sem access_case nega; log gerado |
 | Segurança | Saídas de SC-01 a SC-06 e varredura de PII em logs de teste (T-11) |
@@ -297,7 +297,7 @@ Fonte: 14 §6 e 12-TODO. Estado conforme os documentos; o QA não decide nenhum 
 
 | ID | Condição | Base | Efeito no QA | Estado documental |
 |---|---|---|---|---|
-| TL-1 | Domínio verificado no Resend antes de qualquer e-mail real | I-27; N-10; H2; decisão 15; BK-10 | Sem envio real; testes só com Mailpit | Inexistente |
+| TL-1 | Domínio verificado no Resend antes de qualquer e-mail real | I-27; N-10; H2; decisão 15; BK-10 | Sem envio ao público; testes só com o Resend, para a conta cadastrada | Inexistente |
 | TL-2 | Vercel Pro antes de cobrar | Decisão 28; R-28; B-53 | Teste de bloqueio de cobrança no Hobby | Hobby |
 | TL-3 | Backup manual com periodicidade definida e restauração testada | BK-7; 12-TODO #1; R-08; D-01 | D-01 e D-02 obrigatórios antes do M4 | Periodicidade pendente |
 | TL-4 | Tarifas do Mercado Pago obtidas | S-03; 12-TODO #12 | Nenhum valor de taxa codificado ou testado como fato | Não obtidas (403) |
@@ -317,7 +317,7 @@ Licenças e limites declarados de memória, não verificados nesta fase. Confirm
 | Playwright e @axe-core/playwright | E2E e triagem de a11y | axe é triagem, não conformidade |
 | pgTAP e Supabase CLI | RLS, catálogo e migração | Extensões locais podem diferir do Free (RT-02) |
 | Docker | Ambiente A1 e A2 | Licença de uso [NÃO VERIFICADO] (RT-13) |
-| Mailpit | Captura de e-mail | Único destino em dev e CI |
+| Resend (conta cadastrada) | Envio de e-mail em dev e teste | Único destino permitido em dev e teste: a conta cadastrada |
 | Schemathesis | Contrato de API | OSS |
 | k6 | Carga leve | Local apenas |
 | OWASP ZAP | Baseline dinâmico | Somente A1 |
@@ -334,7 +334,7 @@ Licenças e limites declarados de memória, não verificados nesta fase. Confirm
 | RT-03 | Simuladores de Mapbox, Mercado Pago e Resend divergem da API real | Fixtures versionadas com data de verificação; smoke manual após autorização |
 | RT-04 | Formato de x-signature não verificado; fixture pode validar implementação errada | Só gerar fixture após S-03 |
 | RT-05 | Resend em modo de teste não confirmado; resend.dev consome cota | Não usar resend.dev em teste |
-| RT-06 | Preview na Vercel não alcança Mailpit | E-mail só em A1 e A2 |
+| RT-06 | Preview na Vercel: e-mail só pelo Resend, para a conta cadastrada (Mailpit removido em 2026-11-11) | E-mail só em A1 e A2 |
 | RT-07 | Fixture com aparência de PII real | Dados sintéticos com domínio .test; revisão do lote |
 | RT-08 | Triagem de a11y não substitui leitor de tela | FA-034 fica pendente sem AX-02 humano; sem declaração de conformidade |
 | RT-09 | Relógio do banco: flakiness em 7 dias, 24 h, 72 h e virada UTC | Mecanismo de relógio definido (N14) |

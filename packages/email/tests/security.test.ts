@@ -11,7 +11,7 @@ import {
   HttpTransportError,
 } from '../src/index.js';
 import type { EmailEnv } from '../src/index.js';
-import { FakeHttp, FakeSmtp, response } from './doubles.js';
+import { FakeHttp, response } from './doubles.js';
 
 const KEY = 'chave-ficticia-0009';
 const CHAVE_EVENTO = 'nc:evento-1:usuario-77:aviso:escopo-9';
@@ -58,7 +58,6 @@ describe('varredura: Resend nao vaza destino, chave ou corpo fora da lista', () 
       new Error(`excecao com ${CLIENTE} e ${KEY}`),
     );
     const provider = createEmailProvider(RESEND_ENV, {
-      smtp: new FakeSmtp(),
       http,
       renderer: createMinimalRenderer(),
       clock: new FakeClock(),
@@ -86,7 +85,6 @@ describe('varredura: Resend nao vaza destino, chave ou corpo fora da lista', () 
 
   it('o provedor serializado mostra so o nome', () => {
     const provider = createEmailProvider(RESEND_ENV, {
-      smtp: new FakeSmtp(),
       http: new FakeHttp(),
       renderer: createMinimalRenderer(),
       clock: new FakeClock(),
@@ -100,7 +98,6 @@ describe('varredura: Resend nao vaza destino, chave ou corpo fora da lista', () 
     const provider = createEmailProvider(
       { ...RESEND_ENV, EMAIL_FROM: 'onboarding@resend.dev', RESEND_ACCOUNT_RECIPIENT: ACCOUNT },
       {
-        smtp: new FakeSmtp(),
         http,
         renderer: createMinimalRenderer(),
         clock: new FakeClock(),
@@ -117,7 +114,6 @@ describe('varredura: ambiente de desenvolvimento usa o Resend com as mesmas trav
   it('destino fora da conta e recusado antes da API, em local', async () => {
     const http = new FakeHttp();
     const provider = createEmailProvider(DEV_RESEND_ENV, {
-      smtp: new FakeSmtp(),
       http,
       renderer: createMinimalRenderer(),
       clock: new FakeClock(),
@@ -137,7 +133,6 @@ describe('varredura: ambiente de desenvolvimento usa o Resend com as mesmas trav
       RESEND_ACCOUNT_RECIPIENT: ACCOUNT,
     };
     const provider = createEmailProvider(semChave, {
-      smtp: new FakeSmtp(),
       http,
       renderer: createMinimalRenderer(),
       clock: new FakeClock(),
@@ -157,7 +152,6 @@ describe('varredura: ambiente de desenvolvimento usa o Resend com as mesmas trav
           RESEND_API_KEY: KEY,
         },
         {
-          smtp: new FakeSmtp(),
           http: new FakeHttp(),
           renderer: createMinimalRenderer(),
           clock: new FakeClock(),

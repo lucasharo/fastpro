@@ -8,10 +8,9 @@ import {
   EmailConfigError,
   type EmailEnv,
 } from '../src/index.js';
-import { FakeHttp, FakeSmtp } from './doubles.js';
+import { FakeHttp } from './doubles.js';
 
 const deps = () => ({
-  smtp: new FakeSmtp(),
   http: new FakeHttp(),
   renderer: createMinimalRenderer(),
   clock: new FakeClock(),

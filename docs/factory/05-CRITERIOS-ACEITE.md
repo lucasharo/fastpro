@@ -21,11 +21,11 @@
 - Condicionados restantes: AMB-30 (atribuição da mensagem automática; decisão 26 a define como aviso do sistema), AMB-31 (e-mails de lembrete). **AMB-31 respondida na Rev. 4.**
 
 ### Revisão 4 — 2026-11-09 (Rodada 12, decisão 27)
-- **FA-029, FA-031, FA-003 e FA-012 (lembrete):** todos os e-mails estão **habilitados** no código (aceite, mensagem não lida, lembretes, seleção, cancelamento, desistência, trial/ciclo, verificação, login); sem interruptor, tela ou reenvio de aceites antigos; em desenvolvimento vão ao Mailpit; envio real depende de domínio verificado no Resend (decisão 15). Novos cenários de cota (RNF-EMAIL do PRD §6.1): login prioritário, degradação, chat e site continuam. Substitui os cenários "desativado no código" da Rev. 3.
+- **FA-029, FA-031, FA-003 e FA-012 (lembrete):** todos os e-mails estão **habilitados** no código (aceite, mensagem não lida, lembretes, seleção, cancelamento, desistência, trial/ciclo, verificação, login); sem interruptor, tela ou reenvio de aceites antigos; em desenvolvimento e teste vão pelo Resend, somente para a conta cadastrada (Mailpit removido em 2026-11-11); envio real depende de domínio verificado no Resend (decisão 15). Novos cenários de cota (RNF-EMAIL do PRD §6.1): login prioritário, degradação, chat e site continuam. Substitui os cenários "desativado no código" da Rev. 3.
 - **Impactos (QA/Architect devem checar):**
   | Verificar | Onde |
   |---|---|
-  | Um teste positivo por tipo de e-mail (enfileira/envia ao Mailpit) em vez de "nada é enviado" | 11; FA-029, FA-012, FA-016, FA-005 |
+  | Um teste positivo por tipo de e-mail (enfileira/envia pelo Resend, somente para a conta cadastrada em desenvolvimento e teste) em vez de "nada é enviado" | 11; FA-029, FA-012, FA-016, FA-005 |
   | Ausência de flag, comentário ou ponto de ativação no código; sem tela/endpoint de e-mail no admin | 08 §12.2; revisão de código; FA-029, FA-031 |
   | Não retroatividade (sem backfill) | FA-029 |
   | Simulação de cota: ≥ 90/dia e 100/dia (UTC), 2.700 e 3.000/mês; login passa, demais adiados/suprimidos e reavaliados no dia seguinte; chat e site intactos; contagem por destinatário | 08 §12.6; FA-029 |
@@ -90,7 +90,7 @@
 - **Dado (D8)** um e-mail aberto por scanner/pré-visualização que faz GET no link, **quando** o cliente real abre depois, **então** o link ainda é válido; o consumo só ocorre ao confirmar a ação na página (POST).
 - **Dado (D8)** o cliente que não consegue usar o link, **quando** pede o código de 6 dígitos, **então** o código válido por 15 min e de uso único autentica; código errado repetido é limitado.
 - **Dado** a sessão de 7 dias, **quando** vence ou é revogada, **então** nova sessão exige novo link.
-- **Dado (decisão 27)** todos os e-mails habilitados, **quando** o cliente pede link/código, **então** o e-mail de autenticação é enviado com prioridade máxima na cota (ao Mailpit em desenvolvimento).
+- **Dado (decisão 27)** todos os e-mails habilitados, **quando** o cliente pede link/código, **então** o e-mail de autenticação é enviado com prioridade máxima na cota (em desenvolvimento e teste, pelo Resend, somente para a conta cadastrada).
 
 ## FA-004 Profissional não aprovado não aceita trabalho, nem por API (RF-046..050, 147)
 - **Dado** profissional em `pendente`, `em_revisao`, `retida_duplicidade`, `recusada` ou `suspensa`, **quando** tenta aceitar um trabalho pela UI ou por chamada direta de API, **então** é negado e nada é criado (sem aceite, sem conversa, sem mensagem automática).
@@ -284,12 +284,12 @@
 ## FA-029 Notificações: chat imediato; todos os e-mails habilitados; cota do Resend (RF-075, 115..117, 120, 122, RNF-EMAIL)
 - **Dado (H4)** o primeiro aceite de um pedido, **quando** ocorre, **então** o cliente recebe **imediatamente** uma mensagem automática no chat do profissional, visível como não lida ao entrar na plataforma.
 - **Dado (H4)** um segundo, terceiro ou quarto aceite, **quando** ocorrem, **então** cada um gera a sua própria mensagem automática no respectivo chat (sem agrupamento no chat).
-- **Dado (decisão 27/RF-122)** o e-mail de aviso de aceite **habilitado**, **quando** ocorre um aceite, **então** o e-mail é enfileirado e enviado (em desenvolvimento, entregue ao Mailpit local), com envio imediato no primeiro e agrupado depois (15 min), **e** a mensagem no chat aparece imediatamente sem depender dele.
+- **Dado (decisão 27/RF-122)** o e-mail de aviso de aceite **habilitado**, **quando** ocorre um aceite, **então** o e-mail é enfileirado e enviado (em desenvolvimento e teste, enviado pelo Resend, somente para a conta cadastrada), com envio imediato no primeiro e agrupado depois (15 min), **e** a mensagem no chat aparece imediatamente sem depender dele.
 - **Dado (decisão 27)** a primeira mensagem humana não lida de uma conversa, **quando** ocorre, **então** o e-mail de mensagem não lida é enviado; as seguintes são agrupadas.
-- **Dado (decisão 27)** lembrete 24 h, aviso de vencimento, seleção, cancelamento, desistência, lembretes de trial/ciclo e decisão de verificação, **quando** o evento ocorre, **então** o respectivo e-mail é enviado (ao Mailpit em desenvolvimento), sem dados sensíveis (RF-120).
+- **Dado (decisão 27)** lembrete 24 h, aviso de vencimento, seleção, cancelamento, desistência, lembretes de trial/ciclo e decisão de verificação, **quando** o evento ocorre, **então** o respectivo e-mail é enviado (em desenvolvimento e teste, pelo Resend, somente para a conta cadastrada), sem dados sensíveis (RF-120).
 - **Dado (decisão 27)** o sistema em operação, **quando** inspecionadas telas e APIs de admin e de configuração, **então** não existe interruptor, tela ou endpoint para ligar/desligar e-mails, e o código de envio não está comentado nem condicionado a flag.
 - **Dado (decisão 27)** aceites e eventos ocorridos antes da habilitação, **quando** ela entra em vigor, **então** **nenhum** e-mail retroativo é gerado (só eventos novos).
-- **Dado (decisão 15)** ambiente sem domínio verificado no Resend, **quando** o sistema envia e-mails, **então** nenhum chega a usuário real (Mailpit em dev/CI); o envio real só ocorre com domínio verificado.
+- **Dado (decisão 15)** ambiente sem domínio verificado no Resend, **quando** o sistema envia e-mails, **então** nenhum chega a usuário real (em dev e teste, só a conta cadastrada recebe, pelo Resend); o envio real só ocorre com domínio verificado.
 - **Dado (RNF-EMAIL)** o uso próximo de 100 e-mails/dia (UTC) ou 3.000/mês, **quando** novos e-mails são gerados, **então** login/conta têm prioridade; lembretes e avisos de menor prioridade são suprimidos ou adiados e reavaliados no dia seguinte (descartados se obsoletos); o **chat e o site continuam funcionando**.
 - **Dado (RNF-EMAIL)** cota diária esgotada, **quando** o cliente pede link/código de login, **então** a resposta ao usuário continua uniforme e o e-mail de login segue na fila com prioridade, sem desvio da regra de limites.
 - **Dado (decisão 27)** link mágico/código e e-mails de conta, **quando** solicitados, **então** são enviados e nunca degradados antes dos demais.

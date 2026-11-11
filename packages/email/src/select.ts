@@ -8,10 +8,9 @@ import { APP_ENVS, EMAIL_PROVIDERS, isOneOf } from './env.js';
 import type { EmailEnv } from './env.js';
 import type { EmailRenderer } from './renderer.js';
 import { ResendProvider } from './resend.js';
-import type { HttpTransport, SmtpTransport } from './transports.js';
+import type { HttpTransport } from './transports.js';
 
 export interface EmailDeps {
-  readonly smtp: SmtpTransport;
   readonly http: HttpTransport;
   readonly renderer: EmailRenderer;
   readonly clock: ClockPort;

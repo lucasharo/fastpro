@@ -27,30 +27,6 @@ export class HttpTransportError extends Error {
   }
 }
 
-export interface SmtpMail {
-  readonly host: string;
-  readonly port: number;
-  readonly envelope: { readonly from: string; readonly to: string };
-  readonly raw: string;
-}
-
-/** Devolve o codigo de resposta do fim do DATA (2xx). Qualquer falha lanca SmtpFailure. */
-export interface SmtpTransport {
-  sendMail(mail: SmtpMail): Promise<number>;
-}
-
-export class SmtpFailure extends Error {
-  readonly kind: 'conexao_recusada' | 'timeout' | 'resposta';
-  readonly replyCode: number | undefined;
-
-  constructor(kind: 'conexao_recusada' | 'timeout' | 'resposta', replyCode?: number) {
-    super(kind);
-    this.name = 'SmtpFailure';
-    this.kind = kind;
-    this.replyCode = replyCode;
-  }
-}
-
 const TIMEOUT_ERROR_NAMES = new Set(['TimeoutError', 'AbortError']);
 
 /** Transporte HTTP sobre fetch global, com tempo limite. Nao e usado pelos testes. */

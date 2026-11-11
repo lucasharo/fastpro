@@ -15,7 +15,7 @@ import {
   secondsUntilNextUtcDay,
 } from '../src/index.js';
 import type { EmailEnv } from '../src/index.js';
-import { FakeHttp, FakeSmtp, first, response } from './doubles.js';
+import { FakeHttp, first, response } from './doubles.js';
 
 const KEY = 'chave-ficticia-0001';
 const ACCOUNT = 'conta.titular@fastpro.test';
@@ -44,7 +44,6 @@ function message(to: string = CLIENTE): EmailMessage {
 
 function build(env: EmailEnv, http: FakeHttp, clock = new FakeClock()) {
   const provider = createEmailProvider(env, {
-    smtp: new FakeSmtp(),
     http,
     renderer: createMinimalRenderer(),
     clock,
