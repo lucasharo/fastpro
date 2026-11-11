@@ -14,7 +14,7 @@ Guardar a coordenada exata de um pedido ou da base do profissional **uma única 
 
 ## Critérios de aceite
 
-- CA-1 (G-02, adaptado): publicar um pedido com endereço completo faz exatamente **1 chamada** `permanent=true`; `exact_point`, `match_point` e `geocode_mode='permanent'` são gravados.
+- CA-1 (G-02, adaptado): publicar um pedido com endereço completo faz exatamente **1 chamada** `permanent=true`; `exact_point`, `precision` e `geocode_mode='permanent'` são gravados (ajuste de redação do QA, decisão D-1; `match_point` é de H-022).
 - CA-2 (G-03): repetir a publicação (retry ou duplo clique) não gera nova chamada paga; a coordenada é a mesma (idempotente).
 - CA-3 (G-04, adaptado): editar o endereço várias vezes **antes** da publicação não gera chamada permanente; o limite de 3 chamadas permanentes por pedido (I-28) só se aplica a republicações e alterações de endereço após publicação.
 - CA-4 (G-05): tentar gravar `exact_point` sem `geocode_mode='permanent'` (SQL direto) é rejeitado pelo CHECK.
