@@ -5,6 +5,11 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { connect } from '../scripts/lib/env.mjs';
+import { guard } from './fixtures/no-network.mjs';
+
+after(() => {
+  if (guard.denied.length > 0) throw new Error('tentativa de rede real durante os testes de flush');
+});
 
 globalThis.fetch = () => {
   throw new Error('rede bloqueada nos testes (H-092)');

@@ -5,6 +5,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { connect, REPO_ROOT } from '../scripts/lib/env.mjs';
+import { guard } from './fixtures/no-network.mjs';
+
+after(() => {
+  if (guard.denied.length > 0)
+    throw new Error('tentativa de rede real durante o teste de rollback');
+});
 
 globalThis.fetch = () => {
   throw new Error('rede bloqueada nos testes (H-092)');
