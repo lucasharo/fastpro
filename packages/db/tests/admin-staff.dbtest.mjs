@@ -15,6 +15,8 @@ after(async () => {
   await client?.end();
 });
 
+const ZERO_HMAC = '0'.repeat(64);
+
 async function tx(fn) {
   await client.query('begin');
   try {
@@ -83,9 +85,9 @@ test('T-H102-20 RLS forcada e nenhum acesso de papeis publicos nas tabelas admin
         has_table_privilege('app_api', 'app.admin_staff', 'select') as api_select,
         has_table_privilege('app_system', 'app.admin_staff', 'insert') as system_insert,
         has_function_privilege('authenticated',
-          'private.admin_email_is_reserved(text)', 'execute') as auth_exec,
+          'private.admin_email_is_reserved(text,text)', 'execute') as auth_exec,
         has_function_privilege('app_system',
-          'private.admin_email_is_reserved(text)', 'execute') as system_exec`);
+          'private.admin_email_is_reserved(text,text)', 'execute') as system_exec`);
     assert.deepEqual(p[0], {
       anon_select: false,
       auth_select: false,
@@ -187,6 +189,16 @@ test('admin_staff: usuario sem linha admin nao e staff; sem app_user nao cria st
 // approval_request e approval_vote: dupla aprovacao sem autoaprovacao
 // ---------------------------------------------------------------------------------------------
 
+/** Papel superadmin ativo (concedido pelo bootstrap, sem aprovacao), para os aprovadores. */
+async function superadmin(userId) {
+  await client.query(
+    `insert into app.admin_user_role (id, user_id, role_code, granted_by, grant_origin, granted_at,
+                                      approval_request_id)
+     values (gen_random_uuid(), $1, 'superadmin', null, 'bootstrap', now(), null)`,
+    [userId],
+  );
+}
+
 async function pedido({ solicitante, alvo, status = 'pendente', consumedAt = null }) {
   const id = randomUUID();
   await client.query(
@@ -246,6 +258,7 @@ test('approval_vote: autoaprovacao e aprovador inativo recusados; voto unico; so
     const sol = await staffAtivo();
     const alvo = await staffAtivo();
     const aprovador = await staffAtivo();
+    await superadmin(aprovador.id);
     const desativado = await staffAtivo('desativado');
     const reqId = await pedido({ solicitante: sol.id, alvo: alvo.id });
 
@@ -301,23 +314,23 @@ test('admin_email_is_reserved: verdadeira so para e-mail com conta administrativ
     const staff = await staffAtivo();
     const cliente = await usuario();
     const { rows: [a] } = await client.query(
-      'select private.admin_email_is_reserved($1) as r',
-      [staff.email],
+      'select private.admin_email_is_reserved($1, $2) as r',
+      [staff.email, ZERO_HMAC],
     );
     assert.equal(a.r, true);
     const { rows: [b] } = await client.query(
-      'select private.admin_email_is_reserved($1) as r',
-      [cliente.email],
+      'select private.admin_email_is_reserved($1, $2) as r',
+      [cliente.email, ZERO_HMAC],
     );
     assert.equal(b.r, false, 'cliente comum nao e reservado nesta migracao');
     const { rows: [c] } = await client.query(
-      'select private.admin_email_is_reserved($1) as r',
-      [`${randomUUID()}@example.test`],
+      'select private.admin_email_is_reserved($1, $2) as r',
+      [`${randomUUID()}@example.test`, ZERO_HMAC],
     );
     assert.equal(c.r, false);
     const { rows: [d] } = await client.query(
-      'select private.admin_email_is_reserved($1) as r',
-      [null],
+      'select private.admin_email_is_reserved($1, $2) as r',
+      [null, ZERO_HMAC],
     );
     assert.equal(d.r, false);
   }));
