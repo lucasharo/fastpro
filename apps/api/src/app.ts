@@ -3,8 +3,14 @@
 // caracteres, comparacao em tempo constante e limite de 1 KB do corpo. Nao ha acesso ao banco aqui.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { isTickAuthorized, TICK_BODY_LIMIT_BYTES, TICK_PATH } from '@fastpro/db';
-import { ADDRESS_SUGGEST_PATH, ADMIN_AUDIT_QUERY_PATH, CONSUME_PATH } from '@fastpro/domain';
+import {
+  ADDRESS_SUGGEST_PATH,
+  ADMIN_AUDIT_QUERY_PATH,
+  CATALOG_SEARCH_PATH,
+  CONSUME_PATH,
+} from '@fastpro/domain';
 import { handleAdminAuditQuery, type AdminAuditRouteOptions } from './admin-audit-route.js';
+import { handleCatalogSearch, type CatalogRouteOptions } from './catalog/catalog-route.js';
 import { handleConsume, type ConsumeRouteOptions } from './consume-route.js';
 import { handleAddressSuggest, type GeoRouteOptions } from './geo/address-suggest-route.js';
 import {
@@ -42,6 +48,8 @@ export interface AppOptions {
   readonly geo?: GeoRouteOptions;
   /** Consulta da auditoria pelo Auditor (H-104). Sem esta opcao a rota nao existe (404). */
   readonly admin?: AdminAuditRouteOptions;
+  /** Busca de servico com sinonimos (H-019). Sem esta opcao a rota nao existe (404). */
+  readonly catalog?: CatalogRouteOptions;
 }
 
 export interface BodyReadResult {
@@ -128,6 +136,10 @@ export async function handleRequest(
   }
   if (req.method === 'POST' && path === ADDRESS_SUGGEST_PATH && opts.geo) {
     await handleAddressSuggest(req, res, opts.geo);
+    return;
+  }
+  if (req.method === 'POST' && path === CATALOG_SEARCH_PATH && opts.catalog) {
+    await handleCatalogSearch(req, res, opts.catalog);
     return;
   }
   if (req.method === 'POST' && opts.session) {
