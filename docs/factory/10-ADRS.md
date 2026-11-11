@@ -128,6 +128,7 @@
 **Decisão:** `08` §13. App e origem separados, convite, TOTP `aal2` obrigatório, RBAC por permissão, `approval_request/vote` com triggers contra autoaprovação, `access_case` com autorização por outra pessoa e log por leitura, `audit_event` append-only na mesma transação com encadeamento por hash.
 **Alternativas:** (a) admin como rota do mesmo app web: superfície e cookies compartilhados; (b) projeto Supabase separado para admin: isolamento maior, porém duplica custo/limite gratuito (só 2 projetos `[NÃO VERIFICADO]`); (c) papéis fixos no código sem permissões: rígido.
 **Impacto:** mais código de governança. **Riscos:** MFA TOTP do Supabase no plano gratuito `[NÃO VERIFICADO]`; perda de dispositivo MFA (processo de reenrolamento com dupla aprovação); matriz detalhada de telas (RF-146) ainda ausente.
+**Mecanismo H-102 (#111; 54-DESENHO-H102) [PROPOSTA]:** credenciais no Supabase Auth; autoridade (sessão de 8 h, papel, convite de 72 h, aprovação de 24 h) no banco do FastPro, com cookie opaco `__Host-fp_admin`. Desvios registrados: e-mail de convite no HMAC e em claro para a checagem de conta; `approval_request.subject_user_id` opcional (convite de Superadmin); script de primeiro Superadmin restrito a `APP_ENV=local`; reenrolamento de MFA ainda não implementado. Fluxo do Supabase Auth segue `[NÃO VERIFICADO]` até a prova em desenvolvimento.
 
 ## ADR-013 — Observabilidade sem PII [PROPOSTA; ferramenta SD-06]
 **Decisão:** `08` §14: logs por allowlist; IDs pseudônimos; métricas de fila/webhook/e-mail/upload/RLS/cotas; painel interno mínimo.
