@@ -86,3 +86,47 @@ Copie `.env.example` para `.env.local` (ignorado pelo Git) e preencha localmente
 ## Fluxo de branches
 
 Ver `AGENTS.md`: trabalho em `feature/init`, depois `release/*` e `main` somente por Pull Request.
+
+## Backup e manutenção
+
+Esta seção cobre o banco de desenvolvimento (projeto gratuito do Supabase). Ele pausa sozinho depois
+de uma semana sem uso, por isso precisa de uma consulta de leitura de tempos em tempos, e precisa de
+cópias de segurança feitas à mão.
+
+**O que o backup faz:** copia os dados das tabelas do produto, cifra o arquivo com senha (AES256) e
+confere a cópia antes de dar como pronta. Só leitura: usa o perfil `app_backup_reader`, que não
+escreve nada no banco. A estrutura do banco não entra na cópia: ela está nos arquivos de migração.
+
+**Antes de usar:** o dono do banco precisa definir a senha dos perfis `app_backup_reader` e
+`app_keepalive` no painel do Supabase, fora do código. Depois, no seu `.env.local` (nunca no Git),
+preencha as variáveis, que estão no `.env.example` só com os nomes:
+
+- `DATABASE_URL_BACKUP_READ` e `DATABASE_URL_KEEPALIVE`: endereços de conexão de cada perfil.
+- `BACKUP_EXPECTED_DB_REF`: o identificador do projeto de desenvolvimento. O backup só roda nele.
+- `BACKUP_DIR`: pasta das cópias. Tem de ficar **fora** do projeto e de qualquer pasta com Git.
+- `KEEPALIVE_LOG`: arquivo do registro do keep-alive, também fora do projeto.
+- `BACKUP_PASSPHRASE_FILE` (opcional): arquivo com a senha da cópia, fora do projeto. Se não for
+  informado, o sistema pede a senha no terminal, sem mostrar o que você digita.
+
+**Como usar:**
+
+```bash
+corepack pnpm db:backup -- export                              # cópia semanal
+corepack pnpm db:backup -- export --motivo pre-migracao-destrutiva   # antes de mexer em tabela
+corepack pnpm db:backup -- verify <caminho-do-manifesto>       # confere uma cópia já feita
+corepack pnpm db:backup -- status                              # mostra a última cópia boa
+corepack pnpm db:backup -- status --para-migracao              # diz se pode aplicar a migração
+corepack pnpm db:keepalive                                     # rotina que mantém o banco ativo
+```
+
+**Regras:**
+
+- Faça uma cópia **pelo menos a cada 7 dias** e **antes de qualquer migração que apague dado**. O
+  `status` avisa quando passou desse prazo.
+- Se uma cópia falhar, nada é trocado: a cópia boa anterior continua valendo, e a falha fica anotada
+  no registro da pasta de cópias.
+- O sistema **nunca apaga** cópia. Ele só lista as que passam de quatro semanais; quem apaga é você.
+- A senha da cópia não fica guardada em lugar nenhum. Se você perdê-la, a cópia não serve. Guarde-a
+  num gerenciador de senhas.
+- O keep-alive roda no máximo a cada 5 dias, na mão, até o projeto ter agendamento próprio. Ele
+  faz uma leitura só e não cria nada no banco.
