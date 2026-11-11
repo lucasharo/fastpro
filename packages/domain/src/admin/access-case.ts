@@ -20,9 +20,14 @@ export const JUSTIFICATIVA_INVALIDA: AdminResponse = adminReply(422, { code: 'ju
 
 const UUID_FORMAT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Identificador de conversa: UUID no formato canonico. Qualquer outra coisa e recusada antes do banco. */
-export function isConversationId(raw: unknown): raw is string {
+/** UUID no formato canonico. Qualquer outra coisa e recusada antes do banco (inclusive id de caso na rota). */
+export function isUuid(raw: unknown): raw is string {
   return typeof raw === 'string' && UUID_FORMAT.test(raw);
+}
+
+/** Identificador de conversa: UUID no formato canonico. */
+export function isConversationId(raw: unknown): raw is string {
+  return isUuid(raw);
 }
 
 /** Justificativa valida (apos trim): 20 a 500 caracteres. Qualquer outro tipo e invalido. */

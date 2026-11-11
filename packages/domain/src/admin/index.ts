@@ -11,4 +11,5 @@ export * from './login.js';
 export * from './grant.js';
 export * from './session.js';
 export * from './access-case.js';
+export * from './access-case-handler.js';
 export * from './audit-query.js';

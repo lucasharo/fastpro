@@ -87,8 +87,27 @@ export function adminNotFound(): AdminResponse {
 /** Consulta da trilha pelo Auditor (H-104, 63 §3): POST, permissao audit.read. Sem PUT, PATCH ou DELETE. */
 export const ADMIN_AUDIT_QUERY_PATH = '/v1/admin/audit/queries';
 
-/** Registro completo das rotas admin (H-102 + H-104). Fonte unica para a guarda da API. */
+/** Acesso excepcional a conversa (H-073, 60 §1). Uma permissao por rota; leitura so com caso ativo. */
+export const ADMIN_ACCESS_CASES_PATH = '/v1/admin/access-cases';
+export const ADMIN_ROUTES_H073: readonly AdminRouteSpec[] = [
+  { method: 'POST', pattern: ADMIN_ACCESS_CASES_PATH, permission: 'case.open_sensitive' },
+  { method: 'GET', pattern: ADMIN_ACCESS_CASES_PATH, permission: 'sessao' },
+  {
+    method: 'POST',
+    pattern: `${ADMIN_ACCESS_CASES_PATH}/:caseId/approve`,
+    permission: 'case.authorize_sensitive',
+  },
+  { method: 'POST', pattern: `${ADMIN_ACCESS_CASES_PATH}/:caseId/close`, permission: 'sessao' },
+  {
+    method: 'POST',
+    pattern: `${ADMIN_ACCESS_CASES_PATH}/:caseId/conversation/read`,
+    permission: 'case.open_sensitive',
+  },
+];
+
+/** Registro completo das rotas admin (H-102 + H-104 + H-073). Fonte unica para a guarda da API. */
 export const ADMIN_ROUTES: readonly AdminRouteSpec[] = [
   ...ADMIN_ROUTES_H102,
   { method: 'POST', pattern: ADMIN_AUDIT_QUERY_PATH, permission: 'audit.read' },
+  ...ADMIN_ROUTES_H073,
 ];
