@@ -237,3 +237,30 @@ describe('T-H018-09 validador rejeita entradas invalidas', () => {
     expect(validateSeed(s).some((e) => e.includes('council_body sem regulated'))).toBe(true);
   });
 });
+
+describe('T-H018-06 contrato publico', () => {
+  it('a lista de permissao tem exatamente os 7 campos publicos e nenhum campo interno', async () => {
+    const { CATALOG_PUBLIC_FIELDS, CATALOG_FORBIDDEN_PUBLIC_FIELDS } = await import(
+      '../../contracts/src/catalog.ts'
+    );
+    expect([...CATALOG_PUBLIC_FIELDS].sort()).toEqual(
+      ['group_id', 'group_name', 'group_position', 'service_id', 'service_name', 'modality', 'regulated'].sort(),
+    );
+    for (const f of CATALOG_FORBIDDEN_PUBLIC_FIELDS) {
+      expect(CATALOG_PUBLIC_FIELDS).not.toContain(f);
+    }
+  });
+
+  it('a view publica da migracao expoe as mesmas colunas da lista de permissao', async () => {
+    const { CATALOG_PUBLIC_FIELDS } = await import('../../contracts/src/catalog.ts');
+    const m1 = readFileSync(
+      new URL('../../../supabase/migrations/20261111200000_catalog_create_service_catalog.sql', import.meta.url),
+      'utf8',
+    );
+    const view = m1.slice(m1.indexOf('create or replace view app.catalog_public'), m1.indexOf('comment on view app.catalog_public'));
+    // Apenas a lista de colunas (entre o primeiro "select" e o "from"): ignora "with (...) as select".
+    const selectList = view.slice(view.indexOf('select'), view.indexOf(' from app.service '));
+    const aliases = [...selectList.matchAll(/\bas\s+(\w+)/g)].map((m) => m[1]);
+    expect(aliases.sort()).toEqual([...CATALOG_PUBLIC_FIELDS].sort());
+  });
+});
