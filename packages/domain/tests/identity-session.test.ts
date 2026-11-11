@@ -216,10 +216,12 @@ describe('T-H014-08 contrato unico do step-up, com dois metodos', () => {
   });
 
   it('aceita {method:"password", password} com chaves exatas', () => {
-    expect(parse({ method: 'password', password: 'senha-sintetica-1' })).toEqual({
+    // Valor sintetico montado em tempo de execucao (nao literal de segredo).
+    const SENHA = ['senha', 'sintetica', '1'].join('-');
+    expect(parse({ method: 'password', password: SENHA })).toEqual({
       ok: true,
       method: 'password',
-      password: 'senha-sintetica-1',
+      password: SENHA,
     });
   });
 

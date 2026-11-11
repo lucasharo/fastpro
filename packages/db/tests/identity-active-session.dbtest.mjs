@@ -317,8 +317,7 @@ test('T-H014-22 RLS forcada na app_session e so app_system executa as 5 funcoes 
         select 1 from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
          where a.grantee = 0 and a.privilege_type = 'EXECUTE') as publico,
       has_function_privilege('anon', p.oid, 'execute') as anon,
-      has_function_privilege('authenticated', p.oid, 'execute') as authenticated,
-      has_function_privilege('service_role', p.oid, 'execute') as service_role
+      has_function_privilege('authenticated', p.oid, 'execute') as authenticated
       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
      where n.nspname = 'private'
        and p.proname in ('app_session_convert', 'app_session_get', 'app_session_revoke',
@@ -329,8 +328,23 @@ test('T-H014-22 RLS forcada na app_session e so app_system executa as 5 funcoes 
     assert.equal(r.publico, false, `${r.proname}: PUBLIC nao executa`);
     assert.equal(r.anon, false, `${r.proname}: anon nao executa`);
     assert.equal(r.authenticated, false, `${r.proname}: authenticated nao executa`);
-    assert.equal(r.service_role, false, `${r.proname}: service_role nao executa`);
   }
+
+  // Varredura generica (como T-H012-20): nenhum papel nao superusuario, alem do dono e do
+  // app_system, executa as funcoes novas.
+  const { rows: outros } = await client.query(`
+    select p.proname, r.rolname
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      cross join pg_roles r
+     where n.nspname = 'private'
+       and p.proname in ('app_session_convert', 'app_session_get', 'app_session_revoke',
+                         'app_session_revoke_all', 'app_session_mark_recent_auth')
+       and not r.rolsuper
+       and r.rolname <> 'app_system'
+       and r.oid <> p.proowner
+       and has_function_privilege(r.oid, p.oid, 'execute')`);
+  assert.deepEqual(outros, [], 'nenhum outro papel executa as funcoes novas');
 });
 
 // ---------------------------------------------------------------------------------------------
