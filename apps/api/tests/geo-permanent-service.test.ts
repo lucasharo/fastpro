@@ -250,6 +250,39 @@ describe('CA-5 | teto por pedido, breaker de gasto e painel', () => {
   });
 });
 
+// CA-3 (66-REFINO-H021): edicoes do endereco antes da publicacao nao geram chamada permanente, e o limite de
+// 3 vale para republicacao. O rascunho em si e de H-025 (ainda nao existe); aqui se prova o contrato do servico:
+// ele so age quando e chamado para publicar. Edicoes do rascunho nao o chamam (decisao 46).
+describe('CA-3 | edicoes antes da publicacao nao chamam o provedor; o teto vale para a cadeia publicada', () => {
+  it('dez edicoes sem publicar: zero consultas ao provedor e nenhum ponto gravado', () => {
+    const { provider, store } = montar({});
+    // Cada edicao e so um novo texto no rascunho; nenhuma delas chama o servico de publicacao.
+    const edicoes = Array.from({ length: 10 }, (_, i) => `Rua Rascunho Editada ${i}, 10`);
+    expect(edicoes).toHaveLength(10);
+    expect(provider.consultas).toHaveLength(0);
+    expect(store.linhas).toHaveLength(0);
+    expect(store.chamadasDoPedido('pedido-1')).toBe(0);
+  });
+
+  it('a primeira publicacao depois das edicoes consome 1 unidade do teto da cadeia', async () => {
+    const { deps, provider, store } = montar({});
+    const r = await publicar('pedido-1', 'Rua Rascunho Editada 9, 10', deps);
+    expect(r.status).toBe('ok');
+    expect(provider.consultas).toHaveLength(1);
+    expect(store.chamadasDoPedido('pedido-1')).toBe(1);
+  });
+
+  it('depois das edicoes, 3 enderecos publicados esgotam o teto e o 4o e recusado sem chamada', async () => {
+    const { deps, provider, store } = montar({});
+    for (const n of [1, 2, 3]) {
+      expect((await publicar('pedido-1', `Rua Publicada ${n}, 10`, deps)).status).toBe('ok');
+    }
+    expect(await publicar('pedido-1', 'Rua Publicada 4, 10', deps)).toEqual({ status: 'teto' });
+    expect(provider.consultas).toHaveLength(3);
+    expect(store.chamadasDoPedido('pedido-1')).toBe(3);
+  });
+});
+
 describe('CA-6 | nenhuma coordenada vem de resultado temporario (I-28)', () => {
   it('o ponto gravado e exatamente o que o provedor permanente devolveu (proveniencia)', async () => {
     const canario: PermanentPoint = { ...CANARIO_COORD, precision: 'rua' };
