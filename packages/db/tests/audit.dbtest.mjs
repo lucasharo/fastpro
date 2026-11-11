@@ -263,7 +263,7 @@ test('D-05 funcoes de escrita/verificacao: SECURITY DEFINER com search_path vazi
   );
 });
 
-test('D-06 catalogo semeia as 5 acoes do CA-14 e nenhuma chave semeada e proibida', async () => {
+test('D-06 catalogo semeia as 6 acoes (5 do CA-14 + audit.queried do H-104) e nenhuma chave semeada e proibida', async () => {
   const res = await client.query(
     `select action, object_type, reason_required, active, private.audit_keys_are_clean(state_keys) as clean
        from audit.action_catalog`,
@@ -275,6 +275,7 @@ test('D-06 catalogo semeia as 5 acoes do CA-14 e nenhuma chave semeada e proibid
     'completion.corrected': ['service_request', true],
     'payment.refunded': ['payment', true],
     'consent.changed': ['contact_consent', false],
+    'audit.queried': ['audit_query', false],
   };
   for (const [action, [objectType, reason]] of Object.entries(seeded)) {
     assert.ok(by[action], `acao ${action} ausente`);
