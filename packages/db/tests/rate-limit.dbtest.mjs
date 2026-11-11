@@ -129,17 +129,32 @@ test('T-H015-20 permissoes: so app_system acessa ops.code_lock e as funcoes nova
     assert.equal(rel.rows[0].relrowsecurity, true, 'RLS habilitada');
     assert.equal(rel.rows[0].relforcerowsecurity, true, 'RLS forcada');
 
-    const publicGrants = await client.query(
-      `select 1 from pg_class c, aclexplode(c.relacl) a
-        where c.oid = 'ops.code_lock'::regclass and a.grantee = 0`,
+    // Quem tem privilegio, sem citar papeis: o conjunto de concessoes, menos o dono, deve ser so
+    // app_system. Isso cobre PUBLIC, anon, authenticated e o papel de servico de uma vez.
+    const quem = (rows) => [...new Set(rows.map((r) => r.nome))].sort();
+    const tabela = await client.query(
+      `select case when a.grantee = 0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end as nome,
+              pg_get_userbyid(c.relowner) as dono
+         from pg_class c, aclexplode(c.relacl) a
+        where c.oid = 'ops.code_lock'::regclass`,
     );
-    assert.equal(publicGrants.rowCount, 0, 'PUBLIC sem privilegio');
-
-    const roles = (
+    const donoTabela = (
       await client.query(
-        "select rolname from pg_roles where rolname in ('anon','authenticated','service_role')",
+        `select pg_get_userbyid(c.relowner) as dono from pg_class c where c.oid = 'ops.code_lock'::regclass`,
       )
-    ).rows.map((r) => r.rolname);
+    ).rows[0].dono;
+    // Papel de backup le todas as tabelas de dominio por desenho (H-010, T-BK-09); so le.
+    assert.deepEqual(
+      quem(tabela.rows.filter((r) => r.nome !== donoTabela && r.nome !== 'app_backup_reader')),
+      ['app_system'],
+      'so app_system escreve em ops.code_lock',
+    );
+    const leitorBackup = await client.query(
+      `select has_table_privilege('app_backup_reader', 'ops.code_lock',
+                                  'INSERT,UPDATE,DELETE') as escreve`,
+    );
+    assert.equal(leitorBackup.rows[0].escreve, false, 'papel de backup nao escreve');
+
     const fns = [
       'private.auth_code_attempt(uuid,text,text,text,integer,timestamptz,text,text,integer,integer)',
       'private.auth_challenge_request(uuid,text,text,text,text,bytea,bytea,uuid,text,timestamptz,text,text,text,integer,integer,integer)',
@@ -147,19 +162,24 @@ test('T-H015-20 permissoes: so app_system acessa ops.code_lock e as funcoes nova
       'private.rl_hit(text,integer,timestamptz)',
       'private.rate_purge(timestamptz)',
     ];
-    for (const role of roles) {
-      const t = await client.query(
-        `select has_table_privilege($1, 'ops.code_lock', 'SELECT,INSERT,UPDATE,DELETE') as ok`,
-        [role],
+    for (const fn of fns) {
+      const dono = (
+        await client.query(
+          `select pg_get_userbyid(p.proowner) as dono from pg_proc p where p.oid = $1::regprocedure`,
+          [fn],
+        )
+      ).rows[0].dono;
+      const execs = await client.query(
+        `select case when a.grantee = 0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end as nome
+           from pg_proc p, aclexplode(p.proacl) a
+          where p.oid = $1::regprocedure`,
+        [fn],
       );
-      assert.equal(t.rows[0].ok, false, `${role} sem tabela`);
-      for (const fn of fns) {
-        const f = await client.query(`select has_function_privilege($1, $2, 'EXECUTE') as ok`, [
-          role,
-          fn,
-        ]);
-        assert.equal(f.rows[0].ok, false, `${role} sem ${fn.split('(')[0]}`);
-      }
+      assert.deepEqual(
+        quem(execs.rows.filter((r) => r.nome !== dono)),
+        ['app_system'],
+        `so app_system executa ${fn.split('(')[0]}`,
+      );
     }
 
     const sys = await client.query(

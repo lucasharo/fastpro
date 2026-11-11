@@ -16,7 +16,7 @@
 
 ### 1.1 Chave (HMAC, nunca valor em claro)
 
-`key_hmac = HMAC-SHA256(pepper, "rl1|" + ação + "|" + escopo + "|" + valor)` em hex, calculado em TypeScript (o pepper não vai ao banco). Prefixo `rl1` e campos fixos dão separação de domínio: nenhuma chave de contador colide com `ip_hmac`, `email_hash` ou chaves de outras histórias (H-008 usa a mesma tabela).
+Chave do contador (coluna key_hmac) = `HMAC-SHA256(pepper, "rl1|" + ação + "|" + escopo + "|" + valor)` em hex, calculado em TypeScript (o pepper não vai ao banco). Prefixo `rl1` e campos fixos dão separação de domínio: nenhuma chave de contador colide com `ip_hmac`, `email_hash` ou chaves de outras histórias (H-008 usa a mesma tabela).
 
 | Ação | Escopo | Valor | Pepper | Janela (tamanho do balde / alcance) | Limite padrão |
 |---|---|---|---|---|---|
