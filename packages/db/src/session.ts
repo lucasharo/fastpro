@@ -168,6 +168,7 @@ export class PgStepUpStore {
     readonly linkDigest: string;
     readonly codeHmac: string;
     readonly emailEnc: Buffer;
+    readonly secretsEnc: Buffer;
     readonly ipHmac: string;
     readonly nowMs: number;
     readonly ipKey: string;
@@ -176,7 +177,7 @@ export class PgStepUpStore {
     readonly limits: RateLimits;
   }): Promise<StepUpRequestOutcome> {
     const res = await this.client.query(
-      'select * from private.step_up_request($1,$2,$3,$4,$5,$6,$7,$8::timestamptz,$9,$10,$11,$12,$13,$14)',
+      'select * from private.step_up_request($1,$2,$3,$4,$5,$6,$7,$8,$9::timestamptz,$10,$11,$12,$13,$14,$15)',
       [
         input.sessionId,
         input.id,
@@ -184,6 +185,7 @@ export class PgStepUpStore {
         input.linkDigest,
         input.codeHmac,
         input.emailEnc,
+        input.secretsEnc,
         input.ipHmac,
         iso(input.nowMs),
         input.ipKey,
@@ -278,6 +280,12 @@ export async function requestStepUpCode(
     linkDigest: challengeSha256Hex(token),
     codeHmac: challengeHmacHex(deps.secrets.pepperCode, `${id}|${code}`),
     emailEnc: sealChallengeBlob(deps.secrets.key, email, challengeAad(id, 'email_enc')),
+    // So o codigo vai ao envio (sem token de link): mesmo AAD de secrets_enc de H-011.
+    secretsEnc: sealChallengeBlob(
+      deps.secrets.key,
+      JSON.stringify({ code }),
+      challengeAad(id, 'secrets_enc'),
+    ),
     ipHmac: challengeHmacHex(pepperIp, ip.value),
     nowMs: deps.clock.nowMs(),
     ipKey: challengeHmacHex(pepperIp, rateKeyMessage('pedido', 'ip', ip.value)),

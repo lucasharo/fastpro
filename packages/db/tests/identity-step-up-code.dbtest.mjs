@@ -79,7 +79,7 @@ async function sessaoAtiva(db, nowMs = NOW) {
 
 async function pedir(db, { sid, email, id, codigo, nowMs, ipKey }) {
   return db.query(
-    'select * from private.step_up_request($1,$2,$3,$4,$5,$6,$7,$8::timestamptz,$9,$10,$11,$12,$13,$14)',
+    'select * from private.step_up_request($1,$2,$3,$4,$5,$6,$7,$8,$9::timestamptz,$10,$11,$12,$13,$14,$15)',
     [
       sid,
       id,
@@ -87,6 +87,7 @@ async function pedir(db, { sid, email, id, codigo, nowMs, ipKey }) {
       sha(`token|${id}`),
       sha(`${id}|${codigo}`),
       Buffer.from('synthetic-email-enc'),
+      Buffer.from('synthetic-secrets-enc'),
       sha('ip'),
       iso(nowMs),
       ipKey,
@@ -329,7 +330,7 @@ test('T-H014-25 e-mail em claro nao aparece em app_session, auth_challenge nem o
 // verificador de segredos. A revogacao desse papel esta na propria migracao de step-up.
 test('T-H014-26 so app_system executa as funcoes de step-up; anon e authenticated nao', () =>
   tx(async () => {
-    const reqSig = 'private.step_up_request(uuid,uuid,text,text,text,bytea,text,timestamptz,text,text,text,integer,integer,integer)';
+    const reqSig = 'private.step_up_request(uuid,uuid,text,text,text,bytea,bytea,text,timestamptz,text,text,text,integer,integer,integer)';
     const verSig = 'private.step_up_verify(uuid,uuid,text,text,integer,timestamptz,text,text,integer,integer)';
     const { rows } = await client.query(
       `select

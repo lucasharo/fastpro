@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { RATE_LIMIT_DEFAULTS, type SessionRecord } from '@fastpro/domain';
 import { CodeProof, PgStepUpStore, requestStepUpCode, type StepUpSecrets } from '../src/session.js';
-import { challengeHmacHex } from '../src/challenges-crypto.js';
+import { challengeAad, challengeHmacHex, openChallengeBlob } from '../src/challenges-crypto.js';
 
 type Call = { text: string; params: unknown[] };
 
@@ -58,13 +58,17 @@ describe('requestStepUpCode (pedido do codigo)', () => {
     expect(r).toEqual({ resultado: 'criado', outboxId: OB });
 
     const chamada = f.calls.find((c) => c.text.includes('step_up_request'));
-    expect(chamada?.params).toHaveLength(14);
+    expect(chamada?.params).toHaveLength(15);
     const params = chamada!.params;
     expect(params[2]).toBe(challengeHmacHex(secrets.pepperEmail, EMAIL));
     expect(params[3]).toMatch(HEX64); // digest do link (token descartado)
     expect(params[4]).toMatch(HEX64); // HMAC do codigo
     expect(Buffer.isBuffer(params[5])).toBe(true);
     expect((params[5] as Buffer).toString('latin1')).not.toContain(EMAIL);
+    // secrets_enc: so {code}, cifrado com o AAD do desafio (sem token de link).
+    const aberto = openChallengeBlob(secrets.key, params[6] as Buffer, challengeAad(String(params[1]), 'secrets_enc'));
+    expect(Object.keys(JSON.parse(aberto))).toEqual(['code']);
+    expect(JSON.parse(aberto).code).toMatch(/^\d{6}$/);
     expect(params.some((p) => p === EMAIL)).toBe(false);
     expect(params.some((p) => typeof p === 'string' && /^\d{6}$/.test(p))).toBe(false);
   });

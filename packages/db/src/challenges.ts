@@ -36,6 +36,8 @@ import {
 } from './challenges-crypto.js';
 
 export const ACCESS_TEMPLATE_KEY = 'acesso_login';
+/** H-014 (52 §4.3): codigo de step-up. O envio leva so o codigo e os minutos, sem link. */
+export const STEPUP_TEMPLATE_KEY = 'acesso_stepup';
 export const PURGE_KIND = 'auth.challenge.purge';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const EMAIL_SHAPE_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -512,6 +514,7 @@ export class ChallengeEmailProvider implements EmailProviderPort {
   }
 
   async send(message: EmailMessage): Promise<SendResult> {
+    if (message.templateKey === STEPUP_TEMPLATE_KEY) return this.sendStepUp(message);
     if (message.templateKey !== ACCESS_TEMPLATE_KEY) return this.inner.send(message);
 
     const id = message.params.challenge_ref;
@@ -542,6 +545,35 @@ export class ChallengeEmailProvider implements EmailProviderPort {
         code,
         minutos: CHALLENGE_TTL_SECONDS / 60,
       },
+    });
+    if (result.kind === 'aceito') await this.store.markDelivered(id, now);
+    return result;
+  }
+
+  /** H-014 (52 §4.3): envia so o codigo do step-up e os minutos. Nenhum link, nenhum token. */
+  private async sendStepUp(message: EmailMessage): Promise<SendResult> {
+    const id = message.params.challenge_ref;
+    if (typeof id !== 'string' || !UUID_RE.test(id)) return recusa('desafio_inativo');
+    const now = this.opts.clock.nowMs();
+    const row = await this.store.findRow(id, now);
+    if (!row || !row.active) return recusa('desafio_inativo');
+    if (row.delivered) return { kind: 'aceito', providerMessageId: 'ja_entregue' };
+    if (!row.secretsEnc) return recusa('segredo_indisponivel');
+
+    let code: string;
+    try {
+      const segredos = JSON.parse(
+        openChallengeBlob(this.opts.key, row.secretsEnc, challengeAad(id, 'secrets_enc')),
+      ) as { code: string };
+      code = segredos.code;
+    } catch (err) {
+      const codigo = err instanceof ChallengeCryptoError ? err.code : 'segredo_indisponivel';
+      return recusa(codigo);
+    }
+
+    const result = await this.inner.send({
+      ...message,
+      params: { code, minutos: CHALLENGE_TTL_SECONDS / 60 },
     });
     if (result.kind === 'aceito') await this.store.markDelivered(id, now);
     return result;
