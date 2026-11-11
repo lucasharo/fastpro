@@ -165,7 +165,7 @@ export class PgStepUpStore {
     readonly sessionId: string;
     readonly id: string;
     readonly emailHash: string;
-    readonly tokenHash: string;
+    readonly linkDigest: string;
     readonly codeHmac: string;
     readonly emailEnc: Buffer;
     readonly ipHmac: string;
@@ -181,7 +181,7 @@ export class PgStepUpStore {
         input.sessionId,
         input.id,
         input.emailHash,
-        input.tokenHash,
+        input.linkDigest,
         input.codeHmac,
         input.emailEnc,
         input.ipHmac,
@@ -275,7 +275,7 @@ export async function requestStepUpCode(
     sessionId: session.sessionId,
     id,
     emailHash: challengeHmacHex(deps.secrets.pepperEmail, email),
-    tokenHash: challengeSha256Hex(token),
+    linkDigest: challengeSha256Hex(token),
     codeHmac: challengeHmacHex(deps.secrets.pepperCode, `${id}|${code}`),
     emailEnc: sealChallengeBlob(deps.secrets.key, email, challengeAad(id, 'email_enc')),
     ipHmac: challengeHmacHex(pepperIp, ip.value),
