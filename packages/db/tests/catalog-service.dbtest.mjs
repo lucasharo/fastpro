@@ -432,3 +432,20 @@ test('T-H018-21 council_body sem regulated e rejeitado; leitura publica nao traz
       false,
     );
   }));
+
+// --- T-H018-05 (lado do banco): private.catalog_norm dá os mesmos resultados fixos do espelho TypeScript/JS.
+
+test('T-H018-05 paridade: private.catalog_norm produz os pares fixos usados em catalog-seed.test.mjs', async () => {
+  const pairs = [
+    ['  Reformas   e  Construção ', 'reformas e construcao'],
+    ['ÁGUA', 'agua'],
+    ['Pé de Moleque', 'pe de moleque'],
+    ['Ação', 'acao'],
+    ['Lâmpada  LED', 'lampada led'],
+    ['Ç', 'c'],
+  ];
+  for (const [input, expected] of pairs) {
+    const res = await client.query('select private.catalog_norm($1) as n', [input]);
+    assert.equal(res.rows[0].n, expected, input);
+  }
+});
