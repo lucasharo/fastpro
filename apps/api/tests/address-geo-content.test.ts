@@ -55,7 +55,8 @@ describe('T-H020-11b token e dominio do Mapbox so no servidor (CA-14, §2.4)', (
     expect(achados).toEqual([]);
   });
 
-  it('api.mapbox.com aparece somente no adaptador do servidor', () => {
+  // H-021 (docs/factory/68-DESENHO-H021.md §4) acrescentou o adaptador permanente, tambem so de servidor.
+  it('api.mapbox.com aparece somente nos adaptadores do servidor', () => {
     const achados: string[] = [];
     for (const pasta of ['apps', 'packages']) {
       for (const f of arquivos(join(RAIZ, pasta))) {
@@ -63,7 +64,10 @@ describe('T-H020-11b token e dominio do Mapbox so no servidor (CA-14, §2.4)', (
         if (readFileSync(f, 'utf8').includes('api.mapbox.com')) achados.push(rel(f));
       }
     }
-    expect(achados).toEqual(['apps/api/src/geo/mapbox-temp-adapter.ts']);
+    expect(achados).toEqual([
+      'apps/api/src/geo/mapbox-permanent-adapter.ts',
+      'apps/api/src/geo/mapbox-temp-adapter.ts',
+    ]);
   });
 });
 
