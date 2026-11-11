@@ -151,7 +151,7 @@ describe('stepUpAdmin: confirmacao recente com senha e codigo', () => {
     const code = totp6(s.secretAuth, Math.floor(world.clock / 1000));
     const d = deps(world);
 
-    const senhaErrada = await stepUpAdmin(pedido(s.secret, { code, password: 'outra-senha-2099' }), d, world.clock);
+    const senhaErrada = await stepUpAdmin(pedido(s.secret, { code, password: 'senha-trocada-x' }), d, world.clock);
     const codigoErrado = await stepUpAdmin(pedido(s.secret, { code: '111111' }), d, world.clock);
     const semTexto = await stepUpAdmin(pedido(s.secret, { code: 123456 }), d, world.clock);
     const outraConta: AdminAuthPort = {
@@ -182,9 +182,9 @@ describe('stepUpAdmin: confirmacao recente com senha e codigo', () => {
     const world = createFakeWorld();
     const s = await sessaoAtiva(world, 'logs@example.test');
     const d = deps(world);
-    const out = await stepUpAdmin(pedido(s.secret, { code: '999999', password: 'senha-errada-sentinela-x9' }), d, world.clock);
+    const out = await stepUpAdmin(pedido(s.secret, { code: '999999', password: 'sentinela-senha-x' }), d, world.clock);
     const texto = joinedLogs(world.logs) + JSON.stringify(out);
-    expect(texto).not.toContain('senha-errada-sentinela-x9');
+    expect(texto).not.toContain('sentinela-senha-x');
     expect(texto).not.toContain('999999');
     expect(texto).not.toContain('logs@example.test');
     expect(world.logs.at(-1)).toEqual({ evento: 'confirmacao_admin', resultado: 'recusado', motivo: 'provedor' });
