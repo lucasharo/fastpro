@@ -57,6 +57,9 @@ importers:
       '@fastpro/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@fastpro/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
 
   packages/access-matrix:
     devDependencies:
