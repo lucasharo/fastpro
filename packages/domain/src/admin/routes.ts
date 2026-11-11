@@ -83,3 +83,12 @@ export function checkAdminMutation(
 export function adminNotFound(): AdminResponse {
   return ADMIN_NOT_FOUND;
 }
+
+/** Consulta da trilha pelo Auditor (H-104, 63 §3): POST, permissao audit.read. Sem PUT, PATCH ou DELETE. */
+export const ADMIN_AUDIT_QUERY_PATH = '/v1/admin/audit/queries';
+
+/** Registro completo das rotas admin (H-102 + H-104). Fonte unica para a guarda da API. */
+export const ADMIN_ROUTES: readonly AdminRouteSpec[] = [
+  ...ADMIN_ROUTES_H102,
+  { method: 'POST', pattern: ADMIN_AUDIT_QUERY_PATH, permission: 'audit.read' },
+];

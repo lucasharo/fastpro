@@ -3,7 +3,8 @@
 // caracteres, comparacao em tempo constante e limite de 1 KB do corpo. Nao ha acesso ao banco aqui.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { isTickAuthorized, TICK_BODY_LIMIT_BYTES, TICK_PATH } from '@fastpro/db';
-import { ADDRESS_SUGGEST_PATH, CONSUME_PATH } from '@fastpro/domain';
+import { ADDRESS_SUGGEST_PATH, ADMIN_AUDIT_QUERY_PATH, CONSUME_PATH } from '@fastpro/domain';
+import { handleAdminAuditQuery, type AdminAuditRouteOptions } from './admin-audit-route.js';
 import { handleConsume, type ConsumeRouteOptions } from './consume-route.js';
 import { handleAddressSuggest, type GeoRouteOptions } from './geo/address-suggest-route.js';
 import {
@@ -39,6 +40,8 @@ export interface AppOptions {
   readonly session?: SessionRouteOptions;
   /** Autocomplete de endereco temporario (H-020). Sem esta opcao a rota nao existe (404). */
   readonly geo?: GeoRouteOptions;
+  /** Consulta da auditoria pelo Auditor (H-104). Sem esta opcao a rota nao existe (404). */
+  readonly admin?: AdminAuditRouteOptions;
 }
 
 export interface BodyReadResult {
@@ -117,6 +120,10 @@ export async function handleRequest(
   }
   if (req.method === 'POST' && path === CONSUME_PATH && opts.consume) {
     await handleConsume(req, res, opts.consume);
+    return;
+  }
+  if (req.method === 'POST' && path === ADMIN_AUDIT_QUERY_PATH && opts.admin) {
+    await handleAdminAuditQuery(req, res, opts.admin);
     return;
   }
   if (req.method === 'POST' && path === ADDRESS_SUGGEST_PATH && opts.geo) {
