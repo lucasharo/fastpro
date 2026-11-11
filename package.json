@@ -29,7 +29,7 @@
     "check:secrets": "node scripts/check-secrets.mjs",
     "check:secrets:history": "node scripts/check-secrets.mjs --history",
     "check:email-switch": "node scripts/check-no-email-switch.mjs --selftest && node scripts/check-no-email-switch.mjs",
-    "check:all": "pnpm check:deps && pnpm check:hex && pnpm check:typography && pnpm check:env && pnpm check:boundaries && pnpm check:attachments && pnpm check:logs && pnpm check:secrets",
+    "check:all": "pnpm check:deps && pnpm check:hex && pnpm check:typography && pnpm check:env && pnpm check:boundaries && pnpm check:attachments && pnpm check:logs && pnpm check:secrets && pnpm check:email-switch",
     "audit:deps": "pnpm audit --audit-level=high",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

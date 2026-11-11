@@ -1,4 +1,4 @@
-// H-100 | Testes de vigencia do despachante (Issue #110; docs/factory/49-DESENHO-H100.md, §2).
+// H-100 | Testes de vigencia do despachante (Issue 110; docs/factory/49-DESENHO-H100.md, §2).
 // T-H100-07: evento anterior ao marco (2026-11-11T00:00:00Z) so recebe dispatched_at: nenhum item,
 // linha de envio ou chamada ao provedor. No limite exato, o evento e processado normalmente.
 // T-H100-08: contraprova: evento valido depois do marco, com provedor simulado, gera exatamente 1 chamada.

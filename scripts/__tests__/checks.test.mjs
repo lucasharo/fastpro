@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -496,4 +496,9 @@ test('check-no-email-switch: aprova o repositorio limpo (com canarios) e ignora 
 
 test('check-no-email-switch: falha fechada sem canarios ou sem arquivos', () => {
   check('check-no-email-switch.mjs', { 'apps/web/src/x.ts': 'const a = 1;\n' }, true, /FC/);
+});
+
+test('check:all inclui check:email-switch (H-100, FN-8: o verificador nao pode sair do gate)', () => {
+  const pkg = JSON.parse(readFileSync(join(resolve(scriptsDir, '..'), 'package.json'), 'utf8'));
+  assert.match(pkg.scripts['check:all'], /pnpm check:email-switch(\s|$)/);
 });

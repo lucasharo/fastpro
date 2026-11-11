@@ -1,4 +1,4 @@
-// H-100 | Marco de vigencia das notificacoes (Issue #110; docs/factory/49-DESENHO-H100.md, D-1).
+// H-100 | Marco de vigencia das notificacoes (Issue 110; docs/factory/49-DESENHO-H100.md, D-1).
 // Prova que o marco e o instante literal 2026-11-11T00:00:00Z (limite inclusivo). Sem banco, sem rede.
 import { describe, it, expect } from 'vitest';
 import { NOTIFICATION_EFFECTIVE_FROM_MS } from '../src/index.js';
