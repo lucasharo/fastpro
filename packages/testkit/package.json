@@ -1,0 +1,25 @@
+{
+  "name": "@fastpro/testkit",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Placeholder: fixtures sinteticas e helpers de teste",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "@fastpro/config": "workspace:*",
+    "@fastpro/domain": "workspace:*"
+  }
+}

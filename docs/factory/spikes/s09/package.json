@@ -1,0 +1,26 @@
+{
+  "name": "fastpro-spike-s09",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Spike S-09 descartavel (Issue #8). Somente preview. Sem dados reais.",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "bundle": "esbuild api/index.ts --bundle --platform=node --target=node22 --format=cjs --external:sharp --external:class-transformer --external:class-validator --external:@nestjs/websockets --external:@nestjs/websockets/* --external:@nestjs/microservices --external:@nestjs/microservices/* --external:@nestjs/platform-socket.io --external:@nestjs/platform-ws --external:cache-manager --external:@nestjs/cache-manager --external:@nestjs/microservices/microservices-module --outfile=dist/index.cjs"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "pg": "^8.13.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "sharp": "^0.34.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.6.0"
+  }
+}

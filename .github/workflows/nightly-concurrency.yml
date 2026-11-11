@@ -1,0 +1,17 @@
+name: Nightly concurrency (esqueleto desativado)
+
+# Esqueleto previsto no plano tecnico 19 §6. DESATIVADO: sem cron e sem execucao. As suites de
+# concorrencia (C-01..C-18, F-01..F-12, N >= 100) entram junto das historias que as exigem.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  concurrency:
+    name: Concorrencia (N >= 100) - desativado
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Desativado ate existirem as suites de concorrencia."

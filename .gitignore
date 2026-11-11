@@ -15,3 +15,8 @@ coverage/
 # Sistema
 .DS_Store
 Thumbs.db
+# Backup e keep-alive (H-010): dumps, cifrados, parciais e pastas de backup nunca versionados
+*.dump*
+*.gpg
+*.partial
+backups/

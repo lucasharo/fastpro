@@ -14,3 +14,5 @@
 | 10 | Confirmar compressão de fotos no envio (alvo 1–2 MB) e cota de Storage do Supabase | decisão 30 | Antes de usar fotos reais |
 | 11 | Confirmar PostGIS, pg_cron e pg_net no Supabase gratuito e limite de e-mails do Auth | verificação 13 | Spike inicial |
 | 12 | Obter tarifas do Mercado Pago (Pix/cartão) por outro caminho (a página retornou 403) e confirmar assinatura com teste grátis | verificação 13 | Antes de cobrar |
+| 13 | Contraste não-texto (WCAG 1.4.11) abaixo de 3:1 em bordas e teal sobre superfície clara no EDS aprovado: manter cores e exigir contorno de foco/delimitador nas telas (recomendação A, pergunta 47); tratar nas histórias de UI e registrar em FA-033/FA-034 | H-002 | Histórias de UI |
+| 14 | Logs: redigir antes do corte de 10.000 caracteres; proteger UUID em texto livre; aceitar sufixo Exception em error_name; helper assertNoPii para outros pacotes | H-007 (resíduos da revisão) | Primeira história de API que usar o logger |

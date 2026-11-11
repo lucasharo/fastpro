@@ -1,0 +1,10 @@
+node_modules
+dist
+.next
+.turbo
+coverage
+pnpm-lock.yaml
+docs
+AGENTS.md
+CLAUDE.md
+GEMINI.md

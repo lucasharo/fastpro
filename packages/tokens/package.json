@@ -1,0 +1,26 @@
+{
+  "name": "@fastpro/tokens",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Tokens EDS: unico lugar de cor, tipografia e medidas (claro e escuro) + CSS variables geradas",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./tokens.css": "./dist/tokens.css"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/build-css.mjs",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "report:contrast": "node scripts/report-contrast.mjs"
+  },
+  "devDependencies": {
+    "@fastpro/config": "workspace:*"
+  }
+}
