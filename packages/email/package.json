@@ -1,0 +1,28 @@
+{
+  "name": "@fastpro/email",
+  "version": "0.0.0",
+  "private": true,
+  "description": "H-093: adaptadores de e-mail (Mailpit e Resend) atras de EmailProviderPort",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fastpro/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "@fastpro/config": "workspace:*",
+    "@fastpro/testkit": "workspace:*"
+  }
+}
