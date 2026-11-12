@@ -159,11 +159,13 @@ export function montarConsumoEVerificacao(
     },
     clock,
     rate: { pepperIp: env.PEPPER_IP_HMAC ?? '', limits: RATE_LIMIT_DEFAULTS },
+    // H-013 (91 §1.4): o codigo conclui o acesso pela mesma funcao do link (conta, etapa, cookie).
+    access: consumeDeps,
   };
 
   return {
     consume: { deps: consumeDeps, siteUrl: env.SITE_URL ?? '' },
-    verify: { deps: verifyDeps },
+    verify: { deps: verifyDeps, siteUrl: env.SITE_URL ?? '' },
     pendencias: [],
   };
 }

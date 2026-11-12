@@ -16,16 +16,25 @@ import {
   rateLimited,
   toDraftView,
   type DraftFieldsPatch,
+  type DraftIdentityRecord,
+  type DraftIdentityStorePort,
   type DraftRatePolicy,
   type DraftRatePort,
   type DraftStoreError,
   type DraftStorePort,
   type DraftWriteResult,
+  type IdentityFields,
 } from '@fastpro/domain';
 import type { DraftHasher } from './draft-hash.js';
 
 export interface DraftClockPort {
   nowMs(): number;
+}
+
+/** H-013 (91 §1.5): identificacao do rascunho. O HMAC do e-mail vem da composicao (PEPPER_EMAIL_HMAC). */
+export interface DraftIdentityDeps {
+  readonly store: DraftIdentityStorePort;
+  readonly emailHmac: (email: string) => string;
 }
 
 export interface DraftDeps {
@@ -37,6 +46,8 @@ export interface DraftDeps {
   readonly clock: DraftClockPort;
   /** Teto global de rascunhos vivos. Padrao DRAFT_LIVE_CAP_DEFAULT (5.000). */
   readonly liveCap?: number;
+  /** Identificacao (nome e e-mail). Ausente: as rotas /identity respondem 404. */
+  readonly identity?: DraftIdentityDeps;
 }
 
 /** Resposta pronta para a rota: status, cabecalhos e corpo ja serializado (vazio no 204). */
@@ -191,4 +202,45 @@ export async function discardDraft(secret: string, deps: DraftDeps): Promise<Dra
   const ok = await deps.store.discard(deps.hasher.secretHash(secret), deps.clock.nowMs());
   if (!ok) return draftNotFound();
   return { status: 204, headers: { 'Cache-Control': 'no-store', 'Set-Cookie': DRAFT_CLEAR_COOKIE_HEADER }, body: '' };
+}
+
+/** Forma publica da identificacao: so nome, e-mail e a confirmacao (nunca HMAC, nonce ou id). */
+function identidadeView(r: DraftIdentityRecord): DraftOutcome {
+  return json(200, { first_name: r.firstName, email: r.email, email_verified: r.emailVerified });
+}
+
+/** GET /v1/drafts/current/identity: le nome, e-mail e confirmacao do rascunho vivo. Limite de leitura por IP-HMAC. */
+export async function getIdentity(secret: string, ip: string, deps: DraftDeps): Promise<DraftOutcome> {
+  if (deps.identity === undefined) return draftNotFound();
+  const now = deps.clock.nowMs();
+  const ipHmac = deps.hasher.ipHmac(ip);
+  const espera = await barradoPor(deps.rate, [[DRAFT_RATE_LEITURA_IP, ipHmac]], now);
+  if (espera !== null) return resposta429(espera);
+  const r = await deps.identity.store.identityGet(deps.hasher.secretHash(secret), now);
+  if (r === null) return draftNotFound();
+  await contar(deps.rate, [[DRAFT_RATE_LEITURA_IP, ipHmac]], now);
+  return identidadeView(r);
+}
+
+/**
+ * PUT /v1/drafts/current/identity (91 §1.5). Limites de salvamento de H-025 (120/60 s por IP-HMAC e 60/60 s por
+ * rascunho). Escrever o e-mail aqui nao envia e-mail. Trocar o e-mail zera a confirmacao (no banco).
+ */
+export async function putIdentity(fields: IdentityFields, secret: string, ip: string, deps: DraftDeps): Promise<DraftOutcome> {
+  if (deps.identity === undefined) return draftNotFound();
+  const now = deps.clock.nowMs();
+  const ipHmac = deps.hasher.ipHmac(ip);
+  const hash = deps.hasher.secretHash(secret);
+  const espera = await barradoPor(deps.rate, paresSalvar(ipHmac, hash), now);
+  if (espera !== null) return resposta429(espera);
+  const r = await deps.identity.store.identitySet({
+    secretHash: hash,
+    nowMs: now,
+    firstName: fields.first_name,
+    email: fields.email,
+    emailHmac: deps.identity.emailHmac(fields.email),
+  });
+  if (r === null) return draftNotFound();
+  await contar(deps.rate, paresSalvar(ipHmac, hash), now);
+  return identidadeView(r);
 }

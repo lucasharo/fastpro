@@ -45,6 +45,9 @@ export function normalizeChallengeEmail(raw: string): string {
   return normalized;
 }
 
+/** Forma minima do e-mail (H-011 e H-013): sem espaco, com @ e ponto depois dele. Vale depois de normalizar. */
+export const EMAIL_SHAPE_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function assertChallengePurpose(value: string): ChallengePurpose {
   if ((CHALLENGE_PURPOSES as readonly string[]).includes(value)) {
     return value as ChallengePurpose;

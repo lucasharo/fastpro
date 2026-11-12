@@ -17,6 +17,8 @@ import {
   montarConsumoEVerificacao,
 } from '../src/modules/identity/consumo-link-composicao.js';
 import { CHALLENGE_VERIFY_PATH } from '../src/challenge-verify-route.js';
+import { createHash } from 'node:crypto';
+import type { AccessDeps } from '@fastpro/db';
 
 const PIMENTA = () => randomBytes(24).toString('base64url');
 const SEGREDO_AUTH = 'segredo-auth-sintetico-' + randomBytes(12).toString('hex');
@@ -166,6 +168,9 @@ function armazenamento(resultado: ArmazenamentoFalso['resultado']): Armazenament
       activeId: async () => null,
       attemptCode: async (input: unknown) => {
         tentativas.push(input);
+        if (falso.resultado === 'ok') {
+          return { resultado: 'ok', retryAfterSeconds: null, challengeId: DESAFIO_SINTETICO, emailEnc: Buffer.from('blob-sintetico'), draftId: null, attached: false };
+        }
         return { resultado: falso.resultado, retryAfterSeconds: falso.resultado === 'bloqueado_codigo' ? 60 : null };
       },
     },
@@ -173,8 +178,26 @@ function armazenamento(resultado: ArmazenamentoFalso['resultado']): Armazenament
   return falso;
 }
 
-function depsVerificacao(falso: ArmazenamentoFalso): VerifyChallengeDeps {
+const SITE = 'https://fastpro.example.test';
+const ORIGEM = { Origin: SITE, 'Sec-Fetch-Site': 'same-origin' } as const;
+const DESAFIO_SINTETICO = '11111111-1111-4111-8111-111111111111';
+const SEG_SINTETICO = randomBytes(32).toString('base64url');
+
+/** Conclusao do acesso dublê (conta, etapa, cookie): a mesma funcao do link, so com portas falsas. */
+function acessoDublê(opcoes: { etapaAberta?: boolean } = {}): AccessDeps {
   return {
+    accounts: { ensureCustomer: async () => ({ status: 'ok', userId: '22222222-2222-4222-8222-222222222222' }) },
+    stages: { openStage: async () => opcoes.etapaAberta ?? true },
+    decryptEmail: () => 'cliente@example.test',
+    clock: { nowMs: () => Date.UTC(2099, 0, 1) },
+    newSecret: () => SEG_SINTETICO,
+    newSessionId: () => '33333333-3333-4333-8333-333333333333',
+  };
+}
+
+function depsVerificacao(falso: ArmazenamentoFalso, access: AccessDeps = acessoDublê()): VerifyChallengeDeps {
+  return {
+    access,
     store: falso.store,
     secrets: {
       key: Buffer.alloc(32, 3),
@@ -193,7 +216,7 @@ afterAll(() => {
   for (const s of servidores) s.close();
 });
 
-async function servidorCom(opcoes: { challengeVerify?: { deps: VerifyChallengeDeps }; consume?: { deps: ConsumeDeps; siteUrl: string } }): Promise<string> {
+async function servidorCom(opcoes: { challengeVerify?: { deps: VerifyChallengeDeps; siteUrl: string }; consume?: { deps: ConsumeDeps; siteUrl: string } }): Promise<string> {
   const server = createServer((req, res) => {
     handleRequest(req, res, { tickSecret: undefined, ...opcoes }).catch(() => {
       res.statusCode = 500;
@@ -221,11 +244,16 @@ function post(base: string, caminho: string, corpo: string, cabecalhos: Record<s
   });
 }
 
+/** POST de verificacao com Origin e Sec-Fetch-Site do site (exigidos por /verify, 91 §1.2). */
+function postVerify(base: string, corpo: string, cabecalhos: Record<string, string> = {}) {
+  return post(base, CHALLENGE_VERIFY_PATH, corpo, { ...ORIGEM, ...cabecalhos });
+}
+
 describe('POST /v1/auth/challenges/verify (verificacao do codigo, caminho proposto)', () => {
   it('codigo certo: 200 codigo_ok', async () => {
     const falso = armazenamento('ok');
-    const base = await servidorCom({ challengeVerify: { deps: depsVerificacao(falso) } });
-    const r = await post(base, CHALLENGE_VERIFY_PATH, JSON.stringify({ email: 'cliente@example.test', code: '123456' }));
+    const base = await servidorCom({ challengeVerify: { deps: depsVerificacao(falso), siteUrl: SITE } });
+    const r = await postVerify(base, JSON.stringify({ email: 'cliente@example.test', code: '123456' }));
     expect(r.status).toBe(200);
     expect(JSON.parse(r.body)).toEqual({ status: 'codigo_ok' });
     expect(falso.tentativas).toHaveLength(1);
@@ -233,31 +261,101 @@ describe('POST /v1/auth/challenges/verify (verificacao do codigo, caminho propos
 
   it('codigo errado: 422 codigo_invalido, sem dizer o motivo', async () => {
     const falso = armazenamento('errado');
-    const base = await servidorCom({ challengeVerify: { deps: depsVerificacao(falso) } });
-    const r = await post(base, CHALLENGE_VERIFY_PATH, JSON.stringify({ email: 'cliente@example.test', code: '000000' }));
+    const base = await servidorCom({ challengeVerify: { deps: depsVerificacao(falso), siteUrl: SITE } });
+    const r = await postVerify(base, JSON.stringify({ email: 'cliente@example.test', code: '000000' }));
     expect(r.status).toBe(422);
     expect(JSON.parse(r.body)).toEqual({ code: 'codigo_invalido' });
   });
 
   it('bloqueio por tentativas: 429 com Retry-After', async () => {
     const falso = armazenamento('bloqueado_codigo');
-    const base = await servidorCom({ challengeVerify: { deps: depsVerificacao(falso) } });
-    const r = await post(base, CHALLENGE_VERIFY_PATH, JSON.stringify({ email: 'cliente@example.test', code: '000000' }));
+    const base = await servidorCom({ challengeVerify: { deps: depsVerificacao(falso), siteUrl: SITE } });
+    const r = await postVerify(base, JSON.stringify({ email: 'cliente@example.test', code: '000000' }));
     expect(r.status).toBe(429);
     expect(r.headers['retry-after']).toBeDefined();
   });
 
   it('corpo sem codigo de 6 digitos ou finalidade invalida: 422 sem tocar o armazenamento', async () => {
     const falso = armazenamento('ok');
-    const base = await servidorCom({ challengeVerify: { deps: depsVerificacao(falso) } });
-    const semCodigo = await post(base, CHALLENGE_VERIFY_PATH, JSON.stringify({ email: 'cliente@example.test', code: '12' }));
-    const finalidadeRuim = await post(base, CHALLENGE_VERIFY_PATH, JSON.stringify({ email: 'cliente@example.test', code: '123456', purpose: 'nao-existe' }));
-    const naoJson = await post(base, CHALLENGE_VERIFY_PATH, '{ruim');
+    const base = await servidorCom({ challengeVerify: { deps: depsVerificacao(falso), siteUrl: SITE } });
+    const semCodigo = await postVerify(base, JSON.stringify({ email: 'cliente@example.test', code: '12' }));
+    const finalidadeRuim = await postVerify(base, JSON.stringify({ email: 'cliente@example.test', code: '123456', purpose: 'nao-existe' }));
+    const naoJson = await postVerify(base, '{ruim');
     for (const r of [semCodigo, finalidadeRuim, naoJson]) {
       expect(r.status).toBe(422);
       expect(JSON.parse(r.body)).toEqual({ code: 'codigo_invalido' });
     }
     expect(falso.tentativas).toHaveLength(0);
+  });
+
+  it('H-013: codigo certo emite __Host-fp_ident igual ao do link; corpo e cabecalhos sem anexacao', async () => {
+    const falso = armazenamento('ok');
+    const base = await servidorCom({ challengeVerify: { deps: depsVerificacao(falso), siteUrl: SITE } });
+    const r = await postVerify(base, JSON.stringify({ email: 'cliente@example.test', code: '123456' }));
+    expect(r.status).toBe(200);
+    expect(String(r.headers['set-cookie'])).toMatch(
+      /^__Host-fp_ident=[A-Za-z0-9_-]{43}; HttpOnly; Secure; SameSite=Strict; Path=\/; Max-Age=900$/,
+    );
+    expect(r.body).toBe(JSON.stringify({ status: 'codigo_ok' }));
+    expect(r.headers['cache-control']).toBe('no-store');
+  });
+
+  it('H-013: o nonce vai ao armazenamento como SHA-256 do cookie do rascunho, nunca em claro', async () => {
+    const falso = armazenamento('ok');
+    const base = await servidorCom({ challengeVerify: { deps: depsVerificacao(falso), siteUrl: SITE } });
+    const segredo = 'a'.repeat(43);
+    await postVerify(base, JSON.stringify({ email: 'cliente@example.test', code: '123456' }), { Cookie: `__Host-fp_draft=${segredo}` });
+    const enviado = falso.tentativas[0] as { browserNonceHash: string | null };
+    expect(enviado.browserNonceHash).toBe(createHash('sha256').update(segredo).digest('hex'));
+    expect(JSON.stringify(falso.tentativas)).not.toContain(segredo);
+  });
+
+  it('H-013: sem cookie do rascunho o nonce e nulo (a resposta do 200 e a mesma)', async () => {
+    const falso = armazenamento('ok');
+    const base = await servidorCom({ challengeVerify: { deps: depsVerificacao(falso), siteUrl: SITE } });
+    const r = await postVerify(base, JSON.stringify({ email: 'cliente@example.test', code: '123456' }));
+    expect(r.status).toBe(200);
+    expect((falso.tentativas[0] as { browserNonceHash: unknown }).browserNonceHash).toBeNull();
+  });
+
+  it('H-013: Origin ausente ou de outro site recebe 403 antes de ler o corpo; nada e consumido', async () => {
+    const falso = armazenamento('ok');
+    const base = await servidorCom({ challengeVerify: { deps: depsVerificacao(falso), siteUrl: SITE } });
+    const corpo = JSON.stringify({ email: 'cliente@example.test', code: '123456' });
+    const semOrigem = await post(base, CHALLENGE_VERIFY_PATH, corpo, { 'Sec-Fetch-Site': 'same-origin' });
+    const outraOrigem = await post(base, CHALLENGE_VERIFY_PATH, corpo, { Origin: 'https://evil.example.test', 'Sec-Fetch-Site': 'cross-site' });
+    expect(semOrigem.status).toBe(403);
+    expect(outraOrigem.status).toBe(403);
+    expect(JSON.parse(outraOrigem.body)).toEqual({ code: 'origem_invalida' });
+    expect(falso.tentativas).toHaveLength(0);
+  });
+
+  it('H-013: Content-Type que nao e JSON recebe 415 sem tocar o armazenamento', async () => {
+    const falso = armazenamento('ok');
+    const base = await servidorCom({ challengeVerify: { deps: depsVerificacao(falso), siteUrl: SITE } });
+    const r = await postVerify(base, JSON.stringify({ email: 'cliente@example.test', code: '123456' }), { 'Content-Type': 'text/plain' });
+    expect(r.status).toBe(415);
+    expect(JSON.parse(r.body)).toEqual({ code: 'tipo_invalido' });
+    expect(falso.tentativas).toHaveLength(0);
+  });
+
+  it('H-013: corpo acima de 2.048 bytes recebe 422 uniforme, sem tocar o armazenamento', async () => {
+    const falso = armazenamento('ok');
+    const base = await servidorCom({ challengeVerify: { deps: depsVerificacao(falso), siteUrl: SITE } });
+    const r = await postVerify(base, JSON.stringify({ email: 'x'.repeat(3000), code: '123456' }));
+    expect(r.status).toBe(422);
+    expect(JSON.parse(r.body)).toEqual({ code: 'codigo_invalido' });
+    expect(falso.tentativas).toHaveLength(0);
+  });
+
+  it('H-013: falha depois do consumo (etapa nao abre) responde 503 sem cookie', async () => {
+    const falso = armazenamento('ok');
+    const access = acessoDublê({ etapaAberta: false });
+    const base = await servidorCom({ challengeVerify: { deps: depsVerificacao(falso, access), siteUrl: SITE } });
+    const r = await postVerify(base, JSON.stringify({ email: 'cliente@example.test', code: '123456' }));
+    expect(r.status).toBe(503);
+    expect(JSON.parse(r.body)).toEqual({ code: 'acesso_indisponivel' });
+    expect(r.headers['set-cookie']).toBeUndefined();
   });
 
   it('a rota nao existe sem a opcao (404) e nao aceita GET', async () => {

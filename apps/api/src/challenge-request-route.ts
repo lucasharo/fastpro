@@ -4,6 +4,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { requestChallenge, type RequestChallengeDeps } from '@fastpro/db';
 import { lerCorpoLimitado } from './corpo-limitado.js';
+import { draftNonceHashFromRequest } from './drafts/draft-nonce.js';
 
 export const CHALLENGE_REQUEST_PATH = '/v1/auth/challenges';
 /** Corpo legitimo e {email, purpose?, draft_id?}: cabe com folga. Acima disso o pedido vira 422 uniforme. */
@@ -29,7 +30,10 @@ export async function handleChallengeRequest(
       corpo = undefined;
     }
   }
-  const r = await requestChallenge(opts.deps, corpo, req.socket.remoteAddress ?? null);
+  // H-013 (91 §1.1): o nonce vem do cookie do rascunho, nunca do corpo (draft_id nao e posse).
+  const r = await requestChallenge(opts.deps, corpo, req.socket.remoteAddress ?? null, {
+    browserNonceHash: draftNonceHashFromRequest(req),
+  });
   res.writeHead(r.status, { ...r.headers, 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(r.body));
 }

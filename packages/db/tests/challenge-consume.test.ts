@@ -333,16 +333,16 @@ describe('adaptadores Pg com SqlClient simulado', () => {
     const { chamadas, client } = clientFake([
       [{ out_resultado: 'ok', out_challenge_id: 'c1', out_purpose: 'login', out_email_enc: enc, out_draft_id: null }],
     ]);
-    const r = await new PgConsumeRepository(client).consumeLink('h'.repeat(64), NOW);
-    expect(r).toEqual({ resultado: 'ok', challengeId: 'c1', purpose: 'login', emailEnc: enc, draftId: null });
+    const r = await new PgConsumeRepository(client).consumeLink('h'.repeat(64), NOW, null);
+    expect(r).toEqual({ resultado: 'ok', challengeId: 'c1', purpose: 'login', emailEnc: enc, draftId: null, attached: false });
     expect(chamadas).toHaveLength(1);
-    expect(chamadas[0]?.sql).toContain('private.auth_challenge_consume_link(');
-    expect(chamadas[0]?.params).toEqual(['h'.repeat(64), new Date(NOW).toISOString()]);
+    expect(chamadas[0]?.sql).toContain('private.auth_challenge_consume_link_attach(');
+    expect(chamadas[0]?.params).toEqual(['h'.repeat(64), new Date(NOW).toISOString(), null]);
   });
 
   it('PgConsumeRepository devolve invalido sem vazar o hash', async () => {
     const { client } = clientFake([[{ out_resultado: 'invalido', out_challenge_id: null, out_purpose: null, out_email_enc: null, out_draft_id: null }]]);
-    expect(await new PgConsumeRepository(client).consumeLink('a'.repeat(64), NOW)).toEqual({
+    expect(await new PgConsumeRepository(client).consumeLink('a'.repeat(64), NOW, null)).toEqual({
       resultado: 'invalido',
     });
   });

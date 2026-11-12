@@ -2,8 +2,8 @@
 // Liga as rotas /v1/drafts SO se as tres variaveis existirem com valor: URL do papel app_api, chave HMAC
 // propria do IP (>= 32 caracteres) e SITE_URL. Qualquer falta, ou ausencia da fabrica do pool, devolve
 // undefined: as rotas continuam inexistentes (404). Nenhum valor e registrado; so os nomes sao citados.
-import { PgDraftRate, PgDraftStore, type SqlClient } from '@fastpro/db';
-import type { DraftRatePort, DraftStorePort } from '@fastpro/domain';
+import { challengeHmacHex, PgDraftRate, PgDraftStore, type SqlClient } from '@fastpro/db';
+import type { DraftIdentityStorePort, DraftRatePort, DraftStorePort } from '@fastpro/domain';
 import { createDraftHasher, DRAFT_IP_KEY_MIN_LENGTH, newDraftSecret } from './draft-hash.js';
 import type { DraftClockPort } from './draft-service.js';
 import type { DraftRouteOptions } from './draft-route.js';
@@ -19,7 +19,12 @@ export type DraftEnv = Readonly<Record<string, string | undefined>>;
 
 /** Fabrica das portas do rascunho sobre um pool injetado. Em producao, usa o SqlClient real. */
 export interface DraftPortsFactory {
-  criar(databaseUrl: string): { readonly store: DraftStorePort; readonly rate: DraftRatePort };
+  criar(databaseUrl: string): {
+    readonly store: DraftStorePort;
+    readonly rate: DraftRatePort;
+    /** H-013: identificacao do rascunho (mesmo adaptador Pg do rascunho). */
+    readonly identity?: DraftIdentityStorePort;
+  };
 }
 
 const RELOGIO_RASCUNHO: DraftClockPort = { nowMs: () => Date.now() };
@@ -48,7 +53,9 @@ export function montarRascunho(
   const databaseUrl = env[DRAFT_DATABASE_URL_ENV] ?? '';
   const ipKey = env[DRAFT_IP_KEY_ENV] ?? '';
   const siteUrl = env[DRAFT_SITE_URL_ENV] ?? '';
-  const { store, rate } = fabrica.criar(databaseUrl);
+  const { store, rate, identity } = fabrica.criar(databaseUrl);
+  // H-013 (91 §1.5): identificacao so liga com o pepper do e-mail (o mesmo HMAC de auth_challenge.email_hash).
+  const pepperEmail = (env.PEPPER_EMAIL_HMAC ?? '').trim();
   return {
     deps: {
       store,
@@ -56,6 +63,9 @@ export function montarRascunho(
       hasher: createDraftHasher(ipKey),
       newSecret: newDraftSecret,
       clock: relogio,
+      ...(identity !== undefined && pepperEmail !== ''
+        ? { identity: { store: identity, emailHmac: (email: string) => challengeHmacHex(pepperEmail, email) } }
+        : {}),
     },
     siteUrl,
   };
@@ -74,7 +84,8 @@ export function criarFabricaRascunho(abrirCliente: (connectionString: string) =>
         cliente = abrirCliente(databaseUrl);
         clientes.set(databaseUrl, cliente);
       }
-      return { store: new PgDraftStore(cliente), rate: new PgDraftRate(cliente) };
+      const porta = new PgDraftStore(cliente);
+      return { store: porta, rate: new PgDraftRate(cliente), identity: porta };
     },
   };
 }

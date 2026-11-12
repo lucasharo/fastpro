@@ -40,7 +40,7 @@ function bancoSimulado(challengeId: string, userId: string) {
   const client = {
     async query(sql: string, params: unknown[] = []) {
       chamadas.push({ sql, params });
-      if (sql.includes('auth_challenge_consume_link')) {
+      if (sql.includes('auth_challenge_consume_link_attach')) {
         return {
           rows: [
             {
@@ -92,9 +92,9 @@ describe('composicao buildConsumeDeps (ponta a ponta com banco simulado)', () =>
     expect(segredo).toBeDefined();
 
     const sqls = chamadas.map((c) => c.sql);
-    expect(sqls.filter((s) => s.includes('auth_challenge_consume_link'))).toHaveLength(1);
+    expect(sqls.filter((s) => s.includes('auth_challenge_consume_link_attach'))).toHaveLength(1);
     expect(sqls.map((s) => /private\.(\w+)/.exec(s)?.[1])).toEqual([
-      'auth_challenge_consume_link',
+      'auth_challenge_consume_link_attach',
       'app_user_find',
       'app_user_ensure',
       'app_session_open_stage',

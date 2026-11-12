@@ -85,3 +85,26 @@ export function toDraftView(record: DraftRecord): DraftView {
     updated_at: record.updatedAt,
   };
 }
+
+/** H-013 (91 §1.5): identificacao do rascunho vivo. Nunca sai para a resposta com o HMAC nem o nonce. */
+export interface DraftIdentityRecord {
+  readonly firstName: string | null;
+  readonly email: string | null;
+  readonly emailVerified: boolean;
+}
+
+export interface DraftIdentitySetInput {
+  readonly secretHash: string;
+  readonly nowMs: number;
+  readonly firstName: string;
+  readonly email: string;
+  /** HMAC-SHA256 do e-mail normalizado com PEPPER_EMAIL_HMAC (o mesmo de auth_challenge.email_hash). */
+  readonly emailHmac: string;
+}
+
+export interface DraftIdentityStorePort {
+  /** Identificacao do rascunho vivo do segredo; null quando nao ha rascunho vivo. */
+  identityGet(secretHash: string, nowMs: number): Promise<DraftIdentityRecord | null>;
+  /** Grava nome, e-mail e HMAC do e-mail no rascunho vivo; null quando nao ha rascunho vivo. */
+  identitySet(input: DraftIdentitySetInput): Promise<DraftIdentityRecord | null>;
+}

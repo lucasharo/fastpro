@@ -10,6 +10,7 @@ import {
   siteOriginOf,
 } from '@fastpro/domain';
 import { consumeChallenge, type ConsumeDeps } from '@fastpro/db';
+import { draftNonceHashFromRequest } from './drafts/draft-nonce.js';
 
 export interface ConsumeRouteOptions {
   /** Dependencias do consumo (repositorio, conta, etapa, decifra). Montadas por buildConsumeDeps. */
@@ -91,7 +92,8 @@ export async function handleConsume(
       return;
     }
 
-    const r = await consumeChallenge(opts.deps, corpo.token);
+    // H-013 (91 §1.3): o nonce do navegador vem do cookie do rascunho; a resposta nao revela a anexacao.
+    const r = await consumeChallenge(opts.deps, corpo.token, { browserNonceHash: draftNonceHashFromRequest(req) });
     enviar(res, r.status, r.body, r.setCookie ? { 'Set-Cookie': r.setCookie } : {});
   } catch {
     // Sem detalhe de erro na resposta nem no registro (token, e-mail e segredo nunca saem).

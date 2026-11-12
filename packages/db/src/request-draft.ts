@@ -5,6 +5,9 @@ import {
   DRAFT_STATUSES,
   DRAFT_TTL_DAYS,
   type DraftCreateInput,
+  type DraftIdentityRecord,
+  type DraftIdentitySetInput,
+  type DraftIdentityStorePort,
   type DraftPatchInput,
   type DraftRatePolicy,
   type DraftRatePort,
@@ -27,6 +30,10 @@ export const SQL_DRAFT_DISCARD = 'select private.draft_discard($1, $2::timestamp
 export const SQL_DRAFT_RL_CHECK =
   'select out_ok, out_retry_after from private.rl_check($1, $2, $3, $4, $5::timestamptz)';
 export const SQL_DRAFT_RL_HIT = 'select private.rl_hit($1, $2, $3::timestamptz)';
+/** H-013 (91 §2.5): identificacao do rascunho vivo, papel app_api. */
+export const SQL_DRAFT_IDENTITY_GET = 'select * from private.draft_identity_get($1, $2::timestamptz)';
+export const SQL_DRAFT_IDENTITY_SET =
+  'select * from private.draft_identity_set($1, $2::timestamptz, $3, $4, $5)';
 
 /** Prefixo das chaves do limite de rascunho: separa do limite de busca e do de login. */
 export const DRAFT_RATE_KEY_PREFIX = 'draft' as const;
@@ -74,9 +81,43 @@ function codigoDoBanco(erro: unknown): DraftStoreError | null {
   return null;
 }
 
-/** Rascunho no banco: leitura, criacao, salvamento e descarte, todos por funcao. */
-export class PgDraftStore implements DraftStorePort {
+/** Linha de private.draft_identity_* (out_*). Valores nulos ficam nulos (rascunho sem identificacao). */
+interface LinhaIdentidade {
+  readonly out_first_name: string | null;
+  readonly out_email: string | null;
+  readonly out_email_verified: boolean | null;
+}
+
+function paraIdentidade(row: Record<string, unknown>): DraftIdentityRecord {
+  const l = row as unknown as LinhaIdentidade;
+  return {
+    firstName: l.out_first_name ?? null,
+    email: l.out_email ?? null,
+    emailVerified: l.out_email_verified === true,
+  };
+}
+
+/** Rascunho no banco: leitura, criacao, salvamento, descarte e identificacao, todos por funcao. */
+export class PgDraftStore implements DraftStorePort, DraftIdentityStorePort {
   constructor(private readonly client: SqlClient) {}
+
+  async identityGet(secretHash: string, nowMs: number): Promise<DraftIdentityRecord | null> {
+    const res = await this.client.query(SQL_DRAFT_IDENTITY_GET, [secretHash, iso(nowMs)]);
+    const row = res.rows[0];
+    return row === undefined ? null : paraIdentidade(row);
+  }
+
+  async identitySet(input: DraftIdentitySetInput): Promise<DraftIdentityRecord | null> {
+    const res = await this.client.query(SQL_DRAFT_IDENTITY_SET, [
+      input.secretHash,
+      iso(input.nowMs),
+      input.firstName,
+      input.email,
+      input.emailHmac,
+    ]);
+    const row = res.rows[0];
+    return row === undefined ? null : paraIdentidade(row);
+  }
 
   async find(secretHash: string, nowMs: number): Promise<DraftRecord | null> {
     const res = await this.client.query(SQL_DRAFT_GET, [secretHash, iso(nowMs)]);

@@ -14,13 +14,17 @@ import {
   parseDraftBody,
   siteOriginOf,
   DRAFT_BODY_LIMIT_BYTES,
+  IDENTITY_BODY_LIMIT_BYTES,
+  parseIdentityBody,
 } from '@fastpro/domain';
 import {
   discardDraft,
   draftNotFound,
   getDraft,
+  getIdentity,
   patchDraft,
   postDraft,
+  putIdentity,
   type DraftDeps,
   type DraftOutcome,
 } from './draft-service.js';
@@ -32,9 +36,12 @@ export interface DraftRouteOptions {
   readonly siteUrl: string;
 }
 
+/** H-013 (91 §1.5): identificacao do rascunho (nome e e-mail), ao lado das rotas de H-025. */
+export const DRAFT_IDENTITY_PATH = `${DRAFT_CURRENT_PATH}/identity` as const;
+
 /** Rotas desta historia (para o roteador). Qualquer metodo nelas cai no mesmo 404 uniforme. */
 export function isDraftRoute(path: string): boolean {
-  return path === DRAFT_PATH || path === DRAFT_CURRENT_PATH;
+  return path === DRAFT_PATH || path === DRAFT_CURRENT_PATH || path === DRAFT_IDENTITY_PATH;
 }
 
 function cabecalho(valor: string | string[] | undefined): string | undefined {
@@ -86,7 +93,7 @@ export async function handleDraftRoute(
     );
     if (!origem.ok) return enviar(res, erro(403, 'origem_invalida'));
 
-    const escreve = metodo === 'POST' || metodo === 'PATCH';
+    const escreve = metodo === 'POST' || metodo === 'PATCH' || (metodo === 'PUT' && path === DRAFT_IDENTITY_PATH);
     if (escreve) {
       const tipo = checkDraftJson(cabecalho(req.headers['content-type']));
       if (!tipo.ok) return enviar(res, erro(415, 'tipo_invalido'));
@@ -101,6 +108,18 @@ export async function handleDraftRoute(
       const corpo = parseDraftBody(text, bytes);
       if (!corpo.ok) return enviar(res, erro(corpo.status, corpo.code));
       return enviar(res, await postDraft({ fields: corpo.fields, secret: segredo, ip }, opts.deps));
+    }
+
+    if (path === DRAFT_IDENTITY_PATH) {
+      // Mesma ordem de H-025: cookie (formato; ausente = 404 sem banco) -> corpo -> servico. Sem identidade = 404.
+      if (segredo === null) return enviar(res, draftNotFound());
+      if (metodo === 'GET') return enviar(res, await getIdentity(segredo, ip, opts.deps));
+      if (metodo === 'PUT') {
+        const { text, bytes } = await lerCorpo(req, IDENTITY_BODY_LIMIT_BYTES);
+        const corpo = parseIdentityBody(text, bytes);
+        if (!corpo.ok) return enviar(res, erro(corpo.status, corpo.code));
+        return enviar(res, await putIdentity(corpo.fields, segredo, ip, opts.deps));
+      }
     }
 
     if (path === DRAFT_CURRENT_PATH) {
