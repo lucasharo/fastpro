@@ -24,15 +24,18 @@ export const ADMIN_PERMISSIONS = [
   'case.open_sensitive',
   'case.authorize_sensitive',
   'ops.panel.read',
+  // H-105 (Issue 114, 80 §1): suspensao permanente pedida pelo Suporte e aprovada por Moderadores.
+  'account.suspend.request',
+  'account.suspend.approve',
 ] as const;
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
 
 export const ADMIN_ROLE_PERMISSIONS: Readonly<Record<AdminRole, readonly AdminPermission[]>> = {
   superadmin: ['admin.role.manage', 'catalog.manage', 'case.authorize_sensitive', 'ops.panel.read'],
   verificacao: ['verification.review'],
-  moderador: ['moderation.decide'],
+  moderador: ['moderation.decide', 'account.suspend.approve'],
   financeiro: ['finance.refund.request', 'finance.refund.approve'],
-  suporte: ['support.completion.correct', 'case.open_sensitive'],
+  suporte: ['support.completion.correct', 'case.open_sensitive', 'account.suspend.request'],
   auditor: ['audit.read'],
 };
 

@@ -44,9 +44,9 @@ describe('T-H102-05 matriz de rotas do registro H-102 x papel', () => {
     expect(ADMIN_ROLE_PERMISSIONS).toEqual({
       superadmin: ['admin.role.manage', 'catalog.manage', 'case.authorize_sensitive', 'ops.panel.read'],
       verificacao: ['verification.review'],
-      moderador: ['moderation.decide'],
+      moderador: ['moderation.decide', 'account.suspend.approve'],
       financeiro: ['finance.refund.request', 'finance.refund.approve'],
-      suporte: ['support.completion.correct', 'case.open_sensitive'],
+      suporte: ['support.completion.correct', 'case.open_sensitive', 'account.suspend.request'],
       auditor: ['audit.read'],
     });
   });

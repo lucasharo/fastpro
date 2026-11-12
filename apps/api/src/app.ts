@@ -10,7 +10,9 @@ import {
   ADMIN_AUTH_SESSION_PATH,
   ADMIN_CONSOLE_MENU_PATH,
   ADMIN_OPS_PANEL_PATH,
+  ADMIN_REFUND_APPROVALS_PATH,
   ADMIN_STEP_UP_PATH,
+  ADMIN_SUSPENSION_APPROVALS_PATH,
   CATALOG_SEARCH_PATH,
   CONSUME_PATH,
   PROFESSIONAL_LOGIN_PATH,
@@ -25,6 +27,10 @@ import { handleAdminStepUpRoute, type AdminStepUpRouteOptions } from './admin-st
 import { handleAdminAuditQuery, type AdminAuditRouteOptions } from './admin-audit-route.js';
 import { handleAdminConsoleMenu, type AdminConsoleRouteOptions } from './admin-console-route.js';
 import { handleAdminOpsPanel, type AdminOpsRouteOptions } from './admin-ops-route.js';
+import {
+  handleAdminDualApprovalRoute,
+  type AdminDualApprovalRouteOptions,
+} from './admin-dual-approval-route.js';
 import { handleAdminCatalogRoute, type AdminCatalogRouteOptions } from './admin-catalog-route.js';
 import {
   handleAdminAuthSessionRoute,
@@ -92,6 +98,8 @@ export interface AppOptions {
   readonly adminAuthSession?: AdminAuthSessionRouteOptions;
   /** Acesso excepcional a conversa (H-073). Sem esta opcao as rotas /v1/admin/access-cases nao existem (404). */
   readonly accessCase?: AdminAccessCaseRouteOptions;
+  /** Dupla aprovacao de estorno e suspensao (H-105). Sem esta opcao as rotas /v1/admin/{refund|suspension}-approvals nao existem (404). */
+  readonly dualApproval?: AdminDualApprovalRouteOptions;
   /** Confirmacao recente do segundo fator da sessao admin (H-073, 60 §4). Sem esta opcao a rota nao existe (404). */
   readonly adminStepUp?: AdminStepUpRouteOptions;
   /** Busca de servico com sinonimos (H-019). Sem esta opcao a rota nao existe (404). */
@@ -191,6 +199,13 @@ export async function handleRequest(
     (path === ADMIN_ACCESS_CASES_PATH || path.startsWith(`${ADMIN_ACCESS_CASES_PATH}/`))
   ) {
     await handleAdminAccessCaseRoute(req, res, opts.accessCase, path);
+    return;
+  }
+  if (
+    opts.dualApproval &&
+    (path.startsWith(`${ADMIN_REFUND_APPROVALS_PATH}`) || path.startsWith(`${ADMIN_SUSPENSION_APPROVALS_PATH}`))
+  ) {
+    await handleAdminDualApprovalRoute(req, res, opts.dualApproval, path);
     return;
   }
   if (req.method === 'POST' && path === ADMIN_AUDIT_QUERY_PATH && opts.admin) {

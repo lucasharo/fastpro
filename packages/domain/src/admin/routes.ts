@@ -133,7 +133,32 @@ export const ADMIN_ROUTES_H107: readonly AdminRouteSpec[] = [
   { method: 'GET', pattern: `${ADMIN_CATALOG_PATH}/:entity/:id/revisions`, permission: 'catalog.manage' },
 ];
 
-/** Registro completo das rotas admin (H-102 + H-104 + H-073 + H-103 + H-108). Fonte unica para a guarda da API. */
+/**
+ * Dupla aprovacao (H-105, 80 §3): uma familia por tipo de acao. POST pede (permissao de pedir), GET e cancel
+ * usam so a sessao (o banco filtra pelo solicitante e pela permissao de votar), vote exige a permissao de votar.
+ */
+export const ADMIN_REFUND_APPROVALS_PATH = '/v1/admin/refund-approvals';
+export const ADMIN_SUSPENSION_APPROVALS_PATH = '/v1/admin/suspension-approvals';
+
+function familiaDeAprovacao(
+  caminho: string,
+  pedir: AdminPermission,
+  votar: AdminPermission,
+): readonly AdminRouteSpec[] {
+  return [
+    { method: 'POST', pattern: caminho, permission: pedir },
+    { method: 'GET', pattern: caminho, permission: 'sessao' },
+    { method: 'POST', pattern: `${caminho}/:approvalId/vote`, permission: votar },
+    { method: 'POST', pattern: `${caminho}/:approvalId/cancel`, permission: 'sessao' },
+  ];
+}
+
+export const ADMIN_ROUTES_H105: readonly AdminRouteSpec[] = [
+  ...familiaDeAprovacao(ADMIN_REFUND_APPROVALS_PATH, 'finance.refund.request', 'finance.refund.approve'),
+  ...familiaDeAprovacao(ADMIN_SUSPENSION_APPROVALS_PATH, 'account.suspend.request', 'account.suspend.approve'),
+];
+
+/** Registro completo das rotas admin (H-102 + H-104 + H-073 + H-103 + H-108 + H-105). Fonte unica para a guarda da API. */
 export const ADMIN_ROUTES: readonly AdminRouteSpec[] = [
   ...ADMIN_ROUTES_H102,
   { method: 'POST', pattern: ADMIN_AUDIT_QUERY_PATH, permission: 'audit.read' },
@@ -141,4 +166,5 @@ export const ADMIN_ROUTES: readonly AdminRouteSpec[] = [
   ...ADMIN_ROUTES_H103,
   ...ADMIN_ROUTES_H108,
   ...ADMIN_ROUTES_H107,
+  ...ADMIN_ROUTES_H105,
 ];

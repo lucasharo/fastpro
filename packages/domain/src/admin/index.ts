@@ -16,5 +16,8 @@ export * from './audit-query.js';
 export * from './console.js';
 export * from './auth-session.js';
 export * from './ops-panel.js';
+// H-105 | Dupla aprovacao de estorno e suspensao permanente (regras puras e manipuladores).
+export * from './dual-approval.js';
+export * from './dual-approval-handler.js';
 // H-107 | Gestao do catalogo pela tela admin (validacao por campo, erros do banco, manipulador).
 export * from './catalog-admin.js';
