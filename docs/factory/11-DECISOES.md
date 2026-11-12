@@ -235,3 +235,13 @@ Nota: o número 56 aparece duplicado nas rodadas 19 (decisões de H-022 e H-026)
 - **67 (D-H013-4):** a #26 grava e-mail e primeiro nome no rascunho (CA-10).
 - **68 (D-H013-5):** o e-mail confirmado é um campo de data no rascunho, sem status novo (usado pela #43).
 - **69 (D-H013-1 e D-H013-6):** o código é POST /v1/auth/challenges/verify (a 08 §5.1 deve ser corrigida). A tela do código é entregue pela #26.
+
+## Rodada 23 (desenho da tela de pedido, #43 / H-030)
+
+- **70:** quem grava primeiro nome e e-mail no rascunho é a rota de identificação da #26.
+- **71:** a revisão usa "e-mail confirmado no rascunho", não a sessão de 7 dias (a sessão continua exigida na publicação, #44).
+- **72:** o corpo da confirmação leva content_rev.
+- **73:** limite da descrição em 2000 caracteres (fecha D-H030-8).
+- **74:** Playwright e @axe-core/playwright como devDependencies gratuitas, para os testes de navegador.
+- **75:** duas páginas estáticas no web, sem framework.
+- **Portão:** a construção da #43 começa só depois da #26 (decisão 59).
