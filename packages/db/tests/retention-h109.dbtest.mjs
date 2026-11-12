@@ -31,11 +31,18 @@ const T0 = Date.parse('2099-01-01T12:00:00.000Z');
 const at = (ms) => new Date(ms).toISOString();
 const CLASSES = ['RC-01', 'RC-02', 'RC-03', 'RC-04', 'RC-05', 'RC-06', 'RC-07', 'RC-10'];
 
-/** Transacao de teste: aplica a migracao e desfaz tudo no fim. Nada fica no banco compartilhado. */
+// Ajustes do expurgo (82 §8, A-6 e A-7): aplicados depois da 470000, dentro da mesma transacao.
+const AJUSTES = readFileSync(
+  join(REPO_ROOT, 'supabase', 'migrations', '20261112110000_retention_expurgo_ajustes.sql'),
+  'utf8',
+);
+
+/** Transacao de teste: aplica as migracoes e desfaz tudo no fim. Nada fica no banco compartilhado. */
 async function tx(fn) {
   await client.query('begin');
   try {
     await client.query(MIGRACAO);
+    await client.query(AJUSTES);
     return await fn();
   } finally {
     await client.query('rollback');
@@ -661,19 +668,115 @@ test('CA-H109-10 anonimizacao: colunas da linha sem e-mail, telefone, endereco o
     }
   }));
 
-// DEFEITO CONHECIDO (Issue #118): a fase C do RC-01 viola professional_profile_cadastro_junto, porque zera o
-// documento e mantem public_name e slug. Teste todo: nao derruba o build, mas fica visivel ate a decisao de
-// Arquitetura (limpar nome publico e slug junto, ou ajustar a regra). Assim que passar, remover o todo.
-test('CA-H109-04 RC-01 excluir: a fase C conclui e zera o documento', {
-  todo: 'defeito: professional_profile_cadastro_junto na fase C do RC-01 (decisao de Arquitetura)',
-}, () =>
+// CA-H109-04 (A-6, 82 §8) | fase C do RC-01: zera o documento, preserva nome e slug (cadastro publico), marca
+// expurgado e grava um evento do lote. Antes era defeito de cadastro_junto (todo); agora passa.
+test('CA-H109-04 RC-01 excluir: a fase C zera o documento, preserva nome e slug, marca expurgado e grava evento', () =>
   tx(async () => {
     const { policyId } = await executavel('RC-01', 'excluir');
     const sujeito = await profissionalComDocumento(T0 - 60 * DIA);
+    const antes = (await client.query(
+      'select public_name, slug from app.professional_profile where user_id = $1', [sujeito])).rows[0];
     assert.ok((await lote(policyId)).includes(sujeito));
     assert.deepEqual(await faseC(policyId, [sujeito], T0 + 1000), { processed: 1, held: 0, failed: 0 });
     const { rows: [perfil] } = await client.query(
-      'select retention_state, document_enc from app.professional_profile where user_id = $1', [sujeito]);
+      `select retention_state, document_type, document_enc, document_hmac, public_name, slug
+         from app.professional_profile where user_id = $1`, [sujeito]);
     assert.equal(perfil.retention_state, 'expurgado');
+    assert.equal(perfil.document_type, null);
     assert.equal(perfil.document_enc, null);
+    assert.equal(perfil.document_hmac, null);
+    assert.equal(perfil.public_name, antes.public_name, 'nome publico preservado');
+    assert.equal(perfil.slug, antes.slug, 'slug preservado');
+    const eventos = await eventosDeExecucao(policyId, 1);
+    assert.equal(eventos.length, 1, 'um evento do lote');
+    assert.equal(eventos[0].processed, 1);
+  }));
+
+// A-6 | perfil expurgado: nome e slug sao write-once (42501); reentrada de documento devolve ja_cadastrado
+test('A-6 perfil expurgado: nome e slug nao mudam (42501) e set_document devolve ja_cadastrado', () =>
+  tx(async () => {
+    const { policyId } = await executavel('RC-01', 'excluir');
+    const sujeito = await profissionalComDocumento(T0 - 60 * DIA);
+    await lote(policyId);
+    assert.deepEqual(await faseC(policyId, [sujeito], T0 + 1000), { processed: 1, held: 0, failed: 0 });
+
+    const nome = await erroEm(() => client.query(
+      'update app.professional_profile set public_name = $2 where user_id = $1', [sujeito, 'Outro Nome']));
+    assert.equal(nome?.code, '42501', 'nome nao muda depois do expurgo');
+    const slug = await erroEm(() => client.query(
+      'update app.professional_profile set slug = $2 where user_id = $1', [sujeito, 'outro-slug']));
+    assert.equal(slug?.code, '42501', 'slug nao muda depois do expurgo');
+
+    const { rows: [r] } = await client.query(
+      'select out_resultado from private.professional_profile_set_document($1::uuid, $2, $3, $4, $5::bytea, $6, $7::timestamptz)',
+      [sujeito, 'Novo Nome', 'novo-slug', 'CPF', Buffer.from('blob-novo'), createHashHex(), at(T0 + 2000)]);
+    assert.equal(r.out_resultado, 'ja_cadastrado', 'reentrada de documento recusada');
+    const { rows: [depois] } = await client.query(
+      'select public_name, slug, document_type, retention_state from app.professional_profile where user_id = $1', [sujeito]);
+    assert.notEqual(depois.public_name, 'Novo Nome', 'nome nao foi sobrescrito');
+    assert.equal(depois.document_type, null, 'documento nao foi regravado');
+    assert.equal(depois.retention_state, 'expurgado');
+  }));
+
+// A-6 | perfil nunca expurgado, sem documento, com nome: continua recusado (23514)
+test('A-6 perfil nunca expurgado sem documento nao recebe nome e slug (23514)', () =>
+  tx(async () => {
+    const id = await usuario();
+    await client.query(
+      `insert into app.professional_profile (user_id, verification_status, created_at, updated_at)
+       values ($1, 'pendente', now(), now())`, [id]);
+    const erro = await erroEm(() => client.query(
+      'update app.professional_profile set public_name = $2, slug = $3 where user_id = $1',
+      [id, 'Nome Valido', 'nome-valido']));
+    assert.equal(erro?.code, '23514', 'nome sem documento e sem expurgo e recusado');
+    const { rows: [p] } = await client.query('select public_name, slug from app.professional_profile where user_id = $1', [id]);
+    assert.equal(p.public_name, null);
+    assert.equal(p.slug, null);
+  }));
+
+// A-7 | RC-02 limpa email_hmac; o mesmo e-mail (e o mesmo HMAC) volta a ser cadastrado
+test('A-7 RC-02 anonimizado: email_hmac fica nulo e o mesmo e-mail se cadastra de novo', () =>
+  tx(async () => {
+    const { policyId } = await executavel('RC-02', 'anonimizar');
+    const email = `${randomUUID()}@example.test`;
+    const hmac = createHashHex();
+    const id = randomUUID();
+    await client.query(
+      `insert into app.app_user (id, email, auth_user_id, status, email_verified_at, created_at, email_hmac)
+       values ($1, $2, $3, 'bloqueado', now(), $4, $5)`,
+      [id, email, randomUUID(), at(T0 - 60 * DIA), hmac]);
+    assert.ok((await lote(policyId)).includes(id));
+    assert.deepEqual(await faseC(policyId, [id], T0 + 1000), { processed: 1, held: 0, failed: 0 });
+    const { rows: [u] } = await client.query('select email_hmac, retention_state from app.app_user where id = $1', [id]);
+    assert.equal(u.email_hmac, null, 'email_hmac limpo');
+    assert.equal(u.retention_state, 'expurgado');
+
+    const novo = await erroEm(() => client.query(
+      `insert into app.app_user (id, email, auth_user_id, status, email_verified_at, created_at, email_hmac)
+       values ($1, $2, $3, 'ativo', now(), now(), $4)`,
+      [randomUUID(), email, randomUUID(), hmac]));
+    assert.equal(novo, null, 'o mesmo e-mail e o mesmo HMAC entram em novo cadastro');
+  }));
+
+// A-6/A-7 | o rollback da migracao de ajustes roda limpo em transacao e volta a regra antiga de cadastro
+test('rollback 20261112110000 roda em transacao, restaura a regra antiga e nao deixa expurgo', () =>
+  tx(async () => {
+    const DOWN = readFileSync(
+      join(REPO_ROOT, 'supabase', 'rollbacks', '20261112110000_retention_expurgo_ajustes.down.sql'),
+      'utf8',
+    );
+    await client.query(DOWN);
+    const { rows } = await client.query(
+      `select pg_get_constraintdef(oid) as definicao from pg_constraint
+        where conname = 'professional_profile_cadastro_junto' and conrelid = 'app.professional_profile'::regclass`);
+    assert.equal(rows.length, 1, 'a regra de cadastro existe depois do rollback');
+    assert.equal(rows[0].definicao.includes('expurgado'), false, 'a regra e a antiga, sem o caso de expurgo');
+    // Com a regra antiga, nome sem documento e recusado mesmo para perfil expurgado (nao ha expurgo nesta transacao).
+    const id = await usuario();
+    await client.query(
+      `insert into app.professional_profile (user_id, verification_status, created_at, updated_at)
+       values ($1, 'pendente', now(), now())`, [id]);
+    const erro = await erroEm(() => client.query(
+      'update app.professional_profile set public_name = $2, slug = $3 where user_id = $1', [id, 'Nome X', 'nome-x']));
+    assert.equal(erro?.code, '23514', 'regra antiga recusa nome sem documento');
   }));
