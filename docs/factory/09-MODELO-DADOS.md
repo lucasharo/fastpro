@@ -78,7 +78,7 @@ erDiagram
 **identity_document**: `id`, `professional_id`, `kind` {`identidade|certificacao`}, `service_id?` (certificação), `media_asset_id`, `status`. Conteúdo em bucket `identity-docs`.
 
 ### 3.4 requests
-**request_draft**: `id`, `browser_nonce_hash`, `email?`, `first_name?`, `service_id?`, `address_text?`, `exact_point?` (**só após geocodificação permanente**), `geocoded_at?`, `geocode_calls` smallint (teto 3), `urgency?`, `description?`, `phone_enc?`, `phone_share_opt_in` (default false), `status` {`aberto|aguardando_email|descartado|publicado`}, `expires_at` (TTL, `[PROPOSTA]` configurável), `ip_hmac`. Fotos: `media_asset(draft_id)`. Expurgo por TTL.
+**request_draft**: `id`, `browser_nonce_hash`, `email?`, `first_name?`, `service_id?`, `address_text?`, `exact_point?` (**só após geocodificação permanente**), `geocoded_at?`, `geocode_calls` smallint (teto 3), `urgency?`, `description?`, `phone_enc?`, `phone_share_opt_in` (default false), `email_hmac?`, `email_verified_at?` (H-013, 91 §2.1), `status` {`aberto|aguardando_email|descartado|publicado`}, `expires_at` (TTL, `[PROPOSTA]` configurável), `ip_hmac`. Fotos: `media_asset(draft_id)`. Expurgo por TTL.
 **request_chain**: `id`, `customer_user_id`, `root_request_id` (**único**), `created_at`. Criada preguiçosamente na primeira republicação.
 **service_request**: 
 `id`, `customer_user_id`, `chain_id?`, `is_republication` bool, `republished_from_id?`, `service_id`, `urgency` {`imediato|proximas_semanas|proximo_mes|nao_definido`}, `description`,
