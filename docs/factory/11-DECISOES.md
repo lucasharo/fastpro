@@ -285,3 +285,10 @@ Nota: o número 56 aparece duplicado nas rodadas 19 (decisões de H-022 e H-026)
 - **95 (D-H028-3):** HEIC/HEIF recusado com imagem_invalida, sem codigo novo nem migracao.
 - **96 (D-H028-4):** checagem de assinatura antes do decodificador (CA-05).
 - **97 (D-H028-5):** a janela do original ate o finalize nao muda nesta historia; a condicao 2 do desenho 88 §8 segue o que a decisao 82 registrou.
+
+## Rodada 30 (desenho da remocao de EXIF e tipo por conteudo, #41 / H-028)
+
+- **98:** a checagem de metadado nao roda em tempo de execucao antes de gravar; a prova fica nos testes (96-DESENHO-H028 §11).
+- **99:** HEIC com tipo declarado JPEG recebe mensagem generica (decisao 95).
+- **100:** o caso "sem tipo declarado" segue sendo a recusa de 415 da #39, apenas confirmado por teste.
+- **Portao:** o desenvolvimento da #41 comeca so depois que a #40 sair de QA (mesmos arquivos de servico e teste).
