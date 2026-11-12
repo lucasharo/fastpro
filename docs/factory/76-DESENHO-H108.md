@@ -95,3 +95,9 @@ Os blocos de webhook, foto e RLS ficam "prontos para dado, sem dado" nesta hist�
 - **Q-H108-2 (do refino, 95% em Storage/Mapbox)** e **Q-H108-3 (quais cotas)**: com este desenho, Storage e banco ficam sem dado até existir escritor; Mapbox aparece se houver linha. Mantém-se a recomendação do PO ((b) e (a)). Se for (b), o nível 3 exige a mesma mudança de `alertLevelFor` por serviço (hoje 0..2 no e-mail).
 - **Q-H108-4:** registrar H-103 (#112) como dependência de H-108 no backlog; `[VERIFICADO]` a casca já existe no código.
 - `[NÃO VERIFICADO]` status das dependências no quadro (não consultei o GitHub).
+
+## 6. Registro de decisões do líder no fechamento do QA (Issue #117)
+
+- **§1.3 aceito:** webhook, foto e RLS ficam "prontos para dado, sem dado" nesta história. Sem emissor de `ops_metric`, cada bloco aparece só quando a chave tiver ponto gravado (`null` na resposta). `[DECIDIDO]`
+- **Pendência aberta, não bloqueante (Q-H108-2):** alerta de 95% para Storage e Mapbox. Storage não tem escritor de `external_quota` (§1.1), então não há dado de 95% para ele hoje. O nível 3 para Mapbox e Storage só entra quando a decisão for (b) e houver escritor; a regra de e-mail (sem 95%) não muda. `[PENDENTE]`
+- **Limitação registrada (evidência visual):** a tela não foi conferida em navegador nesta etapa. A evidência é o resultado das suítes locais (dbtest, Vitest de API, admin, domínio e banco), não captura de tela. `[DECIDIDO]`
