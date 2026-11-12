@@ -30,7 +30,7 @@ comment on table app.professional_profile is
 alter table app.professional_profile enable row level security;
 alter table app.professional_profile force row level security;
 revoke all on app.professional_profile from public, anon, authenticated, service_role;
-grant select, insert, update on app.professional_profile to app_system;
+grant select, insert on app.professional_profile to app_system;
 
 -- 2. auth_challenge aceita os tres propositos novos (67 §6, item A) -------------------------------------
 -- Nome do CHECK de purpose de 140000 (padrao do Postgres: <tabela>_<coluna>_check).
@@ -165,6 +165,9 @@ begin
     raise exception 'professional_entrada_invalida' using errcode = '22023';
   end if;
 
+  -- Trava a chave antes de decidir: sem isto, dois pedidos de chave nova leem 'sem linha' ao mesmo tempo
+  -- e passam juntos (o for update nao trava linha que nao existe). A trava dura ate o fim da transacao.
+  perform pg_advisory_xact_lock(hashtextextended(p_key, 0));
   select * into v_lock from ops.code_lock l where l.key_hmac = p_key for update;
   v_found := found;
 

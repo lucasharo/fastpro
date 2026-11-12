@@ -30,8 +30,8 @@ const FUNCOES = [
 ];
 
 describe('T-H016-MIG perfil do profissional (CA-H016-01, CA-H016-21, CA-H016-22)', () => {
-  it('app_system nao apaga perfil (so select, insert e update)', () => {
-    expect(sql).not.toMatch(/grant[^;]*delete[^;]*professional_profile/);
+  it('app_system so le e insere o perfil: sem update (status so muda por H-039) nem delete', () => {
+    expect(sql).not.toMatch(/grant[^;]*(update|delete)[^;]*professional_profile/);
   });
 
   it('cria professional_profile com status inicial pendente e os seis estados do desenho', () => {
@@ -46,7 +46,7 @@ describe('T-H016-MIG perfil do profissional (CA-H016-01, CA-H016-21, CA-H016-22)
     expect(sql).toContain('alter table app.professional_profile enable row level security;');
     expect(sql).toContain('alter table app.professional_profile force row level security;');
     expect(sql).toMatch(/revoke all on app.professional_profile from public, anon, authenticated, [a-z_]+;/);
-    expect(sql).toContain('grant select, insert, update on app.professional_profile to app_system;');
+    expect(sql).toContain('grant select, insert on app.professional_profile to app_system;');
     expect(sql).not.toMatch(/create policy/);
     expect(sql).not.toMatch(/to app_api/);
   });
@@ -68,6 +68,18 @@ describe('T-H016-MIG auth_challenge (67 §6, item A)', () => {
   it('nao remove colunas nem apaga linhas (expand)', () => {
     expect(sql).not.toContain('drop column');
     expect(sql).not.toMatch(/delete from app\./);
+  });
+});
+
+describe('T-H016-MIG contador de login sob concorrencia (pedido de revisao, QA)', () => {
+  it('trava a chave com advisory lock antes do select for update (chave nova tambem)', () => {
+    const inicio = sql.indexOf('create or replace function private.professional_login_gate(');
+    const fim = sql.indexOf('create or replace function private.professional_login_success(');
+    const corpo = sql.slice(inicio, fim);
+    const trava = corpo.indexOf('perform pg_advisory_xact_lock(hashtextextended(p_key, 0));');
+    const leitura = corpo.indexOf('select * into v_lock from ops.code_lock');
+    expect(trava).toBeGreaterThan(0);
+    expect(leitura).toBeGreaterThan(trava);
   });
 });
 
