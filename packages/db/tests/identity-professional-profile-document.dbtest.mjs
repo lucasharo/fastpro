@@ -191,15 +191,32 @@ describe('H-035 banco: documento gravado e write-once (decisao 54, item 2)', () 
       assert.equal(depois.slug, antes.slug);
     }));
 
-  test('update de user_id e created_at e negado ao papel app_system (grant por coluna)', async () => {
+  test('grant por coluna: app_system tem UPDATE nas colunas permitidas e nao em user_id nem created_at', async () => {
     // Leitura do catalogo: a execucao como app_system nao e possivel nesta base (SET ROLE indisponivel).
-    const { rows } = await client.query(`
-      select has_column_privilege('app_system', 'app.professional_profile', 'user_id', 'UPDATE') as user_id,
-             has_column_privilege('app_system', 'app.professional_profile', 'created_at', 'UPDATE') as created_at,
-             has_column_privilege('app_system', 'app.professional_profile', 'public_name', 'UPDATE') as controle`);
-    assert.equal(rows[0].user_id, false, 'user_id sem UPDATE para app_system');
-    assert.equal(rows[0].created_at, false, 'created_at sem UPDATE para app_system');
-    assert.equal(rows[0].controle, true, 'controle: public_name com UPDATE para app_system');
+    const PERMITIDAS = ['public_name', 'slug', 'document_type', 'document_enc', 'document_hmac', 'verification_status', 'updated_at'];
+    const NEGADAS = ['user_id', 'created_at'];
+    const { rows } = await client.query(
+      `select c, has_column_privilege('app_system', 'app.professional_profile', c, 'UPDATE') as ok
+         from unnest($1::text[]) as c`,
+      [[...PERMITIDAS, ...NEGADAS]],
+    );
+    const ok = Object.fromEntries(rows.map((r) => [r.c, r.ok]));
+    for (const coluna of PERMITIDAS) assert.equal(ok[coluna], true, `${coluna} com UPDATE para app_system`);
+    for (const coluna of NEGADAS) assert.equal(ok[coluna], false, `${coluna} sem UPDATE para app_system`);
+  });
+});
+
+describe('H-035 banco: acesso negado fora de app_system (desenho 75 §5, CA-10)', () => {
+  test('app_api, anon e service_role nao tem SELECT, INSERT, UPDATE nem DELETE em app.professional_profile', async () => {
+    const PAPEIS = ['app_api', 'anon', 'service_role'];
+    const PRIVILEGIOS = ['SELECT', 'INSERT', 'UPDATE', 'DELETE'];
+    const { rows } = await client.query(
+      `select r, p, has_table_privilege(r, 'app.professional_profile', p) as ok
+         from unnest($1::text[]) as r cross join unnest($2::text[]) as p`,
+      [PAPEIS, PRIVILEGIOS],
+    );
+    assert.equal(rows.length, PAPEIS.length * PRIVILEGIOS.length);
+    for (const { r, p, ok } of rows) assert.equal(ok, false, `${r} sem ${p} em professional_profile`);
   });
 });
 
