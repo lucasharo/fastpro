@@ -10,7 +10,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #1 | [SETUP] Validar integração GitHub Projects ↔ Laze ↔ Claude |
 | #14 | [Spike] Regras das lojas (login social, IAP, exclusão) |
-| #26 | [E1] Código de 6 dígitos e nonce |
 | #30 | [E1] Exclusividade de papéis |
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
@@ -95,6 +94,12 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #135 | [E6] Aviso “apenas conecta” nos termos |
 | #136 | [E7] Mensagem automática do aceite |
 | #137 | [E11] Canal “no site” |
+
+## Product Owner (1)
+
+| Issue | Título |
+|---|---|
+| #26 | [E1] Código de 6 dígitos e nonce |
 
 ## Arquitetura (1)
 
