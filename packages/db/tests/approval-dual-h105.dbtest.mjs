@@ -3,7 +3,8 @@
 // Migracao 20261111460000_admin_approval_estorno_suspensao, aplicada DENTRO da transacao de cada teste.
 // Tudo e desfeito com rollback; nada persiste no banco de desenvolvimento. Valores sinteticos (@example.test).
 // Erros esperados usam savepoint, porque um erro no Postgres aborta a transacao inteira.
-// Simultaneidade (20 votos ao mesmo tempo) exige varias conexoes e fica fora deste arquivo.
+// Simultaneidade (20 votos e 20 pedidos ao mesmo tempo, com dados commitados e apagados) fica em
+// approval-dual-h105-concorrencia.dbtest.mjs. Aqui, T-10 roda 470000 e 460000 em ordem de rollback real.
 // Rodar sozinho: node --test --test-concurrency=1 packages/db/tests/approval-dual-h105.dbtest.mjs
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -468,4 +469,219 @@ test('a negacao de voto so e registrada para pedido real da mesma familia', () =
       `select private.approval_dual_denied_record($1, 'suspensao_permanente', $2, 'autoaprovacao', $3) as id`,
       [fin, id, at(T0 + 1000)]);
     assert.equal(outra[0].id, null, 'familia diferente nao grava');
+  }));
+
+// ---- Lacunas do QA (Issue #114): CA-07, CA-08, CA-09, prova de escrita do estorno e T-10 ----
+
+/** Linha completa do perfil profissional (para provar que nenhum dado mudou). */
+async function perfilDe(userId) {
+  const { rows } = await client.query('select * from app.professional_profile where user_id = $1', [userId]);
+  return rows[0];
+}
+
+/** Tuplas inseridas, alteradas ou apagadas na transacao atual (pg_stat_xact: vale ate o fim da transacao). */
+async function tuplasEscritas() {
+  const { rows } = await client.query(
+    `select schemaname || '.' || relname as tabela, n_tup_ins + n_tup_upd + n_tup_del as n
+       from pg_stat_xact_user_tables`);
+  return new Map(rows.map((r) => [r.tabela, Number(r.n)]));
+}
+
+/** Tabelas que receberam escrita entre duas leituras da mesma transacao. */
+function tabelasAlteradas(antes, depois) {
+  return [...depois.keys()].filter((t) => depois.get(t) - (antes.get(t) ?? 0) > 0).sort();
+}
+
+/** Transacao sem aplicar a migracao (para testar a sequencia de migracao e rollback). */
+async function txVazia(fn) {
+  await client.query('begin');
+  try {
+    return await fn();
+  } finally {
+    await client.query('rollback');
+  }
+}
+
+/** Remove begin/commit do arquivo de rollback: a transacao de teste e a unica. */
+const semTransacao = (sql) =>
+  sql.split(/\r?\n/).filter((l) => !/^\s*(begin|commit)\s*;\s*$/i.test(l)).join('\n');
+const DOWN_470 = semTransacao(readFileSync(
+  join(REPO_ROOT, 'supabase', 'rollbacks', '20261111470000_retention_create_policy.down.sql'), 'utf8'));
+const DOWN_460 = semTransacao(readFileSync(
+  join(REPO_ROOT, 'supabase', 'rollbacks', '20261111460000_admin_approval_estorno_suspensao.down.sql'), 'utf8'));
+const FUNCAO_ABRIR = 'private.approval_dual_open(uuid,text,text,uuid,integer,text,uuid,timestamptz)';
+const existeFuncao = async (assinatura) =>
+  (await client.query('select to_regprocedure($1) is not null as ok', [assinatura])).rows[0].ok;
+
+// CA-H105-07 | suspensao: 1 voto deixa o perfil identico; o 2o muda so os campos da suspensao e tira a elegibilidade
+test('CA-H105-07 suspensao: 1 voto deixa o perfil identico; o 2o so muda os campos da suspensao', () =>
+  tx(async () => {
+    const suporte = await equipe('suporte');
+    const m1 = await equipe('moderador');
+    const m2 = await equipe('moderador');
+    const alvo = await profissional();
+    const id = await abrir(suporte, T0, { acao: 'suspensao_permanente', alvo });
+    const elegivel = async () =>
+      (await client.query('select private.professional_eligible($1) as ok', [alvo])).rows[0].ok;
+    const antes = await perfilDe(alvo);
+    assert.equal(await elegivel(), true, 'antes da suspensao o profissional e elegivel');
+
+    await votar(m1, 'suspensao_permanente', id, T0 + 1000);
+    assert.deepEqual(await perfilDe(alvo), antes, 'com 1 voto nenhum dado do perfil muda');
+    assert.equal(await elegivel(), true, 'com 1 voto a conta segue elegivel');
+
+    assert.equal((await votar(m2, 'suspensao_permanente', id, T0 + 2000)).status, 'consumida');
+    const depois = await perfilDe(alvo);
+    const mudou = Object.keys(antes)
+      .filter((k) => JSON.stringify(antes[k]) !== JSON.stringify(depois[k]))
+      .sort();
+    assert.deepEqual(mudou, ['suspended_at', 'suspension_reason', 'updated_at', 'verification_status'],
+      'so os campos da suspensao mudam');
+    assert.equal(depois.verification_status, 'suspensa');
+    assert.equal(depois.verified_at.getTime(), antes.verified_at.getTime(), 'data de verificacao preservada');
+    assert.equal(await elegivel(), false, 'suspensa: nao elegivel para aceitar nem ser selecionada');
+  }));
+
+// CA-H105-08 | suspensao: 24 h e 1 s depois o voto e negado como expirado; o perfil nao muda
+test('CA-H105-08 suspensao vencida: voto em 24 h + 1 s expira o pedido e o perfil fica intacto', () =>
+  tx(async () => {
+    const suporte = await equipe('suporte');
+    const m1 = await equipe('moderador');
+    const alvo = await profissional();
+    const id = await abrir(suporte, T0, { acao: 'suspensao_permanente', alvo });
+    const antes = await perfilDe(alvo);
+    const r = await votar(m1, 'suspensao_permanente', id, T0 + 24 * HORA + 1000);
+    assert.deepEqual(r, { status: 'expirada', votes: 0, required: 2 });
+    assert.equal((await pedido(id)).status, 'expirada');
+    assert.equal(await numVotos(id), 0, 'nenhum voto gravado apos o prazo');
+    assert.deepEqual(await perfilDe(alvo), antes, 'perfil intacto apos o vencimento');
+  }));
+
+// CA-H105-09 | aprovador desativado antes do 2o voto: negado (aprovador_nao_ativo), pedido nao avanca
+test('CA-H105-09 aprovador desativado antes do 2o voto e negado e o pedido nao avanca', () =>
+  tx(async () => {
+    const fin = await equipe('financeiro');
+    const b = await equipe('financeiro');
+    const c = await equipe('financeiro');
+    const d = await equipe('financeiro');
+    const id = await abrir(fin, T0, { valor: 20001 });
+    assert.equal((await votar(b, 'estorno', id, T0 + 1000)).status, 'pendente');
+
+    const sessaoC = await sessao(c, T0 + 1500);
+    await client.query("update app.admin_staff set status = 'desativado' where user_id = $1", [c]);
+
+    const erroGuarda = await erroEm(() =>
+      client.query('select private.admin_approval_vote($1, $2, $3)', [id, c, at(T0 + 2000)]));
+    assert.equal(erroGuarda?.code, '42501');
+    assert.equal(erroGuarda.message.split('\n')[0].includes('aprovador_nao_ativo'), true,
+      'a guarda do banco recusa o aprovador inativo');
+
+    const erroFluxo = await erroEm(() =>
+      client.query('select private.approval_dual_vote($1, $2, $3, $4, $5)',
+        [c, sessaoC, 'estorno', id, at(T0 + 2000)]));
+    assert.equal(erroFluxo?.code, '42501', 'o fluxo tambem nega (permissao revalidada)');
+
+    assert.equal(await numVotos(id), 1, 'so o voto de B conta');
+    assert.equal((await pedido(id)).status, 'pendente', 'o pedido nao avanca');
+    assert.equal((await votar(d, 'estorno', id, T0 + 3000)).status, 'aprovada',
+      'um aprovador ativo ainda conclui o pedido');
+  }));
+
+// CA-H105-12 | estorno aprovado escreve so no pedido, no voto e na auditoria; nenhuma tabela de pagamento
+test('CA-H105-12 estorno aprovado nao escreve em nenhuma tabela alem de pedido, voto e auditoria', () =>
+  tx(async () => {
+    const fin = await equipe('financeiro');
+    const b = await equipe('financeiro');
+    const id = await abrir(fin, T0, { valor: 15000 });
+    const hashB = await sessao(b, T0 + 1000);
+    const antes = await tuplasEscritas();
+    const { rows } = await client.query(
+      'select private.approval_dual_vote($1, $2, $3, $4, $5) as r',
+      [b, hashB, 'estorno', id, at(T0 + 1000)]);
+    assert.equal(rows[0].r.status, 'aprovada');
+    const alteradas = tabelasAlteradas(antes, await tuplasEscritas());
+    assert.ok(alteradas.includes('app.approval_request'), 'o pedido muda de estado');
+    assert.ok(alteradas.includes('app.approval_vote'), 'o voto e gravado');
+    // audit.chain_head e o cursor da cadeia de auditoria, atualizado por cada evento gravado (parte da auditoria).
+    const esperadas = ['app.approval_request', 'app.approval_vote', 'audit.audit_event', 'audit.chain_head'];
+    assert.deepEqual(alteradas.filter((t) => !esperadas.includes(t)), [],
+      'nenhuma tabela fora de pedido, voto e auditoria recebe escrita');
+    const pagamento = await client.query(
+      `select n.nspname || '.' || c.relname as t from pg_class c
+         join pg_namespace n on n.oid = c.relnamespace
+        where c.relkind in ('r', 'p')
+          and c.relname ~* '(pagament|payment|refund|reembols|estorno|charge|cobranc|mercado)'`);
+    assert.deepEqual(alteradas.filter((t) => pagamento.rows.some((r) => r.t === t)), [],
+      'nenhuma tabela de pagamento (se existir) foi tocada');
+    assert.equal((await pedido(id)).consumed_at, null, 'o estorno aprovado nao e consumido');
+  }));
+
+// T-H105-10 | dados antigos sobrevivem a migracao 460000, e o rollback real (apos 470000) recusa com pedido novo
+test('T-H105-10 migracao sobre dados antigos preserva as linhas; rollback real recusa com pedido novo e desfaz limpo',
+  () =>
+    txVazia(async () => {
+      await client.query(DOWN_470);
+      await client.query(DOWN_460);
+      assert.equal(await existeFuncao(FUNCAO_ABRIR), false, 'estado anterior: sem a dupla aprovacao');
+
+      const fin = await equipe('financeiro');
+      const antigos = [randomUUID(), randomUUID()];
+      const tipos = ['mfa_reenroll', 'acesso_conversa'];
+      for (let i = 0; i < antigos.length; i += 1) {
+        await client.query(
+          `insert into app.approval_request (id, action_type, subject_user_id, detail_code, requested_by,
+             required_approvals, status, created_at, expires_at)
+           values ($1, $2, null, null, $3, 1, 'pendente', $4, $5)`,
+          [antigos[i], tipos[i], fin, at(T0), at(T0 + 24 * HORA)]);
+      }
+      const linhas = () => client.query(
+        `select id, action_type, status, required_approvals, requested_by, created_at, expires_at,
+                detail_code, subject_user_id
+           from app.approval_request where id = any($1::uuid[]) order by id`, [antigos]);
+      const antes = (await linhas()).rows;
+      assert.equal(antes.length, 2);
+
+      await client.query(MIGRACAO);
+      assert.deepEqual((await linhas()).rows, antes, 'linhas antigas preservadas pela migracao');
+      const novos = await client.query(
+        'select subject_ref, amount_cents, reason from app.approval_request where id = any($1::uuid[])', [antigos]);
+      assert.ok(novos.rows.every((r) => r.subject_ref === null && r.amount_cents === null && r.reason === null),
+        'colunas novas nulas nas linhas antigas');
+      assert.equal(await existeFuncao(FUNCAO_ABRIR), true);
+
+      // Pedido novo por insercao direta: nao grava auditoria, para o rollback real poder seguir.
+      const novo = randomUUID();
+      await client.query(
+        `insert into app.approval_request (id, action_type, subject_ref, amount_cents, reason, requested_by,
+           required_approvals, status, created_at, expires_at)
+         values ($1, 'estorno', $2, 15000, $3, $4, 1, 'pendente', $5, $6)`,
+        [novo, randomUUID(), MOTIVO, fin, at(T0), at(T0 + 24 * HORA)]);
+      const recusa = await erroEm(() => client.query(DOWN_460));
+      assert.equal(recusa?.code, '23514', 'rollback recusa com pedido dos tipos novos');
+      assert.match(recusa.message, /rollback_recusado/);
+      assert.equal(await existeFuncao(FUNCAO_ABRIR), true, 'a recusa nao altera nada');
+
+      await client.query('delete from app.approval_request where id = $1', [novo]);
+      await client.query(DOWN_460);
+      assert.equal(await existeFuncao(FUNCAO_ABRIR), false, 'rollback real remove a funcao');
+      assert.deepEqual((await linhas()).rows, antes, 'dados antigos intactos apos o rollback');
+      const { rows } = await client.query(
+        "select count(*)::int as n from app.approval_request where action_type in ('estorno', 'suspensao_permanente')");
+      assert.equal(rows[0].n, 0, 'nenhum pedido dos tipos novos restou');
+    }));
+
+// T-H105-10 | evento de auditoria dos tipos novos recusa o rollback mesmo sem pedido (a trilha nao se apaga)
+test('T-H105-10 rollback recusa quando ha evento de auditoria dos tipos novos, mesmo sem o pedido', () =>
+  txVazia(async () => {
+    await client.query(DOWN_470);
+    await client.query(DOWN_460);
+    await client.query(MIGRACAO);
+    const fin = await equipe('financeiro');
+    const id = await abrir(fin, T0, { valor: 15000 });
+    await client.query('delete from app.approval_request where id = $1', [id]);
+    const recusa = await erroEm(() => client.query(DOWN_460));
+    assert.equal(recusa?.code, '23514');
+    assert.match(recusa.message, /rollback_recusado/);
+    assert.match(recusa.message, /auditoria/);
+    assert.equal(await existeFuncao(FUNCAO_ABRIR), true, 'a recusa nao altera nada');
   }));
