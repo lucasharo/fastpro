@@ -7,6 +7,7 @@ import {
   ADDRESS_SUGGEST_PATH,
   ADMIN_ACCESS_CASES_PATH,
   ADMIN_AUDIT_QUERY_PATH,
+  ADMIN_STEP_UP_PATH,
   CATALOG_SEARCH_PATH,
   CONSUME_PATH,
 } from '@fastpro/domain';
@@ -14,6 +15,7 @@ import {
   handleAdminAccessCaseRoute,
   type AdminAccessCaseRouteOptions,
 } from './admin-access-case-route.js';
+import { handleAdminStepUpRoute, type AdminStepUpRouteOptions } from './admin-step-up-route.js';
 import { handleAdminAuditQuery, type AdminAuditRouteOptions } from './admin-audit-route.js';
 import { handleCatalogSearch, type CatalogRouteOptions } from './catalog/catalog-route.js';
 import { handleConsume, type ConsumeRouteOptions } from './consume-route.js';
@@ -55,6 +57,8 @@ export interface AppOptions {
   readonly admin?: AdminAuditRouteOptions;
   /** Acesso excepcional a conversa (H-073). Sem esta opcao as rotas /v1/admin/access-cases nao existem (404). */
   readonly accessCase?: AdminAccessCaseRouteOptions;
+  /** Confirmacao recente do segundo fator da sessao admin (H-073, 60 §4). Sem esta opcao a rota nao existe (404). */
+  readonly adminStepUp?: AdminStepUpRouteOptions;
   /** Busca de servico com sinonimos (H-019). Sem esta opcao a rota nao existe (404). */
   readonly catalog?: CatalogRouteOptions;
 }
@@ -135,6 +139,10 @@ export async function handleRequest(
   }
   if (req.method === 'POST' && path === CONSUME_PATH && opts.consume) {
     await handleConsume(req, res, opts.consume);
+    return;
+  }
+  if (req.method === 'POST' && path === ADMIN_STEP_UP_PATH && opts.adminStepUp) {
+    await handleAdminStepUpRoute(req, res, opts.adminStepUp);
     return;
   }
   if (
