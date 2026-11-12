@@ -18,6 +18,8 @@ import {
   SERVICE_UNAVAILABLE_BODY,
   SESSION_MAX_AGE_SECONDS,
   checkProfessionalRegister,
+  type ProfessionalAuthPort,
+  type ProfessionalCredential,
   isProfessionalLinkToken,
   loginEmailOrNull,
   loginPasswordOrNull,
@@ -27,38 +29,6 @@ import {
 /** Corpo maximo aceito por estas rotas (senha de 72 bytes cabe folgado). */
 const CORPO_LIMITE = 4096;
 const NO_STORE = { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } as const;
-
-/** Resultado do login para a rota: so o necessario para decidir a resposta. */
-export interface ProfessionalCredential {
-  readonly userId: string;
-  readonly emailVerified: boolean;
-  readonly active: boolean;
-}
-
-/**
- * Porta de persistencia. Implementada em memoria nos testes e no Postgres (adaptador da #29).
- * Os metodos de contador sao atomicos no adaptador: gateLogin decide e grava a tentativa de uma vez.
- */
-export interface ProfessionalAuthPort {
-  /** Cadastro sem revelar existencia: cria, ou trata o e-mail ja existente do mesmo jeito. Lanca em falha. */
-  register(email: string, password: string, nowMs: number): Promise<void>;
-  /** Consome o link de verificacao. true so na primeira vez e dentro do prazo. */
-  confirmVerification(token: string, nowMs: number): Promise<boolean>;
-  /** Decide o bloqueio progressivo e grava a tentativa (ja contada). */
-  loginGate(
-    email: string,
-    nowMs: number,
-  ): Promise<
-    | { readonly kind: 'bloqueada'; readonly retryAfterSeconds: number }
-    | { readonly kind: 'tentativa' }
-  >;
-  /** Confere a senha. Nulo para senha errada ou e-mail inexistente (mesma resposta). */
-  verifyPassword(email: string, password: string): Promise<ProfessionalCredential | null>;
-  /** Zera o contador apos login correto. */
-  loginSucceeded(email: string): Promise<void>;
-  /** Abre a sessao de 7 dias e devolve o segredo em claro (so vai ao cookie). */
-  openSession(credential: ProfessionalCredential, nowMs: number): Promise<{ readonly secret: string }>;
-}
 
 export interface ProfessionalRouteOptions {
   readonly port: ProfessionalAuthPort;
@@ -166,7 +136,12 @@ export async function handleProfessionalLogin(
   if (email === null || password === null) return send(res, 401, {}, INVALID_CREDENTIALS_BODY);
 
   const agora = opts.clock.nowMs();
-  const portao = await opts.port.loginGate(email, agora);
+  let portao: Awaited<ReturnType<ProfessionalAuthPort['loginGate']>>;
+  try {
+    portao = await opts.port.loginGate(email, agora);
+  } catch {
+    return send(res, 503, {}, SERVICE_UNAVAILABLE_BODY);
+  }
   if (portao.kind === 'bloqueada') {
     return send(
       res,
@@ -176,12 +151,22 @@ export async function handleProfessionalLogin(
     );
   }
 
-  const credencial = await opts.port.verifyPassword(email, password);
+  let credencial: Awaited<ReturnType<ProfessionalAuthPort['verifyPassword']>>;
+  let sessao: Awaited<ReturnType<ProfessionalAuthPort['openSession']>>;
+  try {
+    credencial = await opts.port.verifyPassword(email, password);
+  } catch {
+    return send(res, 503, {}, SERVICE_UNAVAILABLE_BODY);
+  }
   if (credencial === null) return send(res, 401, {}, INVALID_CREDENTIALS_BODY);
   if (!credencial.active) return send(res, 403, {}, ACCOUNT_UNAVAILABLE_BODY);
 
-  await opts.port.loginSucceeded(email);
-  const sessao = await opts.port.openSession(credencial, agora);
+  try {
+    await opts.port.loginSucceeded(email);
+    sessao = await opts.port.openSession(credencial, agora);
+  } catch {
+    return send(res, 503, {}, SERVICE_UNAVAILABLE_BODY);
+  }
   return send(
     res,
     200,

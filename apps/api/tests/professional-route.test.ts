@@ -11,14 +11,13 @@ import type { AddressInfo } from 'node:net';
 import { randomBytes } from 'node:crypto';
 import {
   gateProfessionalLogin,
+  type ProfessionalAuthPort,
+  type ProfessionalCredential,
   LOGIN_THROTTLE_EMPTY,
   type LoginThrottleState,
 } from '@fastpro/domain';
 import { handleRequest } from '../src/app.js';
-import type {
-  ProfessionalAuthPort,
-  ProfessionalCredential,
-} from '../src/professional-route.js';
+
 
 const novoSegredo = (): string => randomBytes(32).toString('base64url');
 const MIN = 60 * 1000;
@@ -50,6 +49,7 @@ class PortaMemoria implements ProfessionalAuthPort {
   readonly sessoes: string[] = [];
   verificacoes = 0;
   falhaCadastro = false;
+  falhaLogin = false;
   private seq = 0;
 
   async register(email: string, password: string, nowMs: number): Promise<void> {
@@ -80,6 +80,7 @@ class PortaMemoria implements ProfessionalAuthPort {
     email: string,
     nowMs: number,
   ): Promise<{ kind: 'bloqueada'; retryAfterSeconds: number } | { kind: 'tentativa' }> {
+    if (this.falhaLogin) throw new Error('falha de infraestrutura simulada');
     const estado = this.contadores.get(email) ?? LOGIN_THROTTLE_EMPTY;
     const portao = gateProfessionalLogin(estado, nowMs);
     this.contadores.set(email, portao.next);
@@ -164,6 +165,7 @@ beforeEach(async () => {
   porta.sessoes.length = 0;
   porta.verificacoes = 0;
   porta.falhaCadastro = false;
+  porta.falhaLogin = false;
   if (!server) await iniciar();
 });
 
@@ -356,6 +358,17 @@ describe('T-H016-12 bloqueio progressivo (CA-H016-12)', () => {
     const bloqueadas = respostas.filter((r) => r.status === 429).length;
     expect(porta.verificacoes).toBe(4);
     expect(bloqueadas).toBe(50 - 4);
+  });
+});
+
+describe('login com falha de infraestrutura', () => {
+  it('falha do contador devolve 503, sem sessao', async () => {
+    await criarConta();
+    porta.falhaLogin = true;
+    const r = await post(PATH_LOGIN, json({ email: EMAIL, password: SENHA }));
+    expect(r.status).toBe(503);
+    expect(r.headers['set-cookie']).toBeUndefined();
+    expect(porta.sessoes.length).toBe(0);
   });
 });
 

@@ -134,3 +134,34 @@ export function loginPasswordOrNull(raw: unknown): string | null {
   if (typeof raw !== 'string' || raw.length === 0) return null;
   return utf8Bytes(raw) <= PROFESSIONAL_LOGIN_PASSWORD_MAX_BYTES ? raw : null;
 }
+
+/** Conta conferida pela senha. Nunca traz senha, token ou segredo. */
+export interface ProfessionalCredential {
+  readonly userId: string;
+  readonly emailVerified: boolean;
+  readonly active: boolean;
+}
+
+/** Decisao do contador antes de conferir a senha. */
+export type ProfessionalGateOutcome =
+  | { readonly kind: 'bloqueada'; readonly retryAfterSeconds: number }
+  | { readonly kind: 'tentativa' };
+
+/**
+ * Porta de persistencia do profissional. Implementada no Postgres (@fastpro/db) e em memoria nos testes.
+ * O contador (loginGate) decide e grava a tentativa de uma vez; a conferencia da senha fica no Auth.
+ */
+export interface ProfessionalAuthPort {
+  /** Cadastro sem revelar existencia: cria ou trata o e-mail ja existente do mesmo jeito. Lanca em falha. */
+  register(email: string, password: string, nowMs: number): Promise<void>;
+  /** Consome o link de verificacao. true so na primeira vez e dentro do prazo. */
+  confirmVerification(token: string, nowMs: number): Promise<boolean>;
+  /** Decide o bloqueio progressivo e grava a tentativa (ja contada, quando passa). */
+  loginGate(email: string, nowMs: number): Promise<ProfessionalGateOutcome>;
+  /** Confere a senha. Nulo para senha errada ou e-mail inexistente (mesma resposta). */
+  verifyPassword(email: string, password: string): Promise<ProfessionalCredential | null>;
+  /** Zera o contador apos login correto. */
+  loginSucceeded(email: string): Promise<void>;
+  /** Abre a sessao de 7 dias e devolve o segredo em claro (so vai ao cookie). */
+  openSession(credential: ProfessionalCredential, nowMs: number): Promise<{ readonly secret: string }>;
+}
