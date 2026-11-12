@@ -4,7 +4,7 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (85)
+## Backlog (83)
 
 | Issue | Título |
 |---|---|
@@ -92,17 +92,17 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #136 | [E7] Mensagem automática do aceite |
 | #137 | [E11] Canal “no site” |
 
-## Product Owner (2)
+## Product Owner (1)
+
+| Issue | Título |
+|---|---|
+| #37 | [E2] Cobertura booleana sem contagem |
+
+## Arquitetura (1)
 
 | Issue | Título |
 |---|---|
 | #41 | [E3] Remoção de EXIF e tipo por conteúdo |
-| #37 | [E2] Cobertura booleana sem contagem |
-
-## Arquitetura (0)
-
-| Issue | Título |
-|---|---|
 
 ## Desenvolvimento (2)
 
@@ -130,10 +130,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #29 | [E1] Cadastro e login do profissional |
 | #39 | [E3] Upload de fotos em quarentena |
 | #35 | [E2] Célula generalizada e match_point |
-44)
-
-| Issue | Título |
-|---|---|
 | #2 | [TESTE] Validação de criação de Issue pelo Orquestrador |
 | #3 | [E0] Monorepo pnpm e Turborepo |
 | #4 | [Spike] PostGIS, pg_cron e pg_net no Supabase Free |
@@ -185,3 +181,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #110 | [E11] Teste de ausência de interruptor |
 
+## Aguardando aprovação (0)
+
+## Bloqueado (0)
