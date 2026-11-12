@@ -14,7 +14,7 @@ export type ProfessionalPasswordProblem = 'tipo' | 'curta' | 'longa' | 'controle
 const CONTROLE_RE = /\p{Cc}/u;
 
 /** Bytes UTF-8 de uma string, sem depender de TextEncoder (logica pura, portavel). */
-function utf8Bytes(texto: string): number {
+export function utf8Bytes(texto: string): number {
   let total = 0;
   for (const ch of texto) {
     const cp = ch.codePointAt(0) ?? 0;

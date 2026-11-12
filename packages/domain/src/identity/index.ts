@@ -11,3 +11,5 @@ export * from './step-up.js';
 // H-016 | Politica de senha do profissional (minimo 8, teto 72 bytes, lista local de comuns; logica pura).
 export * from './password.js';
 export * from './common-passwords.js';
+// H-016 | Cadastro, verificacao e login do profissional (logica pura; I/O fica no adaptador).
+export * from './professional-auth.js';

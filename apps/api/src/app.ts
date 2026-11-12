@@ -10,6 +10,9 @@ import {
   ADMIN_STEP_UP_PATH,
   CATALOG_SEARCH_PATH,
   CONSUME_PATH,
+  PROFESSIONAL_LOGIN_PATH,
+  PROFESSIONAL_REGISTER_PATH,
+  PROFESSIONAL_VERIFY_CONFIRM_PATH,
 } from '@fastpro/domain';
 import {
   handleAdminAccessCaseRoute,
@@ -19,6 +22,13 @@ import { handleAdminStepUpRoute, type AdminStepUpRouteOptions } from './admin-st
 import { handleAdminAuditQuery, type AdminAuditRouteOptions } from './admin-audit-route.js';
 import { handleCatalogSearch, type CatalogRouteOptions } from './catalog/catalog-route.js';
 import { handleConsume, type ConsumeRouteOptions } from './consume-route.js';
+import {
+  handleProfessionalLogin,
+  handleProfessionalRegister,
+  handleProfessionalVerifyConfirm,
+  isProfessionalPath,
+  type ProfessionalRouteOptions,
+} from './professional-route.js';
 import { handleAddressSuggest, type GeoRouteOptions } from './geo/address-suggest-route.js';
 import {
   handleSessionConvert,
@@ -61,6 +71,8 @@ export interface AppOptions {
   readonly adminStepUp?: AdminStepUpRouteOptions;
   /** Busca de servico com sinonimos (H-019). Sem esta opcao a rota nao existe (404). */
   readonly catalog?: CatalogRouteOptions;
+  /** Cadastro, verificacao e login por senha do profissional (H-016). Sem esta opcao as rotas nao existem (404). */
+  readonly professional?: ProfessionalRouteOptions;
 }
 
 export interface BodyReadResult {
@@ -163,6 +175,12 @@ export async function handleRequest(
   if (req.method === 'POST' && path === CATALOG_SEARCH_PATH && opts.catalog) {
     await handleCatalogSearch(req, res, opts.catalog);
     return;
+  }
+  if (req.method === 'POST' && opts.professional && isProfessionalPath(path)) {
+    const profissional = opts.professional;
+    if (path === PROFESSIONAL_REGISTER_PATH) return handleProfessionalRegister(req, res, profissional);
+    if (path === PROFESSIONAL_VERIFY_CONFIRM_PATH) return handleProfessionalVerifyConfirm(req, res, profissional);
+    if (path === PROFESSIONAL_LOGIN_PATH) return handleProfessionalLogin(req, res, profissional);
   }
   if (req.method === 'POST' && opts.session) {
     const sessao = opts.session;
