@@ -105,17 +105,17 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #43 | [E3] Revisão e confirmação expressa |
 
-## Desenvolvimento (2)
+## Desenvolvimento (1)
+
+| Issue | Título |
+|---|---|
+| #129 | [E15] Dados sintéticos de demonstração |
+
+## Code Review (2)
 
 | Issue | Título |
 |---|---|
 | #40 | [E3] Redução e reencode das fotos |
-| #129 | [E15] Dados sintéticos de demonstração |
-
-## Code Review (1)
-
-| Issue | Título |
-|---|---|
 | #26 | [E1] Código de 6 dígitos e nonce |
 
 ## Aguardando aprovação (2)
