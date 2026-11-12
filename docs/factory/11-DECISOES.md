@@ -303,3 +303,14 @@ Nota: o número 56 aparece duplicado nas rodadas 19 (decisões de H-022 e H-026)
 - **106 (D-H023-6):** servico online regulamentado nao ganha alcance nacional ate L4.
 - **107 (D-H023-7):** a distancia nao e' exposta ao profissional.
 - **108 (D-H023-8):** paginacao por cursor.
+
+## Rodada 32 (refino do perfil profissional, #49 / H-036)
+
+- **109 (D-H036-1):** a modalidade entra na chave de professional_service, para permitir "ambos" (duas linhas).
+- **110 (D-H036-2):** base e raio tem historico com "vigente desde"; a publicacao usa a base vigente naquele momento. Destrava o desenho da #36.
+- **111 (D-H036-3):** limite de mudanca de base ou raio: 3 por 24 h [PROPOSTA], valor em parametro.
+- **112 (D-H036-4):** raio em km inteiros, gravado em metros.
+- **113 (D-H036-5):** texto completo do endereco so no campo privado.
+- **114 (D-H036-6):** edicao em status suspenso e recusada; em outros status, permitida sem conceder elegibilidade.
+- **115 (D-H036-7):** servico REG e declaravel; alcance nacional de online regulamentado fica para L4.
+- **116 (D-H036-8):** testes com a porta simulada da #34; chamada real ao Mapbox so apos BLQ-EXEC.
