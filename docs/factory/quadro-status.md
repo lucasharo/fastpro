@@ -112,7 +112,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | Issue | Título |
 |---|---|
 
-## Desenvolvimento (2)3)
+## Desenvolvimento (3)
 
 | Issue | Título |
 |---|---|
