@@ -82,3 +82,67 @@ body {
   color: var(--color-warning-text);
   padding: 0 var(--space-2, 8px);
 }
+
+/* H-107 (Issue 116) | Tela do catalogo: mesma moldura de .ops-bloco; so variaveis de token. */
+.catalogo-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.catalogo-lista > li {
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-3, 12px) 0;
+}
+
+.catalogo-item {
+  display: grid;
+  gap: var(--space-2, 8px);
+}
+
+.catalogo-item h3 {
+  font-size: 1rem;
+  font-weight: var(--font-weight-semibold, 600);
+  margin: var(--space-2, 8px) 0 0;
+}
+
+.catalogo-campo {
+  display: grid;
+  gap: var(--space-1, 4px);
+}
+
+.catalogo-campo p {
+  color: var(--color-error-text);
+  margin: 0;
+}
+
+.catalogo-campo input[aria-invalid='true'],
+.catalogo-campo select[aria-invalid='true'] {
+  border-color: var(--color-error-text);
+}
+
+.catalogo-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+}
+
+.catalogo-resumo-erro {
+  background: var(--color-error-background);
+  border-radius: var(--radius-button);
+  color: var(--color-error-text);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+}
+
+.catalogo-resumo-erro ul {
+  margin: var(--space-1, 4px) 0 0;
+  padding-left: var(--space-4, 16px);
+}
+
+.catalogo-status {
+  background: var(--color-success-background);
+  border-radius: var(--radius-button);
+  color: var(--color-success-text);
+  margin: 0;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+}
