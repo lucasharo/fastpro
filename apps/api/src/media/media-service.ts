@@ -24,6 +24,7 @@ import {
 } from '@fastpro/domain';
 import type { DraftHasher } from '../drafts/draft-hash.js';
 import { draftNotFound, type DraftOutcome } from '../drafts/draft-service.js';
+import { reduzirFoto, type ReduceDeps } from './media-reduce-service.js';
 
 export interface MediaClockPort {
   nowMs(): number;
@@ -37,6 +38,8 @@ export interface MediaDeps {
   readonly clock: MediaClockPort;
   /** Teto global de vagas vivas. Padrao MEDIA_GLOBAL_CAP (150). */
   readonly globalCap?: number;
+  /** Reducao da foto confirmada (H-027): redutor, Storage da reducao, limite da instancia e contadores. */
+  readonly reduce: ReduceDeps;
 }
 
 const JSON_HEADERS: Readonly<Record<string, string>> = DRAFT_HEADERS;
@@ -144,8 +147,9 @@ export interface FinalizeInput {
 }
 
 /**
- * POST /v1/media/{id}/finalize: confirma que o arquivo chegou. Idempotente (CA-04). Consulta o tamanho pelo
- * stat, sem baixar bytes (CA-09). Nunca marca 'ready' nesta etapa.
+ * POST /v1/media/{id}/finalize (H-026 + H-027). Confirma o envio (stat e media_finalize, idempotente, CA-04) e,
+ * em seguida, reduz a foto (93 §2.3). 'ready' so e gravado pela reducao (media_reduce_done). Erros de confirmacao
+ * seguem iguais (404, 409, 413). Repeticao depois de confirmado nao reencoda (CA-06).
  */
 export async function finalizeMedia(input: FinalizeInput, deps: MediaDeps): Promise<DraftOutcome> {
   const now = deps.clock.nowMs();
@@ -156,30 +160,30 @@ export async function finalizeMedia(input: FinalizeInput, deps: MediaDeps): Prom
 
   const atual = await deps.store.get(hash, input.id, now);
   if (atual === null) return draftNotFound();
-  if (atual.confirmed) {
-    await contar(deps.rate, pares, now);
-    return json(200, visao(atual));
-  }
 
-  const info = await deps.storage.stat(mediaObjectKey(input.id));
-  const r = await deps.store.finalize(hash, input.id, info === null ? null : info.bytes, now);
-  switch (r.code) {
-    case 'confirmed':
-    case 'replay':
-      if (r.media === null) throw new Error('midia_resposta_invalida');
-      await contar(deps.rate, pares, now);
-      return json(200, visao(r.media));
-    case 'not_found':
-      return draftNotFound();
-    case 'expired':
-      return erro(409, 'upload_expirado');
-    case 'missing':
-      return erro(409, 'upload_nao_encontrado');
-    case 'too_large':
-      return erro(413, 'arquivo_grande');
-    default:
-      throw new Error('midia_resposta_invalida');
+  if (!atual.confirmed) {
+    const info = await deps.storage.stat(mediaObjectKey(input.id));
+    const r = await deps.store.finalize(hash, input.id, info === null ? null : info.bytes, now);
+    switch (r.code) {
+      case 'confirmed':
+      case 'replay':
+        if (r.media === null) throw new Error('midia_resposta_invalida');
+        break;
+      case 'not_found':
+        return draftNotFound();
+      case 'expired':
+        return erro(409, 'upload_expirado');
+      case 'missing':
+        return erro(409, 'upload_nao_encontrado');
+      case 'too_large':
+        return erro(413, 'arquivo_grande');
+      default:
+        throw new Error('midia_resposta_invalida');
+    }
   }
+  // Cota de confirmacao: conta toda finalizacao aceita, inclusive a repetida que dispara a reducao (93 R4).
+  await contar(deps.rate, pares, now);
+  return reduzirFoto({ id: input.id, hash }, deps.reduce, now);
 }
 
 export interface ReadInput {

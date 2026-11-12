@@ -1,5 +1,8 @@
 // H-026 (Issue #39) | Portas da quarentena (docs/factory/88-DESENHO-H026.md, §1, §2, §4).
 // O dominio nao conhece banco nem HTTP: as implementacoes ficam em @fastpro/db e na composicao.
+// H-027 (Issue #40) | Portas da reducao (docs/factory/93-DESENHO-H027.md, §2 e §4).
+import type { MediaRejectCode } from './reduce.js';
+
 export type MediaStatus = 'pending' | 'ready' | 'rejected';
 
 /** Foto como o banco a devolve, so o que a resposta pode mostrar (sem caminho, bucket ou tamanho). */
@@ -46,7 +49,32 @@ export interface MediaStorePort {
   purgeDone(ids: readonly string[]): Promise<number>;
   /** Dos ids dados, quais ainda tem linha (varredura de orfaos). */
   known(ids: readonly string[]): Promise<readonly string[]>;
+  /** Reducao, passo 1 (media_reduce_begin): posse por hash, lease e contagem de tentativa. */
+  reduceBegin(secretHash: string, id: string, nowMs: number, leaseS: number): Promise<MediaReduceBeginResult>;
+  /** Reducao, passo 2 (media_reduce_done): grava 'ready' so para a tentativa dona. */
+  reduceDone(id: string, attempt: number, bytes: number, width: number, height: number, nowMs: number): Promise<MediaReduceDoneCode>;
+  /** Reducao, recusa definitiva (media_reduce_reject). A vaga e liberada: 'rejected' nao conta. */
+  reduceReject(id: string, attempt: number, code: MediaRejectCode, nowMs: number): Promise<MediaReduceRejectOut>;
+  /** Libera a lease da tentativa dona; count false devolve a tentativa (media_reduce_release). */
+  reduceRelease(id: string, attempt: number, count: boolean): Promise<boolean>;
+  /** Marca que o original saiu da quarentena (media_original_removed; so ready ou rejected). */
+  originalRemoved(id: string, nowMs: number): Promise<boolean>;
+  /** Ids ready ou rejected cujo original ainda nao saiu (limpeza de sobras, decisao 82). */
+  originalCleanupList(limit: number): Promise<readonly string[]>;
 }
+
+export type MediaReduceBeginCode = 'begin' | 'ready' | 'rejected' | 'busy' | 'not_confirmed' | 'not_found';
+export interface MediaReduceBeginResult {
+  readonly code: MediaReduceBeginCode;
+  /** Numero da tentativa tomada (so em 'begin'). */
+  readonly attempt: number | null;
+  /** Motivo fixo da recusa (so em 'rejected'). */
+  readonly rejectCode: MediaRejectCode | null;
+  /** Verdadeiro quando o original ainda esta na quarentena e precisa sair. */
+  readonly originalPending: boolean;
+}
+export type MediaReduceDoneCode = 'done' | 'lost' | 'gone';
+export type MediaReduceRejectOut = 'rejected' | 'lost' | 'gone';
 
 /**
  * Porta do Storage de quarentena. Somente o bucket fixo e chaves 'd/<uuid>'. Nenhum metodo le o conteudo:
@@ -61,4 +89,36 @@ export interface QuarantineStoragePort {
   remove(key: string): Promise<void>;
   /** Chaves 'd/<uuid>' criadas antes de antesDeMs (para a varredura de orfaos). */
   listOlderThan(antesDeMs: number, limite: number): Promise<readonly string[]>;
+}
+
+/** Storage da reducao (interno ao servico de reducao, nunca exposto a rota; 93 §4.1). */
+export interface MediaReduceStoragePort {
+  /** Le o original da quarentena ('d/<id>'). Null quando o objeto nao existe. Lanca em falha de Storage. */
+  readOriginal(id: string): Promise<Uint8Array | null>;
+  /** Grava a versao reduzida ('p/<id>', upsert, image/jpeg). Sobrescreve a tentativa anterior. */
+  putReduced(id: string, bytes: Uint8Array): Promise<void>;
+  /** Metadado da versao reduzida (tamanho), sem baixar. Null quando nao existe. */
+  statReduced(id: string): Promise<{ readonly bytes: number } | null>;
+  /** Remove o original da quarentena; ausente conta como sucesso. */
+  removeOriginal(id: string): Promise<void>;
+  /** Remove a versao reduzida; ausente conta como sucesso. */
+  removeReduced(id: string): Promise<void>;
+}
+
+/** Causas transitorias: tempo e memoria contam tentativa; o resto nao (decisoes 84 e 86). */
+export type ReduceTransientCause = 'timeout' | 'memory' | 'unavailable' | 'ocupado';
+
+export type ReduceOutcome =
+  | { readonly ok: true; readonly bytes: Uint8Array; readonly width: number; readonly height: number }
+  | { readonly ok: false; readonly kind: 'definitive'; readonly code: MediaRejectCode }
+  | { readonly ok: false; readonly kind: 'transient'; readonly cause: ReduceTransientCause };
+
+/** Orcamento de pixels em voo: o redutor reserva a area lida antes de decodificar. Null = sem espaco no prazo. */
+export interface ReduceBudgetPort {
+  reservar(areaPx: number): Promise<{ liberar(): void } | null>;
+}
+
+/** Redutor de imagem (sharp no servidor; falso nos testes). Nenhuma mensagem de biblioteca atravessa a porta. */
+export interface ImageReducerPort {
+  reduce(bytes: Uint8Array, opts: { readonly deadlineMs: number; readonly orcamento?: ReduceBudgetPort }): Promise<ReduceOutcome>;
 }

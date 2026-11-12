@@ -4,12 +4,21 @@
 // vem do ambiente do servidor, nunca de tabela, log ou resposta. Nenhum metodo baixa o conteudo do arquivo.
 import {
   MEDIA_BUCKET,
+  MEDIA_MAX_BYTES,
+  MEDIA_REDUCED_BUCKET,
   isMediaId,
+  isMediaRejectCode,
   mediaIdFromKey,
+  mediaReducedKey,
   type MediaFinalizeResult,
   type MediaIssueInput,
   type MediaIssueResult,
   type MediaRecord,
+  type MediaReduceBeginResult,
+  type MediaReduceDoneCode,
+  type MediaReduceRejectOut,
+  type MediaReduceStoragePort,
+  type MediaRejectCode,
   type MediaStorePort,
   type QuarantineStoragePort,
 } from '@fastpro/domain';
@@ -23,6 +32,15 @@ export const SQL_MEDIA_FINALIZE =
 export const SQL_MEDIA_SWEEP = 'select out_id from private.media_sweep($1::timestamptz, $2::integer)';
 export const SQL_MEDIA_PURGE_DONE = 'select private.media_purge_done($1::uuid[]) as n';
 export const SQL_MEDIA_KNOWN = 'select id from private.media_known($1::uuid[]) as id';
+// H-027 (Issue #40): reducao (docs/factory/93-DESENHO-H027.md, §3 e §4). Todas via private.media_* (app_api).
+export const SQL_MEDIA_REDUCE_BEGIN =
+  'select out_code, out_attempt, out_reject_code, out_original_pending from private.media_reduce_begin($1::text, $2::uuid, $3::timestamptz, $4::integer)';
+export const SQL_MEDIA_REDUCE_DONE =
+  'select out_code from private.media_reduce_done($1::uuid, $2::smallint, $3::integer, $4::integer, $5::integer, $6::timestamptz)';
+export const SQL_MEDIA_REDUCE_REJECT = 'select out_code from private.media_reduce_reject($1::uuid, $2::smallint, $3::text, $4::timestamptz)';
+export const SQL_MEDIA_REDUCE_RELEASE = 'select private.media_reduce_release($1::uuid, $2::smallint, $3::boolean) as ok';
+export const SQL_MEDIA_ORIGINAL_REMOVED = 'select private.media_original_removed($1::uuid, $2::timestamptz) as ok';
+export const SQL_MEDIA_ORIGINAL_CLEANUP = 'select private.media_original_cleanup_list($1::integer) as ids';
 
 const iso = (ms: number): string => new Date(ms).toISOString();
 
@@ -120,6 +138,54 @@ export class PgMediaStore implements MediaStorePort {
     if (ids.length === 0) return [];
     const res = await this.client.query(SQL_MEDIA_KNOWN, [ids]);
     return res.rows.map((r) => String((r as { id: unknown }).id));
+  }
+
+  async reduceBegin(secretHash: string, id: string, nowMs: number, leaseS: number): Promise<MediaReduceBeginResult> {
+    const res = await this.client.query(SQL_MEDIA_REDUCE_BEGIN, [secretHash, id, iso(nowMs), leaseS]);
+    const row = res.rows[0] as
+      | { out_code?: unknown; out_attempt?: unknown; out_reject_code?: unknown; out_original_pending?: unknown }
+      | undefined;
+    const code = row?.out_code;
+    if (
+      row === undefined ||
+      (code !== 'begin' && code !== 'ready' && code !== 'rejected' && code !== 'busy' && code !== 'not_confirmed' && code !== 'not_found') ||
+      typeof row.out_original_pending !== 'boolean'
+    ) {
+      throw new Error('midia_resposta_invalida');
+    }
+    const attempt = row.out_attempt === null || row.out_attempt === undefined ? null : Number(row.out_attempt);
+    const rejectCode = isMediaRejectCode(row.out_reject_code) ? row.out_reject_code : null;
+    return { code, attempt, rejectCode, originalPending: row.out_original_pending };
+  }
+
+  async reduceDone(id: string, attempt: number, bytes: number, width: number, height: number, nowMs: number): Promise<MediaReduceDoneCode> {
+    const res = await this.client.query(SQL_MEDIA_REDUCE_DONE, [id, attempt, bytes, width, height, iso(nowMs)]);
+    const code = (res.rows[0] as { out_code?: unknown } | undefined)?.out_code;
+    if (code !== 'done' && code !== 'lost' && code !== 'gone') throw new Error('midia_resposta_invalida');
+    return code;
+  }
+
+  async reduceReject(id: string, attempt: number, code: MediaRejectCode, nowMs: number): Promise<MediaReduceRejectOut> {
+    const res = await this.client.query(SQL_MEDIA_REDUCE_REJECT, [id, attempt, code, iso(nowMs)]);
+    const out = (res.rows[0] as { out_code?: unknown } | undefined)?.out_code;
+    if (out !== 'rejected' && out !== 'lost' && out !== 'gone') throw new Error('midia_resposta_invalida');
+    return out;
+  }
+
+  async reduceRelease(id: string, attempt: number, count: boolean): Promise<boolean> {
+    const res = await this.client.query(SQL_MEDIA_REDUCE_RELEASE, [id, attempt, count]);
+    return (res.rows[0] as { ok?: unknown } | undefined)?.ok === true;
+  }
+
+  async originalRemoved(id: string, nowMs: number): Promise<boolean> {
+    const res = await this.client.query(SQL_MEDIA_ORIGINAL_REMOVED, [id, iso(nowMs)]);
+    return (res.rows[0] as { ok?: unknown } | undefined)?.ok === true;
+  }
+
+  async originalCleanupList(limit: number): Promise<readonly string[]> {
+    const res = await this.client.query(SQL_MEDIA_ORIGINAL_CLEANUP, [limit]);
+    const ids = (res.rows[0] as { ids?: unknown } | undefined)?.ids;
+    return Array.isArray(ids) ? ids.map((x) => String(x)) : [];
   }
 }
 
@@ -232,5 +298,101 @@ export class SupabaseQuarantineStorage implements QuarantineStoragePort {
       if (isMediaId(item.name)) chaves.push(`d/${item.name.toLowerCase()}`);
     }
     return chaves;
+  }
+}
+
+/**
+ * H-027 (Issue #40) | Storage da reducao (93 §4.1). Unico lugar que le o original 'd/<uuid>' (so para reduzir,
+ * chamado por reduceMedia) e o unico que grava/remove 'p/<uuid>' no bucket request-photos. Sem URL de leitura
+ * para visitante, sem assinatura, sem download exposto a rota. Endpoints [NAO VERIFICADO] contra o Storage remoto.
+ */
+export class SupabaseMediaReduceStorage implements MediaReduceStoragePort {
+  private readonly fetchImpl: typeof fetch;
+
+  constructor(private readonly opts: QuarantineStorageOpcoes) {
+    this.fetchImpl = opts.fetchImpl ?? fetch;
+  }
+
+  private cabecalhos(extra: Record<string, string> = {}): Record<string, string> {
+    return { authorization: `Bearer ${this.opts.serviceKey}`, apikey: this.opts.serviceKey, ...extra };
+  }
+
+  private url(bucket: string, path: string): string {
+    return `${this.opts.baseUrl}/storage/v1/object/${bucket}/${path}`;
+  }
+
+  private async chamar(url: string, init: RequestInit): Promise<Response> {
+    try {
+      return await this.fetchImpl(url, init);
+    } catch {
+      throw new QuarantineStorageError();
+    }
+  }
+
+  private chaveOriginal(id: string): string {
+    if (!isMediaId(id)) throw new QuarantineStorageError();
+    return `d/${id.toLowerCase()}`;
+  }
+
+  private chaveReduzida(id: string): string {
+    if (!isMediaId(id)) throw new QuarantineStorageError();
+    return mediaReducedKey(id.toLowerCase());
+  }
+
+  async readOriginal(id: string): Promise<Uint8Array | null> {
+    const res = await this.chamar(this.url(MEDIA_BUCKET, this.chaveOriginal(id)), {
+      method: 'GET',
+      headers: this.cabecalhos(),
+    });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new QuarantineStorageError();
+    const declarado = Number(res.headers.get('content-length') ?? '0');
+    if (declarado > MEDIA_MAX_BYTES) {
+      await res.body?.cancel().catch(() => undefined);
+      throw new QuarantineStorageError();
+    }
+    const bytes = new Uint8Array(await res.arrayBuffer().catch(() => new ArrayBuffer(0)));
+    if (bytes.byteLength === 0 || bytes.byteLength > MEDIA_MAX_BYTES) throw new QuarantineStorageError();
+    return bytes;
+  }
+
+  async putReduced(id: string, bytes: Uint8Array): Promise<void> {
+    const res = await this.chamar(this.url(MEDIA_REDUCED_BUCKET, this.chaveReduzida(id)), {
+      method: 'POST',
+      headers: this.cabecalhos({ 'content-type': 'image/jpeg', 'x-upsert': 'true' }),
+      body: new Blob([bytes], { type: 'image/jpeg' }),
+    });
+    if (!res.ok) throw new QuarantineStorageError();
+  }
+
+  async statReduced(id: string): Promise<{ readonly bytes: number } | null> {
+    const res = await this.chamar(`${this.opts.baseUrl}/storage/v1/object/info/${MEDIA_REDUCED_BUCKET}/${this.chaveReduzida(id)}`, {
+      method: 'GET',
+      headers: this.cabecalhos(),
+    });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new QuarantineStorageError();
+    const corpo = (await res.json().catch(() => null)) as { size?: unknown; metadata?: { size?: unknown } } | null;
+    const tamanho = corpo?.size ?? corpo?.metadata?.size;
+    if (typeof tamanho !== 'number' || !Number.isFinite(tamanho)) throw new QuarantineStorageError();
+    return { bytes: tamanho };
+  }
+
+  async removeOriginal(id: string): Promise<void> {
+    const res = await this.chamar(this.url(MEDIA_BUCKET, this.chaveOriginal(id)), {
+      method: 'DELETE',
+      headers: this.cabecalhos(),
+    });
+    if ((res.status >= 200 && res.status < 300) || res.status === 404) return;
+    throw new QuarantineStorageError();
+  }
+
+  async removeReduced(id: string): Promise<void> {
+    const res = await this.chamar(this.url(MEDIA_REDUCED_BUCKET, this.chaveReduzida(id)), {
+      method: 'DELETE',
+      headers: this.cabecalhos(),
+    });
+    if ((res.status >= 200 && res.status < 300) || res.status === 404) return;
+    throw new QuarantineStorageError();
   }
 }

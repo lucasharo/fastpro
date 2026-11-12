@@ -11,11 +11,15 @@ import {
   mediaIdFromKey,
   mediaObjectKey,
 } from './media.js';
-import type { MediaStorePort, QuarantineStoragePort } from './ports.js';
+import type { MediaReduceStoragePort, MediaStorePort, QuarantineStoragePort } from './ports.js';
 
+// H-027 (Issue #40) | Expurgo tambem remove a versao reduzida 'p/<id>' (93 §5.3) e recolhe originais que
+// sobraram depois da reducao (93 §5.2, decisao 82). Campos novos sao opcionais: quem nao reduz segue igual.
 export interface SweepDeps {
-  readonly store: Pick<MediaStorePort, 'sweep' | 'purgeDone' | 'known'>;
+  readonly store: Pick<MediaStorePort, 'sweep' | 'purgeDone' | 'known'> &
+    Partial<Pick<MediaStorePort, 'originalRemoved' | 'originalCleanupList'>>;
   readonly storage: Pick<QuarantineStoragePort, 'remove' | 'listOlderThan'>;
+  readonly reduzidos?: Pick<MediaReduceStoragePort, 'removeReduced'>;
   readonly nowMs: () => number;
   readonly lote?: number;
   readonly limiteOrfaos?: number;
@@ -28,6 +32,7 @@ export interface SweepReport {
   readonly falhas: number;
   readonly orfaosRemovidos: number;
   readonly falhasOrfaos: number;
+  readonly originaisLimpos: number;
 }
 
 export async function sweepQuarantine(deps: SweepDeps): Promise<SweepReport> {
@@ -39,6 +44,7 @@ export async function sweepQuarantine(deps: SweepDeps): Promise<SweepReport> {
   for (const id of ids) {
     try {
       await deps.storage.remove(mediaObjectKey(id));
+      if (deps.reduzidos !== undefined) await deps.reduzidos.removeReduced(id);
       removidos.push(id);
     } catch {
       falhas++;
@@ -46,6 +52,21 @@ export async function sweepQuarantine(deps: SweepDeps): Promise<SweepReport> {
   }
   let linhasApagadas = 0;
   if (removidos.length > 0) linhasApagadas = await deps.store.purgeDone(removidos);
+
+  // Limpeza de sobras da reducao: original ainda na quarentena de foto ja ready ou rejected (decisao 82).
+  let originaisLimpos = 0;
+  if (deps.store.originalCleanupList !== undefined && deps.store.originalRemoved !== undefined) {
+    const pendentes = await deps.store.originalCleanupList(MEDIA_SWEEP_BATCH);
+    for (const id of pendentes) {
+      try {
+        await deps.storage.remove(mediaObjectKey(id));
+        await deps.store.originalRemoved(id, agora);
+        originaisLimpos++;
+      } catch {
+        falhas++;
+      }
+    }
+  }
 
   const antigos = await deps.storage.listOlderThan(agora - MEDIA_ORPHAN_AGE_MS, deps.limiteOrfaos ?? MEDIA_ORPHAN_LIST_LIMIT);
   const candidatos = antigos.map(mediaIdFromKey).filter((id): id is string => id !== null);
@@ -68,5 +89,6 @@ export async function sweepQuarantine(deps: SweepDeps): Promise<SweepReport> {
     falhas,
     orfaosRemovidos,
     falhasOrfaos,
+    originaisLimpos,
   };
 }
