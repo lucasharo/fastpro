@@ -11,3 +11,5 @@ export * from './draft/index.js';
 export * from './catalog/index.js';
 // H-109 | Retencao sem prazos: politica por classe, expurgo em lotes e cadastro com aprovacao dupla.
 export * from './retention/index.js';
+// H-026 | Fotos em quarentena (88-DESENHO-H026): constantes, corpo, portas e expurgo.
+export * from './media/index.js';

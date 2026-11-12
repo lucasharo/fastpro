@@ -251,7 +251,19 @@ export const DRAFT_HEADERS: Readonly<Record<string, string>> = {
 // ---------------------------------------------------------------------------------------------
 
 export interface DraftRatePolicy {
-  readonly id: 'criacao_hora' | 'criacao_dia' | 'salvar_ip' | 'salvar_rascunho' | 'leitura_ip';
+  readonly id:
+    | 'criacao_hora'
+    | 'criacao_dia'
+    | 'salvar_ip'
+    | 'salvar_rascunho'
+    | 'leitura_ip'
+    // H-026: politicas de foto em quarentena (88 §3). Mesmo balde de rl_check/rl_hit, prefixo proprio.
+    | 'media_emissao_rascunho_hora'
+    | 'media_emissao_rascunho_dia'
+    | 'media_emissao_ip_hora'
+    | 'media_emissao_ip_dia'
+    | 'media_confirma_rascunho'
+    | 'media_leitura_ip';
   readonly spanS: number;
   readonly bucketS: number;
   readonly limit: number;

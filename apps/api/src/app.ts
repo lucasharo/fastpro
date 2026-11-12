@@ -70,6 +70,7 @@ import {
 } from './professional-profile-route.js';
 import { handleAddressSuggest, type GeoRouteOptions } from './geo/address-suggest-route.js';
 import { handleDraftRoute, isDraftRoute, type DraftRouteOptions } from './drafts/draft-route.js';
+import { handleMediaRoute, isMediaRoute, type MediaRouteOptions } from './media/media-route.js';
 import {
   handleSessionConvert,
   handleSessionLogout,
@@ -129,6 +130,8 @@ export interface AppOptions {
   readonly catalog?: CatalogRouteOptions;
   /** Rascunho de pedido sem conta (H-025). Sem esta opcao as rotas /v1/drafts nao existem (404). */
   readonly drafts?: DraftRouteOptions;
+  /** Fotos em quarentena (H-026). Sem esta opcao as rotas /v1/media nao existem (404). Desligada em producao (88 §8). */
+  readonly media?: MediaRouteOptions;
   /** Cadastro, verificacao e login por senha do profissional (H-016). Sem esta opcao as rotas nao existem (404). */
   readonly professional?: ProfessionalRouteOptions;
   /** Cadastro do documento e leitura do perfil profissional (H-035). Sem esta opcao as rotas nao existem (404). */
@@ -269,6 +272,10 @@ export async function handleRequest(
   }
   if (opts.drafts && isDraftRoute(path)) {
     await handleDraftRoute(req, res, path, opts.drafts);
+    return;
+  }
+  if (opts.media && isMediaRoute(path)) {
+    await handleMediaRoute(req, res, path, opts.media);
     return;
   }
   if (req.method === 'POST' && path === CATALOG_SEARCH_PATH && opts.catalog) {

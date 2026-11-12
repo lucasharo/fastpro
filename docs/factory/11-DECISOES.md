@@ -210,3 +210,20 @@ Números das decisões 48 a 52 seguem o desenho `70-DESENHO-H103.md` §5. O refi
 | 56 | **[DECIDIDO pelo líder, refino 87 D-1, opção (b) da dúvida de duplicidade]** Em consequência da decisão 46 (coordenada permanente só na publicação), a verificação de **duplicidade** (mesmo serviço, até 100 m) e a **cobertura** deixam a revisão do rascunho e passam para a **publicação**; a revisão mostra só o texto do endereço. Duplicidade roda dentro do banco sobre `exact_point` (nunca sobre `match_point`, grosseiro demais) e só avisa (409 `duplicate_warning`, nunca bloqueia); cobertura aparece no estado do pedido já publicado (AMB-03 A). Referências: `68-DESENHO-H021.md` §3.5 e dúvida 1; `87-REFINO-H022.md` D-1. **Pendente:** ajustar H-030, H-024 e FA-002 no backlog e nos critérios de aceite.
 | 57 | **[DECIDIDO pelo líder, refino 87 D-2, D-3, D-4, D-5]** H-022 (#35): (D-2) casamento por célula como chave inteira, índice B-tree e filtro de distância, sem depender de PostGIS na consulta; PostGIS só como oráculo de teste (CA-07); (D-3) #34 concluída, sequência livre; (D-4) grade de 500 m com versão da grade gravada junto de `match_point` (`match_grid_version`); (D-5) rastro corrigido: o modelo geo está em 08 §9.1–9.2 (14-BACKLOG H-022 ajustado). Referência: `88-DESENHO-H022.md`.
 | 56 | **[DECIDIDO pelo líder; valores do Architect, desenho 88 §3, Issue #39 H-026]** Upload de fotos em quarentena: (1) o dono do envio antes da identificação é o nonce do rascunho (cookie `__Host-fp_draft`), como em H-025; (2) H-026 é desenvolvida, mas não liberada a visitantes reais antes de H-027 e H-028 estarem prontas (o original com EXIF mora na quarentena); (3) HEIC recusado com 415 até H-027 ligar a conversão; (4) valores `[PROPOSTA]`: pendente sem confirmação vence em 30 min, URL de envio com alvo de 15 min, varredura de órfãos após 3 h, cota de 12 emissões por hora e 25 por dia por rascunho, 40 por hora e 150 por dia por IP-HMAC, 30 confirmações por hora por rascunho, teto global de 150 vagas vivas; (5) sem exclusão de foto até H-029; (6) aviso de fachada e interior fica com H-029 e UX; (7) em 08 §10.2 a referência a FA-028 (chat) foi trocada por FA-001, P-01 e F-09. |
+
+## Rodada 20 (2026-11-12) — H-120, dados sintéticos de demonstração (Issue #129)
+
+Nota: o número 56 aparece duplicado nas rodadas 19 (decisões de H-022 e H-026). Esta decisão usa a próxima numeração livre, 58.
+
+| Nº | Decisão |
+|---|---|
+| 58 | **[DECIDIDO pelo dono do produto, 2026-11-12, regra permanente]** A carga de demonstração (`pnpm db:demo:load`) e sua remoção seletiva (`pnpm db:demo:remove`) podem rodar no **banco de desenvolvimento compartilhado** do `.env.local`, sem variável de confirmação de exceção e sem flag de forçar. Trava: `APP_ENV=development` (variável já existente no `.env.local`) e banco local, ou banco Supabase do projeto indicado por `NEXT_PUBLIC_SUPABASE_URL` do mesmo `.env.local`. Continuam recusados: outro `APP_ENV`, host ou projeto de outro ambiente, variável ausente, argumento extra e `--force` (inexistente). A remoção só apaga registros com o prefixo de demonstração (`fa57d120-`) e objetos de Storage marcados. Substitui, para este banco, a trava que recusava qualquer banco não local (85-DESENHO-H120 §1). Referências: `85-DESENHO-H120` §1 e §3; `84-REFINO-H120` §4. |
+
+## Rodada 21 (refino da tela de pedido, #43 / H-030)
+
+- **59 (D-H030-1):** a revisão do pedido exige e-mail confirmado pelo link (FA-002). A Issue #26 (código de 6 dígitos e nonce) entra como dependência de H-030; a construção da tela espera a #26.
+- **60 (D-H030-2):** sem estado "confirmado" no modelo; o pedido guarda a data de confirmação e o status segue "aberto" até H-031.
+- **61 (D-H030-3):** texto após confirmar, sem publicar: "Pedido confirmado. Ainda não foi publicado."
+- **62 (D-H030-4):** o aviso de duplicidade fica na publicação (#44), porque sem coordenada não há ponto para comparar.
+- **63 (D-H030-5):** H-024 (cobertura, #37) sai das dependências de H-030.
+- **64 (D-H030-6 a 11):** fotos ocultas sem fotos; campos obrigatórios conforme o refino; limite da descrição e valores de duplicidade e textos ficam como propostas revisáveis pelo desenho.

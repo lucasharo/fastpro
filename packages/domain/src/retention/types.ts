@@ -17,7 +17,8 @@ export const RETENTION_ACTIONS = ['excluir', 'anonimizar', 'reter'] as const;
 export type RetentionAction = (typeof RETENTION_ACTIONS)[number];
 
 /** Buckets conhecidos do Storage (82 §4). Qualquer outro nome e recusado antes de chamar a API. */
-export const RETENTION_BUCKETS = ['identity-docs', 'request-photos'] as const;
+// quarantine entra com H-026 (88 §4, R8): fotos da quarentena sao expurgadas pelo mesmo adaptador.
+export const RETENTION_BUCKETS = ['identity-docs', 'request-photos', 'quarantine'] as const;
 export type RetentionBucket = (typeof RETENTION_BUCKETS)[number];
 
 /** Objeto no Storage: so o caminho, nunca conteudo ou dado pessoal. */
