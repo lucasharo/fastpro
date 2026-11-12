@@ -1,8 +1,9 @@
-// H-097 (Issue 107) | Prioridade do login e cota no banco de desenvolvimento (T-H097-02, 03 e 04).
-// ESCRITO, NAO EXECUTADO nesta etapa (regra da etapa: sem banco). Transacao com rollback; relogio fixo
-// em 2099; sem rede (provedor simulado). Desenho: docs/factory/86-DESENHO-H097.md §2 e §5.
-// Pendente (fora deste arquivo): T-H097-01 (200 saidas de aceite/digest na fila) e a parte de aceite
-// adiado a 90 (critico) e digest a 85, que dependem da ingestao de eventos.
+// H-097 (Issue 107) | Prioridade do login e cota no banco de desenvolvimento (T-H097-01, 02, 03 e 04).
+// Executado no banco de desenvolvimento (APP_ENV=development) com: node --test --test-concurrency=1 <este arquivo>.
+// Cada teste roda em transacao com rollback; relogio fixo em 2099; sem rede (provedor simulado).
+// Desenho: docs/factory/86-DESENHO-H097.md §2 e §5. Resultado e contagem: relatorio da #107.
+// Fora deste arquivo (pendente): aceite adiado a 90 (critico) e digest a 85, que dependem da ingestao de
+// eventos; regra de conta nao cadastrada (F-1, bloqueio registrado na #107).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
@@ -110,6 +111,53 @@ async function usoDoDia(dia) {
     [dia],
   );
   return q.rows[0]?.used ?? null;
+}
+
+test('T-H097-01: 200 saidas de aceite e digest pendentes na fila; o login vai ao provedor antes de todas', () =>
+  tx(async () => {
+    await semearCota(0);
+    await client.query(
+      `insert into ops.email_outbox (recipient_user_id, category, class, email_type, template, dedupe_key, template_params)
+       select gen_random_uuid(),
+              case when g <= 100 then 'aceite' else 'mensagem' end,
+              'digest',
+              case when g <= 100 then 'aceite_resumo' else 'mensagem_resumo' end,
+              case when g <= 100 then 'aceite_resumo' else 'mensagem_resumo' end,
+              'h097-t01-' || g,
+              '{}'::jsonb
+         from generate_series(1, 200) as g`,
+    );
+    const pendentesAntes = await contarPendentesT01();
+    assert.equal(pendentesAntes, 200);
+
+    const store = new StoreCapturado(client);
+    const r = await requestChallenge(
+      {
+        store,
+        ...SEGREDOS,
+        clock: new FakeClock(new Date(NOW_MS).toISOString()),
+        dispatch: { schedule: () => undefined },
+      },
+      { email: `h097-t01-${randomBytes(4).toString('hex')}@example.test` },
+    );
+    assert.equal(r.status, 202);
+
+    // Envio logo apos a resposta: so a linha do login e reivindicada, sem varrer a fila.
+    const provedor = new FakeEmailProvider();
+    await dispatchChallengeOutbox(pipeline(provedor, NOW_MS), store.ultimo.outboxId);
+
+    assert.equal(provedor.calls.length, 1, 'so o login foi ao provedor');
+    assert.equal(provedor.calls[0].templateKey, 'acesso_login', 'o primeiro envio e o login');
+    assert.equal(await contarPendentesT01(), 200, 'as 200 saidas continuam pendentes');
+    const login = await client.query('select state from ops.email_outbox where id = $1', [store.ultimo.outboxId]);
+    assert.equal(login.rows[0].state, 'enviado');
+  }));
+
+async function contarPendentesT01() {
+  const q = await client.query(
+    "select count(*)::int as n from ops.email_outbox where dedupe_key like 'h097-t01-%' and state = 'pendente'",
+  );
+  return q.rows[0].n;
 }
 
 test('T-H097-02: uso do dia 50, o login sai e o contador passa a 51', () =>
