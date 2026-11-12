@@ -18,7 +18,7 @@ after(async () => {
 });
 
 const MIGRACAO = readFileSync(
-  join(REPO_ROOT, 'supabase', 'migrations', '20261111400000_admin_access_case_list.sql'),
+  join(REPO_ROOT, 'supabase', 'migrations', '20261111400500_admin_access_case_list.sql'),
   'utf8',
 );
 const sha = (s) => createHash('sha256').update(s).digest('hex');
