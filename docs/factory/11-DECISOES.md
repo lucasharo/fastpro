@@ -292,3 +292,14 @@ Nota: o número 56 aparece duplicado nas rodadas 19 (decisões de H-022 e H-026)
 - **99:** HEIC com tipo declarado JPEG recebe mensagem generica (decisao 95).
 - **100:** o caso "sem tipo declarado" segue sendo a recusa de 415 da #39, apenas confirmado por teste.
 - **Portao:** o desenvolvimento da #41 comeca so depois que a #40 sair de QA (mesmos arquivos de servico e teste).
+
+## Rodada 31 (refino da descoberta por raio e online nacional, #36 / H-023)
+
+- **101 (D-H023-1):** a #36 cobre so a regra e a consulta no banco; a rota de descoberta e a guarda de aprovacao ficam na H-055.
+- **102 (D-H023-2):** a H-031 (pedidos com servico, modalidade e status) e' condicao de construcao da #36; o desenho pode avancar antes.
+- **103 (D-H023-3):** a busca parte do centro da celula da base.
+- **104 (D-H023-4):** faixa de incerteza de 710 m mais 0,3 % do raio.
+- **105 (D-H023-5):** servico nas duas modalidades vale o online.
+- **106 (D-H023-6):** servico online regulamentado nao ganha alcance nacional ate L4.
+- **107 (D-H023-7):** a distancia nao e' exposta ao profissional.
+- **108 (D-H023-8):** paginacao por cursor.
