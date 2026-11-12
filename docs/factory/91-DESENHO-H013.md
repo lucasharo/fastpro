@@ -189,7 +189,7 @@ Padrão do repositório `[VERIFICADO]`: `*.test.ts` (unidade e rota, em memória
 
 ## 8. Ordem de implementação e arquivos
 
-1. Migração, rollback e testes T-H013-01/02/09 a 13/19 a 22 (banco). 2. Domínio e `packages/db`: `AttemptCodeInput/Result`, `bindNonce`, `concluirAcesso`, embrulhos nos repositórios Pg; T-H013-03 a 08, 16, 23. 3. API: `draft-nonce.ts`, leitura do cookie nas três rotas, `/verify` com cabeçalhos e `Set-Cookie`, rota `identity` e `isDraftRoute`; T-H013-14, 15, 17, 18. 4. Web: `codigo.html/.css/.js`, `vercel.json`; T-H013-24, 25. 5. Documentos: 08 §5.1 e 09 (já ajustados por este desenho). Arquivos tocados: os de §1 a §5, mais composição (`PEPPER_EMAIL_HMAC` na composição das rotas de rascunho). Nenhum arquivo de `service_request`, fotos ou geocodificação muda.
+1. Migração, rollback e testes T-H013-01/02/09 a 13/19 a 22 (banco). 2. Domínio e `packages/db`: `AttemptCodeInput/Result`, `bindNonce`, `concluirAcesso`, embrulhos nos repositórios Pg; T-H013-03 a 08, 16, 23. 3. API: `draft-nonce.ts`, leitura do cookie nas três rotas, `/verify` com cabeçalhos e `Set-Cookie`, rota `identity` e `isDraftRoute`; T-H013-14, 15, 17, 18. 4. Web: `codigo.html/.css/.js`, `vercel.json`; T-H013-24, 25. 5. Documentos: 08 §5.1 e 09 (correções pendentes, §10). Arquivos tocados: os de §1 a §5, mais composição (`PEPPER_EMAIL_HMAC` na composição das rotas de rascunho). Nenhum arquivo de `service_request`, fotos ou geocodificação muda.
 
 ## 9. Dúvidas ao Orquestrador (não bloqueantes, com recomendação)
 
@@ -199,10 +199,11 @@ Padrão do repositório `[VERIFICADO]`: `*.test.ts` (unidade e rota, em memória
 4. **Rota `/codigo` isolada além do módulo reutilizável.** Recomendação: aceitar; a #43 usa o módulo e a página isolada serve de saída de emergência e de alvo do teste de acessibilidade.
 5. **Onde o prazo do rascunho conta após anexar.** O rascunho não renova o prazo ao anexar (7 dias da última edição). Recomendação: aceitar; a #43 salva antes de revisar.
 
-## 10. Correções de documento feitas com este desenho
+## 10. Correções de documento pendentes (não aplicadas neste commit, que contém só este desenho)
 
-- `08-ARQUITETURA.md` §5.1: item 4 passa a dizer `POST /v1/auth/challenges/verify` (não `/consume`) e item 5 passa a dizer que o nonce é o cookie `__Host-fp_draft` (decisões 66 e 69, D-H013-1).
-- `09-MODELO-DADOS.md` `request_draft`: acrescenta `email_hmac?` e `email_verified_at?`.
+- `08-ARQUITETURA.md` §5.1, linha 194 (item 4): trocar `POST …/consume` por `POST /v1/auth/challenges/verify`; linha 195 (item 5): o nonce é o cookie `__Host-fp_draft` (decisões 66 e 69, D-H013-1), e o rascunho só é anexado do navegador que consome (CA-08).
+- `09-MODELO-DADOS.md` linha 81 (`request_draft`): acrescentar `email_hmac?` e `email_verified_at?`.
+- Responsável: Orquestrador ou DEV, no primeiro commit da #26.
 
 ## Resumo em linguagem simples
 
