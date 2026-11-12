@@ -1,9 +1,18 @@
 {
   "extends": "@fastpro/config/tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist",
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "ES2022"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "preserve",
+    "noEmit": true,
+    "declaration": false,
+    "sourceMap": false,
+    "incremental": true,
+    "allowJs": false,
+    "plugins": [{ "name": "next" }],
     "types": ["node"]
   },
-  "include": ["src"]
+  "include": ["src", "next-env.d.ts"]
 }

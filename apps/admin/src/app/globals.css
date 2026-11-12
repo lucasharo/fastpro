@@ -1,0 +1,36 @@
+/* H-103 (Issue 112) | Estilos da casca do console. Valores so por CSS variables dos tokens EDS. */
+body {
+  margin: 0;
+  font-family: var(--font-family);
+  color: var(--color-text-primary);
+  background: var(--color-background);
+}
+
+.console {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: var(--space-6, 24px);
+}
+
+.console h1 {
+  color: var(--color-brand);
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.console-telas {
+  list-style: none;
+  padding: 0;
+}
+
+.console-telas li {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  margin-bottom: var(--space-3, 12px);
+  padding: var(--space-4, 16px);
+}
+
+.console-telas a {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold, 600);
+}
