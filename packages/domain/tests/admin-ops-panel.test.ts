@@ -224,6 +224,29 @@ describe('T-H108-04 cotas em percentual, alerta e sem dados (CA-H108-07, 08, 10)
     expect(b.rls).toEqual({ negacoes: 7 });
   });
 
+  it('dimensao: ate 40 caracteres (1 inicial + 39, igual a migracao); 41 ou mais, ou fora do padrao, nao sai', () => {
+    const dentro = 'a'.repeat(40);
+    const fora = 'a'.repeat(41);
+    const b = corpo({
+      ...VAZIA,
+      metricas: [
+        { chave: 'foto_upload_falha', dimensao: dentro, n: 2, soma_ms: null, max_ms: null },
+        { chave: 'foto_upload_falha', dimensao: fora, n: 5, soma_ms: null, max_ms: null },
+        { chave: 'foto_upload_falha', dimensao: 'Com_Maiuscula', n: 3, soma_ms: null, max_ms: null },
+      ],
+    });
+    expect(b.fotos?.falhas_upload_por_tipo).toEqual({ [dentro]: 2 });
+  });
+
+  it('codigo de motivo da fila aceita ate 60 caracteres (limite de reason_code, nao o da dimensao)', () => {
+    const codigo60 = 'b'.repeat(60);
+    const b = corpo({
+      ...VAZIA,
+      fila: { por_estado: { falha: 1 }, idade_pendente_s: null, falhas_por_codigo: { [codigo60]: 1 } },
+    });
+    expect(b.fila_email.falhas_por_codigo).toEqual({ [codigo60]: 1 });
+  });
+
   it('leitura malformada (valor negativo ou texto onde cabe numero) lanca erro, nunca vira zero', () => {
     expect(() =>
       montarPainelOps({ ...VAZIA, metricas: [{ chave: 'rls_negacao', dimensao: '', n: -1, soma_ms: null, max_ms: null }] }, SYNTH_NOW),

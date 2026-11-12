@@ -36,7 +36,10 @@ export const OPS_COTAS_CATALOGO: readonly { readonly servico: string; readonly p
 
 const ALERTA_MAXIMO_EMAIL = 2; // 59 §2.4: e-mail nao tem alerta de 95% (CA-H108-08).
 const ALERTA_MAXIMO_GRAVADO = 3;
+/** Codigo de motivo (ops.email_outbox.reason_code, migracao 20261111120000: ate 60 caracteres). */
 const CODIGO = /^[a-z][a-z0-9_]{0,59}$/;
+/** Dimensao de ops.ops_metric (migracao 20261111430000 e 76 §1.2: ate 40 caracteres, nunca identificador). */
+const DIMENSAO = /^[a-z][a-z0-9_]{0,39}$/;
 const SEM_TIPO = 'sem_tipo';
 
 /** Leitura do banco (JSON de private.ops_panel_read). Nomes em snake_case, como no contrato. */
@@ -198,11 +201,11 @@ function maiorMs(linhas: readonly MetricaValidada[]): number | null {
   return valores.length === 0 ? null : Math.max(...valores);
 }
 
-/** Contagem por tipo de falha. Dimensao vazia vira 'sem_tipo'; codigo fora do padrao nao sai. */
+/** Contagem por tipo de falha. Dimensao vazia vira 'sem_tipo'; dimensao fora do padrao (DIMENSAO) nao sai. */
 function porTipo(linhas: readonly MetricaValidada[]): Record<string, number> {
   const out: Record<string, number> = {};
   for (const m of linhas) {
-    if (m.dimensao !== '' && !CODIGO.test(m.dimensao)) continue;
+    if (m.dimensao !== '' && !DIMENSAO.test(m.dimensao)) continue;
     const tipo = m.dimensao === '' ? SEM_TIPO : m.dimensao;
     out[tipo] = (out[tipo] ?? 0) + m.n;
   }
