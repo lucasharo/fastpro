@@ -227,3 +227,11 @@ Nota: o número 56 aparece duplicado nas rodadas 19 (decisões de H-022 e H-026)
 - **62 (D-H030-4):** o aviso de duplicidade fica na publicação (#44), porque sem coordenada não há ponto para comparar.
 - **63 (D-H030-5):** H-024 (cobertura, #37) sai das dependências de H-030.
 - **64 (D-H030-6 a 11):** fotos ocultas sem fotos; campos obrigatórios conforme o refino; limite da descrição e valores de duplicidade e textos ficam como propostas revisáveis pelo desenho.
+
+## Rodada 22 (refino do código de 6 dígitos e nonce, #26 / H-013)
+
+- **65 (D-H013-2):** o rascunho é anexado também pelo link, com função compartilhada com o código (CA-07).
+- **66 (D-H013-3):** o nonce do rascunho fica no cookie __Host-fp_draft (decisão 56), e não num segundo cookie.
+- **67 (D-H013-4):** a #26 grava e-mail e primeiro nome no rascunho (CA-10).
+- **68 (D-H013-5):** o e-mail confirmado é um campo de data no rascunho, sem status novo (usado pela #43).
+- **69 (D-H013-1 e D-H013-6):** o código é POST /v1/auth/challenges/verify (a 08 §5.1 deve ser corrigida). A tela do código é entregue pela #26.
