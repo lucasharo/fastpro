@@ -9,11 +9,13 @@ import {
   PgAccessCasePort,
   PgAdminLoginLimits,
   PgAdminSessionRepository,
+  PgCatalogAdminPort,
   PgOpsPanelReader,
   type SqlClient,
 } from '@fastpro/db';
 import type { AdminAuthPort, AdminLogger, AdminLoginLimits } from '@fastpro/domain';
 import type { AdminAccessCaseRouteOptions } from './admin-access-case-route.js';
+import type { AdminCatalogRouteOptions } from './admin-catalog-route.js';
 import type { AdminOpsRouteOptions } from './admin-ops-route.js';
 import type { AdminStepUpRouteOptions } from './admin-step-up-route.js';
 import { criarAuthAdminSupabase } from './admin-auth-supabase.js';
@@ -84,6 +86,29 @@ export function montarPainelOperacional(
   return {
     guard: (secret, nowMs) => sessao.guard(secret, nowMs),
     ler: (nowMs) => leitor.ler(nowMs),
+    clock: opcoes.relogio ?? { nowMs: () => Date.now() },
+  };
+}
+
+/**
+ * Rotas /v1/admin/catalog (H-107, 81 §1). So monta com DATABASE_URL_APP_SYSTEM, ADMIN_BASE_URL e a fabrica da borda;
+ * sem qualquer um deles devolve undefined e as rotas seguem inexistentes (404). A guarda de cada requisicao
+ * (sessao, aal2, catalog.manage) continua na rota; a porta so e chamada depois dela.
+ */
+export function montarCatalogoAdmin(
+  env: AdminCasoEnv,
+  opcoes: AdminCasoOpcoes = {},
+): AdminCatalogRouteOptions | undefined {
+  const url = env.DATABASE_URL_APP_SYSTEM;
+  const baseUrl = env.ADMIN_BASE_URL;
+  if (!url || !baseUrl || opcoes.abrirCliente === undefined) return undefined;
+
+  const cliente = clienteDe(url, opcoes.abrirCliente);
+  const sessao = new PgAdminSessionRepository(cliente);
+  return {
+    guard: (secret, nowMs) => sessao.guard(secret, nowMs),
+    port: new PgCatalogAdminPort(cliente),
+    baseUrl,
     clock: opcoes.relogio ?? { nowMs: () => Date.now() },
   };
 }
