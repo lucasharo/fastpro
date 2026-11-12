@@ -127,7 +127,7 @@ describe('H-026 | expurgo em duas fases (M-07, M-11, orfaos)', () => {
     const rel = await sweepQuarantine({ store, storage, nowMs: () => AGORA });
     expect(store.apagados).toEqual([[ID_A]]);
     expect(store.linhas.has(ID_B)).toBe(true);
-    expect(rel).toEqual({ marcados: 2, removidos: 1, falhas: 1, orfaosRemovidos: 0, falhasOrfaos: 0 });
+    expect(rel).toEqual({ marcados: 2, removidos: 1, falhas: 1, orfaosRemovidos: 0, falhasOrfaos: 0, originaisLimpos: 0 });
   });
 
   it('M-11: objetos de rascunho descartado ou vencido saem; reexecutar nao apaga nada a mais (idempotente)', async () => {

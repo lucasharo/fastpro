@@ -20,12 +20,19 @@ import {
   type MediaIssueInput,
   type MediaIssueResult,
   type MediaRecord,
+  type MediaReduceBeginResult,
+  type MediaReduceDoneCode,
+  type MediaReduceRejectOut,
+  type MediaRejectCode,
   type MediaStorePort,
   type QuarantineStoragePort,
 } from '@fastpro/domain';
 import { handleRequest } from '../src/app.js';
 import { createDraftHasher } from '../src/drafts/draft-hash.js';
 import type { MediaDeps } from '../src/media/media-service.js';
+import { ReduceCounters } from '../src/media/media-reduce-service.js';
+import { ReduceGate } from '../src/media/reduce-gate.js';
+import { FakeReducer, MemReduceRows, MemReduceStorage, type LinhaR } from './media-fakes-h027.js';
 
 const SITE = 'https://fastpro.example.test';
 const CHAVE_IP = 'k'.repeat(40);
@@ -41,27 +48,24 @@ const uuid = (n: number): string => `00000000-0000-4000-8000-${String(n).padStar
 const cuid = (n: number): string => `11111111-1111-4111-8111-${String(n).padStart(12, '0')}`;
 const hasher = createDraftHasher(CHAVE_IP);
 
-interface Linha {
-  id: string;
-  draftHash: string;
+interface Linha extends LinhaR {
   clientUploadId: string;
   type: string;
   bytes: number;
-  confirmedMs: number | null;
   confirmedBytes: number | null;
   pendingExpiresMs: number;
-  purgeMs: number | null;
-  createdMs: number;
 }
 
-/** Banco em memoria com as mesmas regras de private.media_*. Conta o que chegaria ao banco. */
+/** Banco em memoria com as mesmas regras de private.media_* (H-026 e H-027). Conta o que chegaria ao banco. */
 class MemMedia implements MediaStorePort {
   readonly linhas = new Map<string, Linha>();
   readonly rascunhos = new Map<string, { status: 'aberto' | 'descartado'; expiresMs: number }>();
+  readonly diario: string[] = [];
   chamadas = 0;
   /** Vagas vivas por rascunho (88 §1). Padrao 5; o teste de cota eleva para isolar o limite de taxa. */
   vagasPorRascunho = 5;
   private seq = 0;
+  private readonly reducao = new MemReduceRows(this.linhas, (h, n) => this.vivo(h, n), this.diario);
 
   private vivo(hash: string, now: number): boolean {
     const r = this.rascunhos.get(hash);
@@ -70,12 +74,31 @@ class MemMedia implements MediaStorePort {
 
   private contaVivas(draftHash: string | null): number {
     return [...this.linhas.values()].filter(
-      (l) => l.purgeMs === null && (draftHash === null || l.draftHash === draftHash),
+      (l) => l.purgeMs === null && l.status !== 'rejected' && (draftHash === null || l.draftHash === draftHash),
     ).length;
   }
 
   private rec(l: Linha): MediaRecord {
-    return { id: l.id, status: 'pending', confirmed: l.confirmedMs !== null };
+    return { id: l.id, status: l.status, confirmed: l.confirmedMs !== null };
+  }
+
+  async reduceBegin(hash: string, id: string, nowMs: number, leaseS: number): Promise<MediaReduceBeginResult> {
+    return this.reducao.reduceBegin(hash, id, nowMs, leaseS);
+  }
+  async reduceDone(id: string, attempt: number, bytes: number, width: number, height: number, nowMs: number): Promise<MediaReduceDoneCode> {
+    return this.reducao.reduceDone(id, attempt, bytes, width, height, nowMs);
+  }
+  async reduceReject(id: string, attempt: number, code: MediaRejectCode, nowMs: number): Promise<MediaReduceRejectOut> {
+    return this.reducao.reduceReject(id, attempt, code, nowMs);
+  }
+  async reduceRelease(id: string, attempt: number, count: boolean): Promise<boolean> {
+    return this.reducao.reduceRelease(id, attempt, count);
+  }
+  async originalRemoved(id: string, nowMs: number): Promise<boolean> {
+    return this.reducao.originalRemoved(id, nowMs);
+  }
+  async originalCleanupList(limit: number): Promise<readonly string[]> {
+    return this.reducao.originalCleanupList(limit);
   }
 
   async issue(input: MediaIssueInput): Promise<MediaIssueResult> {
@@ -97,6 +120,15 @@ class MemMedia implements MediaStorePort {
     const id = uuid(++this.seq);
     const l: Linha = {
       id,
+      status: 'pending',
+      attempts: 0,
+      leaseMs: null,
+      rejectCode: null,
+      originalRemovedMs: null,
+      readyBytes: null,
+      readyWidth: null,
+      readyHeight: null,
+      readyMs: null,
       draftHash: input.secretHash,
       clientUploadId: input.clientUploadId,
       type: input.type,
@@ -204,6 +236,8 @@ interface Mundo {
   relogio: { agora: number };
   deps: MediaDeps;
   porta: number;
+  reducer: FakeReducer;
+  reduzidos: MemReduceStorage;
 }
 const servidores: Server[] = [];
 
@@ -212,6 +246,10 @@ async function iniciar(opcoes: { globalCap?: number } = {}): Promise<Mundo> {
   const storage = new FakeStorage();
   const rate = new MemRate();
   const relogio = { agora: T0 };
+  const reducer = new FakeReducer();
+  const reduzidos = new MemReduceStorage(store.diario);
+  // Original de teste: a reducao falsa devolve sempre a mesma saida; so os bytes de entrada importam pouco aqui.
+  reduzidos.padraoOriginal = new Uint8Array(1000).fill(1);
   const deps: MediaDeps = {
     store,
     storage,
@@ -219,6 +257,7 @@ async function iniciar(opcoes: { globalCap?: number } = {}): Promise<Mundo> {
     hasher,
     clock: { nowMs: () => relogio.agora },
     globalCap: opcoes.globalCap,
+    reduce: { store, storage: reduzidos, reducer, gate: new ReduceGate(), contadores: new ReduceCounters() },
   };
   const server = createServer((req, res) => {
     handleRequest(req, res, { tickSecret: undefined, media: { deps, siteUrl: SITE } }).catch(() => {
@@ -228,7 +267,7 @@ async function iniciar(opcoes: { globalCap?: number } = {}): Promise<Mundo> {
   servidores.push(server);
   await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
   const porta = (server.address() as AddressInfo).port;
-  return { store, storage, rate, relogio, deps, porta };
+  return { store, storage, rate, relogio, deps, porta, reducer, reduzidos };
 }
 
 /** Cria um rascunho vivo para o segredo informado. */
@@ -359,14 +398,17 @@ describe('H-026 | POST /v1/media/uploads (emissao)', () => {
     m.storage.objetos.set(mediaObjectKey(id), 1_000_000);
     const f1 = await pedir(m.porta, { metodo: 'POST', caminho: `${MEDIA_PATH.replace('/uploads', '')}/${id}/finalize`, cookie: c });
     const f2 = await pedir(m.porta, { metodo: 'POST', caminho: `${MEDIA_PATH.replace('/uploads', '')}/${id}/finalize`, cookie: c });
+    // H-027 (93 §2.3): finalize confirma e reduz; a repeticao devolve ready sem reencode (CA-06).
     expect(f1.status).toBe(200);
     expect(f2.status).toBe(200);
-    expect(JSON.parse(f2.body)).toEqual({ id, status: 'pending', confirmed: true });
+    expect(JSON.parse(f1.body)).toEqual({ id, status: 'ready', confirmed: true });
+    expect(JSON.parse(f2.body)).toEqual({ id, status: 'ready', confirmed: true });
+    expect(m.reducer.chamadas).toBe(1);
     const confirmadoAt = m.store.linhas.get(id)?.confirmedMs;
 
     const c3 = await pedir(m.porta, { metodo: 'POST', caminho: MEDIA_PATH, cookie: c, corpo: corpoEmissao(7) });
     expect(c3.status).toBe(200);
-    expect(JSON.parse(c3.body)).toEqual({ id, status: 'pending', confirmed: true });
+    expect(JSON.parse(c3.body)).toEqual({ id, status: 'ready', confirmed: true });
     expect(JSON.parse(c3.body)['upload_url']).toBeUndefined();
     expect(m.store.linhas.get(id)?.confirmedMs).toBe(confirmadoAt);
     expect(m.store.linhas.size).toBe(1);

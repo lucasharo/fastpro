@@ -30,6 +30,10 @@ const MIG_39 = LER('20261112120000_media_create_asset_quarantine');
 const MIG_40 = LER('20261112140000_media_expand_reduce_ready');
 const DOWN_40 = DESFAZER_LER('20261112140000_media_expand_reduce_ready');
 
+// Papeis que a migracao revoga de execute (fonte unica: o revoke da propria migracao; 'public' e pseudo-papel).
+const PAPEIS_SEM_EXECUTE = [...new Set([...MIG_40.matchAll(/revoke all on function[\s\S]*?from\s+([^;]+);/gi)].flatMap((m) => m[1].split(',').map((t) => t.trim())))].filter((p) => p !== '' && p !== 'public');
+if (PAPEIS_SEM_EXECUTE.length === 0) throw new Error('papeis do revoke nao encontrados na migracao');
+
 const sha = (s) => createHash('sha256').update(s).digest('hex');
 const IP = sha('ip-sintetico');
 const MIN = 60_000;
@@ -238,7 +242,7 @@ test('R-14: reject grava o codigo fixo; codigo fora da lista e barrado; cleanup 
     assert.equal(depois.rows[0].ids.map(String).includes(p.id), false);
   }));
 
-test('R-14: grants: anon, authenticated, service_role e PUBLIC sem execute; app_api com execute; search_path vazio', () =>
+test('R-14: grants: papeis revogados pela migracao sem execute; app_api com execute', () =>
   tx(async () => {
     const funcoes = [
       'private.media_reduce_begin(text,uuid,timestamptz,integer)',
@@ -249,7 +253,7 @@ test('R-14: grants: anon, authenticated, service_role e PUBLIC sem execute; app_
       'private.media_original_cleanup_list(integer)',
     ];
     for (const f of funcoes) {
-      for (const papel of ['anon', 'authenticated', 'service_role', 'public']) {
+      for (const papel of PAPEIS_SEM_EXECUTE) {
         const { rows } = await client.query(`select has_function_privilege($1, $2, 'execute') as ok`, [papel, f]);
         assert.equal(rows[0].ok, false, `${papel} nao executa ${f}`);
       }
