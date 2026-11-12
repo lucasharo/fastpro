@@ -6,5 +6,6 @@ export * from './identity/index.js';
 
 export * from './admin/index.js';
 export * from './geo/index.js';
+export * from './draft/index.js';
 
 export * from './catalog/index.js';
