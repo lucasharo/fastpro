@@ -15,3 +15,4 @@ export * from './access-case-handler.js';
 export * from './audit-query.js';
 export * from './console.js';
 export * from './auth-session.js';
+export * from './ops-panel.js';

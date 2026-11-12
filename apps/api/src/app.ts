@@ -9,6 +9,7 @@ import {
   ADMIN_AUDIT_QUERY_PATH,
   ADMIN_AUTH_SESSION_PATH,
   ADMIN_CONSOLE_MENU_PATH,
+  ADMIN_OPS_PANEL_PATH,
   ADMIN_STEP_UP_PATH,
   CATALOG_SEARCH_PATH,
   CONSUME_PATH,
@@ -23,6 +24,7 @@ import {
 import { handleAdminStepUpRoute, type AdminStepUpRouteOptions } from './admin-step-up-route.js';
 import { handleAdminAuditQuery, type AdminAuditRouteOptions } from './admin-audit-route.js';
 import { handleAdminConsoleMenu, type AdminConsoleRouteOptions } from './admin-console-route.js';
+import { handleAdminOpsPanel, type AdminOpsRouteOptions } from './admin-ops-route.js';
 import {
   handleAdminAuthSessionRoute,
   type AdminAuthSessionRouteOptions,
@@ -74,6 +76,8 @@ export interface AppOptions {
   readonly admin?: AdminAuditRouteOptions;
   /** Menu do console por papel (H-103). Sem esta opcao a rota GET /v1/admin/console/menu nao existe (404). */
   readonly adminConsole?: AdminConsoleRouteOptions;
+  /** Painel operacional (H-108). Sem esta opcao a rota GET /v1/admin/ops/panel nao existe (404). */
+  readonly adminOps?: AdminOpsRouteOptions;
   /** Estado da sessao admin para a interface (H-103). Sem esta opcao a rota GET /v1/admin/auth/session nao existe (404). */
   readonly adminAuthSession?: AdminAuthSessionRouteOptions;
   /** Acesso excepcional a conversa (H-073). Sem esta opcao as rotas /v1/admin/access-cases nao existem (404). */
@@ -181,6 +185,10 @@ export async function handleRequest(
   }
   if (req.method === 'GET' && path === ADMIN_CONSOLE_MENU_PATH && opts.adminConsole) {
     await handleAdminConsoleMenu(req, res, opts.adminConsole);
+    return;
+  }
+  if (req.method === 'GET' && path === ADMIN_OPS_PANEL_PATH && opts.adminOps) {
+    await handleAdminOpsPanel(req, res, opts.adminOps);
     return;
   }
   if (req.method === 'GET' && path === ADMIN_AUTH_SESSION_PATH && opts.adminAuthSession) {

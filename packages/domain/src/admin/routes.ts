@@ -111,10 +111,17 @@ export const ADMIN_ROUTES_H103: readonly AdminRouteSpec[] = [
   { method: 'GET', pattern: ADMIN_CONSOLE_MENU_PATH, permission: 'sessao' },
 ];
 
-/** Registro completo das rotas admin (H-102 + H-104 + H-073 + H-103). Fonte unica para a guarda da API. */
+/** Painel operacional (H-108, 76 §2): so leitura (GET), so Superadmin via ops.panel.read. */
+export const ADMIN_OPS_PANEL_PATH = '/v1/admin/ops/panel';
+export const ADMIN_ROUTES_H108: readonly AdminRouteSpec[] = [
+  { method: 'GET', pattern: ADMIN_OPS_PANEL_PATH, permission: 'ops.panel.read' },
+];
+
+/** Registro completo das rotas admin (H-102 + H-104 + H-073 + H-103 + H-108). Fonte unica para a guarda da API. */
 export const ADMIN_ROUTES: readonly AdminRouteSpec[] = [
   ...ADMIN_ROUTES_H102,
   { method: 'POST', pattern: ADMIN_AUDIT_QUERY_PATH, permission: 'audit.read' },
   ...ADMIN_ROUTES_H073,
   ...ADMIN_ROUTES_H103,
+  ...ADMIN_ROUTES_H108,
 ];

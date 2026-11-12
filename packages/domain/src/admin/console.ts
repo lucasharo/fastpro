@@ -10,6 +10,7 @@ import type { AdminPermission } from './roles.js';
 import {
   ADMIN_ACCESS_CASES_PATH,
   ADMIN_AUDIT_QUERY_PATH,
+  ADMIN_OPS_PANEL_PATH,
   type AdminMethod,
   type AdminRouteSpec,
 } from './routes.js';
@@ -37,7 +38,7 @@ export interface AdminConsoleScreen {
 
 /**
  * Catalogo das telas do console (70 §1). Ordem fixa: e a ordem do menu.
- * Hoje so quatro telas tem rota registrada (acesso-excepcional, acesso-aprovacao, auditoria, equipe).
+ * Hoje so cinco telas tem rota registrada (acesso-excepcional, acesso-aprovacao, auditoria, equipe, operacao).
  * A tela de equipe usa a acao de convite como rota; a listagem (GET /v1/admin/staff) ainda nao existe.
  */
 export const ADMIN_CONSOLE_SCREENS: readonly AdminConsoleScreen[] = [
@@ -89,6 +90,13 @@ export const ADMIN_CONSOLE_SCREENS: readonly AdminConsoleScreen[] = [
     permissao: 'audit.read',
     rota: { method: 'POST', pattern: ADMIN_AUDIT_QUERY_PATH },
     historiaDona: 'H-104',
+  },
+  {
+    id: 'operacao',
+    rotulo: 'Painel operacional',
+    permissao: 'ops.panel.read',
+    rota: { method: 'GET', pattern: ADMIN_OPS_PANEL_PATH },
+    historiaDona: 'H-108',
   },
   {
     id: 'equipe',

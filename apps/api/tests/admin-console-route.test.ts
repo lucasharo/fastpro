@@ -101,7 +101,7 @@ describe('T-H103-07 rota GET /v1/admin/console/menu via HTTP', () => {
   it('superadmin com sessao recebe 200 com so as telas do papel, sem permissoes nem e-mail', async () => {
     const r = await pedir(porta, cookieDe(SEG_SUPERADMIN));
     expect(r.status).toBe(200);
-    expect(idsDe(r)).toEqual(['acesso-aprovacao', 'equipe']);
+    expect(idsDe(r)).toEqual(['acesso-aprovacao', 'operacao', 'equipe']);
     expect(r.body).not.toMatch(/permiss|roles|e-?mail|u-superadmin/i);
     expect(r.headers['cache-control']).toBe('no-store');
     expect(r.headers['x-content-type-options']).toBe('nosniff');

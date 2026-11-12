@@ -23,11 +23,12 @@ export const ADMIN_PERMISSIONS = [
   'admin.role.manage',
   'case.open_sensitive',
   'case.authorize_sensitive',
+  'ops.panel.read',
 ] as const;
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
 
 export const ADMIN_ROLE_PERMISSIONS: Readonly<Record<AdminRole, readonly AdminPermission[]>> = {
-  superadmin: ['admin.role.manage', 'catalog.manage', 'case.authorize_sensitive'],
+  superadmin: ['admin.role.manage', 'catalog.manage', 'case.authorize_sensitive', 'ops.panel.read'],
   verificacao: ['verification.review'],
   moderador: ['moderation.decide'],
   financeiro: ['finance.refund.request', 'finance.refund.approve'],
