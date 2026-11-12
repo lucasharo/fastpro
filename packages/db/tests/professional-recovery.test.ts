@@ -13,6 +13,7 @@ type Aplicavel = 'password_reset' | 'professional_activate' | 'professional_veri
 function montar(opcoes: { aplicavel?: Aplicavel; peek?: boolean; consome?: boolean }) {
   const sql: { texto: string; params: unknown[] }[] = [];
   const envios: { email: string; token: string; purpose: string }[] = [];
+  const avisos: string[] = [];
   const auth: { id: string; senha: string }[] = [];
   const client = {
     async query(texto: string, params: unknown[] = []) {
@@ -51,6 +52,9 @@ function montar(opcoes: { aplicavel?: Aplicavel; peek?: boolean; consome?: boole
     async verificationLink(email: string, token: string) {
       envios.push({ email, token, purpose: 'professional_verify' });
     },
+    async passwordChangedNotice(email: string) {
+      avisos.push(email);
+    },
   };
   const adaptador = new PgProfessionalRecovery({
     client: client as never,
@@ -60,7 +64,7 @@ function montar(opcoes: { aplicavel?: Aplicavel; peek?: boolean; consome?: boole
     newId: () => '00000000-0000-4000-8000-000000000001',
     newSecret: () => TOKEN,
   });
-  return { adaptador, sql, envios, auth };
+  return { adaptador, sql, envios, auth, avisos };
 }
 
 describe('PgProfessionalRecovery.requestRecovery', () => {
@@ -99,6 +103,14 @@ describe('PgProfessionalRecovery.resendVerification (CA-H016-09)', () => {
     const m = montar({ aplicavel: null });
     await m.adaptador.resendVerification(EMAIL, T0);
     expect(m.envios).toEqual([]);
+  });
+});
+
+describe('PgProfessionalRecovery.resetPassword (aviso de senha alterada, 33 §6.1)', () => {
+  it('troca bem-sucedida envia o aviso para o e-mail da conta', async () => {
+    const m = montar({});
+    await m.adaptador.resetPassword(TOKEN, 'senha-sintetica-forte-2099', T0);
+    expect(m.avisos).toEqual([EMAIL]);
   });
 });
 

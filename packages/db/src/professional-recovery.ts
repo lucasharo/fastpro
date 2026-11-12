@@ -15,6 +15,7 @@ export type RecoveryPurpose = 'password_reset' | 'professional_activate';
 export interface RecoveryMailPort {
   recoveryLink(email: string, token: string, purpose: RecoveryPurpose): Promise<void>;
   verificationLink(email: string, token: string): Promise<void>;
+  passwordChangedNotice(email: string): Promise<void>;
 }
 
 export interface PgProfessionalRecoveryDeps {
@@ -115,6 +116,12 @@ export class PgProfessionalRecovery {
     if (!consumido || typeof consumido.out_email !== 'string') return false;
     // Troca bem-sucedida zera o contador de login da conta (33 §6.1, passo 3).
     await this.deps.client.query('select private.professional_login_success($1)', [this.loginKey(consumido.out_email)]);
+    // Aviso informativo (33 §6.1, passo 3): falha de envio nao desfaz a troca.
+    try {
+      await this.deps.mail.passwordChangedNotice(consumido.out_email);
+    } catch {
+      // Sem dado pessoal em log; o aviso pode ser reenviado pelo suporte depois do lancamento.
+    }
     return true;
   }
 }
