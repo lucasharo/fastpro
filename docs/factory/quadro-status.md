@@ -89,18 +89,18 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #136 | [E7] Mensagem automática do aceite |
 | #137 | [E11] Canal “no site” |
 
-## Product Owner (2)
+## Product Owner (1)
 
 | Issue | Título |
 |---|---|
-| #37 | [E2] Cobertura booleana sem contagem |
 | #42 | [E3] Pré-visualização e reordenação de fotos |
 
-## Arquitetura (2)
+## Arquitetura (3)
 
 | Issue | Título |
 |---|---|
 | #36 | [E2] Descoberta por raio e online nacional |
+| #37 | [E2] Cobertura booleana sem contagem |
 | #49 | [E4] Perfil: serviços, base e raio |
 
 ## Desenvolvimento (3)
