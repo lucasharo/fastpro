@@ -38,6 +38,19 @@ describe('T-H107-DB catalogo pelo adaptador Pg (cliente falso)', () => {
     expect(c?.params).toEqual([ID, 'catalog.manage,ops.panel.read', 'aal2', null, null, JSON.stringify({ name: 'Obra', group_id: ID })]);
   });
 
+  it('ponte de identidade: os quatro set_config gravam so os valores da guarda (tipo fixo, usuario, permissoes e aal)', async () => {
+    const { client, chamadas } = clienteFalso(() => [{ leitura: { groups: [], services: [], synonyms: [] } }]);
+    // Sessao sem segundo fator: o aal tem de chegar como aal1 e as permissoes como vieram da guarda.
+    await new PgCatalogAdminPort(client).listar({ userId: ID, permissions: ['catalog.manage'], aal2: false });
+    const [c] = chamadas;
+    expect(c?.sql).toContain("set_config('app.principal_type', 'admin', true) as tipo");
+    expect(c?.sql).toContain("set_config('app.principal_id', $1::text, true) as principal");
+    expect(c?.sql).toContain("set_config('app.permissions', $2::text, true) as permissoes");
+    expect(c?.sql).toContain("set_config('app.aal', $3::text, true) as aal");
+    expect(c?.sql).toContain('ctx.principal = $1::text and ctx.permissoes = $2::text and ctx.aal = $3::text');
+    expect(c?.params).toEqual([ID, 'catalog.manage', 'aal1']);
+  });
+
   it('o aal vai como aal1 quando a sessao nao tem o segundo fator (a funcao recusa)', async () => {
     const { client, chamadas } = clienteFalso(() => [{ leitura: {} }]);
     await new PgCatalogAdminPort(client).listar({ ...PRINCIPAL, aal2: false });

@@ -27,6 +27,10 @@ const SEG_SUPER = 'example-admin-secret-superadmin-cat-000000';
 const SEG_AUDITOR = 'example-admin-secret-auditor-cat-0000000';
 const SEG_SEM_AAL2 = 'example-admin-secret-sem-aal2-cat-0000000';
 const SEG_VENCIDO = 'example-admin-secret-vencido-cat-0000000';
+const SEG_VERIF = 'example-admin-secret-verificacao-cat-00000';
+const SEG_MOD = 'example-admin-secret-moderador-cat-0000000';
+const SEG_FIN = 'example-admin-secret-financeiro-cat-000000';
+const SEG_SUP = 'example-admin-secret-suporte-cat-0000000';
 
 function linha(userId: string, roles: string[], extra: Partial<AdminGuardRecord> = {}): AdminGuardRecord {
   return {
@@ -46,6 +50,10 @@ const LINHAS = new Map<string, AdminGuardRecord>([
   [SEG_AUDITOR, linha('u-auditor', ['auditor'])],
   [SEG_SEM_AAL2, linha('u-sem-aal2', ['superadmin'], { aal2: false })],
   [SEG_VENCIDO, linha('u-vencido', ['superadmin'], { expiresAtMs: T0 - 1 })],
+  [SEG_VERIF, linha('u-verif', ['verificacao'])],
+  [SEG_MOD, linha('u-mod', ['moderador'])],
+  [SEG_FIN, linha('u-fin', ['financeiro'])],
+  [SEG_SUP, linha('u-sup', ['suporte'])],
 ]);
 
 interface Resposta {
@@ -145,6 +153,34 @@ describe('T-H107-API rotas /v1/admin/catalog (CA-01, CA-02; 81 §4)', () => {
     const r = await pedir(porta, { caminho: ROTA, segredo: SEG_AUDITOR });
     expect(r.status).toBe(404);
     expect(r.body).toBe('');
+    expect(port.listar).not.toHaveBeenCalled();
+  });
+
+  it('verificacao, moderador, financeiro e suporte: 404 identico em GET e POST, sem banco de catalogo', async () => {
+    for (const segredo of [SEG_VERIF, SEG_MOD, SEG_FIN, SEG_SUP]) {
+      const leitura = await pedir(porta, { caminho: ROTA, segredo });
+      expect(leitura.status).toBe(404);
+      expect(leitura.body).toBe('');
+      const escrita = await pedir(porta, {
+        metodo: 'POST',
+        caminho: `${ROTA}/groups`,
+        segredo,
+        corpo: { expectedVersion: null, patch: { name: 'Grupo negado', position: 1, active: false } },
+      });
+      expect(escrita.status).toBe(404);
+      expect(escrita.body).toBe('');
+    }
+    expect(port.listar).not.toHaveBeenCalled();
+    expect(port.salvar).not.toHaveBeenCalled();
+  });
+
+  it('negacao de papel responde igual a rota inexistente (status, corpo, cache e tipo)', async () => {
+    const negado = await pedir(porta, { caminho: ROTA, segredo: SEG_VERIF });
+    const inexistente = await pedir(porta, { caminho: '/v1/admin/catalog-rota-inexistente', segredo: SEG_VERIF });
+    expect(negado.status).toBe(inexistente.status);
+    expect(negado.body).toBe(inexistente.body);
+    expect(negado.headers['cache-control']).toBe(inexistente.headers['cache-control']);
+    expect(negado.headers['content-type']).toBe(inexistente.headers['content-type']);
     expect(port.listar).not.toHaveBeenCalled();
   });
 

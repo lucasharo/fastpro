@@ -1,8 +1,8 @@
 // H-107 (Issue 116) | Testes de banco da gestao do catalogo (docs/factory/77-REFINO-H107.md CA-03, CA-05, CA-06,
 // CA-08 e permissao de leitura do historico; desenho 81-DESENHO-H107.md §2 e §6).
 // Banco de desenvolvimento COMPARTILHADO: cada caso roda dentro de transacao com ROLLBACK (nunca COMMIT).
-// A migracao 20261111450000 (catalog_revision_list) ainda NAO esta aplicada no banco de desenvolvimento: o
-// teste T-H107-05 a executa DENTRO da transacao, para provar a permissao, e o rollback a desfaz.
+// A migracao 20261111450000 (catalog_revision_list) e executada DENTRO da transacao do T-H107-05, para provar a
+// permissao sem depender de ela estar aplicada no banco de desenvolvimento; o rollback a desfaz.
 // Executar sozinho: node --test --test-concurrency=1 packages/db/tests/catalog-h107.dbtest.mjs
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -314,4 +314,35 @@ test('T-H107-05 catalog_revision_list: so administrador aal2 com catalog.manage 
       )
     ).rows[0];
     assert.deepEqual(priv, { anon: false, auth: false, publico: false, api: true });
+  }));
+
+// --- T-H107-06 (CA-04): sinonimo repetido com acento ou caixa diferente e recusado (23505) -----------
+
+test('T-H107-06 CA-04 sinonimo "Obra" existente: "OBRA" e "óbra" sao recusados como duplicata (23505) no mesmo servico', () =>
+  inTx(async () => {
+    const gid = await criarGrupoAtivo('Grupo CA04', 850);
+    await asAppApi(ADMIN);
+    const sid = (
+      await client.query('select private.catalog_service_save(null, null, $1::jsonb) as id', [
+        JSON.stringify({ name: 'Reforma ca04', group_id: gid, modality: 'presencial', regulated: false, active: true }),
+      ])
+    ).rows[0].id;
+    await client.query('select private.catalog_synonym_save(null, null, $1::jsonb)', [
+      JSON.stringify({ service_id: sid, term: 'Obra' }),
+    ]);
+    await expectError(
+      'select private.catalog_synonym_save(null, null, $1::jsonb)',
+      [JSON.stringify({ service_id: sid, term: 'OBRA' })],
+      '23505',
+    );
+    await expectError(
+      'select private.catalog_synonym_save(null, null, $1::jsonb)',
+      [JSON.stringify({ service_id: sid, term: 'óbra' })],
+      '23505',
+    );
+    await asOwner();
+    const total = (
+      await client.query('select count(*)::int as n from app.service_synonym where service_id = $1', [sid])
+    ).rows[0].n;
+    assert.equal(total, 1, 'so o sinonimo original deve existir');
   }));
