@@ -112,10 +112,11 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | Issue | Título |
 |---|---|
 
-## Desenvolvimento (3)
+## Desenvolvimento (2)
 
 | Issue | Título |
 |---|---|
+| #29 | [E1] Cadastro e login do profissional |
 | #129 | [E15] Dados sintéticos de demonstração |
 
 ## Aguardando aprovação (1)
