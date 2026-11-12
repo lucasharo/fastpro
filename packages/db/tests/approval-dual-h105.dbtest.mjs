@@ -685,3 +685,108 @@ test('T-H105-10 rollback recusa quando ha evento de auditoria dos tipos novos, m
     assert.match(recusa.message, /auditoria/);
     assert.equal(await existeFuncao(FUNCAO_ABRIR), true, 'a recusa nao altera nada');
   }));
+
+// ---- Ciclo de correção do QA (Issue #114): auditoria completa e efeito na conta suspensa ----
+
+/** Eventos de auditoria de um objeto, na ordem da cadeia. */
+async function eventosDe(objectId) {
+  const { rows } = await client.query(
+    `select seq::text as seq, at, actor_ref, actor_role, action, object_type, object_id,
+            before_state, after_state, reason_code
+       from audit.audit_event where object_id = $1 order by seq`, [objectId]);
+  return rows;
+}
+
+/** Evento com ator, objeto, estados anterior e posterior, motivo e hora (gravada na transacao de teste). */
+function confereEvento(ev, { acao, ator, tipo, objeto, antes, depois, motivo = null }) {
+  assert.equal(ev.action, acao);
+  assert.equal(ev.actor_ref, `admin:${ator}`, 'ator e quem executou a acao');
+  assert.equal(ev.actor_role, 'admin');
+  assert.equal(ev.object_type, tipo);
+  assert.equal(ev.object_id, objeto);
+  assert.deepEqual(ev.before_state, antes, 'estado anterior');
+  assert.deepEqual(ev.after_state, depois, 'estado posterior');
+  assert.equal(ev.reason_code, motivo);
+  assert.ok(ev.at instanceof Date, 'hora gravada');
+  assert.ok(Math.abs(Date.now() - ev.at.getTime()) < HORA, 'hora da transacao, nao o relogio falso do teste');
+}
+
+/** Verifica a cadeia de auditoria a partir de um numero de sequencia (inclui os eventos da transacao). */
+async function cadeiaIntegra(desde) {
+  const { rows } = await client.query('select * from private.audit_verify_chain($1, null)', [desde]);
+  return rows[0];
+}
+
+// T-H105-11 | expirada, negada, cancelada e suspensa: ator, estados, hora e cadeia integra
+test('T-H105-11 auditoria de expirada, negada, cancelada e suspensa: ator, estados, hora e cadeia integra', () =>
+  tx(async () => {
+    const fin = await equipe('financeiro');
+    const b = await equipe('financeiro');
+    const fin2 = await equipe('financeiro');
+    const suporte = await equipe('suporte');
+    const m1 = await equipe('moderador');
+    const m2 = await equipe('moderador');
+    const alvo = await profissional();
+
+    // expirada: voto apos 24 h
+    const vencida = await abrir(fin, T0, { valor: 15000 });
+    assert.equal((await votar(b, 'estorno', vencida, T0 + 24 * HORA + 1000)).status, 'expirada');
+    const evVencida = (await eventosDe(vencida)).filter((e) => e.action === 'approval.expired');
+    assert.equal(evVencida.length, 1, 'um evento de expiracao');
+    confereEvento(evVencida[0], { acao: 'approval.expired', ator: b, tipo: 'approval_request', objeto: vencida,
+      antes: { status: 'pendente' }, depois: { status: 'expirada' } });
+
+    // negada: voto de quem pediu (motivo autoaprovacao), com o pedido ainda pendente
+    const pedido2 = await abrir(fin2, T0, { valor: 20001 });
+    const negada = await client.query(
+      "select private.approval_dual_denied_record($1, 'estorno', $2, 'autoaprovacao', $3) as id",
+      [fin2, pedido2, at(T0 + 500)]);
+    assert.ok(negada.rows[0].id, 'negacao gravada para pedido real da familia');
+    const evNegada = (await eventosDe(pedido2)).filter((e) => e.action === 'approval.vote_denied');
+    assert.equal(evNegada.length, 1);
+    confereEvento(evNegada[0], { acao: 'approval.vote_denied', ator: fin2, tipo: 'approval_request', objeto: pedido2,
+      antes: {}, depois: { status: 'pendente' }, motivo: 'autoaprovacao' });
+
+    // cancelada: so quem pediu, de pendente para rejeitada
+    assert.equal(await cancelar(fin2, 'estorno', pedido2, T0 + 1000), 'rejeitada');
+    const evCancelada = (await eventosDe(pedido2)).filter((e) => e.action === 'approval.cancelled');
+    assert.equal(evCancelada.length, 1);
+    confereEvento(evCancelada[0], { acao: 'approval.cancelled', ator: fin2, tipo: 'approval_request', objeto: pedido2,
+      antes: { status: 'pendente' }, depois: { status: 'rejeitada' } });
+
+    // suspensa: o 2o Moderador aprova; o evento do perfil traz o pedido de origem
+    const susp = await abrir(suporte, T0, { acao: 'suspensao_permanente', alvo });
+    await votar(m1, 'suspensao_permanente', susp, T0 + 1000);
+    assert.equal((await votar(m2, 'suspensao_permanente', susp, T0 + 2000)).status, 'consumida');
+    const evSusp = (await eventosDe(alvo)).filter((e) => e.action === 'professional.suspended');
+    assert.equal(evSusp.length, 1, 'um evento de suspensao no perfil');
+    confereEvento(evSusp[0], { acao: 'professional.suspended', ator: m2, tipo: 'professional_profile', objeto: alvo,
+      antes: {}, depois: { status: 'suspensa', suspension_kind: 'permanente', approval_request_id: susp },
+      motivo: 'suspensao_permanente' });
+
+    const primeiro = Number((await eventosDe(vencida))[0].seq);
+    const integridade = await cadeiaIntegra(primeiro);
+    assert.equal(integridade.ok, true,
+      `cadeia de auditoria integra (falha em ${integridade.first_bad_seq}: ${integridade.reason})`);
+  }));
+
+// CA-H105-07 | efeito na conta suspensa: o banco nega elegibilidade (base de aceite e selecao) e a API le suspensa
+test('CA-H105-07 efeito na conta suspensa: nao elegivel, estado suspensa lido pela API, dados preservados', () =>
+  tx(async () => {
+    const suporte = await equipe('suporte');
+    const m1 = await equipe('moderador');
+    const m2 = await equipe('moderador');
+    const alvo = await profissional();
+    const id = await abrir(suporte, T0, { acao: 'suspensao_permanente', alvo });
+    await votar(m1, 'suspensao_permanente', id, T0 + 1000);
+    await votar(m2, 'suspensao_permanente', id, T0 + 2000);
+
+    const elegivel = await client.query('select private.professional_eligible($1) as ok', [alvo]);
+    assert.equal(elegivel.rows[0].ok, false, 'suspensa: a elegibilidade (base de aceite e selecao) e negada');
+    const me = await client.query('select * from private.professional_me($1)', [alvo]);
+    assert.equal(me.rows[0].out_status, 'suspensa', 'a API le o estado suspensa');
+    assert.equal(me.rows[0].out_email_verified, true, 'e-mail verificado preservado');
+    const perfil = await perfilDe(alvo);
+    assert.equal(perfil.suspension_reason, MOTIVO, 'motivo da suspensao registrado');
+    assert.notEqual(perfil.verified_at, null, 'data de verificacao preservada');
+  }));

@@ -24,7 +24,9 @@
 - `[PROPOSTA]` Dois votos distintos: o 1º voto deixa `pendente` e devolve `{votes:1, required:2}`; o 2º, de outra pessoa (diferente do solicitante e do 1º votante), passa a `aprovada` na mesma transação. 20 votos simultâneos: o `FOR UPDATE` serializa; depois de `aprovada`/`consumida` o gatilho recusa (`aprovacao_nao_pendente`), logo há **um** efeito.
 - `[PROPOSTA]` Estorno com `aprovada` e validade vencida antes de H-106 executar: a execução exige `status='aprovada'` **e** `expires_at > agora`; vencido, é preciso novo pedido (24 h vale do pedido, não do voto). H-106 herda esta regra.
 
-## 2. Mudanças de dados (migração `20261111450000_admin_approval_estorno_suspensao.sql`; rollback `supabase/rollbacks/…down.sql`)
+## 2. Mudanças de dados (migração `supabase/migrations/20261111460000_admin_approval_estorno_suspensao.sql`; rollback `supabase/rollbacks/20261111460000_admin_approval_estorno_suspensao.down.sql`)
+
+> Referência corrigida no ciclo de correção do QA da #114: o número real é 20261111460000 (20261111450000 é de `catalog_revision_list`). O rollback roda depois do rollback de 20261111470000 (H-109) e recusa com `rollback_recusado` se houver pedido ou evento de auditoria dos tipos novos (a trilha não se apaga).
 
 Sem tabela nova. Só colunas anuláveis e constraints recriadas; **nenhuma linha existente é alterada ou apagada** (as linhas atuais têm tipos antigos, `required_approvals=1` e os novos campos nulos, então satisfazem tudo).
 
@@ -77,6 +79,7 @@ Mapeiam CA-H105-01..12 do refino.
 - **T-H105-02 (CA-04/05)** solicitante vota → 403 e 0 linhas em `approval_vote`; mesmo aprovador duas vezes → negado, 1 voto; suspensão com o mesmo Moderador duas vezes → continua `pendente`.
 - **T-H105-03 (CA-06)** matriz papel × rota: Suporte e Auditor não votam estorno; Financeiro não pede nem vota suspensão; Superadmin não pede nem vota nenhum dos dois; chamada direta à API sem permissão → 403 mesmo com botão oculto.
 - **T-H105-04 (CA-07)** suspensão: 1 voto → `pendente`, perfil intacto; 2º voto de outro Moderador → perfil `suspensa`, `suspended_at`/`suspension_reason` preenchidos, pedido `consumida`, evento `professional.suspended`.
+- **Limitação do CA-07 (efeito na conta suspensa):** o banco ainda não tem função de aceite de trabalho nem de seleção de profissional. O efeito verificado no banco é `private.professional_eligible` falso (base de aceite e seleção) e `private.professional_me.out_status = 'suspensa'`. O bloqueio de trabalho e de seleção dentro dessas funções fica para a história que as criar. Coberto em `packages/db/tests/approval-dual-h105.dbtest.mjs`.
 - **T-H105-05 (CA-08)** vencimento: voto em `expires_at - 1 ms` ok; em `expires_at` e `+1 s` → 409, status `expirada`, perfil e dados intactos; novo pedido reabre o alvo.
 - **T-H105-06 (CA-09)** aprovador desativado ou sem papel antes do 2º voto → 403 e pedido não avança.
 - **T-H105-07 (CA-10)** 20 votos simultâneos de aprovadores distintos → exatamente 1 efeito e 1 `consumida`; 20 pedidos simultâneos do mesmo alvo → 1 pedido.
