@@ -1,9 +1,9 @@
 // H-097 (Issue 107) | Prioridade do login e cota no banco de desenvolvimento (T-H097-01, 02, 03 e 04).
 // Executado no banco de desenvolvimento (APP_ENV=development) com: node --test --test-concurrency=1 <este arquivo>.
 // Cada teste roda em transacao com rollback; relogio fixo em 2099; sem rede (provedor simulado).
-// Desenho: docs/factory/86-DESENHO-H097.md §2 e §5. Resultado e contagem: relatorio da #107.
+// Desenho: docs/factory/86-DESENHO-H097.md §2 e §5. Resultado e contagem: relatorio da Issue 107.
 // Fora deste arquivo (pendente): aceite adiado a 90 (critico) e digest a 85, que dependem da ingestao de
-// eventos; regra de conta nao cadastrada (F-1, bloqueio registrado na #107).
+// eventos; regra de conta nao cadastrada (F-1, bloqueio registrado na Issue 107).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
