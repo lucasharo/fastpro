@@ -9,7 +9,7 @@ import type { SqlClient } from './jobs-tick.js';
 /** Nome do indice de slug unico (migracao 20261111420000). Colisao: quem chama acrescenta sufixo. */
 export const PROFESSIONAL_SLUG_CONSTRAINT = 'professional_profile_slug_key';
 /** Nome do indice de HMAC entre perfis vivos. Colisao: a funcao grava como retida na repeticao. */
-export const PROFESSIONAL_HMAC_CONSTRAINT = 'professional_profile_document_hmac_vivo_key';
+export const PROFESSIONAL_DOCUMENTO_VIVO_CONSTRAINT = 'professional_profile_document_hmac_vivo_key';
 
 const SQL_FIND = `select (u.email_verified_at is not null) as email_verified, p.public_name, p.slug,
   p.document_type, p.verification_status
@@ -143,7 +143,7 @@ export class PgProfessionalProfile {
           slug = slugComSufixo(novo.slug, this.sufixo());
           continue;
         }
-        if (violacao(erro, PROFESSIONAL_HMAC_CONSTRAINT) && tentativasHmac < MAX_TENTATIVAS_HMAC - 1) {
+        if (violacao(erro, PROFESSIONAL_DOCUMENTO_VIVO_CONSTRAINT) && tentativasHmac < MAX_TENTATIVAS_HMAC - 1) {
           tentativasHmac += 1;
           continue;
         }

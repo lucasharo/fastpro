@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>FastPro - Cadastro do documento</title>
+    <link rel="stylesheet" href="/profissional-documento.css" />
+  </head>
+  <body>
+    <main class="pagina">
+      <h1>Cadastro do documento</h1>
+      <p id="aviso" class="aviso" role="status"></p>
+      <p id="alerta" class="alerta" role="alert"></p>
+      <form id="cadastro" novalidate>
+        <div class="campo">
+          <label for="tipo">Tipo de documento</label>
+          <select id="tipo" name="documentType">
+            <option value="">Escolha</option>
+            <option value="CPF">CPF (pessoa física)</option>
+            <option value="CNPJ">CNPJ (empresa ou MEI)</option>
+          </select>
+          <p id="erro-tipo" class="erro"></p>
+        </div>
+        <div class="campo">
+          <label for="nome">Nome público</label>
+          <p id="dica-nome" class="dica">De 2 a 80 caracteres. É como você aparece para os clientes.</p>
+          <input id="nome" name="publicName" type="text" maxlength="80" autocomplete="name" aria-describedby="dica-nome" />
+          <p id="erro-nome" class="erro"></p>
+        </div>
+        <div class="campo">
+          <label for="documento">Número do documento</label>
+          <p id="dica-documento" class="dica">Pode digitar com pontos e traços, ou só os números.</p>
+          <input id="documento" name="document" type="text" inputmode="numeric" autocomplete="off" aria-describedby="dica-documento" />
+          <p id="erro-documento" class="erro"></p>
+        </div>
+        <button id="salvar" type="submit">Salvar</button>
+      </form>
+    </main>
+    <script type="module" src="/profissional-documento.js"></script>
+  </body>
+</html>

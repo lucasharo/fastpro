@@ -1,0 +1,105 @@
+/* H-035 | Estilo da tela de cadastro do documento. Cores, espacos, raios e alturas vem so das variaveis do tema
+   (fonte unica em @fastpro/tokens). Nenhum valor de cor literal aqui (scripts/check-hex.mjs). */
+body {
+  margin: 0;
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-family), sans-serif;
+  font-weight: var(--font-weight-regular);
+}
+
+.pagina {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+}
+
+h1 {
+  margin: 0 0 var(--space-5);
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-brand);
+}
+
+form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.campo {
+  display: grid;
+  gap: var(--space-2);
+}
+
+label {
+  font-weight: var(--font-weight-medium);
+}
+
+input,
+select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--input-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-button);
+  background: var(--color-field);
+  color: var(--color-text-primary);
+  font: inherit;
+}
+
+input[aria-invalid="true"],
+select[aria-invalid="true"] {
+  border-color: var(--color-error-text);
+}
+
+.dica {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.erro {
+  margin: 0;
+  color: var(--color-error-text);
+}
+
+.erro:empty {
+  display: none;
+}
+
+.aviso:not(:empty),
+.alerta:not(:empty) {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-button);
+}
+
+.aviso:not(:empty) {
+  background: var(--color-success-background);
+  color: var(--color-success-text);
+}
+
+.alerta:not(:empty) {
+  background: var(--color-error-background);
+  color: var(--color-error-text);
+}
+
+button {
+  min-height: var(--button-height-md);
+  padding: 0 var(--space-6);
+  border: 0;
+  border-radius: var(--radius-button);
+  background: var(--color-button-primary-background);
+  color: var(--color-button-primary-text);
+  font: inherit;
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: progress;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}

@@ -11,6 +11,7 @@ dist/
 .turbo/
 .vercel/
 .supabase/
+supabase/.temp/
 coverage/
 # Sistema
 .DS_Store

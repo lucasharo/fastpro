@@ -4,7 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   PgProfessionalProfile,
-  PROFESSIONAL_HMAC_CONSTRAINT,
+  PROFESSIONAL_DOCUMENTO_VIVO_CONSTRAINT,
   PROFESSIONAL_SLUG_CONSTRAINT,
   slugComSufixo,
   type ProfessionalDocumentDbInput,
@@ -139,15 +139,15 @@ describe('PgProfessionalProfile.setDocument (H-035)', () => {
   });
 
   it('23505 do indice de HMAC: repete uma vez e devolve o que a funcao decide', async () => {
-    const cliente = new ClienteFalso([erroUnico(PROFESSIONAL_HMAC_CONSTRAINT), resultado('retida_duplicidade')]);
+    const cliente = new ClienteFalso([erroUnico(PROFESSIONAL_DOCUMENTO_VIVO_CONSTRAINT), resultado('retida_duplicidade')]);
     expect(await new PgProfessionalProfile({ client: cliente }).setDocument(novo())).toBe('retida_duplicidade');
     expect(cliente.chamadas).toHaveLength(2);
   });
 
   it('23505 do HMAC repetido: para depois da segunda tentativa', async () => {
-    const cliente = new ClienteFalso([erroUnico(PROFESSIONAL_HMAC_CONSTRAINT), erroUnico(PROFESSIONAL_HMAC_CONSTRAINT)]);
+    const cliente = new ClienteFalso([erroUnico(PROFESSIONAL_DOCUMENTO_VIVO_CONSTRAINT), erroUnico(PROFESSIONAL_DOCUMENTO_VIVO_CONSTRAINT)]);
     await expect(new PgProfessionalProfile({ client: cliente }).setDocument(novo())).rejects.toMatchObject({
-      constraint: PROFESSIONAL_HMAC_CONSTRAINT,
+      constraint: PROFESSIONAL_DOCUMENTO_VIVO_CONSTRAINT,
     });
     expect(cliente.chamadas).toHaveLength(2);
   });

@@ -10,11 +10,11 @@ import { montarIntegracoes } from '../src/composicao.js';
 const URL_BANCO = 'postgres://sintetica@localhost:5432/teste';
 const cliente: SqlClient = { query: async () => ({ rows: [] }) };
 
-const chaves = () => ({
-  DOCUMENT_HMAC_KEY: randomBytes(32).toString('base64'),
-  DATA_ENC_KEY_ACTIVE_VERSION: '1',
-  DATA_ENC_KEY_V1: randomBytes(32).toString('base64'),
-});
+const chaves = () => {
+  const b1 = randomBytes(32).toString('base64');
+  const b2 = randomBytes(32).toString('base64');
+  return { DOCUMENT_HMAC_KEY: b1, DATA_ENC_KEY_ACTIVE_VERSION: '1', DATA_ENC_KEY_V1: b2 };
+};
 
 describe('montarPerfilProfissional (H-035)', () => {
   it('sem variaveis nem fabrica: nao liga e lista so os nomes', () => {
@@ -49,17 +49,17 @@ describe('montarPerfilProfissional (H-035)', () => {
   });
 
   it('chave de cifra invalida: pendencia so com o nome, sem o valor', () => {
-    const invalida = 'segredo-curto-sintetico';
+    const curta = 'x-curta';
     const env = {
       DATABASE_URL_APP_SYSTEM: URL_BANCO,
       SITE_URL: 'https://fastpro.example.test',
       ...chaves(),
-      DOCUMENT_HMAC_KEY: invalida,
+      DOCUMENT_HMAC_KEY: curta,
     };
     const r = montarPerfilProfissional(env, { abrirCliente: () => cliente });
     expect(r.options).toBeUndefined();
     expect(r.pendencias).toEqual([PERFIL_PROFISSIONAL_CIFRA_NOME]);
-    expect(JSON.stringify(r)).not.toContain(invalida);
+    expect(JSON.stringify(r)).not.toContain(curta);
   });
 
   it('montarIntegracoes expoe o perfil e as pendencias proprias sem mudar as da busca', () => {
