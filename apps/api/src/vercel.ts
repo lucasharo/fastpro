@@ -5,6 +5,11 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { handleRequest } from './app.js';
 import { montarIntegracoes } from './composicao.js';
 import { abrirClienteSql } from './sql-pool.js';
+import { criarFabricaCatalogo } from './catalog/fabrica-pg.js';
+import { abrirPoolCatalogo } from './catalog/pool-pg.js';
+
+/** H-019: fabrica da busca de servico sobre o pool real (um pool por URL, reaproveitado entre chamadas). */
+const fabricaCatalogo = criarFabricaCatalogo(abrirPoolCatalogo);
 
 export default async function vercelHandler(
   req: IncomingMessage,
@@ -12,7 +17,7 @@ export default async function vercelHandler(
 ): Promise<void> {
   try {
     // H-073: o pool do papel app_system so e aberto quando DATABASE_URL_APP_SYSTEM e ADMIN_BASE_URL existem.
-    const integracoes = montarIntegracoes(process.env, { abrirClienteSql });
+    const integracoes = montarIntegracoes(process.env, { abrirClienteSql, fabricaCatalogo });
     await handleRequest(req, res, {
       tickSecret: process.env.JOBS_TICK_SECRET,
       catalog: integracoes.catalog,
