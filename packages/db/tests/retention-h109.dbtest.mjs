@@ -3,7 +3,9 @@
 // DENTRO da transacao de cada teste. Tudo e desfeito com rollback; nada persiste no banco de desenvolvimento.
 // Valores sinteticos (@example.test); prazos de teste (30 dias) existem so dentro da transacao, nunca na migracao.
 // Erros esperados usam savepoint, porque um erro no Postgres aborta a transacao inteira.
-// Nao cobre aqui: fase B (Storage, handler TS) e interrupcao no meio do lote (CA-H109-07, CA-H109-09).
+// Fase C no banco: CA-H109-04 (acao e evento na mesma transacao, hold entre A e C), CA-H109-07 (interrupcao no
+// meio do lote) e CA-H109-10 (colunas anonimizadas). Fase B e Storage (CA-H109-09) ficam com cliente falso nos
+// testes de dominio e de adaptador; a prova com Storage real esta pendente (82 §8, A-4).
 // Rodar sozinho: node --test --test-concurrency=1 packages/db/tests/retention-h109.dbtest.mjs
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -481,4 +483,197 @@ test('privilegios: funcoes de cadastro e expurgo executadas so por app_system', 
         `select has_function_privilege('app_system', $1, 'execute') as sistema`, [f]);
       assert.equal(rows[0].sistema, false, `${f} so roda dentro das funcoes publicas`);
     }
+  }));
+
+// ---------------------------------------------------------------------------------------------------------------
+// Fase C no banco (Issue #118, lacunas do QA): CA-H109-04, CA-H109-07 e CA-H109-10.
+// Os testes de acao usam RC-02 (anonimizar app_user). RC-01 excluir/anonimizar tem defeito conhecido na fase C
+// (cadastro_junto), registrado abaixo como teste todo.
+
+/** Politica executavel de uma classe pelo caminho completo (proposta, voto distinto, simulacao, aplicacao). */
+async function executavel(classe, acao) {
+  const g1 = await equipe('governanca_dados');
+  const g2 = await equipe('governanca_dados');
+  const p1 = await propor(g1, classe, { acao, simulacao: true });
+  assert.equal(await votar(g2, p1.aprov), 'aprovada');
+  await aplicar(g1, p1.change);
+  const pol = await politica(classe);
+  await simular(pol.id, T0);
+  const p2 = await propor(g1, classe, { acao, simulacao: false });
+  assert.equal(await votar(g2, p2.aprov), 'aprovada');
+  await aplicar(g1, p2.change);
+  return { g1, g2, policyId: pol.id };
+}
+
+/** Fase C de um lote: uma chamada, uma transacao no banco. Devolve as contagens (jsonb). */
+async function faseC(policyId, ids, ms, numeroLote = 1) {
+  const { rows } = await client.query(
+    'select private.retention_finalize_batch($1::uuid, $2::uuid[], $3::timestamptz, $4::integer) as r',
+    [policyId, ids, at(ms), numeroLote]);
+  return rows[0].r;
+}
+
+/** Eventos de lote que aplicaram acao (dry_run=false), opcionalmente de um numero de lote. */
+async function eventosDeExecucao(policyId, numeroLote = null) {
+  const { rows } = await client.query(
+    `select after_state from audit.audit_event
+      where action = 'retention.batch.executed' and object_id = $1 and after_state->>'dry_run' = 'false'
+        and ($2::int is null or (after_state->>'batch_no')::int = $2::int)`,
+    [policyId, numeroLote]);
+  return rows.map((r) => r.after_state);
+}
+
+/** Conta bloqueada e vencida (RC-02): entra no lote de anonimizacao sem objeto de Storage. */
+async function usuarioBloqueado(email) {
+  const id = randomUUID();
+  await client.query(
+    `insert into app.app_user (id, email, auth_user_id, status, email_verified_at, created_at, email_hmac)
+     values ($1, $2, $3, 'bloqueado', now(), $4, $5)`,
+    [id, email, randomUUID(), at(T0 - 60 * DIA), createHashHex()]);
+  return id;
+}
+
+// CA-H109-04 | hold posto entre A e C: a fase C reverte a marca, nao aplica a acao e grava o evento do lote
+// (held=1, processed=0) na mesma transacao; o evento nao identifica o sujeito
+test('CA-H109-04 hold posto entre as fases A e C: a fase C suspende, nao aplica a acao e grava o evento', () =>
+  tx(async () => {
+    const { g1, policyId } = await executavel('RC-01', 'excluir');
+    const sujeito = await profissionalComDocumento(T0 - 60 * DIA);
+    assert.ok((await lote(policyId)).includes(sujeito), 'fase A marca o sujeito');
+    await client.query(
+      'select private.legal_hold_place($1::uuid, $2::text, $3::uuid, $4::text, $5::timestamptz)',
+      [g1, 'user', sujeito, 'litigio_teste', at(T0 + 500)]);
+
+    assert.deepEqual(await faseC(policyId, [sujeito], T0 + 1000), { processed: 0, held: 1, failed: 0 });
+    const { rows: [perfil] } = await client.query(
+      'select retention_state, document_enc from app.professional_profile where user_id = $1', [sujeito]);
+    assert.equal(perfil.retention_state, null, 'a marca volta a nula');
+    assert.notEqual(perfil.document_enc, null, 'a acao nao foi aplicada');
+
+    const eventos = await eventosDeExecucao(policyId, 1);
+    assert.equal(eventos.length, 1, 'um evento do lote, na mesma transacao');
+    assert.equal(eventos[0].held, 1);
+    assert.equal(eventos[0].processed, 0);
+    assert.equal(JSON.stringify(eventos[0]).includes(sujeito), false, 'nenhum id de sujeito no evento');
+  }));
+
+// CA-H109-04 | acao e evento estao na mesma transacao: desfazer a fase C (savepoint) desfaz os dois
+test('CA-H109-04 acao e evento do lote na mesma transacao: desfazer a fase C desfaz os dois', () =>
+  tx(async () => {
+    const { policyId } = await executavel('RC-02', 'anonimizar');
+    const sujeito = await usuarioBloqueado(`${randomUUID()}@example.test`);
+    assert.ok((await lote(policyId)).includes(sujeito), 'fase A marca o sujeito');
+    await client.query('savepoint sp_fase_c');
+    assert.deepEqual(await faseC(policyId, [sujeito], T0 + 1000), { processed: 1, held: 0, failed: 0 });
+    const aplicado = await client.query('select retention_state, email from app.app_user where id = $1', [sujeito]);
+    assert.equal(aplicado.rows[0].retention_state, 'expurgado');
+    assert.match(aplicado.rows[0].email, /@anonimizado\.invalid$/, 'acao aplicada');
+    assert.equal((await eventosDeExecucao(policyId, 1)).length, 1, 'evento gravado junto com a acao');
+
+    await client.query('rollback to savepoint sp_fase_c');
+    const desfeito = await client.query('select retention_state, email from app.app_user where id = $1', [sujeito]);
+    assert.equal(desfeito.rows[0].retention_state, 'expurgando', 'a marca volta');
+    assert.doesNotMatch(desfeito.rows[0].email, /anonimizado/, 'a acao volta');
+    assert.equal((await eventosDeExecucao(policyId, 1)).length, 0, 'o evento some junto com a acao');
+  }));
+
+// CA-H109-07 | interrupcao injetada no meio da fase C (falha ao gravar o 2o sujeito): nada parcial e nenhum
+// evento; a reexecucao chega ao mesmo estado final e grava um unico evento do lote
+test('CA-H109-07 interrupcao no meio do lote: sem estado parcial, reexecucao idempotente e um unico evento', () =>
+  tx(async () => {
+    const { policyId } = await executavel('RC-02', 'anonimizar');
+    const lista = [
+      await usuarioBloqueado(`${randomUUID()}@example.test`),
+      await usuarioBloqueado(`${randomUUID()}@example.test`),
+      await usuarioBloqueado(`${randomUUID()}@example.test`),
+    ];
+    const falha = lista[1];
+    const marcados = await lote(policyId);
+    for (const s of lista) assert.ok(marcados.includes(s), 'fase A marca os tres sujeitos');
+
+    // Falha injetada: o gatilho so dispara para o id guardado na configuracao local da transacao.
+    await client.query(`create function public.h109_falha_injetada() returns trigger language plpgsql
+      set search_path = '' as $f$
+      begin
+        if new.id::text = current_setting('h109.falha_user', true) then
+          raise exception 'interrupcao_injetada' using errcode = 'P0001';
+        end if;
+        return new;
+      end
+      $f$`);
+    await client.query(`create trigger h109_falha_injetada before update on app.app_user
+                          for each row execute function public.h109_falha_injetada()`);
+    await client.query("select set_config('h109.falha_user', $1, true)", [falha]);
+
+    const interrompido = await erroEm(() => faseC(policyId, lista, T0 + 1000));
+    assert.match(interrompido?.message ?? '', /interrupcao_injetada/, 'a fase C para no meio do lote');
+    const { rows: meio } = await client.query(
+      'select retention_state, email from app.app_user where id = any($1::uuid[])', [lista]);
+    assert.equal(meio.length, 3);
+    for (const r of meio) {
+      assert.equal(r.retention_state, 'expurgando', 'nenhum sujeito ficou expurgado pela metade');
+      assert.doesNotMatch(r.email, /anonimizado/, 'e-mail intacto');
+    }
+    assert.equal((await eventosDeExecucao(policyId)).length, 0, 'nenhum evento parcial');
+
+    await client.query("select set_config('h109.falha_user', '', true)");
+    assert.deepEqual(await faseC(policyId, lista, T0 + 2000), { processed: 3, held: 0, failed: 0 });
+    const { rows: fim } = await client.query(
+      'select retention_state, email from app.app_user where id = any($1::uuid[])', [lista]);
+    for (const r of fim) {
+      assert.equal(r.retention_state, 'expurgado');
+      assert.match(r.email, /@anonimizado\.invalid$/);
+    }
+    // Reexecucao do ciclo: a fase A nao marca mais esses sujeitos, logo nao ha segundo evento
+    const depois = await lote(policyId, T0 + 3000);
+    for (const s of lista) assert.equal(depois.includes(s), false, 'ja expurgados: fora do lote');
+    const eventos = await eventosDeExecucao(policyId, 1);
+    assert.equal(eventos.length, 1, 'um unico evento do lote');
+    assert.equal(eventos[0].processed, 3);
+  }));
+
+// CA-H109-10 | anonimizar (RC-02): depois da fase C, nenhuma coluna da linha guarda e-mail em claro; o unico
+// valor com @ e o marcador irreversivel; a tabela nao tem coluna de telefone, endereco ou texto livre
+test('CA-H109-10 anonimizacao: colunas da linha sem e-mail, telefone, endereco ou texto livre em claro', () =>
+  tx(async () => {
+    const { policyId } = await executavel('RC-02', 'anonimizar');
+    const real = `${randomUUID()}@example.test`;
+    const sujeito = await usuarioBloqueado(real);
+    assert.ok((await lote(policyId)).includes(sujeito), 'conta bloqueada e vencida entra no lote');
+    assert.deepEqual(await faseC(policyId, [sujeito], T0 + 1000), { processed: 1, held: 0, failed: 0 });
+
+    const { rows: [linha] } = await client.query('select * from app.app_user where id = $1', [sujeito]);
+    assert.equal(linha.retention_state, 'expurgado');
+    assert.ok(linha.anonymized_at, 'anonymized_at preenchido');
+    assert.match(linha.email, /^anon\.[0-9a-f]{32}@anonimizado\.invalid$/, 'e-mail virou marcador irreversivel');
+    const local = real.split('@')[0];
+    for (const [coluna, valor] of Object.entries(linha)) {
+      if (typeof valor !== 'string') continue;
+      assert.equal(valor.includes(real), false, `${coluna}: sem o e-mail original`);
+      assert.equal(valor.includes(local), false, `${coluna}: sem a parte local original`);
+      if (valor.includes('@')) assert.match(valor, /@anonimizado\.invalid$/, `${coluna}: so o marcador`);
+    }
+    const { rows: colunas } = await client.query(
+      `select column_name from information_schema.columns where table_schema = 'app' and table_name = 'app_user'`);
+    for (const { column_name: c } of colunas) {
+      assert.doesNotMatch(c, /telefone|phone|endereco|address|logradouro|nome|name|texto|mensagem/i,
+        `${c}: a tabela nao guarda contato nem texto livre`);
+    }
+  }));
+
+// DEFEITO CONHECIDO (Issue #118): a fase C do RC-01 viola professional_profile_cadastro_junto, porque zera o
+// documento e mantem public_name e slug. Teste todo: nao derruba o build, mas fica visivel ate a decisao de
+// Arquitetura (limpar nome publico e slug junto, ou ajustar a regra). Assim que passar, remover o todo.
+test('CA-H109-04 RC-01 excluir: a fase C conclui e zera o documento', {
+  todo: 'defeito: professional_profile_cadastro_junto na fase C do RC-01 (decisao de Arquitetura)',
+}, () =>
+  tx(async () => {
+    const { policyId } = await executavel('RC-01', 'excluir');
+    const sujeito = await profissionalComDocumento(T0 - 60 * DIA);
+    assert.ok((await lote(policyId)).includes(sujeito));
+    assert.deepEqual(await faseC(policyId, [sujeito], T0 + 1000), { processed: 1, held: 0, failed: 0 });
+    const { rows: [perfil] } = await client.query(
+      'select retention_state, document_enc from app.professional_profile where user_id = $1', [sujeito]);
+    assert.equal(perfil.retention_state, 'expurgado');
+    assert.equal(perfil.document_enc, null);
   }));

@@ -89,7 +89,7 @@ Comandos: `corepack pnpm check:all`, `db:test`, `lint`, `typecheck`, `test`; res
 | CA-H109-06 | hold ativo suspende e conta em `held`; hold liberado, entra no ciclo seguinte; hold posto entre A e C reverte. |
 | CA-H109-07 | falha injetada entre fases; reexecução gera o mesmo estado final; um único evento por lote. |
 | CA-H109-08 | cadeia `private.audit_verify_chain` íntegra antes/depois; UPDATE/DELETE em `audit_event` continuam negados. |
-| CA-H109-09 | Storage fake no teste unitário: falha de remoção deixa a linha `expurgando` e nenhum objeto órfão. |
+| CA-H109-09 | Storage fake no teste unitário (`packages/domain/tests/retention-purge.test.ts`, `packages/db/tests/retention-adapters.test.ts`): falha de remoção deixa a linha `expurgando` e nenhum objeto órfão. **Pendente (QA #118):** prova com Storage real aguarda a escolha dos buckets (A-4); a verificação real fica para a história dona do bucket. |
 | CA-H109-10 | consulta nas colunas da linha anonimizada sem padrões de e-mail, telefone ou endereço. |
 | CA-H109-11 | teste de busca nas fontes de retenção e migrações: nenhum literal `interval '<n> day|month|year'`, nem `<n> anos` associado a RC-xx; linhas semeadas com `period null`. |
 | CA-H109-12 | **não verificável em H-109** (sem `review`); fica como contrato do adaptador e teste na história de avaliações. |
@@ -109,6 +109,9 @@ Comandos: `corepack pnpm check:all`, `db:test`, `lint`, `typecheck`, `test`; res
 - **A-3, `dry_run` obrigatório:** recomendado; custa uma mudança aprovada a mais por classe.
 - **A-4, buckets `identity-docs` e `request-photos`:** `[NÃO VERIFICADO]` se já existem no projeto Supabase (este desenho não usou o MCP). O DEV confirma no ambiente local e, se faltarem, o adaptador RC-01 testa com Storage fake e a verificação real fica para a história dona do bucket.
 - **A-5, entrega parcial de adaptadores:** RC-01, RC-02 e RC-07 agora; RC-03 a RC-06 e RC-10 acompanham a criação de suas tabelas. **Recomendação:** aceitar, com teste de contrato genérico em H-109.
+- **A-4, estado no QA (#118):** pendente. A escolha dos buckets `identity-docs` e `request-photos` não foi feita, então a prova com Storage real (CA-H109-09) não foi executada. Cobertura atual: cliente Storage falso. Decidir com a história dona de cada bucket.
+- **A-6, defeito na fase C do RC-01 (achado do QA #118, bloqueia a ativação de RC-01):** a regra `professional_profile_cadastro_junto` (H-035) exige que `public_name` e `slug` sejam nulos quando `document_type` é nulo. `private.retention_finalize_rc01` zera só os três campos do documento, então a fase C falha com 23514 para qualquer perfil com documento e o lote inteiro é desfeito. Teste `todo` no dbtest registra o defeito. **Decisão de Arquitetura:** (a) zerar também `public_name` e `slug` no expurgo (exige ajustar o guarda `professional_profile_guard_update`, que hoje protege esses campos) ou (b) relaxar `cadastro_junto` para permitir perfil sem documento com nome e slug. Recomendação do DEV: (a), porque nome público é dado pessoal.
+- **A-7, e-mail-marcador e HMAC residual na anonimização do RC-02 (achado do QA #118):** `email_hmac` em `app.app_user` foi criado em H-097, depois desta migração. A fase C do RC-02 troca o e-mail pelo marcador, mas mantém o HMAC, que continua reutilizável e pode casar com o login. O desenho (§3) pede "sem HMAC reutilizável". **Decisão:** incluir o `email_hmac` na anonimização (nova migração ou ajuste da função), ou registrar aceite do risco. O teste CA-H109-10 não afirma o HMAC.
 
 ## 9. Handoff ao DEV
 
