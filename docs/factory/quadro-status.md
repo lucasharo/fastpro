@@ -107,11 +107,10 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #43 | [E3] Revisão e confirmação expressa |
 | #26 | [E1] Código de 6 dígitos e nonce |
 
-## QA (2)
+## QA (1)
 
 | Issue | Título |
 |---|---|
-| #39 | [E3] Upload de fotos em quarentena |
 | #29 | [E1] Cadastro e login do profissional |
 
 ## Desenvolvimento (3)
@@ -119,6 +118,12 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | Issue | Título |
 |---|---|
 | #129 | [E15] Dados sintéticos de demonstração |
+
+## Aguardando aprovação (1)
+
+| Issue | Título |
+|---|---|
+| #39 | [E3] Upload de fotos em quarentena |
 
 ## Concluído (45)
 
