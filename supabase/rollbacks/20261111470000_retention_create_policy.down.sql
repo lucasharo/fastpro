@@ -82,6 +82,46 @@ begin
 end
 $$;
 
+-- 2b. Restaura a guarda do perfil profissional da H-105 (20261111460000), sem a excecao do expurgo.
+create or replace function private.professional_profile_guard_update()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if old.document_hmac is not null and (
+       new.public_name is distinct from old.public_name
+    or new.slug is distinct from old.slug
+    or new.document_type is distinct from old.document_type
+    or new.document_enc is distinct from old.document_enc
+    or new.document_hmac is distinct from old.document_hmac) then
+    raise exception 'professional_documento_imutavel' using errcode = '42501';
+  end if;
+
+  if new.verification_status is distinct from old.verification_status then
+    if not (
+         (old.document_hmac is null
+          and old.verification_status = 'pendente'
+          and new.verification_status in ('pendente', 'retida_duplicidade')
+          and new.document_hmac is not null)
+      or (new.verification_status = 'suspensa'
+          and old.verification_status <> 'suspensa'
+          and new.suspended_at is not null
+          and exists (
+            select 1 from app.approval_request r
+             where r.action_type = 'suspensao_permanente'
+               and r.subject_ref = new.user_id
+               and r.status = 'consumida'
+               and r.consumed_at = new.suspended_at))
+    ) then
+      raise exception 'professional_status_protegido' using errcode = '42501';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
 -- 3. Tabelas, colunas e restricoes -------------------------------------------------------------------------
 drop table if exists app.retention_object_queue;
 drop table if exists app.legal_hold;

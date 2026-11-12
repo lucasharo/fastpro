@@ -187,12 +187,43 @@ describe('T-H109 migracao 20261111470000 (teste estatico, sem banco)', () => {
     expect(marcar).toContain("v_pol.action = 'reter'");
   });
 
+  it('guarda do perfil: excecao estreita so para expurgando -> expurgado com documento nulo (82 §3)', () => {
+    const guarda = corpo('private.professional_profile_guard_update');
+    expect(guarda).toContain("old.retention_state = 'expurgando' and new.retention_state = 'expurgado'");
+    expect(guarda).toContain('new.document_enc is null and new.document_hmac is null');
+    // o resto da guarda continua: public_name e slug protegidos e status protegido
+    expect(guarda).toContain('new.public_name is distinct from old.public_name');
+    expect(guarda).toContain('new.slug is distinct from old.slug');
+    expect(guarda).toContain("'professional_status_protegido'");
+    expect(guarda).toContain("'professional_documento_imutavel'");
+  });
+
+  it('expurgo RC-01: a finalizacao zera os tres campos do documento na funcao do banco', () => {
+    const fase = corpo('private.retention_finalize_rc01');
+    expect(fase).toContain('document_type = null, document_enc = null, document_hmac = null');
+    expect(fase).toContain("retention_state = 'expurgado'");
+  });
+
+  it('rodizio: a fase A ordena por tentativas da fila antes do id, e nao por id puro', () => {
+    const marcar = corpo('private.retention_mark_batch');
+    expect(marcar).toContain('max(q.attempts)');
+    expect(marcar).toMatch(/order by \(select coalesce\(max\(q\.attempts\), 0\)[^;]*d\.subject_id/);
+  });
+
+  it('simulacao so grava last_dry_run_at quando a vigencia ja passou', () => {
+    const dry = corpo('private.retention_dry_run');
+    expect(dry).toContain('if v_pol.effective_from is not null and v_pol.effective_from <= p_now then');
+    expect(dry.indexOf('effective_from <= p_now')).toBeLessThan(dry.indexOf('set last_dry_run_at = p_now'));
+  });
+
   it('rollback existe, restaura a guarda de H-073 e nao toca audit.audit_event', () => {
     expect(rb).toContain('begin;');
     expect(rb).toContain('commit;');
     expect(rb).toContain("check (action_type in ('papel_superadmin', 'mfa_reenroll', 'acesso_conversa', 'estorno', 'suspensao_permanente'))");
     expect(rb).not.toContain('retencao_politica');
     expect(rb).toContain("create or replace function private.approval_vote_guard()");
+    expect(rb).toContain("create or replace function private.professional_profile_guard_update()");
+    expect(rb).not.toContain("old.retention_state = 'expurgando'");
     expect(rb).toContain("'suspensao_permanente' then");
     expect(rb).not.toMatch(/audit\.audit_event/);
   });

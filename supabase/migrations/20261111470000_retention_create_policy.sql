@@ -79,6 +79,51 @@ begin
 end
 $$;
 
+-- 0b. Guarda do perfil profissional (copia da H-105 com a excecao estreita do expurgo, 82 §3). Para qualquer
+-- outra troca de documento o comportamento e o da 460000.
+create or replace function private.professional_profile_guard_update()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  -- Excecao estreita do expurgo (H-109, 82 §3): so a passagem expurgando -> expurgado, com os tres campos
+  -- do documento nulos, pode trocar o documento. Public_name e slug continuam protegidos.
+  if old.document_hmac is not null and (
+       new.public_name is distinct from old.public_name
+    or new.slug is distinct from old.slug
+    or (not (old.retention_state = 'expurgando' and new.retention_state = 'expurgado'
+             and new.document_type is null and new.document_enc is null and new.document_hmac is null)
+        and (new.document_type is distinct from old.document_type
+          or new.document_enc is distinct from old.document_enc
+          or new.document_hmac is distinct from old.document_hmac))) then
+    raise exception 'professional_documento_imutavel' using errcode = '42501';
+  end if;
+
+  if new.verification_status is distinct from old.verification_status then
+    if not (
+         (old.document_hmac is null
+          and old.verification_status = 'pendente'
+          and new.verification_status in ('pendente', 'retida_duplicidade')
+          and new.document_hmac is not null)
+      or (new.verification_status = 'suspensa'
+          and old.verification_status <> 'suspensa'
+          and new.suspended_at is not null
+          and exists (
+            select 1 from app.approval_request r
+             where r.action_type = 'suspensao_permanente'
+               and r.subject_ref = new.user_id
+               and r.status = 'consumida'
+               and r.consumed_at = new.suspended_at))
+    ) then
+      raise exception 'professional_status_protegido' using errcode = '42501';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
 -- 1. Papel, permissoes e mapa (82 §5; A-1: governanca_dados; Superadmin nao herda) -----------------------
 insert into app.admin_role (code, label) values ('governanca_dados', 'Governanca de dados')
 on conflict (code) do nothing;
@@ -428,7 +473,10 @@ begin
       into v_elig, v_held
       from private.retention_due(v_pol.data_class, p_now - v_pol.period) d;
   end if;
-  update app.retention_policy set last_dry_run_at = p_now, updated_at = p_now where id = p_policy;
+  -- So registra a simulacao quando a vigencia ja passou: antes disso a simulacao nao e base para executar.
+  if v_pol.effective_from is not null and v_pol.effective_from <= p_now then
+    update app.retention_policy set last_dry_run_at = p_now, updated_at = p_now where id = p_policy;
+  end if;
   v_audit := private.audit_append('system:retention', 'system', 'retention.batch.executed', 'retention_policy',
     p_policy, '{}'::jsonb,
     jsonb_strip_nulls(jsonb_build_object('data_class', v_pol.data_class, 'action', v_pol.action,
@@ -458,9 +506,15 @@ begin
     return '{}'::uuid[];
   end if;
   v_cutoff := p_now - v_pol.period;
-  select coalesce(array_agg(x.subject_id order by x.subject_id), '{}'::uuid[]) into v_ids
+  -- Rodizio por tentativas: sujeito com objeto que ja falhou (attempts alto) vai para o fim da fila e nao
+  -- ocupa a vaga do lote de forma permanente. Sem falha, a ordem e por id (estavel).
+  select coalesce(array_agg(x.subject_id), '{}'::uuid[]) into v_ids
     from (select d.subject_id from private.retention_due(v_pol.data_class, v_cutoff) d
-           where not d.held order by d.subject_id limit p_limit) x;
+           where not d.held
+           order by (select coalesce(max(q.attempts), 0) from app.retention_object_queue q
+                      where q.policy_id = p_policy and q.subject_id = d.subject_id and q.state = 'pendente'),
+                    d.subject_id
+           limit p_limit) x;
   if cardinality(v_ids) = 0 then
     return v_ids;
   end if;

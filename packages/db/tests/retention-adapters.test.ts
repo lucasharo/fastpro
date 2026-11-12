@@ -14,7 +14,7 @@ import {
   registerRetentionHandlers,
   retentionPurgeDedupeKey,
 } from '../src/retention-jobs.js';
-import { RetentionAdminError } from '@fastpro/domain';
+import { RetentionAdminError, runRetentionPurge } from '@fastpro/domain';
 
 const AGORA = Date.UTC(2099, 0, 1, 3);
 /** Chave ficticia montada em partes: nunca um literal de credencial no codigo. */
@@ -203,5 +203,37 @@ describe('contrato generico das classes (CA-H109-01 e 11)', () => {
   it('chave de dedupe do dia e o kind do job', () => {
     expect(RETENTION_PURGE_KIND).toBe('retention.purge');
     expect(retentionPurgeDedupeKey(AGORA)).toBe('retention.purge:2099-01-01');
+  });
+});
+
+describe('contrato do expurgo com documento (RC-01)', () => {
+  it('politica RC-01 ativa: marca, finaliza pela funcao do banco, sem DML direto e sem objeto no esquema', async () => {
+    const cliente = new ClienteFalso([
+      ['from app.retention_policy', () => [{ id: 'p1', data_class: 'RC-01', enabled: true, dry_run: false, action: 'excluir', periodo: true }]],
+      ['retention_mark_batch', () => [{ ids: ['u1'] }]],
+      ['retention_finalize_batch', () => [{ r: { processed: 1, held: 0, failed: 0 } }]],
+    ]);
+    let storageChamado = false;
+    const rel = await runRetentionPurge({
+      store: new PgRetentionStore(cliente),
+      objetos: new ObjetosRetencaoSql(),
+      storage: {
+        remover: async () => {
+          storageChamado = true;
+        },
+      },
+      adaptadores: RETENTION_CLASSES_COM_ADAPTADOR,
+      now: () => AGORA,
+    });
+    expect(rel.processados).toBe(1);
+    expect(rel.falhos).toBe(0);
+    expect(storageChamado).toBe(false);
+    const sqls = cliente.chamadas.map((c) => c.sql);
+    expect(sqls.some((s) => s.includes('retention_mark_batch'))).toBe(true);
+    expect(sqls.some((s) => s.includes('retention_finalize_batch'))).toBe(true);
+    // Nenhuma escrita direta no documento: quem zera os campos e a funcao do banco (guarda estreita).
+    for (const sql of sqls) expect(sql).not.toMatch(/^\s*(update|delete|insert)\s/i);
+    const fim = cliente.chamadas.find((c) => c.sql.includes('retention_finalize_batch'));
+    expect(fim?.params).toEqual(['p1', ['u1'], new Date(AGORA).toISOString(), 1]);
   });
 });
