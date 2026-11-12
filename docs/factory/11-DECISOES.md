@@ -261,3 +261,9 @@ Nota: o número 56 aparece duplicado nas rodadas 19 (decisões de H-022 e H-026)
 - **83 (D-H027-5 e D-H027-6):** alvo de 0,5 MB e teto de 0,75 MB; a redução acontece no navegador antes de emitir o tamanho declarado.
 - **84 (D-H027-7 e D-H027-8):** rejeição definitiva só para falha que não se resolve; tempo, memória e erro de armazenamento são transitórios. A saída é JPEG (medido no S-06).
 - **85 (D-H027-9):** a carga do sharp em Linux precisa ser verificada antes da construção (não bloqueia o desenho).
+
+## Rodada 26 (desenho da redução de fotos, #40 / H-027)
+
+- **86 (93 §12.1):** teto de 3 tentativas por foto que sempre estoura tempo ou memória; a 4ª vira rejected/nao_processavel. Erro de armazenamento e carga da biblioteca de imagem nunca contam.
+- **87 (93 §12.2):** desenvolvimento no Windows; a carga da biblioteca de imagem em Linux x64 vira condição de liberação (junto da 88 §8).
+- **88 (93 §12.3):** o bucket request-photos é criado na migração 20261112140000.
