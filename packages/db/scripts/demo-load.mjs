@@ -5,7 +5,11 @@
 //   pnpm db:demo:remove -- --dry-run apaga marcados numa transacao e DESFAZ
 //   pnpm db:demo:remove              apaga so o que tem marcador de demo (de baixo para cima)
 // Reset total: `pnpm db:reset` ou `supabase db reset` (ja existentes; nada novo aqui).
-// Trava (FASTPRO_DEMO_ALLOW=local + host local; host remoto recusado sempre). Sem --force.
+// Trava (decisao 58, 11-DECISOES.md; 85-DESENHO-H120 §1): banco local com FASTPRO_DEMO_ALLOW=local, ou o
+// banco de desenvolvimento do projeto (APP_ENV=development exato e ref de NEXT_PUBLIC_SUPABASE_URL igual ao do banco).
+// Outro host, ambiente ou parametro de URL (que nao seja sslmode) e recusado. Sem --force.
+// Nao rodar a carga/remocao e o db:test ao mesmo tempo no mesmo banco: uma transacao que perde o bloqueio
+// falha com 40P01 (deadlock) e e desfeita, sem dano parcial.
 // Camada 1: 2 clientes, 13 perfis de profissional, 2 rascunhos e 1 coordenada comum.
 // Camada 2 (pedidos, aceites, chat, fotos): cada bloco so roda se a tabela existir (to_regclass) e o bloco
 // de que depende tiver rodado. Fotos dependem de cliente de Storage, ainda nao ligado (ver storageDaConfiguracao):

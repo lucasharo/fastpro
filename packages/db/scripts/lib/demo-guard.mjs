@@ -1,15 +1,26 @@
 // H-120 (Issue 129) | Trava de ambiente da carga de demonstracao e chaves de teste locais.
-// Funcoes puras (sem banco, sem rede, sem imprimir valores). Ver 85-DESENHO-H120 §1.
-//  - FASTPRO_DEMO_ALLOW precisa ser exatamente "local" (qualquer outro valor ou ausencia = recusa).
-//  - O host de DATABASE_URL_MIGRATIONS precisa ser 127.0.0.1, localhost ou ::1. Host remoto e
-//    recusado sempre (inclusive *.supabase.co e *.pooler.supabase.com), com ou sem a variavel.
-//  - Parametro host/hostaddr na URL e recusado (o driver usaria o host do parametro).
+// Funcoes puras (sem banco, sem rede, sem imprimir valores). Ver 85-DESENHO-H120 §1 e decisao 58
+// (11-DECISOES.md), que substitui a trava so-local para o banco de desenvolvimento do proprio projeto.
+// Aceita somente:
+//  - banco local (127.0.0.1, localhost ou ::1) com FASTPRO_DEMO_ALLOW exatamente "local"; ou
+//  - banco de desenvolvimento do projeto: APP_ENV exatamente "development" e o ref de
+//    NEXT_PUBLIC_SUPABASE_URL igual ao ref do banco, por padrao exato: host db.<ref>.supabase.co, ou
+//    usuario postgres.<ref> em *.pooler.supabase.com. Ref so no usuario ou so no host nao basta
+//    para outros padroes; nunca por substring.
+//  - Parametros de URL: somente sslmode. host, hostaddr, options, service, dbname e os demais sao recusados.
 // Recusa: { codigo, mensagem }. Nenhuma mensagem contem valor de conexao ou de chave.
 import { Buffer } from 'node:buffer';
 import { createCipheriv, createHash, createHmac, randomBytes } from 'node:crypto';
 
 export const DEMO_ALLOW_VALUE = 'local';
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
+// Unico parametro de URL permitido (decisao 58). Qualquer outro e recusado.
+const PARAMETROS_PERMITIDOS = new Set(['sslmode']);
+// Padroes exatos do Supabase (ref de 20 caracteres minusculos). Sem substring.
+const HOST_DIRETO_RE = /^db\.([a-z0-9]{20})\.supabase\.co$/;
+const HOST_POOLER_RE = /^[a-z0-9-]+\.pooler\.supabase\.com$/;
+const USUARIO_POOLER_RE = /^postgres\.([a-z0-9]{20})$/;
+const URL_PUBLICA_RE = /^https:\/\/([a-z0-9]{20})\.supabase\.co\/?$/;
 const NONCE_BYTES = 12;
 const KEY_BYTES = 32;
 const ADDRESS_KEY_MIN = 32;
@@ -17,6 +28,11 @@ const FORMAT_PREFIX = 'doc1';
 
 function recusa(codigo, mensagem) {
   return { codigo, mensagem };
+}
+
+/** Host de um objeto URL, sem colchetes e em minusculas. */
+function hostDe(url) {
+  return url.hostname.replace(/^\[|\]$/g, '').toLowerCase();
 }
 
 /** Host de uma URL de conexao, sem colchetes. null se a URL nao puder ser lida. */
@@ -27,38 +43,58 @@ export function hostOfDbUrl(dbUrl) {
   } catch {
     return null;
   }
-  return url.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  return hostDe(url);
 }
 
 /** Ref do projeto Supabase (20 caracteres minusculos) a partir da URL publica do .env.local. */
 export function projectRefOf(supabaseUrl) {
-  const m = typeof supabaseUrl === 'string' ? supabaseUrl.match(/^https:\/\/([a-z0-9]{20})\.supabase\.co/) : null;
+  const m = typeof supabaseUrl === 'string' ? URL_PUBLICA_RE.exec(supabaseUrl) : null;
   return m ? m[1] : null;
 }
 
 /**
+ * true se host e usuario apontam para o banco do projeto de ref. Padrao exato, sem substring:
+ * db.<ref>.supabase.co (ref no host); ou usuario postgres.<ref> em *.pooler.supabase.com (ref no usuario).
+ * Qualquer outro host de *.supabase.co e recusado, e o ref de outro padrao nao vale.
+ */
+function apontaParaProjeto(host, usuario, ref) {
+  if (ref === null) return false;
+  const direto = HOST_DIRETO_RE.exec(host);
+  if (direto !== null) return direto[1] === ref;
+  if (HOST_POOLER_RE.test(host)) {
+    const pool = USUARIO_POOLER_RE.exec(usuario);
+    return pool !== null && pool[1] === ref;
+  }
+  return false;
+}
+
+/**
  * Trava de ambiente. Devolve null quando a carga pode prosseguir.
- * Aceita (decisao 58): banco local com FASTPRO_DEMO_ALLOW="local"; OU o banco de DESENVOLVIMENTO
- * do proprio projeto (APP_ENV="development", ref do projeto na URL do banco igual ao ref de
- * NEXT_PUBLIC_SUPABASE_URL). Qualquer outro host, ambiente ou parametro e recusado.
+ * Aceita (decisao 58):
+ *  - banco local com FASTPRO_DEMO_ALLOW="local"; ou
+ *  - banco de DESENVOLVIMENTO do proprio projeto: APP_ENV="development" (exato) e o ref do banco
+ *    (padrao exato de host ou de usuario, ver apontaParaProjeto) igual ao ref de NEXT_PUBLIC_SUPABASE_URL.
+ * Qualquer outro host, ambiente ou parametro (que nao seja sslmode) e recusado.
  */
 export function demoGuardRefusal(env, dbUrl) {
   if (typeof dbUrl !== 'string' || dbUrl === '') {
     return recusa('banco_nao_configurado', 'DATABASE_URL_MIGRATIONS ausente (ambiente ou .env.local)');
   }
-  const host = hostOfDbUrl(dbUrl);
-  if (host === null) return recusa('banco_invalido', 'DATABASE_URL_MIGRATIONS nao pode ser lida');
-  let params;
+  let url;
   let usuario;
   try {
-    const u = new URL(dbUrl);
-    params = u.searchParams;
-    usuario = decodeURIComponent(u.username);
+    url = new URL(dbUrl);
+    usuario = decodeURIComponent(url.username);
   } catch {
     return recusa('banco_invalido', 'DATABASE_URL_MIGRATIONS nao pode ser lida');
   }
-  if (params.has('host') || params.has('hostaddr')) {
+  const host = hostDe(url);
+  const chaves = [...url.searchParams.keys()];
+  if (chaves.includes('host') || chaves.includes('hostaddr')) {
     return recusa('host_nao_local', 'a URL traz parametro de host; use somente host local ou o banco de desenvolvimento');
+  }
+  if (chaves.some((chave) => !PARAMETROS_PERMITIDOS.has(chave))) {
+    return recusa('parametro_nao_permitido', 'a URL traz parametro fora da lista permitida (somente sslmode)');
   }
   if (LOCAL_HOSTS.has(host)) {
     if (env.FASTPRO_DEMO_ALLOW !== DEMO_ALLOW_VALUE) {
@@ -66,13 +102,14 @@ export function demoGuardRefusal(env, dbUrl) {
     }
     return null;
   }
-  // Banco de desenvolvimento do projeto: APP_ENV=development e o mesmo ref do NEXT_PUBLIC_SUPABASE_URL.
   const ref = projectRefOf(env.NEXT_PUBLIC_SUPABASE_URL);
-  const noProjeto = ref !== null && (host.includes(ref) || usuario.includes(ref));
-  if (env.APP_ENV === 'development' && noProjeto && host.endsWith('.supabase.co') || (env.APP_ENV === 'development' && noProjeto && host.endsWith('.pooler.supabase.com'))) {
-    return null;
+  if (!apontaParaProjeto(host, usuario, ref)) {
+    return recusa('host_nao_local', 'o banco nao e local nem o banco de desenvolvimento deste projeto (ref de NEXT_PUBLIC_SUPABASE_URL ausente ou diferente)');
   }
-  return recusa('host_nao_local', 'o banco nao e local nem o banco de desenvolvimento deste projeto (APP_ENV=development)');
+  if (env.APP_ENV !== 'development') {
+    return recusa('ambiente_nao_permitido', 'banco de desenvolvimento exige APP_ENV exatamente "development"');
+  }
+  return null;
 }
 
 /** Chaves de teste locais (nomes fixos de 19 §7 e 54 §5). Ausente ou invalida = recusa, sem valor. */

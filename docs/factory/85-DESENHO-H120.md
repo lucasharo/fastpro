@@ -18,6 +18,7 @@
   2. Host de `DATABASE_URL_MIGRATIONS` precisa ser `127.0.0.1`, `localhost` ou `::1` (porta local do `supabase start`) ou um banco marcado efêmero por `FASTPRO_DEMO_EPHEMERAL=1`. Host `*.supabase.co`/`*.pooler.supabase.com` é recusado sempre, mesmo com a variável (a variável sozinha não basta).
   3. Sem chave nova em `ops.app_config`: a trava usa só os itens 1 e 2, repetidos dentro da transação.
   4. `--dry-run` aplica e desfaz, como H-018. Saída: contagens, nunca valores.
+- `[DECIDIDO]` **Nota (decisão 58, 2026-11-12, regra permanente):** o item 2 acima, que recusava qualquer banco não local, foi **substituído** para o banco de desenvolvimento compartilhado do `.env.local`. Agora a trava aceita (a) banco local com `FASTPRO_DEMO_ALLOW=local` ou (b) banco do próprio projeto com `APP_ENV=development` (exato) e ref igual ao de `NEXT_PUBLIC_SUPABASE_URL`, por padrão exato: host `db.<ref>.supabase.co`, ou usuário `postgres.<ref>` em `*.pooler.supabase.com`. Ref só no usuário ou só no host de outro padrão não basta. Qualquer outro parâmetro de URL que não seja `sslmode` é recusado. Sem `--force`. Ver `11-DECISOES.md` (58) e `packages/db/scripts/lib/demo-guard.mjs`.
 - `[PROPOSTA]` Catálogo: o script exige `app.service` já carregado por `db:seed:catalog` (H-018) e falha com instrução se estiver vazio. Não cria serviço (D2 do refino).
 - `[PROPOSTA]` Conteúdo (quantidades do refino §3):
 
@@ -62,6 +63,10 @@
 | Quebrar contagens de testes | Carga fora do reset; `db:test` usa banco próprio e, se for preciso testar o script, roda em transação desfeita |
 | Resíduo permanente (auditoria, Storage) | Sem eventos de auditoria na carga; Storage removido antes das linhas e conferido |
 | Esquema muda e a carga quebra | Blocos da camada 2 por `to_regclass`; teste de contagem por camada |
+
+**Nota (decisão 58, 2026-11-12):** a linha "Carga em ambiente errado" acima descreve a trava só-local, substituída para o banco de desenvolvimento do projeto. A trava atual está em `85-DESENHO-H120` §1 (nota) e em `11-DECISOES.md` (58): aceita banco local com `FASTPRO_DEMO_ALLOW=local`, ou o banco de desenvolvimento do projeto (`APP_ENV=development`, ref por padrão exato de host ou de usuário, parâmetros só `sslmode`). Outro host, ambiente ou parâmetro é recusado.
+
+**Concorrência:** não rodar a carga/remoção e o `db:test` ao mesmo tempo no mesmo banco. Uma transação que perde o bloqueio falha com `40P01` (deadlock) e é desfeita, sem dano parcial.
 
 ## 5. Testes e critérios verificáveis
 

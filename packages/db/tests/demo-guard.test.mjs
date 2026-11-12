@@ -1,5 +1,6 @@
 // H-120 (Issue 129) | Testes sem banco da trava, dos identificadores e das chaves da carga de demonstracao.
-// 85-DESENHO-H120 §1, §2 e §5 (CA-03). Executar: pnpm test (vitest). Nenhuma conexao e aberta.
+// 85-DESENHO-H120 §1, §2 e §5 (CA-03) e decisao 58 (banco de desenvolvimento do projeto).
+// Executar: pnpm test (vitest). Nenhuma conexao e aberta. Refs e senhas sao ficticios.
 import { describe, it, expect } from 'vitest';
 import { Buffer } from 'node:buffer';
 import { randomBytes, createDecipheriv } from 'node:crypto';
@@ -10,6 +11,7 @@ import {
   sealDocument,
   normalizeAddress,
   hostOfDbUrl,
+  projectRefOf,
 } from '../scripts/lib/demo-guard.mjs';
 import {
   DEMO_ID_RE,
@@ -47,7 +49,7 @@ describe('T-H120-01 trava de ambiente (CA-03)', () => {
     }
   });
 
-  it('recusa host remoto sempre, mesmo com FASTPRO_DEMO_ALLOW=local', () => {
+  it('recusa host remoto que nao e o banco de desenvolvimento, mesmo com FASTPRO_DEMO_ALLOW=local (decisao 58)', () => {
     const remotos = [
       'postgresql://postgres:x@db.abcdefgh.supabase.co:5432/postgres',
       'postgresql://postgres.abc:x@aws-0-sa-east-1.pooler.supabase.com:6543/postgres',
@@ -89,6 +91,101 @@ describe('T-H120-01 trava de ambiente (CA-03)', () => {
   it('extrai o host sem colchetes', () => {
     expect(hostOfDbUrl('postgresql://u:p@[::1]:5432/db')).toBe('::1');
     expect(hostOfDbUrl('postgresql://u:p@127.0.0.1:5432/db')).toBe('127.0.0.1');
+  });
+});
+
+describe('T-H120-01b banco de desenvolvimento do projeto (decisao 58)', () => {
+  // Refs ficticios de 20 caracteres minusculos. Nenhum e chave ou projeto real.
+  const DEV_REF = 'abcdefghijklmnopqrst';
+  const OUTRO_REF = 'zyxwvutsrqponmlkjihg';
+  const DEV_URL = `https://${DEV_REF}.supabase.co`;
+  const DEV_ENV = { APP_ENV: 'development', NEXT_PUBLIC_SUPABASE_URL: DEV_URL };
+  const DIRETO = (ref) => `postgresql://postgres:${SENHA_TESTE}@db.${ref}.supabase.co:5432/postgres`;
+  const POOLER = (ref) => `postgresql://postgres.${ref}:${SENHA_TESTE}@aws-0-sa-east-1.pooler.supabase.com:6543/postgres`;
+
+  it('aceita APP_ENV=development com ref igual: host direto e pooler, com e sem FASTPRO_DEMO_ALLOW', () => {
+    expect(demoGuardRefusal(DEV_ENV, DIRETO(DEV_REF))).toBeNull();
+    expect(demoGuardRefusal(DEV_ENV, POOLER(DEV_REF))).toBeNull();
+    expect(demoGuardRefusal({ ...DEV_ENV, FASTPRO_DEMO_ALLOW: 'local' }, POOLER(DEV_REF))).toBeNull();
+  });
+
+  it('aceita sslmode como unico parametro de URL', () => {
+    expect(demoGuardRefusal(DEV_ENV, `${DIRETO(DEV_REF)}?sslmode=require`)).toBeNull();
+    expect(demoGuardRefusal(DEV_ENV, `${POOLER(DEV_REF)}?sslmode=require`)).toBeNull();
+  });
+
+  it('recusa APP_ENV diferente de development: production, staging, Development, vazio e ausente', () => {
+    for (const extra of [{ APP_ENV: 'production' }, { APP_ENV: 'staging' }, { APP_ENV: 'Development' }, { APP_ENV: '' }, {}]) {
+      const env = { NEXT_PUBLIC_SUPABASE_URL: DEV_URL, ...extra };
+      expect(demoGuardRefusal(env, DIRETO(DEV_REF))?.codigo).toBe('ambiente_nao_permitido');
+      expect(demoGuardRefusal(env, POOLER(DEV_REF))?.codigo).toBe('ambiente_nao_permitido');
+    }
+  });
+
+  it('recusa ref diferente do NEXT_PUBLIC_SUPABASE_URL, direto e pooler', () => {
+    expect(demoGuardRefusal(DEV_ENV, DIRETO(OUTRO_REF))?.codigo).toBe('host_nao_local');
+    expect(demoGuardRefusal(DEV_ENV, POOLER(OUTRO_REF))?.codigo).toBe('host_nao_local');
+  });
+
+  it('recusa NEXT_PUBLIC_SUPABASE_URL ausente ou fora do formato https://<ref>.supabase.co', () => {
+    expect(demoGuardRefusal({ APP_ENV: 'development' }, DIRETO(DEV_REF))?.codigo).toBe('host_nao_local');
+    expect(demoGuardRefusal({ APP_ENV: 'development' }, POOLER(DEV_REF))?.codigo).toBe('host_nao_local');
+    const sufixoEvil = { APP_ENV: 'development', NEXT_PUBLIC_SUPABASE_URL: `${DEV_URL}.evil.com` };
+    expect(demoGuardRefusal(sufixoEvil, DIRETO(DEV_REF))?.codigo).toBe('host_nao_local');
+    const http = { APP_ENV: 'development', NEXT_PUBLIC_SUPABASE_URL: `http://${DEV_REF}.supabase.co` };
+    expect(demoGuardRefusal(http, POOLER(DEV_REF))?.codigo).toBe('host_nao_local');
+  });
+
+  it('recusa parametros fora de sslmode: options, host, hostaddr, service, dbname', () => {
+    const extras = [
+      `options=reference%3D${OUTRO_REF}`,
+      `host=db.${OUTRO_REF}.supabase.co`,
+      `hostaddr=10.0.0.1`,
+      `service=outro`,
+      `dbname=producao`,
+    ];
+    for (const p of extras) {
+      expect(demoGuardRefusal(DEV_ENV, `${POOLER(DEV_REF)}?${p}`)).not.toBeNull();
+      expect(demoGuardRefusal(DEV_ENV, `${DIRETO(DEV_REF)}?sslmode=require&${p}`)).not.toBeNull();
+    }
+    expect(demoGuardRefusal(DEV_ENV, `${POOLER(DEV_REF)}?options=reference%3D${OUTRO_REF}`)?.codigo).toBe('parametro_nao_permitido');
+    expect(demoGuardRefusal(DEV_ENV, `${DIRETO(DEV_REF)}?dbname=producao`)?.codigo).toBe('parametro_nao_permitido');
+  });
+
+  it('recusa host db de outro projeto com usuario postgres.<dev> (ref no usuario nao basta)', () => {
+    const url = `postgresql://postgres.${DEV_REF}:${SENHA_TESTE}@db.${OUTRO_REF}.supabase.co:5432/postgres`;
+    expect(demoGuardRefusal(DEV_ENV, url)?.codigo).toBe('host_nao_local');
+  });
+
+  it('recusa ref so na senha, pooler sem ref no usuario e ref so no host do pooler', () => {
+    expect(demoGuardRefusal(DEV_ENV, `postgresql://postgres:${DEV_REF}@db.${OUTRO_REF}.supabase.co:5432/postgres`)?.codigo).toBe('host_nao_local');
+    expect(demoGuardRefusal(DEV_ENV, `postgresql://postgres:${SENHA_TESTE}@aws-0-sa-east-1.pooler.supabase.com:6543/postgres`)?.codigo).toBe('host_nao_local');
+    expect(demoGuardRefusal(DEV_ENV, `postgresql://postgres:${SENHA_TESTE}@db.${DEV_REF}.pooler.supabase.com:6543/postgres`)?.codigo).toBe('host_nao_local');
+    expect(demoGuardRefusal(DEV_ENV, `postgresql://postgres.${DEV_REF}x:${SENHA_TESTE}@aws-0-sa-east-1.pooler.supabase.com:6543/postgres`)?.codigo).toBe('host_nao_local');
+  });
+
+  it('recusa host com sufixo de outro dominio (.evil.com), direto e pooler', () => {
+    const direto = `postgresql://postgres:${SENHA_TESTE}@db.${DEV_REF}.supabase.co.evil.com:5432/postgres`;
+    const pooler = `postgresql://postgres.${DEV_REF}:${SENHA_TESTE}@aws-0-sa-east-1.pooler.supabase.com.evil.com:6543/postgres`;
+    expect(demoGuardRefusal(DEV_ENV, direto)?.codigo).toBe('host_nao_local');
+    expect(demoGuardRefusal(DEV_ENV, pooler)?.codigo).toBe('host_nao_local');
+  });
+
+  it('nenhuma recusa deste bloco expoe a senha da conexao', () => {
+    const casos = [
+      demoGuardRefusal({ ...DEV_ENV, APP_ENV: 'production' }, DIRETO(DEV_REF)),
+      demoGuardRefusal(DEV_ENV, `${POOLER(DEV_REF)}?options=x`),
+      demoGuardRefusal(DEV_ENV, DIRETO(OUTRO_REF)),
+    ];
+    for (const r of casos) expect(JSON.stringify(r)).not.toContain('segredo-de-teste');
+  });
+
+  it('projectRefOf aceita so https://<ref de 20>.supabase.co, com barra final opcional', () => {
+    expect(projectRefOf(DEV_URL)).toBe(DEV_REF);
+    expect(projectRefOf(`${DEV_URL}/`)).toBe(DEV_REF);
+    expect(projectRefOf(`${DEV_URL}.evil.com`)).toBeNull();
+    expect(projectRefOf(`https://${DEV_REF.slice(1)}.supabase.co`)).toBeNull();
+    expect(projectRefOf(undefined)).toBeNull();
   });
 });
 
