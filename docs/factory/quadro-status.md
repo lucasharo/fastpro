@@ -4,7 +4,7 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (87)
+## Backlog (86)
 
 | Issue | Título |
 |---|---|
@@ -12,7 +12,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #14 | [Spike] Regras das lojas (login social, IAP, exclusão) |
 | #30 | [E1] Exclusividade de papéis |
 | #36 | [E2] Descoberta por raio e online nacional |
-| #37 | [E2] Cobertura booleana sem contagem |
 | #41 | [E3] Remoção de EXIF e tipo por conteúdo |
 | #42 | [E3] Pré-visualização e reordenação de fotos |
 | #44 | [E3] Publicação idempotente com 7 dias |
@@ -94,10 +93,11 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #136 | [E7] Mensagem automática do aceite |
 | #137 | [E11] Canal “no site” |
 
-## Product Owner (0)
+## Product Owner (1)
 
 | Issue | Título |
 |---|---|
+| #37 | [E2] Cobertura booleana sem contagem |
 
 ## Arquitetura (1)
 
