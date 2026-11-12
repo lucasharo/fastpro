@@ -35,6 +35,9 @@ importers:
 
   apps/admin:
     dependencies:
+      '@fastpro/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@fastpro/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens

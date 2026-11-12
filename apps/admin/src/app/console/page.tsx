@@ -2,6 +2,7 @@
 // Renderizada no servidor a cada requisicao (sem cache). O navegador nao guarda papeis: o menu vem da API
 // com o cookie da sessao admin, e a API decide o que aparece. Sem dado de tela nesta pagina.
 import { cookies } from 'next/headers';
+import { ADMIN_SESSION_COOKIE } from '@fastpro/domain';
 import {
   estadoDoMenu,
   TEXTO_ERRO,
@@ -12,16 +13,14 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-const COOKIE_SESSAO = '__Host-fp_admin';
-
 async function carregarMenu(): Promise<ConsoleEstado> {
-  const valor = (await cookies()).get(COOKIE_SESSAO)?.value;
+  const valor = (await cookies()).get(ADMIN_SESSION_COOKIE)?.value;
   if (valor === undefined) return { tipo: 'sem_sessao' };
   const base = process.env.NEXT_PUBLIC_API_BASE_URL;
   if (!base) return { tipo: 'erro' };
   try {
     const resposta = await fetch(`${base}/v1/admin/console/menu`, {
-      headers: { cookie: `${COOKIE_SESSAO}=${valor}` },
+      headers: { cookie: `${ADMIN_SESSION_COOKIE}=${valor}` },
       cache: 'no-store',
     });
     const corpo: unknown = resposta.status === 200 ? await resposta.json() : null;
@@ -36,12 +35,12 @@ export default async function PaginaConsole() {
   return (
     <main className="console">
       <h1>Console administrativo</h1>
+      {/* Itens do menu sem link: as paginas de destino (/console/<id>) ainda nao existem.
+          Quando cada historia entregar a sua tela, este bloco vira navegacao. */}
       {estado.tipo === 'telas' ? (
         <ul className="console-telas">
           {estado.telas.map((tela) => (
-            <li key={tela.id}>
-              <a href={tela.caminho}>{tela.rotulo}</a>
-            </li>
+            <li key={tela.id}>{tela.rotulo}</li>
           ))}
         </ul>
       ) : null}

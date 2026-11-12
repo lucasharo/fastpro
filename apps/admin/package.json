@@ -26,6 +26,7 @@
     "@types/react-dom": "^19.3.0"
   },
   "dependencies": {
+    "@fastpro/domain": "workspace:*",
     "@fastpro/tokens": "workspace:*",
     "next": "16.4.6",
     "react": "^19.3.1",
