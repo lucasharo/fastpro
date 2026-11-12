@@ -43,6 +43,8 @@ const ESPERADO: Readonly<Record<AdminRole, Readonly<Record<string, boolean>>>> =
   financeiro: { abrir: false, listar: true, aprovar: false, fechar: true, ler: false },
   suporte: { abrir: true, listar: true, aprovar: false, fechar: true, ler: true },
   auditor: { abrir: false, listar: true, aprovar: false, fechar: true, ler: false },
+  // H-109: papel de governanca de dados sem permissao de caso (82 §5).
+  governanca_dados: { abrir: false, listar: true, aprovar: false, fechar: true, ler: false },
 };
 
 function linhaDo(papel: AdminRole): AdminGuardRecord {

@@ -56,6 +56,8 @@ const ESPERADO_POR_PAPEL: Record<string, readonly string[]> = {
   financeiro: [],
   suporte: ['acesso-excepcional'],
   auditor: ['auditoria'],
+  // H-109: governanca de dados nao tem rota de console nesta etapa.
+  governanca_dados: [],
   superadmin: ['acesso-aprovacao', 'operacao', 'equipe', 'catalogo'],
 };
 

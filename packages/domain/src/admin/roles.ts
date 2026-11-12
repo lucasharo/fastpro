@@ -9,6 +9,7 @@ export const ADMIN_ROLES = [
   'financeiro',
   'suporte',
   'auditor',
+  'governanca_dados',
 ] as const;
 export type AdminRole = (typeof ADMIN_ROLES)[number];
 
@@ -27,6 +28,9 @@ export const ADMIN_PERMISSIONS = [
   // H-105 (Issue 114, 80 §1): suspensao permanente pedida pelo Suporte e aprovada por Moderadores.
   'account.suspend.request',
   'account.suspend.approve',
+  // H-109 (82 §5): politica de retencao e hold. Papel governanca_dados.
+  'retention.policy.manage',
+  'retention.hold.manage',
 ] as const;
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
 
@@ -37,6 +41,8 @@ export const ADMIN_ROLE_PERMISSIONS: Readonly<Record<AdminRole, readonly AdminPe
   financeiro: ['finance.refund.request', 'finance.refund.approve'],
   suporte: ['support.completion.correct', 'case.open_sensitive', 'account.suspend.request'],
   auditor: ['audit.read'],
+  // H-109 (82 §5): papel proprio de governanca de dados. O Superadmin nao herda estas permissoes.
+  governanca_dados: ['retention.policy.manage', 'retention.hold.manage'],
 };
 
 export function isAdminRole(value: unknown): value is AdminRole {
