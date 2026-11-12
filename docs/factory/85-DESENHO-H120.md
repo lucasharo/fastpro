@@ -88,3 +88,13 @@
 - **D3 (auditoria):** registrar carga/remoção na cadeia de auditoria? **Recomendação:** não (linha permanente de dado sintético); registrar na Issue.
 - **D4 (login da demo):** senha dos usuários de demo no Auth local. **Recomendação:** aleatória por carga, impressa uma vez no console local, nunca versionada.
 - **D5 (RLS na remoção):** confirmar no `db:test` que o papel de migrações local apaga com RLS forçada. **Recomendação:** o primeiro teste da remoção prova isso; se falhar, usar `SET LOCAL row_security = off` no papel dono, não funções `security definer` novas.
+
+## 7. Decisões do líder sobre a camada 2 (Issue #129, commit d7f5b31)
+
+Registradas após a revisão que aprovou a entrega para QA com ressalva.
+
+- **Pedidos:** 6 pedidos, todos `publicado`. Os estados `selecionado`, `concluído` e `cancelado` ficam como **pendência**: exigem linhas de seleção, conclusão ou cancelamento que não fazem parte desta carga.
+- **Mensagens de sistema:** 2 (uma por aceite), conforme o modelo 09 §3.7, que gera uma mensagem de sistema por aceite. O refino falava em "uma"; prevalece o modelo.
+- **Fotos no Storage:** saem de H-120 e viram **história própria**. O cliente de Storage (`criarStorageDemo`) está testado, mas não ligado, porque ler a chave de serviço fora de módulo permitido reprova `scripts/check-secrets`.
+- **Colunas da camada 2:** validar contra as migrações quando chegarem (`app.service_request`, `app.acceptance`, `app.conversation`, `app.message`, `app.media_asset`). Pontos a confirmar: `identity_id` nulo no aceite; formato de `address_text_enc`; gatilhos de DELETE em aceite e mensagem, que podem bloquear a remoção (a transação desfaz, falha segura).
+- **Enquanto as tabelas não existirem:** os blocos da camada 2 ficam pulados com aviso, e o CA-H120-04 da camada 2 não se aplica a nenhum banco.

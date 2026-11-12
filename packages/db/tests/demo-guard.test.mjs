@@ -1,6 +1,7 @@
 // H-120 (Issue 129) | Testes sem banco da trava, dos identificadores e das chaves da carga de demonstracao.
 // 85-DESENHO-H120 §1, §2 e §5 (CA-03). Executar: pnpm test (vitest). Nenhuma conexao e aberta.
 import { describe, it, expect } from 'vitest';
+import { Buffer } from 'node:buffer';
 import { randomBytes, createDecipheriv } from 'node:crypto';
 import {
   demoGuardRefusal,

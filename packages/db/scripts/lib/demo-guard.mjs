@@ -5,6 +5,7 @@
 //    recusado sempre (inclusive *.supabase.co e *.pooler.supabase.com), com ou sem a variavel.
 //  - Parametro host/hostaddr na URL e recusado (o driver usaria o host do parametro).
 // Recusa: { codigo, mensagem }. Nenhuma mensagem contem valor de conexao ou de chave.
+import { Buffer } from 'node:buffer';
 import { createCipheriv, createHash, createHmac, randomBytes } from 'node:crypto';
 
 export const DEMO_ALLOW_VALUE = 'local';
