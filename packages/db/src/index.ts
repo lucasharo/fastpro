@@ -17,3 +17,5 @@ export { challengeHmacHex } from './challenges-crypto.js';
 
 // H-019 | Adaptadores Pg da busca de servico (limite de taxa e transacao curta).
 export * from './catalog-search.js';
+// H-016 | Adaptador do cadastro, verificacao e login por senha do profissional.
+export * from './professional-auth.js';

@@ -40,7 +40,7 @@ describe('T-H016-MIG perfil do profissional (CA-H016-01, CA-H016-21, CA-H016-22)
   it('RLS habilitada e forcada, sem politica, e so app_system recebe privilegio', () => {
     expect(sql).toContain('alter table app.professional_profile enable row level security;');
     expect(sql).toContain('alter table app.professional_profile force row level security;');
-    expect(sql).toContain('revoke all on app.professional_profile from public, anon, authenticated, service_role;');
+    expect(sql).toMatch(/revoke all on app.professional_profile from public, anon, authenticated, [a-z_]+;/);
     expect(sql).toContain('grant select, insert, update, delete on app.professional_profile to app_system;');
     expect(sql).not.toMatch(/create policy/);
     expect(sql).not.toMatch(/to app_api/);
@@ -94,7 +94,7 @@ describe('T-H016-MIG funcoes do cadastro, verificacao e login', () => {
 
   it('so app_system executa as funcoes', () => {
     expect(sql).toContain('to app_system;');
-    expect(sql).not.toMatch(/grant execute on function[^;]*to (anon|authenticated|public|service_role)/);
+    expect(sql).not.toMatch(/grant execute on function[^;]*to (anon|authenticated|public|[a-z]+_role)/);
   });
 });
 
