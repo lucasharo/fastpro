@@ -2,7 +2,7 @@
 // Cliente falso registra o SQL; nenhuma conexao e aberta. Executar: pnpm test (vitest).
 import { describe, it, expect } from 'vitest';
 import { randomBytes } from 'node:crypto';
-import { carregarCamada1, removerDemo, runCamada2, REMOCAO, SQL, CAMADA2_BLOCOS } from '../scripts/demo-load.mjs';
+import { carregarCamada1, removerDemo, runCamada2, interpretarArgumentos, REMOCAO, SQL, CAMADA2_BLOCOS } from '../scripts/demo-load.mjs';
 import { loadDemoKeys } from '../scripts/lib/demo-guard.mjs';
 import { DEMO_ID_LIKE, isDemoId } from '../scripts/lib/demo-ids.mjs';
 
@@ -135,5 +135,23 @@ describe('T-H120-08 remocao seletiva (CA-H120-06, CA-H120-07)', () => {
     expect(SQL.inconsistencia).toContain('id::text not like $2');
     expect(SQL.inconsistencia).toContain('id::text like $2');
     expect(REMOCAO.every(([, sql]) => !/where\s+email\b/i.test(sql))).toBe(true);
+  });
+});
+
+// T-H120-17 (regressao): pnpm repassa "--" ao script; o separador nao pode virar argumento recusado.
+
+describe('T-H120-17 interpretacao dos argumentos (pnpm repassa "--")', () => {
+  it('"--" e separador: pnpm db:demo:load -- --dry-run vira so dry-run', () => {
+    expect(interpretarArgumentos(['--', '--dry-run'])).toEqual({ remover: false, dryRun: true, extras: [] });
+  });
+  it('remocao com separador e dry-run', () => {
+    expect(interpretarArgumentos(['--', '--remove', '--dry-run'])).toEqual({ remover: true, dryRun: true, extras: [] });
+  });
+  it('sem argumento: carga real, sem extras', () => {
+    expect(interpretarArgumentos([])).toEqual({ remover: false, dryRun: false, extras: [] });
+  });
+  it('argumento desconhecido continua recusado (vai para extras)', () => {
+    expect(interpretarArgumentos(['--', '--force']).extras).toEqual(['--force']);
+    expect(interpretarArgumentos(['--dry-run', 'x']).extras).toEqual(['x']);
   });
 });

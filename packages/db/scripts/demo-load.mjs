@@ -67,8 +67,9 @@ export const REMOCAO_CAMADA2 = Object.freeze([
     'delete from app.conversation where id::text like $1 or request_id::text like $1'],
   ['app.acceptance', 'aceites',
     'delete from app.acceptance where id::text like $1 or request_id::text like $1'],
+  // Esquema real (migracao 20261112120000): a foto liga-se ao rascunho por draft_id (nao ha owner_id).
   ['app.media_asset', 'fotos',
-    'delete from app.media_asset where id::text like $1 or owner_id::text like $1'],
+    'delete from app.media_asset where id::text like $1 or draft_id::text like $1'],
   ['app.service_request', 'pedidos',
     'delete from app.service_request where id::text like $1 or customer_user_id::text like $1'],
 ]);
@@ -365,7 +366,7 @@ export async function removerDemo(client, opts = {}) {
     }
   } else if (await tabelaExiste(client, 'app.media_asset')) {
     const fotos = await client.query(
-      'select count(*)::int as n from app.media_asset where id::text like $1 or owner_id::text like $1',
+      'select count(*)::int as n from app.media_asset where id::text like $1 or draft_id::text like $1',
       [DEMO_ID_LIKE],
     );
     if ((fotos.rows[0]?.n ?? 0) > 0) {
@@ -418,7 +419,7 @@ function storageDaConfiguracao() {
   return null;
 }
 
-function lerChavesDeTeste() {
+export function lerChavesDeTeste() {
   const env = {};
   for (const nome of ['DOCUMENT_HMAC_KEY', 'DATA_ENC_KEY_ACTIVE_VERSION', 'ADDRESS_HASH_KEY']) {
     env[nome] = loadEnvValue(nome);
@@ -430,10 +431,21 @@ function lerChavesDeTeste() {
   return env;
 }
 
+/**
+ * Interpreta os argumentos. O `--` que o pnpm repassa ao script (`pnpm db:demo:load -- --dry-run`) e separador,
+ * nao argumento. Qualquer outro valor desconhecido e recusado (extras).
+ */
+export function interpretarArgumentos(argv) {
+  const semSeparador = argv.filter((a) => a !== '--');
+  return {
+    remover: semSeparador.includes('--remove'),
+    dryRun: semSeparador.includes('--dry-run'),
+    extras: semSeparador.filter((a) => a !== '--remove' && a !== '--dry-run'),
+  };
+}
+
 async function main(argv) {
-  const remover = argv.includes('--remove');
-  const dryRun = argv.includes('--dry-run');
-  const extras = argv.filter((a) => a !== '--remove' && a !== '--dry-run');
+  const { remover, dryRun, extras } = interpretarArgumentos(argv);
   if (extras.length > 0) {
     erro('recusado (argumento_desconhecido): use --dry-run ou --remove');
     return 2;
