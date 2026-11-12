@@ -15,3 +15,5 @@ export * from './common-passwords.js';
 export * from './professional-auth.js';
 // H-035 | Validacao pura de CPF/CNPJ, nome publico e slug do perfil profissional (sem cifra).
 export * from './professional-document.js';
+// H-016 | Elegibilidade do profissional e corpo de GET /v1/professional/me (logica pura).
+export * from './professional-account.js';
