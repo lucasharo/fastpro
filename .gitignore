@@ -20,3 +20,6 @@ Thumbs.db
 *.gpg
 *.partial
 backups/
+
+# artefato de build do TypeScript
+*.tsbuildinfo
