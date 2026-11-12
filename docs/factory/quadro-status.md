@@ -4,7 +4,7 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (86)
+## Backlog (85)
 
 | Issue | Título |
 |---|---|
@@ -12,7 +12,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #14 | [Spike] Regras das lojas (login social, IAP, exclusão) |
 | #30 | [E1] Exclusividade de papéis |
 | #36 | [E2] Descoberta por raio e online nacional |
-| #41 | [E3] Remoção de EXIF e tipo por conteúdo |
 | #42 | [E3] Pré-visualização e reordenação de fotos |
 | #44 | [E3] Publicação idempotente com 7 dias |
 | #45 | [E3] Visibilidade de localização |
@@ -93,22 +92,23 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #136 | [E7] Mensagem automática do aceite |
 | #137 | [E11] Canal “no site” |
 
-## Product Owner (1)
+## Product Owner (2)
 
 | Issue | Título |
 |---|---|
+| #41 | [E3] Remoção de EXIF e tipo por conteúdo |
 | #37 | [E2] Cobertura booleana sem contagem |
 
-## Arquitetura (1)
+## Arquitetura (0)
+
+| Issue | Título |
+|---|---|
+
+## Desenvolvimento (2)
 
 | Issue | Título |
 |---|---|
 | #43 | [E3] Revisão e confirmação expressa |
-
-## Desenvolvimento (1)
-
-| Issue | Título |
-|---|---|
 | #129 | [E15] Dados sintéticos de demonstração |
 
 ## Code Review (1)
@@ -123,17 +123,12 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #26 | [E1] Código de 6 dígitos e nonce |
 
-## Aguardando aprovação (2)
+## Concluído (47)
 
 | Issue | Título |
 |---|---|
 | #29 | [E1] Cadastro e login do profissional |
 | #39 | [E3] Upload de fotos em quarentena |
-
-## Concluído (45)
-
-| Issue | Título |
-|---|---|
 | #35 | [E2] Célula generalizada e match_point |
 44)
 
