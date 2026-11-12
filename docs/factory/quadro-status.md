@@ -106,11 +106,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #43 | [E3] Revisão e confirmação expressa |
 
-## QA (1)
-
-| Issue | Título |
-|---|---|
-
 ## Desenvolvimento (3)
 
 | Issue | Título |
