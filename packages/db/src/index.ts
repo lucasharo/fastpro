@@ -27,4 +27,6 @@ export * from './admin-ops-panel.js';
 export * from './professional-profile.js';
 // H-107 (Issue 116) | Adaptador Pg da gestao do catalogo (private.catalog_admin_list, *_save, catalog_revision_list).
 export * from './catalog-admin.js';
+// H-105 (Issue 114) | Adaptador Pg da dupla aprovacao de estorno e suspensao (private.approval_dual_*).
+export * from './admin-dual-approval.js';
 export * from './request-draft.js';
