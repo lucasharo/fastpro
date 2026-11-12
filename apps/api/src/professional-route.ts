@@ -23,8 +23,13 @@ import {
   isProfessionalLinkToken,
   loginEmailOrNull,
   loginPasswordOrNull,
+  normalizeClientIp,
+  professionalSendRules,
   sessionCookieHeader,
+  worstRetryAfter,
   type ProfessionalAuthPort,
+  type ProfessionalSendLimitPort,
+  type RateWindowDecision,
 } from '@fastpro/domain';
 
 /** Corpo maximo aceito por estas rotas (senha de 72 bytes cabe folgado). */
@@ -33,6 +38,8 @@ const NO_STORE = { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer'
 
 export interface ProfessionalRouteOptions {
   readonly port: ProfessionalAuthPort;
+  /** Limites de envio por e-mail (intervalo e hora) e por IP do cadastro/reenvio (33 §2; CA-H016-09). */
+  readonly limits: ProfessionalSendLimitPort;
   readonly clock: { nowMs(): number };
   /** Piso de tempo de resposta em ms (padrao: PROFESSIONAL_RESPONSE_FLOOR_MS). Zero so em teste. */
   readonly responseFloorMs?: number;
@@ -96,7 +103,11 @@ function lerJson(req: IncomingMessage): Promise<Corpo> {
   });
 }
 
-/** Cadastro: 202 identico para e-mail novo e existente; 422 so por forma ou senha fraca. */
+/**
+ * Cadastro e reenvio: 202 identico para e-mail novo e existente; 422 so por forma ou senha fraca.
+ * Os limites de envio (e-mail e IP) valem antes de consultar a conta e dao 429 com Retry-After
+ * igual para e-mail novo ou existente. Um pedido barrado nao registra envio.
+ */
 export async function handleProfessionalRegister(
   req: IncomingMessage,
   res: ServerResponse,
@@ -109,8 +120,27 @@ export async function handleProfessionalRegister(
   if (!entrada.ok) {
     return enviar(piso, res, 422, {}, { code: 'campo_invalido', campo: entrada.campo, motivo: entrada.motivo });
   }
+  const agora = opts.clock.nowMs();
+  const regras = professionalSendRules(entrada.email, normalizeClientIp(req.socket.remoteAddress).value);
+  let decisoes: RateWindowDecision[];
   try {
-    await opts.port.register(entrada.email, entrada.password, opts.clock.nowMs());
+    decisoes = await Promise.all(regras.map((regra) => opts.limits.check(regra, agora)));
+  } catch {
+    return enviar(piso, res, 503, {}, SERVICE_UNAVAILABLE_BODY);
+  }
+  const espera = worstRetryAfter(decisoes);
+  if (espera !== null) {
+    return enviar(
+      piso,
+      res,
+      429,
+      { 'Retry-After': String(espera) },
+      { code: 'muitos_pedidos', retry_after_seconds: espera },
+    );
+  }
+  try {
+    await Promise.all(regras.map((regra) => opts.limits.record(regra, agora)));
+    await opts.port.register(entrada.email, entrada.password, agora);
   } catch {
     // Nunca 202 falso: a falha de infraestrutura nao pode parecer cadastro feito. A rota nao diz
     // se o e-mail existe; o adaptador ja trata o caso "existente" sem erro.

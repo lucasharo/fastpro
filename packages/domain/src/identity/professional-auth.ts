@@ -3,6 +3,7 @@
 // Sem I/O, sem log e sem senha na saida. O Supabase Auth e a credencial; aqui fica a politica.
 import { ChallengeInputError, normalizeChallengeEmail } from './challenge.js';
 import { professionalPasswordProblem, utf8Bytes, type ProfessionalPasswordProblem } from './password.js';
+import type { RateWindowDecision } from './rate-limit.js';
 
 export const PROFESSIONAL_REGISTER_PATH = '/v1/auth/professional/register';
 export const PROFESSIONAL_VERIFY_CONFIRM_PATH = '/v1/auth/professional/verification/confirm';
@@ -168,3 +169,54 @@ export interface ProfessionalAuthPort {
 
 /** Piso de tempo de resposta do cadastro e do login (33 §5.1 passo 4; auth.response_floor_ms). */
 export const PROFESSIONAL_RESPONSE_FLOOR_MS = 400;
+
+// ---------------------------------------------------------------------------------------------
+// Limites de envio do cadastro e do reenvio do link (33 §2, §3.1 passo 2, §4.4; CA-H016-09).
+// O reenvio para conta nao verificada acontece dentro do proprio cadastro (mesma rota), entao os
+// limites valem para as duas coisas. Contam antes de consultar a conta, para nao revelar existencia.
+
+/** Intervalo minimo entre dois envios para o mesmo e-mail (33 §2, auth.mail.min_interval_seconds). */
+export const PROFESSIONAL_MAIL_MIN_INTERVAL_SECONDS = 60;
+/** Teto de envios por hora para o mesmo e-mail (o quinto passa; o sexto e barrado). */
+export const PROFESSIONAL_MAIL_EMAIL_PER_HOUR = 5;
+/** Teto de cadastros e reenvios por hora para o mesmo IP. */
+export const PROFESSIONAL_MAIL_IP_PER_HOUR = 10;
+
+export type ProfessionalSendRule = 'email_intervalo' | 'email_hora' | 'ip_hora';
+
+/** Uma regra de envio: a janela, o balde e o limite. `value` e o e-mail normalizado ou o IP. */
+export interface ProfessionalSendRuleSpec {
+  readonly rule: ProfessionalSendRule;
+  readonly value: string;
+  readonly spanSeconds: number;
+  readonly bucketSeconds: number;
+  readonly limit: number;
+}
+
+/**
+ * Regras de um pedido de cadastro/reenvio. Intervalo minimo: uma unica entrada na janela de 60 s
+ * com balde de 1 s. Teto por hora: baldes de 60 s em 3600 s.
+ */
+export function professionalSendRules(email: string, ip: string): readonly ProfessionalSendRuleSpec[] {
+  return [
+    {
+      rule: 'email_intervalo',
+      value: email,
+      spanSeconds: PROFESSIONAL_MAIL_MIN_INTERVAL_SECONDS,
+      bucketSeconds: 1,
+      limit: 1,
+    },
+    { rule: 'email_hora', value: email, spanSeconds: 3600, bucketSeconds: 60, limit: PROFESSIONAL_MAIL_EMAIL_PER_HOUR },
+    { rule: 'ip_hora', value: ip, spanSeconds: 3600, bucketSeconds: 60, limit: PROFESSIONAL_MAIL_IP_PER_HOUR },
+  ];
+}
+
+/**
+ * Porta do contador de envios. No Postgres, fica sobre ops.rate_counter (private.rl_check e
+ * private.rl_hit, sem migracao nova); em memoria, nos testes. `check` nao registra; `record` registra
+ * o envio aceito.
+ */
+export interface ProfessionalSendLimitPort {
+  check(spec: ProfessionalSendRuleSpec, nowMs: number): Promise<RateWindowDecision>;
+  record(spec: ProfessionalSendRuleSpec, nowMs: number): Promise<void>;
+}

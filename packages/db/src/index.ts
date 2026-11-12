@@ -19,3 +19,5 @@ export { challengeHmacHex } from './challenges-crypto.js';
 export * from './catalog-search.js';
 // H-016 | Adaptador do cadastro, verificacao e login por senha do profissional.
 export * from './professional-auth.js';
+// H-016 | Contador de envios do cadastro e do reenvio sobre ops.rate_counter (rl_check e rl_hit).
+export * from './professional-send-limit.js';

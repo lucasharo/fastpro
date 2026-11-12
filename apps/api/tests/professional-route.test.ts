@@ -10,9 +10,14 @@ import { createServer, request, type IncomingHttpHeaders, type Server } from 'no
 import type { AddressInfo } from 'node:net';
 import { randomBytes } from 'node:crypto';
 import {
+  bucketStartSeconds,
+  decideRateWindow,
   gateProfessionalLogin,
   type ProfessionalAuthPort,
   type ProfessionalCredential,
+  type ProfessionalSendLimitPort,
+  type ProfessionalSendRuleSpec,
+  type RateWindowDecision,
   LOGIN_THROTTLE_EMPTY,
   type LoginThrottleState,
 } from '@fastpro/domain';
@@ -106,6 +111,40 @@ class PortaMemoria implements ProfessionalAuthPort {
   }
 }
 
+/**
+ * Contador de envios em memoria: mesma decisao do rl_check (decideRateWindow), baldes por regra e
+ * valor. `falha` simula a indisponibilidade do banco (a rota deve responder 503, sem conta).
+ */
+class LimitesMemoria implements ProfessionalSendLimitPort {
+  readonly baldes = new Map<string, Map<number, number>>();
+  falha = false;
+
+  private chave(spec: ProfessionalSendRuleSpec): string {
+    return `${spec.rule}|${spec.value}`;
+  }
+
+  async check(spec: ProfessionalSendRuleSpec, nowMs: number): Promise<RateWindowDecision> {
+    if (this.falha) throw new Error('falha de contador simulada');
+    const mapa = this.baldes.get(this.chave(spec)) ?? new Map<number, number>();
+    return decideRateWindow({
+      nowSeconds: Math.floor(nowMs / 1000),
+      bucketSeconds: spec.bucketSeconds,
+      spanSeconds: spec.spanSeconds,
+      limit: spec.limit,
+      buckets: [...mapa].map(([windowStart, count]) => ({ windowStart, count })),
+    });
+  }
+
+  async record(spec: ProfessionalSendRuleSpec, nowMs: number): Promise<void> {
+    if (this.falha) throw new Error('falha de contador simulada');
+    const chave = this.chave(spec);
+    const mapa = this.baldes.get(chave) ?? new Map<number, number>();
+    const inicio = bucketStartSeconds(Math.floor(nowMs / 1000), spec.bucketSeconds);
+    mapa.set(inicio, (mapa.get(inicio) ?? 0) + 1);
+    this.baldes.set(chave, mapa);
+  }
+}
+
 interface Resposta {
   readonly status: number;
   readonly headers: IncomingHttpHeaders;
@@ -115,6 +154,7 @@ interface Resposta {
 let server: Server | undefined;
 let base = '';
 const porta = new PortaMemoria();
+const limites = new LimitesMemoria();
 let agora = T0;
 let pisoMs = 0;
 
@@ -147,7 +187,7 @@ async function iniciar(): Promise<void> {
   server = createServer((req, res) => {
     void handleRequest(req, res, {
       tickSecret: undefined,
-      professional: { port: porta, clock: { nowMs: () => agora }, responseFloorMs: pisoMs },
+      professional: { port: porta, limits: limites, clock: { nowMs: () => agora }, responseFloorMs: pisoMs },
     });
   });
   await new Promise<void>((ok) => server?.listen(0, '127.0.0.1', ok));
@@ -167,6 +207,8 @@ beforeEach(async () => {
   porta.verificacoes = 0;
   porta.falhaCadastro = false;
   porta.falhaLogin = false;
+  limites.baldes.clear();
+  limites.falha = false;
   if (!server) await iniciar();
 });
 
@@ -194,6 +236,7 @@ describe('T-H016-02 anti-enumeracao no cadastro (CA-H016-02)', () => {
   it('e-mail ja existente recebe o mesmo status, o mesmo corpo e nao troca a senha', async () => {
     await criarConta();
     const novo = await post('/v1/auth/professional/register', json({ email: 'outra@example.test', password: SENHA }));
+    agora += 61 * 1000; // o intervalo minimo de 60 s por e-mail (CA-H016-09) nao e o assunto deste teste
     const existente = await post('/v1/auth/professional/register', json({ email: EMAIL, password: 'outra-senha-x' }));
     expect(existente.status).toBe(novo.status);
     expect(existente.text).toBe(novo.text);
@@ -400,3 +443,65 @@ describe('T-H016-07 nenhuma senha ou e-mail em resposta de erro', () => {
   });
 });
 
+
+describe('limites de envio do cadastro e do reenvio (CA-H016-09; 33 §2, §3.1 passo 2, §4.4)', () => {
+  const REGISTRO = '/v1/auth/professional/register';
+
+  it('segundo envio ao mesmo e-mail antes de 60 s: 429 com Retry-After restante, sem conta nova', async () => {
+    await criarConta();
+    agora += 20 * 1000;
+    const r = await post(REGISTRO, json({ email: EMAIL, password: SENHA }));
+    expect(r.status).toBe(429);
+    expect(r.headers['retry-after']).toBe('40');
+    expect(JSON.parse(r.text)).toEqual({ code: 'muitos_pedidos', retry_after_seconds: 40 });
+    expect(r.text).not.toContain(EMAIL);
+    expect(porta.usuarios.size).toBe(1);
+    expect(porta.links.size).toBe(1);
+  });
+
+  it('depois de 60 s o mesmo e-mail volta a passar (202)', async () => {
+    await criarConta();
+    agora += 60 * 1000;
+    const r = await post(REGISTRO, json({ email: EMAIL, password: SENHA }));
+    expect(r.status).toBe(202);
+  });
+
+  it('quinto envio por hora passa; o sexto (com 61 s entre envios) e barrado pelo teto de hora', async () => {
+    await criarConta(); // envio 1 em t=0
+    for (let i = 0; i < 4; i++) {
+      agora += 61 * 1000; // envios 2 a 5 em t=61, 122, 183, 244 s
+      expect((await post(REGISTRO, json({ email: EMAIL, password: SENHA }))).status).toBe(202);
+    }
+    agora += 61 * 1000; // envio 6 em t=305 s: o intervalo ja passou; so o teto de hora barra
+    const r = await post(REGISTRO, json({ email: EMAIL, password: SENHA }));
+    expect(r.status).toBe(429);
+    expect(r.headers['retry-after']).toBe('3295');
+    expect(porta.usuarios.size).toBe(1);
+    expect(porta.links.size).toBe(1);
+  });
+
+  it('teto por IP: o 11o cadastro na mesma hora e barrado, mesmo com e-mails diferentes', async () => {
+    for (let i = 0; i < 10; i++) {
+      const r = await post(REGISTRO, json({ email: `pessoa${i}@example.test`, password: SENHA }));
+      expect(r.status).toBe(202);
+    }
+    const r = await post(REGISTRO, json({ email: 'pessoa10@example.test', password: SENHA }));
+    expect(r.status).toBe(429);
+    expect(r.headers['retry-after']).toBe('3600');
+    expect(porta.usuarios.has('pessoa10@example.test')).toBe(false);
+  });
+
+  it('falha do contador responde 503 e nao cria conta', async () => {
+    limites.falha = true;
+    const r = await post(REGISTRO, json({ email: EMAIL, password: SENHA }));
+    expect(r.status).toBe(503);
+    expect(r.text).not.toContain(SENHA);
+    expect(porta.usuarios.size).toBe(0);
+  });
+
+  it('pedido com senha fraca e barrado por forma (422) antes de contar envio', async () => {
+    const r = await post(REGISTRO, json({ email: EMAIL, password: 'curta' }));
+    expect(r.status).toBe(422);
+    expect(limites.baldes.size).toBe(0);
+  });
+});
