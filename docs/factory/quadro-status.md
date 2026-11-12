@@ -113,11 +113,10 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 ## Code Review (0)
 
-## QA (2)
+## QA (1)
 
 | Issue | Título |
 |---|---|
-| #26 | [E1] Código de 6 dígitos e nonce |
 | #40 | [E3] Redução e reencode das fotos |
 
 ## Concluído (47)
@@ -178,6 +177,10 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #110 | [E11] Teste de ausência de interruptor |
 
-## Aguardando aprovação (0)
+## Aguardando aprovação (1)
+
+| Issue | Título |
+|---|---|
+| #26 | [E1] Código de 6 dígitos e nonce |
 
 ## Bloqueado (0)
