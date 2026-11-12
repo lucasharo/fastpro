@@ -165,3 +165,6 @@ export interface ProfessionalAuthPort {
   /** Abre a sessao de 7 dias e devolve o segredo em claro (so vai ao cookie). */
   openSession(credential: ProfessionalCredential, nowMs: number): Promise<{ readonly secret: string }>;
 }
+
+/** Piso de tempo de resposta do cadastro e do login (33 §5.1 passo 4; auth.response_floor_ms). */
+export const PROFESSIONAL_RESPONSE_FLOOR_MS = 400;

@@ -5,6 +5,7 @@
 begin;
 drop function if exists private.professional_session_open(uuid, uuid, text, timestamptz);
 drop function if exists private.professional_account_by_email(text);
+drop function if exists private.professional_register_resend(uuid, text, uuid, text, timestamptz);
 drop function if exists private.professional_login_success(text);
 drop function if exists private.professional_login_gate(text, timestamptz);
 drop function if exists private.professional_verify_confirm(text, timestamptz);

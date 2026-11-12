@@ -25,10 +25,15 @@ const FUNCOES = [
   'private.professional_login_gate',
   'private.professional_login_success',
   'private.professional_account_by_email',
+  'private.professional_register_resend',
   'private.professional_session_open',
 ];
 
 describe('T-H016-MIG perfil do profissional (CA-H016-01, CA-H016-21, CA-H016-22)', () => {
+  it('app_system nao apaga perfil (so select, insert e update)', () => {
+    expect(sql).not.toMatch(/grant[^;]*delete[^;]*professional_profile/);
+  });
+
   it('cria professional_profile com status inicial pendente e os seis estados do desenho', () => {
     expect(sql).toContain('create table if not exists app.professional_profile');
     expect(sql).toContain("verification_status text not null default 'pendente'");
@@ -41,7 +46,7 @@ describe('T-H016-MIG perfil do profissional (CA-H016-01, CA-H016-21, CA-H016-22)
     expect(sql).toContain('alter table app.professional_profile enable row level security;');
     expect(sql).toContain('alter table app.professional_profile force row level security;');
     expect(sql).toMatch(/revoke all on app.professional_profile from public, anon, authenticated, [a-z_]+;/);
-    expect(sql).toContain('grant select, insert, update, delete on app.professional_profile to app_system;');
+    expect(sql).toContain('grant select, insert, update on app.professional_profile to app_system;');
     expect(sql).not.toMatch(/create policy/);
     expect(sql).not.toMatch(/to app_api/);
   });

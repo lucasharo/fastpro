@@ -30,7 +30,7 @@ comment on table app.professional_profile is
 alter table app.professional_profile enable row level security;
 alter table app.professional_profile force row level security;
 revoke all on app.professional_profile from public, anon, authenticated, service_role;
-grant select, insert, update, delete on app.professional_profile to app_system;
+grant select, insert, update on app.professional_profile to app_system;
 
 -- 2. auth_challenge aceita os tres propositos novos (67 §6, item A) -------------------------------------
 -- Nome do CHECK de purpose de 140000 (padrao do Postgres: <tabela>_<coluna>_check).
@@ -230,7 +230,8 @@ $$;
 
 -- 7. Conta pelo e-mail normalizado (33 §5.1 passo 5): ativa so se for profissional e ativo. -------------
 create or replace function private.professional_account_by_email(p_email text)
-returns table (out_user_id uuid, out_auth_user_id uuid, out_active boolean, out_verified boolean)
+returns table (out_user_id uuid, out_auth_user_id uuid, out_active boolean, out_verified boolean,
+               out_professional boolean)
 language sql
 stable
 set search_path = ''
@@ -238,10 +239,51 @@ as $$
   select u.id,
          u.auth_user_id,
          (u.status = 'ativo' and p.user_id is not null),
-         (u.email_verified_at is not null)
+         (u.email_verified_at is not null),
+         (p.user_id is not null)
     from app.app_user u
     left join app.professional_profile p on p.user_id = u.id
    where u.email = p_email
+$$;
+
+-- 7b. Reenvio do link para conta profissional ainda nao verificada (33 §3.1, caso 2): um link vivo por
+-- (e-mail, proposito); sessoes anteriores revogadas (D-H016-6). O adaptador troca a senha no Auth antes.
+create or replace function private.professional_register_resend(
+  p_user_id uuid,
+  p_email_hash text,
+  p_challenge_id uuid,
+  p_token_hash text,
+  p_now timestamptz)
+returns table (out_resultado text)
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if p_user_id is null or p_email_hash is null or p_challenge_id is null or p_token_hash is null or p_now is null then
+    raise exception 'professional_entrada_invalida' using errcode = '22023';
+  end if;
+  if not exists (select 1 from app.professional_profile p join app.app_user u on u.id = p.user_id
+                  where p.user_id = p_user_id and u.email_verified_at is null) then
+    return query select 'nao_aplicavel'::text;
+    return;
+  end if;
+  update app.auth_challenge c
+     set invalidated_at = p_now,
+         invalid_reason = 'substituido'
+   where c.email_hash = p_email_hash
+     and c.purpose = 'professional_verify'
+     and c.consumed_at is null
+     and c.invalidated_at is null;
+  insert into app.auth_challenge (id, email_hash, purpose, token_hash, code_hmac, user_id,
+                                  expires_at, created_at, attempts)
+  values (p_challenge_id, p_email_hash, 'professional_verify', p_token_hash, null, p_user_id,
+          p_now + interval '15 minutes', p_now, 0);
+  update app.app_session s
+     set revoked_at = p_now
+   where s.user_id = p_user_id
+     and s.revoked_at is null;
+  return query select 'reenviado'::text;
+end;
 $$;
 
 -- 8. Sessao de 7 dias por senha (33 §5.1 passo 5; 52 §1.2): nasce ativa, com prova recente agora. -------
@@ -278,6 +320,7 @@ revoke all on function
   private.professional_login_gate(text, timestamptz),
   private.professional_login_success(text),
   private.professional_account_by_email(text),
+  private.professional_register_resend(uuid, text, uuid, text, timestamptz),
   private.professional_session_open(uuid, uuid, text, timestamptz)
 from public, anon, authenticated, service_role;
 
@@ -288,5 +331,6 @@ grant execute on function
   private.professional_login_gate(text, timestamptz),
   private.professional_login_success(text),
   private.professional_account_by_email(text),
+  private.professional_register_resend(uuid, text, uuid, text, timestamptz),
   private.professional_session_open(uuid, uuid, text, timestamptz)
 to app_system;
