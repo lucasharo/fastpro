@@ -13,3 +13,4 @@ export * from './session.js';
 export * from './access-case.js';
 export * from './access-case-handler.js';
 export * from './audit-query.js';
+export * from './console.js';

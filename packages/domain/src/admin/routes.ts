@@ -105,9 +105,16 @@ export const ADMIN_ROUTES_H073: readonly AdminRouteSpec[] = [
   },
 ];
 
-/** Registro completo das rotas admin (H-102 + H-104 + H-073). Fonte unica para a guarda da API. */
+/** Menu do console por papel (H-103, 70 §1). Qualquer papel com sessao valida; so devolve id, rotulo e caminho. */
+export const ADMIN_CONSOLE_MENU_PATH = '/v1/admin/console/menu';
+export const ADMIN_ROUTES_H103: readonly AdminRouteSpec[] = [
+  { method: 'GET', pattern: ADMIN_CONSOLE_MENU_PATH, permission: 'sessao' },
+];
+
+/** Registro completo das rotas admin (H-102 + H-104 + H-073 + H-103). Fonte unica para a guarda da API. */
 export const ADMIN_ROUTES: readonly AdminRouteSpec[] = [
   ...ADMIN_ROUTES_H102,
   { method: 'POST', pattern: ADMIN_AUDIT_QUERY_PATH, permission: 'audit.read' },
   ...ADMIN_ROUTES_H073,
+  ...ADMIN_ROUTES_H103,
 ];
