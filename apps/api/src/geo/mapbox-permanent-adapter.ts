@@ -10,7 +10,7 @@ export const MAPBOX_FORWARD_URL = 'https://api.mapbox.com/search/geocode/v6/forw
 export const MAPBOX_PERMANENT_TIMEOUT_MS = 4_000;
 
 export interface MapboxPermanentOptions {
-  /** Token dedicado de servidor (MAPBOX_ACCESS_TOKEN_SERVER). Nunca registrado nem devolvido. */
+  /** Token dedicado de servidor (MAPBOX_ACCESS_TOKEN). Nunca registrado nem devolvido. */
   readonly token: string;
   /** fetch injetado: nos testes e um simulador; em producao, o global. */
   readonly fetchImpl: typeof fetch;

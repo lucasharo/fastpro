@@ -44,7 +44,7 @@ describe('T-H020-11a CSP publicada: connect-src somente self, sem Mapbox (CA-14,
 describe('T-H020-11b token e dominio do Mapbox so no servidor (CA-14, §2.4)', () => {
   it('nenhum fonte de web, admin, mobile ou ui le o token de servidor nem o token publico', () => {
     const cliente = ['apps/web', 'apps/admin', 'apps/mobile', 'packages/ui'];
-    const proibidos = ['MAPBOX_ACCESS_TOKEN_SERVER', 'NEXT_PUBLIC_MAPBOX_PUBLIC_TOKEN'];
+    const proibidos = ['MAPBOX_ACCESS_TOKEN', 'NEXT_PUBLIC_MAPBOX_PUBLIC_TOKEN'];
     const achados: string[] = [];
     for (const pasta of cliente) {
       for (const f of arquivos(join(RAIZ, pasta))) {
