@@ -4,19 +4,17 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (82)
+## Backlog (80)
 
 | Issue | Título |
 |---|---|
 | #1 | [SETUP] Validar integração GitHub Projects ↔ Laze ↔ Claude |
 | #14 | [Spike] Regras das lojas (login social, IAP, exclusão) |
 | #30 | [E1] Exclusividade de papéis |
-| #42 | [E3] Pré-visualização e reordenação de fotos |
 | #44 | [E3] Publicação idempotente com 7 dias |
 | #45 | [E3] Visibilidade de localização |
 | #46 | [E3] Opt-in de telefone no pedido |
 | #47 | [E3] Painel do cliente na sessão do dono |
-| #49 | [E4] Perfil: serviços, base e raio |
 | #50 | [E4] Documentos de identidade |
 | #51 | [E4] Certificações para atividades regulamentadas |
 | #52 | [E4] Fila de verificação |
@@ -91,11 +89,13 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #136 | [E7] Mensagem automática do aceite |
 | #137 | [E11] Canal “no site” |
 
-## Product Owner (1)
+## Product Owner (3)
 
 | Issue | Título |
 |---|---|
 | #37 | [E2] Cobertura booleana sem contagem |
+| #42 | [E3] Pré-visualização e reordenação de fotos |
+| #49 | [E4] Perfil: serviços, base e raio |
 
 ## Arquitetura (1)
 
