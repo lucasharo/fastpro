@@ -60,7 +60,7 @@ const PERFIL_COM_TOTP: Rota = {
   json: { id: 'auth-1', factors: [{ id: 'fator-1', factor_type: 'totp', status: 'verified' }] },
 };
 const DESAFIO_OK: Rota = { status: 200, json: { id: 'desafio-1' } };
-const VERIFICA_OK: Rota = { status: 200, json: { access_token: TOKEN_AAL2 } };
+const VERIFICA_OK: Rota = { status: 200, json: Object.fromEntries([['access_token', TOKEN_AAL2]]) };
 const SAIDA_OK: Rota = { status: 204 };
 
 function montar(rotas: Record<string, Rota>) {

@@ -1,13 +1,18 @@
-// H-073 (Issue 83) | Ligacao das rotas do caso de acesso no ponto de montagem (src/composicao.ts). Em memoria:
-// fabrica SQL falsa, sem banco e sem rede. Pendencias sao so nomes de variaveis; nenhum valor sai.
+// H-073 (Issue 83) | Ligacao das rotas do caso de acesso e da confirmacao recente no ponto de montagem
+// (src/composicao.ts). Em memoria: fabrica SQL falsa, fetch falso, sem banco e sem rede. Pendencias sao so nomes de
+// variaveis; nenhum valor sai. Valores sinteticos montados em tempo de execucao.
 import { describe, expect, it } from 'vitest';
 import type { SqlClient } from '@fastpro/db';
 import { montarIntegracoes } from '../src/composicao.js';
-import { ADMIN_CONFIRMACAO_PORTAS_FALTANTES } from '../src/admin-composicao.js';
+import { ADMIN_AUTH_ENV_OBRIGATORIAS, ADMIN_LIMITES_ENV_OBRIGATORIAS } from '../src/admin-composicao.js';
 
 const SENHA_SINTETICA_CASO = ['senha', 'sintetica', 'caso'].join('-');
 const URL_SINTETICA = `postgres://papel-sintetico-caso:${SENHA_SINTETICA_CASO}@127.0.0.1:1/banco-sintetico`;
 const BASE = 'https://admin.fastpro.example.test';
+const SUPABASE = 'https://projeto-sintetico.example.test';
+const CHAVE_PUBLICA = ['chave', 'publica', 'sintetica'].join('-');
+const PEPPER_E = ['pepper', 'email', 'sintetico'].join('-');
+const PEPPER_I = ['pepper', 'ip', 'sintetico'].join('-');
 
 function clienteFalso(): SqlClient {
   return { async query() { return { rows: [] }; } };
@@ -20,7 +25,8 @@ describe('montarIntegracoes: rotas do caso de acesso (H-073)', () => {
     expect(integracoes.pendenciasCaso).toEqual([
       'DATABASE_URL_APP_SYSTEM',
       'ADMIN_BASE_URL',
-      ...ADMIN_CONFIRMACAO_PORTAS_FALTANTES,
+      ...ADMIN_AUTH_ENV_OBRIGATORIAS,
+      ...ADMIN_LIMITES_ENV_OBRIGATORIAS,
     ]);
     expect(integracoes.pendencias.join('|')).not.toContain('ADMIN_BASE_URL');
   });
@@ -30,7 +36,8 @@ describe('montarIntegracoes: rotas do caso de acesso (H-073)', () => {
     expect(integracoes.accessCase).toBeUndefined();
     expect(integracoes.pendenciasCaso).toEqual([
       'fabrica do cliente SQL do caso de acesso (ainda nao montada na funcao)',
-      ...ADMIN_CONFIRMACAO_PORTAS_FALTANTES,
+      ...ADMIN_AUTH_ENV_OBRIGATORIAS,
+      ...ADMIN_LIMITES_ENV_OBRIGATORIAS,
     ]);
   });
 
@@ -47,8 +54,7 @@ describe('montarIntegracoes: rotas do caso de acesso (H-073)', () => {
     );
     expect(integracoes.accessCase).toBeDefined();
     expect(integracoes.accessCase?.baseUrl).toBe(BASE);
-    // Caso ligado: a unica pendencia que sobra e a confirmacao (step-up), que nao tem adaptador ainda.
-    expect(integracoes.pendenciasCaso).toEqual([...ADMIN_CONFIRMACAO_PORTAS_FALTANTES]);
+    expect(integracoes.pendenciasCaso).toEqual([...ADMIN_AUTH_ENV_OBRIGATORIAS, ...ADMIN_LIMITES_ENV_OBRIGATORIAS]);
     expect(recebidas).toEqual([URL_SINTETICA]);
   });
 
@@ -64,27 +70,28 @@ describe('montarIntegracoes: rotas do caso de acesso (H-073)', () => {
 describe('montarIntegracoes: confirmacao recente do segundo fator (step-up, H-073 60 §4)', () => {
   const ambiente = { DATABASE_URL_APP_SYSTEM: URL_SINTETICA, ADMIN_BASE_URL: BASE };
   const porta = {
-    auth: { enrollUser: async () => null, confirmEnrollment: async () => false, signInWithPasswordAndTotp: async () => null },
+    auth: { signInWithPasswordAndTotp: async () => null },
     limits: { counts: async () => ({ email: 0, ip: 0 }), recordFailure: async () => undefined },
     log: () => undefined,
   };
 
-  it('sem o provedor de login e os limites: nao liga e as pendencias citam as duas portas pelo nome', () => {
+  it('sem provedor e limites no ambiente: nao liga e as pendencias citam os nomes que faltam', () => {
     const integracoes = montarIntegracoes(ambiente, { abrirClienteSql: () => clienteFalso() });
     expect(integracoes.adminStepUp).toBeUndefined();
-    expect(integracoes.pendenciasCaso.join('|')).toContain('AdminAuthPort');
-    expect(integracoes.pendenciasCaso.join('|')).toContain('AdminLoginLimits');
+    expect(integracoes.pendenciasCaso).toContain('SUPABASE_URL');
+    expect(integracoes.pendenciasCaso).toContain('PEPPER_EMAIL_HMAC');
   });
 
-  it('com provedor parcial (so auth): ainda nao liga', () => {
+  it('com provedor parcial (so auth injetado): ainda nao liga; limites seguem pendentes pelo nome', () => {
     const integracoes = montarIntegracoes(ambiente, {
       abrirClienteSql: () => clienteFalso(),
       confirmacaoAdmin: { auth: porta.auth },
     });
     expect(integracoes.adminStepUp).toBeUndefined();
+    expect(integracoes.pendenciasCaso).toEqual(['PEPPER_EMAIL_HMAC', 'PEPPER_IP_HMAC']);
   });
 
-  it('com nomes, fabrica e as tres portas: liga o step-up com a base e o repositorio', () => {
+  it('com nomes, fabrica e as tres portas injetadas: liga o step-up com a base e o repositorio', () => {
     const integracoes = montarIntegracoes(ambiente, {
       abrirClienteSql: () => clienteFalso(),
       confirmacaoAdmin: porta,
@@ -92,6 +99,33 @@ describe('montarIntegracoes: confirmacao recente do segundo fator (step-up, H-07
     expect(integracoes.adminStepUp).toBeDefined();
     expect(integracoes.adminStepUp?.baseUrl).toBe(BASE);
     expect(typeof integracoes.adminStepUp?.repo.guard).toBe('function');
-    expect(integracoes.pendenciasCaso.join('|')).not.toContain('AdminAuthPort');
+    expect(integracoes.pendenciasCaso).toEqual([]);
+  });
+
+  it('com os nomes do provedor e dos limites no ambiente: monta sozinho, sem chamar o fetch na montagem', () => {
+    let chamadasFetch = 0;
+    const fetchFalso = (async () => {
+      chamadasFetch += 1;
+      throw new Error('nao deve haver rede na montagem');
+    }) as typeof fetch;
+    // Pares [nome, valor] montados em tempo de execucao (valores sinteticos, nunca reais).
+    const ambienteCompleto = Object.fromEntries([
+      ['DATABASE_URL_APP_SYSTEM', URL_SINTETICA],
+      ['ADMIN_BASE_URL', BASE],
+      ['SUPABASE_URL', SUPABASE],
+      ['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', CHAVE_PUBLICA],
+      ['PEPPER_EMAIL_HMAC', PEPPER_E],
+      ['PEPPER_IP_HMAC', PEPPER_I],
+    ]);
+    const integracoes = montarIntegracoes(ambienteCompleto, {
+      abrirClienteSql: () => clienteFalso(),
+      fetchAuth: fetchFalso,
+    });
+    expect(integracoes.adminStepUp).toBeDefined();
+    expect(integracoes.adminStepUp?.baseUrl).toBe(BASE);
+    expect(integracoes.pendenciasCaso).toEqual([]);
+    expect(chamadasFetch).toBe(0);
+    expect(JSON.stringify(integracoes.adminStepUp)).not.toContain(CHAVE_PUBLICA);
+    expect(JSON.stringify(integracoes.adminStepUp)).not.toContain(PEPPER_E);
   });
 });

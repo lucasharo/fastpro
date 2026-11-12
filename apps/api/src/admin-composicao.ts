@@ -4,10 +4,17 @@
 // deles devolve undefined e a rota segue inexistente (404). Nunca le, grava nem registra o valor das variaveis:
 // a string de conexao so vai para a fabrica. Um cliente por string de conexao (memoizado).
 import { randomUUID } from 'node:crypto';
-import { PgAccessCasePort, PgAdminSessionRepository, type SqlClient } from '@fastpro/db';
+import {
+  challengeHmacHex,
+  PgAccessCasePort,
+  PgAdminLoginLimits,
+  PgAdminSessionRepository,
+  type SqlClient,
+} from '@fastpro/db';
 import type { AdminAuthPort, AdminLogger, AdminLoginLimits } from '@fastpro/domain';
 import type { AdminAccessCaseRouteOptions } from './admin-access-case-route.js';
 import type { AdminStepUpRouteOptions } from './admin-step-up-route.js';
+import { criarAuthAdminSupabase } from './admin-auth-supabase.js';
 
 /** Variaveis exigidas para montar o caso (nomes; os valores nao saem deste modulo). */
 export const ADMIN_CASO_ENV_OBRIGATORIAS = ['DATABASE_URL_APP_SYSTEM', 'ADMIN_BASE_URL'] as const;
@@ -57,11 +64,39 @@ export function montarAdministracaoCaso(
   };
 }
 
-/** Portas que faltam para a confirmacao recente (step-up, H-073 60 §4): nomes exatos, nunca valores. */
-export const ADMIN_CONFIRMACAO_PORTAS_FALTANTES = [
-  'AdminAuthPort (provedor de login admin: signInWithPasswordAndTotp, adaptador HTTP ainda nao existe)',
-  'AdminLoginLimits (limites de login admin em Pg, adaptador ainda nao existe)',
-] as const;
+/** Provedor de login admin (Supabase Auth, H-073 60 §4): nomes exigidos; valores nunca saem deste modulo. */
+export const ADMIN_AUTH_ENV_OBRIGATORIAS = ['SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'] as const;
+/** Limites de login admin (H-015): chaves HMAC do e-mail e do IP (pepper da borda). */
+export const ADMIN_LIMITES_ENV_OBRIGATORIAS = ['PEPPER_EMAIL_HMAC', 'PEPPER_IP_HMAC'] as const;
+
+type AmbienteQualquer = Readonly<Record<string, string | undefined>>;
+
+/** Adaptador HTTP do provedor de login, ou undefined sem SUPABASE_URL e a chave publica. */
+export function montarAuthAdmin(
+  env: AmbienteQualquer,
+  fetchHttp?: typeof fetch,
+): Pick<AdminAuthPort, 'signInWithPasswordAndTotp'> | undefined {
+  const baseUrl = env.SUPABASE_URL;
+  const apiKey = env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!baseUrl || !apiKey) return undefined;
+  return criarAuthAdminSupabase({ baseUrl, apiKey, fetch: fetchHttp });
+}
+
+/** Limites de login sobre o limitador do banco, ou undefined sem os peppers, o papel app_system e a fabrica. */
+export function montarLimitesAdmin(
+  env: AmbienteQualquer,
+  abrirCliente?: (connectionString: string) => SqlClient,
+): AdminLoginLimits | undefined {
+  const url = env.DATABASE_URL_APP_SYSTEM;
+  const pepperEmail = env.PEPPER_EMAIL_HMAC;
+  const pepperIp = env.PEPPER_IP_HMAC;
+  if (!url || !pepperEmail || !pepperIp || abrirCliente === undefined) return undefined;
+  const cliente = clienteDe(url, abrirCliente);
+  return new PgAdminLoginLimits(cliente, {
+    email: (email) => challengeHmacHex(pepperEmail, `admin-login-email:${email}`),
+    ip: (ip) => challengeHmacHex(pepperIp, `admin-login-ip:${ip}`),
+  });
+}
 
 export interface AdminConfirmacaoOpcoes {
   readonly abrirCliente?: (connectionString: string) => SqlClient;

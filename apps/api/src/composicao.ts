@@ -16,7 +16,10 @@ import {
   montarAdministracaoCaso,
   montarConfirmacaoAdmin,
   ADMIN_CASO_ENV_OBRIGATORIAS,
-  ADMIN_CONFIRMACAO_PORTAS_FALTANTES,
+  ADMIN_AUTH_ENV_OBRIGATORIAS,
+  ADMIN_LIMITES_ENV_OBRIGATORIAS,
+  montarAuthAdmin,
+  montarLimitesAdmin,
   type AdminConfirmacaoOpcoes,
 } from './admin-composicao.js';
 import type { AdminAccessCaseRouteOptions } from './admin-access-case-route.js';
@@ -63,6 +66,8 @@ export interface ComposicaoOpcoes {
   readonly abrirClienteSql?: (connectionString: string) => SqlClient;
   /** Portas da confirmacao recente (step-up, H-073): provedor de login e limites. Hoje sem adaptador. */
   readonly confirmacaoAdmin?: AdminConfirmacaoOpcoes;
+  /** fetch do provedor de login admin (Supabase Auth). Padrao: o global. */
+  readonly fetchAuth?: typeof fetch;
 }
 
 export interface Integracoes {
@@ -135,10 +140,26 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   }
   const accessCase = montarAdministracaoCaso(env, { abrirCliente: opcoes.abrirClienteSql });
 
-  // H-073 (60 §4): confirmacao recente. So liga com as tres portas; hoje o provedor e os limites faltam.
+  // H-073 (60 §4): confirmacao recente. Provedor (Supabase Auth) e limites (Pg) montados pela propria
+  // composicao quando os nomes existem; as portas injetadas em opcoes tem precedencia (testes).
   const confirmacao = opcoes.confirmacaoAdmin ?? {};
-  const adminStepUp = montarConfirmacaoAdmin(env, { ...confirmacao, abrirCliente: opcoes.abrirClienteSql });
-  if (adminStepUp === undefined) pendenciasCaso.push(...ADMIN_CONFIRMACAO_PORTAS_FALTANTES);
+  const auth = confirmacao.auth ?? montarAuthAdmin(env, opcoes.fetchAuth);
+  const limits = confirmacao.limits ?? montarLimitesAdmin(env, opcoes.abrirClienteSql);
+  const adminStepUp = montarConfirmacaoAdmin(env, {
+    abrirCliente: opcoes.abrirClienteSql,
+    auth,
+    limits,
+    log: confirmacao.log ?? (() => undefined),
+    relogio: confirmacao.relogio,
+  });
+  if (adminStepUp === undefined) {
+    // Nomes (nunca valores) que faltam para a confirmacao recente ligar.
+    const faltantes = [
+      ...(auth === undefined ? ADMIN_AUTH_ENV_OBRIGATORIAS.filter((nome) => !preenchida(env, nome)) : []),
+      ...(limits === undefined ? ADMIN_LIMITES_ENV_OBRIGATORIAS.filter((nome) => !preenchida(env, nome)) : []),
+    ];
+    pendenciasCaso.push(...faltantes);
+  }
 
   return { catalog, email, accessCase, adminStepUp, pendencias, pendenciasCaso };
 }
