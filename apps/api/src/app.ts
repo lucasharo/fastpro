@@ -39,6 +39,7 @@ import {
   type ProfessionalRouteOptions,
 } from './professional-route.js';
 import { handleAddressSuggest, type GeoRouteOptions } from './geo/address-suggest-route.js';
+import { handleDraftRoute, isDraftRoute, type DraftRouteOptions } from './drafts/draft-route.js';
 import {
   handleSessionConvert,
   handleSessionLogout,
@@ -86,6 +87,8 @@ export interface AppOptions {
   readonly adminStepUp?: AdminStepUpRouteOptions;
   /** Busca de servico com sinonimos (H-019). Sem esta opcao a rota nao existe (404). */
   readonly catalog?: CatalogRouteOptions;
+  /** Rascunho de pedido sem conta (H-025). Sem esta opcao as rotas /v1/drafts nao existem (404). */
+  readonly drafts?: DraftRouteOptions;
   /** Cadastro, verificacao e login por senha do profissional (H-016). Sem esta opcao as rotas nao existem (404). */
   readonly professional?: ProfessionalRouteOptions;
 }
@@ -197,6 +200,10 @@ export async function handleRequest(
   }
   if (req.method === 'POST' && path === ADDRESS_SUGGEST_PATH && opts.geo) {
     await handleAddressSuggest(req, res, opts.geo);
+    return;
+  }
+  if (opts.drafts && isDraftRoute(path)) {
+    await handleDraftRoute(req, res, path, opts.drafts);
     return;
   }
   if (req.method === 'POST' && path === CATALOG_SEARCH_PATH && opts.catalog) {
