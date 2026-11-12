@@ -4,6 +4,7 @@
 // Nao cria sessao: o passo seguinte da tela (H-013) decide. Nada aqui loga e-mail, codigo ou IP.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { verifyChallengeCode, type VerifyChallengeDeps } from '@fastpro/db';
+import { lerCorpoLimitado } from './corpo-limitado.js';
 import { assertChallengePurpose } from '@fastpro/domain';
 
 export const CHALLENGE_VERIFY_PATH = '/v1/auth/challenges/verify';
@@ -14,22 +15,6 @@ export interface ChallengeVerifyRouteOptions {
   readonly deps: VerifyChallengeDeps;
 }
 
-function lerCorpo(
-  req: IncomingMessage,
-  limite: number,
-): Promise<{ readonly text: string; readonly excedeu: boolean }> {
-  return new Promise((resolve, reject) => {
-    const partes: Buffer[] = [];
-    let total = 0;
-    req.on('data', (chunk: Buffer) => {
-      total += chunk.length;
-      if (total <= limite) partes.push(chunk);
-    });
-    req.on('end', () => resolve({ text: Buffer.concat(partes).toString('utf8'), excedeu: total > limite }));
-    req.on('error', reject);
-  });
-}
-
 const INVALIDO = { 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8' } as const;
 
 export async function handleChallengeVerify(
@@ -37,7 +22,7 @@ export async function handleChallengeVerify(
   res: ServerResponse,
   opts: ChallengeVerifyRouteOptions,
 ): Promise<void> {
-  const { text, excedeu } = await lerCorpo(req, CHALLENGE_VERIFY_BODY_LIMIT_BYTES);
+  const { text, excedeu } = await lerCorpoLimitado(req, CHALLENGE_VERIFY_BODY_LIMIT_BYTES);
   let corpo: Record<string, unknown> = {};
   if (!excedeu) {
     try {

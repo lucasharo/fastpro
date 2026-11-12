@@ -45,6 +45,8 @@ export interface PedidoLoginOpcoes {
   readonly relogio?: ClockPort;
   /** Primitiva pos-resposta da plataforma. Ausente: o envio imediato nao acontece (contingencia do tick). */
   readonly waitUntil?: WaitUntil;
+  /** Metrica de codigo fixo (ex.: metric do pacote da plataforma). Recebe so nome e rotulo com codigo fixo. */
+  readonly metrica?: (nome: string, rotulos: Readonly<Record<string, string>>) => void;
 }
 
 export interface PedidoLoginMontado {
@@ -132,6 +134,7 @@ export function montarPedidoLogin(
   const dispatch = criarDespachoPosResposta({
     enviar: (outboxId) => dispatchChallengeOutbox(notificacao, outboxId),
     ...(opcoes.waitUntil !== undefined ? { waitUntil: opcoes.waitUntil } : {}),
+    onFalha: (codigo) => opcoes.metrica?.('envio_pos_resposta_falhou', { codigo }),
   });
 
   return {

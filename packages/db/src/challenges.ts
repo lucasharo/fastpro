@@ -421,7 +421,10 @@ export async function requestChallenge(
   return { status: 429, headers: recusa.headers, body: JSON.parse(recusa.body) as Record<string, unknown> };
 }
 
-/** Entrada da verificacao do codigo (sem rota HTTP ainda; H-013 monta a tela). */
+/**
+ * Entrada da verificacao do codigo. Rota HTTP: POST /v1/auth/challenges/verify (H-097, apps/api/src/
+ * challenge-verify-route.ts); caminho definido no desenho 86-DESENHO-H097. A tela (H-013) decide o passo seguinte.
+ */
 export interface VerifyChallengeDeps {
   readonly store: ChallengeStore;
   readonly secrets: ChallengeSecrets;

@@ -47,9 +47,27 @@ describe('adaptador de Auth admin do cliente (consumo do link, H-097)', () => {
     expect(JSON.parse(String(registro.init?.body))).toEqual({ email: 'cliente@example.test', email_confirm: true });
   });
 
-  it('duplicado (422): ja_existe, sem erro', async () => {
-    const auth = criarAuthAdminSupabase({ baseUrl: SUPA, chaveSecreta: SEGREDO_AUTH, fetch: fetchDublê(422, { code: 'email_exists' }) });
+  it('duplicado so com error_code email_exists (422): ja_existe', async () => {
+    const auth = criarAuthAdminSupabase({ baseUrl: SUPA, chaveSecreta: SEGREDO_AUTH, fetch: fetchDublê(422, { error_code: 'email_exists', code: 422 }) });
     expect(await auth.createUser('a@example.test')).toEqual({ status: 'ja_existe' });
+  });
+
+  it('outro 422 (configuracao) vira erro de configuracao, nunca ja_existe', async () => {
+    const auth = criarAuthAdminSupabase({ baseUrl: SUPA, chaveSecreta: SEGREDO_AUTH, fetch: fetchDublê(422, { error_code: 'weak_password', msg: SEGREDO_AUTH }) });
+    const erro = await auth.createUser('a@example.test').catch((e: unknown) => e as Error);
+    expect((erro as Error).message).toBe('auth_admin_configuracao');
+  });
+
+  it('422 sem corpo legivel: erro de configuracao, nunca ja_existe', async () => {
+    const auth = criarAuthAdminSupabase({ baseUrl: SUPA, chaveSecreta: SEGREDO_AUTH, fetch: (async () => new Response('<html>', { status: 422 })) as typeof fetch });
+    await expect(auth.createUser('a@example.test')).rejects.toThrow('auth_admin_configuracao');
+  });
+
+  it('200 com corpo nao JSON: codigo fixo, sem conteudo', async () => {
+    const auth = criarAuthAdminSupabase({ baseUrl: SUPA, chaveSecreta: SEGREDO_AUTH, fetch: (async () => new Response('<html>' + SEGREDO_AUTH, { status: 200 })) as typeof fetch });
+    const erro = await auth.createUser('a@example.test').catch((e: unknown) => e as Error);
+    expect((erro as Error).message).toBe('auth_admin_resposta_invalida');
+    expect((erro as Error).message).not.toContain(SEGREDO_AUTH);
   });
 
   it('falha do servico: erro com codigo fixo, sem a chave nem o corpo', async () => {

@@ -36,6 +36,27 @@ export interface AuthAdminOpcoes {
   readonly timeoutMs?: number;
 }
 
+/** Corpo JSON de uma resposta do Auth admin; falha de leitura vira codigo fixo, sem conteudo. */
+async function lerJson(res: Response): Promise<Record<string, unknown>> {
+  try {
+    const valor = (await res.json()) as unknown;
+    if (valor !== null && typeof valor === 'object') return valor as Record<string, unknown>;
+  } catch {
+    // cai no erro de codigo fixo abaixo
+  }
+  throw new Error('auth_admin_resposta_invalida');
+}
+
+/** Codigo de erro do Auth admin (error_code), ou undefined se o corpo nao puder ser lido. */
+async function codigoDeErro(res: Response): Promise<string | undefined> {
+  try {
+    const valor = (await res.json()) as { error_code?: unknown };
+    return typeof valor.error_code === 'string' ? valor.error_code : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Criacao de usuario do cliente no Supabase Auth (POST /auth/v1/admin/users). Duplicado vira ja_existe;
  * qualquer outra falha lanca erro com codigo fixo, sem corpo nem e-mail.
@@ -61,9 +82,15 @@ export function criarAuthAdminSupabase(opcoes: AuthAdminOpcoes): AuthUserAdminPo
       } catch {
         throw new Error('auth_admin_indisponivel');
       }
-      if (res.status === 422 || res.status === 409) return { status: 'ja_existe' };
-      if (res.status < 200 || res.status > 299) throw new Error('auth_admin_indisponivel');
-      const corpo = (await res.json()) as { id?: unknown };
+      if (res.status === 422) {
+        // So o codigo de e-mail existente conta como "ja existe"; qualquer outro 422 e erro de configuracao.
+        const codigo = await codigoDeErro(res);
+        if (codigo === 'email_exists') return { status: 'ja_existe' };
+        throw new Error('auth_admin_configuracao');
+      }
+      if (res.status >= 500) throw new Error('auth_admin_indisponivel');
+      if (res.status < 200 || res.status > 299) throw new Error('auth_admin_configuracao');
+      const corpo = await lerJson(res);
       if (typeof corpo.id !== 'string') throw new Error('auth_admin_resposta_invalida');
       return { status: 'criado', authUserId: corpo.id };
     },

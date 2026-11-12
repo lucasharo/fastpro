@@ -2,6 +2,7 @@
 // H-019 | As integracoes sao montadas a cada chamada pelo ponto de montagem (composicao.ts), so com as
 // variaveis completas. Sem fabrica de pool, a busca de servico continua 404.
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { metric, waitUntil } from '@vercel/functions';
 import { handleRequest } from './app.js';
 import { montarIntegracoes, montarRetencaoAdmin } from './composicao.js';
 import { abrirClienteSql } from './sql-pool.js';
@@ -32,8 +33,13 @@ export default async function vercelHandler(
     const dualApproval = montarAprovacaoDupla(process.env, { abrirCliente: abrirClienteSql });
     // H-109: cadastro de retencao; so monta com DATABASE_URL_APP_SYSTEM e ADMIN_BASE_URL (sem eles, 404).
     const adminRetention = montarRetencaoAdmin(process.env, { abrirCliente: abrirClienteSql });
-    // H-097: pedido de login. Sem a primitiva pos-resposta (waitUntil) o envio fica na contingencia do tick.
-    const pedidoLogin = montarPedidoLogin(process.env, { abrirCliente: abrirClienteSql });
+    // H-097: pedido de login. waitUntil (pacote da plataforma) agenda o envio depois da resposta; sem contexto
+    // da plataforma ele nao agenda nada e o envio segue pela contingencia do tick. Metrica so com codigo fixo.
+    const pedidoLogin = montarPedidoLogin(process.env, {
+      abrirCliente: abrirClienteSql,
+      waitUntil,
+      metrica: (nome, rotulos) => metric(nome, 1, rotulos),
+    });
     const consumoLink = montarConsumoEVerificacao(process.env, { abrirCliente: abrirClienteSql });
     await handleRequest(req, res, {
       tickSecret: process.env.JOBS_TICK_SECRET,

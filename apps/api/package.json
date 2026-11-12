@@ -22,6 +22,7 @@
     "@fastpro/db": "workspace:*",
     "@fastpro/domain": "workspace:*",
     "@fastpro/email": "workspace:*",
+    "@vercel/functions": "3.11.1",
     "pg": "8.23.1"
   },
   "devDependencies": {

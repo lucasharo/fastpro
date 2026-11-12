@@ -100,3 +100,11 @@ Critérios de saída: 100% dos T-H097 verdes; suíte de H-011, H-092, H-094 e H-
 ## Resumo em linguagem simples
 
 O envio do código de login já sai direto no pedido do cliente, sem esperar a fila dos outros e-mails, e o limite grátis já reserva espaço para ele. Esta etapa só liga o envio em produção (se faltar), define que quem não tem conta não recebe e-mail (com a mesma resposta na tela) e prova tudo com testes de mentira. Se o limite diário acabar, o código espera a virada do dia, mas ele só vale 15 minutos; nesse caso o cliente precisa pedir outro depois.
+
+## 7. Registro de decisões da revisão da #107 (2026-11-12)
+
+- **Caminho do código de login (F-4): `POST /v1/auth/challenges/verify` é a definição.** Implementado em `apps/api/src/challenge-verify-route.ts`; não cria sessão. A tela (H-013) decide o passo seguinte.
+- **Primitiva pós-resposta (waitUntil) aprovada:** dependência `@vercel/functions` fixada em 3.11.1 (gratuita), ligada em `apps/api/src/vercel.ts`. Fora da Vercel a primitiva não agenda nada e o envio segue na contingência do tick.
+- **Métrica de falha do envio (F-5):** `onFalha` chama a métrica com código fixo (`envio_pos_resposta_falhou`, `codigo: envio_pos_resposta`), sem dado pessoal.
+- **Consumo do link, aceite de "já existe" (F-2):** só o 422 com `error_code` igual a `email_exists` vira `ja_existe`; qualquer outro 422 é erro de configuração. Leitura do corpo com código fixo (F-6). Testado com `fetch` falso; sem chamada real ao Auth.
+- **Conta não cadastrada para `purpose=login` (F-1):** pendência de acompanhamento, registrada na #107. Não implementada nesta etapa.
