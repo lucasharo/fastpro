@@ -332,3 +332,10 @@ Nota: o número 56 aparece duplicado nas rodadas 19 (decisões de H-022 e H-026)
 - **126:** limites de sondagem aceitos (20 por pedido, 60 por dono e 60 por IP por hora), medidos depois.
 - **127:** a tolerancia da fronteira do raio segue a decisao 104.
 - **128:** textos "com" e "sem" (BK-5) continuam pendentes; bloqueiam o fechamento, nao o desenvolvimento.
+
+## Rodada 35 (desenho do perfil profissional, #49 / H-036)
+
+- **129:** valores de limite aceitos em parametro: 10 tentativas de geocodificacao por 24 h, 40 chamadas por profissional, 30 servicos, 30 escritas por hora.
+- **130:** base geocodificada por "localidade" aceita agora, por coerencia com a #34; precisao maior fica como parametro futuro.
+- **131:** servicos sem historico "vigente desde"; mudar servico vale ja para a descoberta de pedidos abertos (possivel Issue futura).
+- **132:** remocao de base fica para uma historia propria, depois.
