@@ -11,6 +11,9 @@ import {
   EmailConfigError,
 } from '@fastpro/email';
 import type { ClockPort, EmailProviderPort } from '@fastpro/domain';
+import type { SqlClient } from '@fastpro/db';
+import { montarAdministracaoCaso, ADMIN_CASO_ENV_OBRIGATORIAS } from './admin-composicao.js';
+import type { AdminAccessCaseRouteOptions } from './admin-access-case-route.js';
 import {
   CATALOG_DATABASE_URL_ENV,
   CATALOG_RATE_KEY_ENV,
@@ -49,6 +52,8 @@ export interface ComposicaoOpcoes {
   readonly fabricaCatalogo?: CatalogPortsFactory;
   /** Relogio do provedor de e-mail. Padrao: relogio do sistema. */
   readonly clock?: ClockPort;
+  /** Fabrica do cliente SQL do papel app_system (H-073). Sem ela, as rotas do caso nao ligam (404). */
+  readonly abrirClienteSql?: (connectionString: string) => SqlClient;
 }
 
 export interface Integracoes {
@@ -56,8 +61,12 @@ export interface Integracoes {
   readonly catalog: CatalogRouteOptions | undefined;
   /** Provedor de e-mail (Resend). Construido, nunca usado para envio pela composicao. */
   readonly email: EmailProviderPort | undefined;
+  /** Rotas do caso de acesso a conversa (H-073), ou undefined (404). */
+  readonly accessCase: AdminAccessCaseRouteOptions | undefined;
   /** Nomes (nunca valores) que impedem cada integracao de ligar. */
   readonly pendencias: readonly string[];
+  /** Nomes (nunca valores) que impedem as rotas do caso de acesso (H-073) de ligar. */
+  readonly pendenciasCaso: readonly string[];
 }
 
 const RELOGIO_PADRAO: ClockPort = {
@@ -108,5 +117,12 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   const { email, pendencias: pendenciasEmail } = montarEmail(env, opcoes.clock ?? RELOGIO_PADRAO);
   pendencias.push(...pendenciasEmail);
 
-  return { catalog, email, pendencias };
+  // H-073: so com os nomes ADMIN_CASO_ENV_OBRIGATORIAS presentes e a fabrica SQL da borda.
+  const pendenciasCaso: string[] = ADMIN_CASO_ENV_OBRIGATORIAS.filter((nome) => !preenchida(env, nome));
+  if (pendenciasCaso.length === 0 && opcoes.abrirClienteSql === undefined) {
+    pendenciasCaso.push('fabrica do cliente SQL do caso de acesso (ainda nao montada na funcao)');
+  }
+  const accessCase = montarAdministracaoCaso(env, { abrirCliente: opcoes.abrirClienteSql });
+
+  return { catalog, email, accessCase, pendencias, pendenciasCaso };
 }

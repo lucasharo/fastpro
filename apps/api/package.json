@@ -21,7 +21,8 @@
   "dependencies": {
     "@fastpro/db": "workspace:*",
     "@fastpro/domain": "workspace:*",
-    "@fastpro/email": "workspace:*"
+    "@fastpro/email": "workspace:*",
+    "pg": "8.23.1"
   },
   "devDependencies": {
     "@fastpro/config": "workspace:*"
