@@ -185,3 +185,16 @@ Resposta do usuário: "Vamos seguir com essas tecnologias" + decisão sobre foto
 | 45 | **[APROVADO pelo usuário]** O trabalho é **sempre em `feature/init`**; branches auxiliares só se necessário e com merge nela. Caminho à produção: `feature/init` -> `release/*` -> `main`, por PR. Substitui o modelo `feature/H-xxx` -> `release/*` da decisão 44. A `feature/init` não tem proteção (commits diretos permitidos). |
 
 | 46 | **[APROVADO pelo usuário em 2026-11-11: "vamos usar o mapbox"]** Mapbox adotado. BK-2 aplicado na opção **(b)**, recomendada pelo líder: coordenada permanente (modo pago, cartão e limite de gasto) só na publicação do pedido. Autocomplete segue no temporário gratuito. Criação da conta, do cartão e do limite de gasto é feita pelo usuário (BLQ-EXEC), e a Issue #34 (H-021) segue bloqueada até essa etapa. |
+
+## Rodada 18 (2026-11-11) — H-103, console admin por papel (Issue #112)
+
+Números das decisões 48 a 52 seguem o desenho `70-DESENHO-H103.md` §5. O refino `69-REFINO-H103.md` §6 usa os mesmos rótulos D-H103-1 a 4 para outras perguntas; em caso de dúvida, vale a numeração de 70.
+
+| Nº | Decisão |
+|---|---|
+| 47 | **[DELEGADO, revogável] RF-146 (console admin por papel), base AMB-08 A (CA-H103-13).** Cada conta vê só as telas dos próprios papéis: Verificação, Moderador, Financeiro, Suporte, Auditor e Superadmin. RF-146 não consta no PRD; a base é a proposta de AMB-08 (07-AMBIGUIDADES). Referências: `69-REFINO-H103.md` §0 e §2; `70-DESENHO-H103.md` §1. BK-11 fica resolvida por esta delegação. Revogável pelo usuário se a versão original de RF-146 for encontrada. |
+| 48 | **[DECIDIDO pelo líder]** (70 §5, D-H103-1) A listagem de equipe (`GET /v1/admin/staff`, só leitura) entra em H-103. H-102 não é reaberta. |
+| 49 | **[DECIDIDO pelo líder]** (70 §5, D-H103-2) H-103 entrega as telas de acesso excepcional (pedido e aprovação); H-073 entrega as rotas. **Correção do refino 69:** ele atribuía essas telas a H-073; vale o desenho 70. |
+| 50 | **[DECIDIDO pelo líder]** (70 §5, D-H103-3) A tela Financeiro fica sem permissão própria por enquanto. Só aparece quando a história dona (H-053, H-105) registrar a rota no registro. |
+| 51 | **[DECIDIDO pelo líder]** (70 §5, D-H103-4) H-103 em duas entregas: (1) lógica, menu e testes; (2) tela em `apps/admin`. |
+| 52 | **[DECIDIDO pelo líder]** (70 §5, D-H103-5) `apps/admin` usa Next.js, conforme o placeholder, sem outro framework. |
