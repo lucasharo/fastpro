@@ -4,11 +4,10 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (88)
+## Backlog (87)
 
 | Issue | Título |
 |---|---|
-| #40 | [E3] Redução e reencode das fotos |
 | #1 | [SETUP] Validar integração GitHub Projects ↔ Laze ↔ Claude |
 | #14 | [Spike] Regras das lojas (login social, IAP, exclusão) |
 | #30 | [E1] Exclusividade de papéis |
@@ -95,10 +94,11 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #136 | [E7] Mensagem automática do aceite |
 | #137 | [E11] Canal “no site” |
 
-## Product Owner (2)
+## Product Owner (1)
 
 | Issue | Título |
 |---|---|
+| #40 | [E3] Redução e reencode das fotos |
 
 ## Arquitetura (1)
 
