@@ -314,3 +314,13 @@ Nota: o número 56 aparece duplicado nas rodadas 19 (decisões de H-022 e H-026)
 - **114 (D-H036-6):** edicao em status suspenso e recusada; em outros status, permitida sem conceder elegibilidade.
 - **115 (D-H036-7):** servico REG e declaravel; alcance nacional de online regulamentado fica para L4.
 - **116 (D-H036-8):** testes com a porta simulada da #34; chamada real ao Mapbox so apos BLQ-EXEC.
+
+## Rodada 33 (refino da pre-visualizacao e reordenacao das fotos, #42 / H-029)
+
+- **117 (D-H029-1):** leitura da foto pelo dono, listagem e motivo da recusa, pelo cookie do rascunho, com no-store e 404 uniforme; o original nunca e' exibido.
+- **118 (D-H029-2):** botao "Adicionar foto" nesta tela.
+- **119 (D-H029-3):** ordem das fotos guardada no servidor, com migracao nova aplicada pelo npx supabase.
+- **120 (D-H029-4):** sem capa nesta historia.
+- **121 (D-H029-5):** textos da tela aprovados, inclusive o aviso sobre fachada, interior e rostos.
+- **122 (D-H029-6):** H-027 entra como dependencia da #42 no backlog.
+- **123 (D-H029-7):** deduplicacao de foto repetida fica fora desta historia.
