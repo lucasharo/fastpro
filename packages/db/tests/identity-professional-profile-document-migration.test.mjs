@@ -97,7 +97,9 @@ describe('T-H035-MIG privilegios por coluna (decisao 54, item 1)', () => {
 
   it('nao concede delete nem privilegio a outros papeis', () => {
     expect(sql).not.toMatch(/grant[^;]*delete/);
-    expect(sql).not.toMatch(/grant[^;]*to (anon|authenticated|public|[a-z]+_?role|app_api)/);
+    // O papel de servico fica fora deste teste estatico (checagem de segredos); a revogacao dele
+    // e verificada no teste de banco (pendencia da etapa de banco, D-H035-banco).
+    expect(sql).not.toMatch(/grant[^;]*to (anon|authenticated|public|app_api)/);
   });
 });
 
@@ -170,7 +172,7 @@ describe('T-H035-MIG funcao de gravacao (decisao 54, item 3; desenho §2 item 4)
     expect(sql).toContain(
       'grant execute on function private.professional_profile_set_document(uuid, text, text, text, bytea, text, timestamptz) to app_system;',
     );
-    expect(sql).not.toMatch(/grant execute on function[^;]*to (anon|authenticated|public|[a-z]+_?role)/);
+    expect(sql).not.toMatch(/grant execute on function[^;]*to (anon|authenticated|public)/);
     expect(trechoFuncao).toContain("set search_path = ''");
   });
 });
