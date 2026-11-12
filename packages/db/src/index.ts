@@ -13,7 +13,25 @@ export * from './admin-audit.js';
 export * from './admin-access-case.js';
 // H-073 (Issue 83) / H-015 | Limites de tentativas do login admin (rl_check e rl_hit) e HMAC das chaves.
 export * from './admin-login-limits.js';
-export { challengeHmacHex } from './challenges-crypto.js';
+export { challengeHmacHex, loadChallengeKey } from './challenges-crypto.js';
+// H-097 (Issue 107) | Pedido de acesso, envio do login com prioridade e diretorio do desafio (challenges.ts).
+export {
+  ACCESS_TEMPLATE_KEY,
+  ChallengeEmailProvider,
+  ChallengeRecipientDirectory,
+  PgChallengeStore,
+  dispatchChallengeOutbox,
+  requestChallenge,
+  type ChallengeEmailOptions,
+  type ChallengeHttpResponse,
+  type ChallengeSecrets,
+  type ChallengeStore,
+  type CreateChallengeInput,
+  type CreateChallengeResult,
+  type OutboxDispatchPort,
+  type RateContext,
+  type RequestChallengeDeps,
+} from './challenges.js';
 
 // H-019 | Adaptadores Pg da busca de servico (limite de taxa e transacao curta).
 export * from './catalog-search.js';

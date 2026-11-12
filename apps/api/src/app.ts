@@ -43,6 +43,12 @@ import {
 } from './admin-auth-session-route.js';
 import { handleCatalogSearch, type CatalogRouteOptions } from './catalog/catalog-route.js';
 import { handleConsume, type ConsumeRouteOptions } from './consume-route.js';
+// H-097 (Issue 107) | Pedido de login por link ou codigo (POST /v1/auth/challenges).
+import {
+  CHALLENGE_REQUEST_PATH,
+  handleChallengeRequest,
+  type ChallengeRequestRouteOptions,
+} from './challenge-request-route.js';
 import {
   handleProfessionalLogin,
   handleProfessionalRegister,
@@ -87,6 +93,8 @@ export interface AppOptions {
   readonly tickSecret: string | undefined;
   /** Consumo do link (H-012). Sem esta opcao a rota nao existe (404). */
   readonly consume?: ConsumeRouteOptions;
+  /** Pedido de login por link ou codigo (H-097). Sem esta opcao a rota POST /v1/auth/challenges nao existe (404). */
+  readonly challengeRequest?: ChallengeRequestRouteOptions;
   /** Sessao de 7 dias e step-up (H-014). Sem esta opcao as rotas nao existem (404). */
   readonly session?: SessionRouteOptions;
   /** Autocomplete de endereco temporario (H-020). Sem esta opcao a rota nao existe (404). */
@@ -195,6 +203,10 @@ export async function handleRequest(
   }
   if (req.method === 'POST' && path === CONSUME_PATH && opts.consume) {
     await handleConsume(req, res, opts.consume);
+    return;
+  }
+  if (req.method === 'POST' && path === CHALLENGE_REQUEST_PATH && opts.challengeRequest) {
+    await handleChallengeRequest(req, res, opts.challengeRequest);
     return;
   }
   if (req.method === 'POST' && path === ADMIN_STEP_UP_PATH && opts.adminStepUp) {

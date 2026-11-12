@@ -9,6 +9,8 @@ import { criarFabricaCatalogo } from './catalog/fabrica-pg.js';
 import { abrirPoolCatalogo } from './catalog/pool-pg.js';
 import { criarFabricaRascunho } from './drafts/compose.js';
 import { montarAprovacaoDupla, montarCatalogoAdmin } from './admin-composicao.js';
+// H-097 (Issue 107) | Pedido de login por link ou codigo; so monta com as variaveis existentes (sem elas, 404).
+import { montarPedidoLogin } from './challenge-request-composicao.js';
 
 /** H-019: fabrica da busca de servico sobre o pool real (um pool por URL, reaproveitado entre chamadas). */
 const fabricaCatalogo = criarFabricaCatalogo(abrirPoolCatalogo);
@@ -28,9 +30,12 @@ export default async function vercelHandler(
     const dualApproval = montarAprovacaoDupla(process.env, { abrirCliente: abrirClienteSql });
     // H-109: cadastro de retencao; so monta com DATABASE_URL_APP_SYSTEM e ADMIN_BASE_URL (sem eles, 404).
     const adminRetention = montarRetencaoAdmin(process.env, { abrirCliente: abrirClienteSql });
+    // H-097: pedido de login. Sem a primitiva pos-resposta (waitUntil) o envio fica na contingencia do tick.
+    const pedidoLogin = montarPedidoLogin(process.env, { abrirCliente: abrirClienteSql });
     await handleRequest(req, res, {
       tickSecret: process.env.JOBS_TICK_SECRET,
       catalog: integracoes.catalog,
+      ...(pedidoLogin.options !== undefined ? { challengeRequest: pedidoLogin.options } : {}),
       ...(adminCatalog !== undefined ? { adminCatalog } : {}),
       ...(dualApproval !== undefined ? { dualApproval } : {}),
       ...(adminRetention !== undefined ? { adminRetention } : {}),

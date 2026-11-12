@@ -1,0 +1,166 @@
+// H-097 (Issue 107) | Prioridade do login e cota no banco de desenvolvimento (T-H097-02, 03 e 04).
+// ESCRITO, NAO EXECUTADO nesta etapa (regra da etapa: sem banco). Transacao com rollback; relogio fixo
+// em 2099; sem rede (provedor simulado). Desenho: docs/factory/86-DESENHO-H097.md §2 e §5.
+// Pendente (fora deste arquivo): T-H097-01 (200 saidas de aceite/digest na fila) e a parte de aceite
+// adiado a 90 (critico) e digest a 85, que dependem da ingestao de eventos.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { randomBytes } from 'node:crypto';
+import { connect } from '../scripts/lib/env.mjs';
+import {
+  ChallengeEmailProvider,
+  ChallengeRecipientDirectory,
+  PgChallengeStore,
+  dispatchChallengeOutbox,
+  requestChallenge,
+} from '../dist/challenges.js';
+import { NotificationRuleRegistry } from '@fastpro/domain';
+import { FakeClock, FakeEmailProvider, FakeRecipientDirectory } from '@fastpro/testkit';
+
+const DIA = '2099-02-01';
+const AMANHA = '2099-02-02T00:00:00.000Z';
+const NOW_MS = Date.parse('2099-02-01T12:00:00.000Z');
+const PIMENTA_EMAIL = randomBytes(24).toString('base64url');
+const PIMENTA_CODIGO = randomBytes(24).toString('base64url');
+const SITE = 'https://fastpro.example.test';
+const KEY = randomBytes(32);
+const SEGREDOS = {
+  secrets: {
+    key: KEY,
+    pepperEmail: PIMENTA_EMAIL,
+    pepperCode: PIMENTA_CODIGO,
+  },
+};
+
+let client;
+test.before(async () => {
+  client = await connect();
+});
+test.after(async () => {
+  await client?.end();
+});
+
+async function tx(fn) {
+  await client.query('begin');
+  try {
+    return await fn();
+  } finally {
+    await client.query('rollback');
+  }
+}
+
+/** Guarda o resultado do create para saber o id da saida criada pelo pedido. */
+class StoreCapturado extends PgChallengeStore {
+  ultimo = null;
+  async create(input) {
+    const r = await super.create(input);
+    this.ultimo = r;
+    return r;
+  }
+}
+
+async function semearCota(usadoDia) {
+  await client.query(
+    `insert into ops.external_quota (service, period, period_start, used, soft_limit, hard_limit)
+     values ('email', 'dia_utc', $1, $2, 90, 100)
+     on conflict (service, period, period_start) do update set used = excluded.used`,
+    [DIA, usadoDia],
+  );
+  await client.query(
+    `insert into ops.external_quota (service, period, period_start, used, soft_limit, hard_limit)
+     values ('email', 'mes', '2099-02-01', 10, 2700, 3000)
+     on conflict (service, period, period_start) do nothing`,
+  );
+}
+
+/** Cria um desafio de login pelo pedido real (segredos cifrados de verdade) e devolve a saida. */
+async function criarDesafio(nowMs) {
+  const store = new StoreCapturado(client);
+  await requestChallenge(
+    {
+      store,
+      ...SEGREDOS,
+      clock: new FakeClock(new Date(nowMs).toISOString()),
+      dispatch: { schedule: () => undefined },
+    },
+    { email: `h097-${randomBytes(4).toString('hex')}@example.test` },
+  );
+  return store.ultimo.outboxId;
+}
+
+/** Pipeline de envio com o provedor simulado por baixo do decorador do login. */
+function pipeline(provedor, nowMs) {
+  const clock = new FakeClock(new Date(nowMs).toISOString());
+  const store = new PgChallengeStore(client);
+  const diretorioBase = new FakeRecipientDirectory();
+  const provider = new ChallengeEmailProvider(provedor, store, { key: KEY, siteUrl: SITE, clock });
+  return {
+    client,
+    registry: new NotificationRuleRegistry(),
+    provider,
+    directory: new ChallengeRecipientDirectory(diretorioBase, store, KEY, clock),
+    clock,
+    useDbClock: false,
+  };
+}
+
+async function usoDoDia(dia) {
+  const q = await client.query(
+    "select used from ops.external_quota where service = 'email' and period = 'dia_utc' and period_start = $1",
+    [dia],
+  );
+  return q.rows[0]?.used ?? null;
+}
+
+test('T-H097-02: uso do dia 50, o login sai e o contador passa a 51', () =>
+  tx(async () => {
+    await semearCota(50);
+    const saida = await criarDesafio(NOW_MS);
+    const provedor = new FakeEmailProvider();
+    await dispatchChallengeOutbox(pipeline(provedor, NOW_MS), saida);
+    assert.equal(provedor.calls.length, 1);
+    assert.equal(await usoDoDia(DIA), 51);
+  }));
+
+test('T-H097-03: dia em 100, o login espera; o provedor nao e chamado; proxima tentativa em 00:00 UTC do dia seguinte', () =>
+  tx(async () => {
+    await semearCota(100);
+    const saida = await criarDesafio(NOW_MS);
+    const provedor = new FakeEmailProvider();
+    await dispatchChallengeOutbox(pipeline(provedor, NOW_MS), saida);
+    assert.equal(provedor.calls.length, 0);
+    const r = await client.query('select state, next_attempt_at from ops.email_outbox where id = $1', [saida]);
+    assert.equal(r.rows[0].state, 'adiado_cota');
+    assert.equal(new Date(r.rows[0].next_attempt_at).toISOString(), AMANHA);
+  }));
+
+test('T-H097-03 (dia 90): o login ainda sai e o contador vai a 91', () =>
+  tx(async () => {
+    await semearCota(90);
+    const saida = await criarDesafio(NOW_MS);
+    const provedor = new FakeEmailProvider();
+    await dispatchChallengeOutbox(pipeline(provedor, NOW_MS), saida);
+    assert.equal(provedor.calls.length, 1);
+    assert.equal(await usoDoDia(DIA), 91);
+  }));
+
+test('T-H097-04: virada com desafio vivo envia uma vez e conta no dia novo; desafio vencido vira descartado sem cota', () =>
+  tx(async () => {
+    await semearCota(100);
+    const vivo = await criarDesafio(Date.parse('2099-02-01T23:50:00.000Z'));
+    const vencido = await criarDesafio(Date.parse('2099-02-01T22:00:00.000Z'));
+
+    // Virada: 00:01 do dia seguinte. O desafio vivo (vence 00:05) ainda vale; o vencido (22:15) nao.
+    const depoisDaVirada = Date.parse('2099-02-02T00:01:00.000Z');
+    const provedor = new FakeEmailProvider();
+    await dispatchChallengeOutbox(pipeline(provedor, depoisDaVirada), vivo);
+    assert.equal(provedor.calls.length, 1);
+    assert.equal(await usoDoDia('2099-02-02'), 1);
+
+    const antes = await usoDoDia('2099-02-02');
+    await dispatchChallengeOutbox(pipeline(provedor, depoisDaVirada), vencido);
+    assert.equal(provedor.calls.length, 1, 'desafio vencido nao chama o provedor');
+    const estado = await client.query('select state from ops.email_outbox where id = $1', [vencido]);
+    assert.equal(estado.rows[0].state, 'descartado');
+    assert.equal(await usoDoDia('2099-02-02'), antes, 'cota intacta para o vencido');
+  }));
