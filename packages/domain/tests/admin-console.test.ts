@@ -56,7 +56,7 @@ const ESPERADO_POR_PAPEL: Record<string, readonly string[]> = {
   financeiro: [],
   suporte: ['acesso-excepcional'],
   auditor: ['auditoria'],
-  superadmin: ['acesso-aprovacao', 'operacao', 'equipe'],
+  superadmin: ['acesso-aprovacao', 'operacao', 'equipe', 'catalogo'],
 };
 
 describe('T-H103-01 menu por papel (CA-H103-01..06)', () => {
@@ -96,6 +96,7 @@ describe('T-H103-02 uniao de papeis (CA-H103-07)', () => {
       'acesso-aprovacao',
       'operacao',
       'equipe',
+      'catalogo',
     ]);
   });
 
@@ -128,12 +129,13 @@ describe('T-H103-03 tela sem rota registrada (CA-H103-11, D-H103-3)', () => {
     }
   });
 
-  it('hoje so cinco telas aparecem para algum papel (fixa o estado atual: H-103 + painel H-108)', () => {
+  it('hoje so seis telas aparecem para algum papel (fixa o estado atual: H-103, painel H-108 e catalogo H-107)', () => {
     const todas = new Set(ADMIN_ROLES.flatMap((papel) => menuDe(linha([papel]))));
     expect([...todas].sort()).toEqual([
       'acesso-aprovacao',
       'acesso-excepcional',
       'auditoria',
+      'catalogo',
       'equipe',
       'operacao',
     ]);

@@ -16,3 +16,5 @@ export * from './audit-query.js';
 export * from './console.js';
 export * from './auth-session.js';
 export * from './ops-panel.js';
+// H-107 | Gestao do catalogo pela tela admin (validacao por campo, erros do banco, manipulador).
+export * from './catalog-admin.js';

@@ -117,6 +117,22 @@ export const ADMIN_ROUTES_H108: readonly AdminRouteSpec[] = [
   { method: 'GET', pattern: ADMIN_OPS_PANEL_PATH, permission: 'ops.panel.read' },
 ];
 
+/**
+ * Gestao do catalogo (H-107, 81 §1): so GET e POST (desativar e POST com active false). Todas exigem
+ * catalog.manage; quem nao tem a permissao recebe 404 identico (decisao aceita, padrao do console).
+ */
+export const ADMIN_CATALOG_PATH = '/v1/admin/catalog';
+export const ADMIN_ROUTES_H107: readonly AdminRouteSpec[] = [
+  { method: 'GET', pattern: ADMIN_CATALOG_PATH, permission: 'catalog.manage' },
+  { method: 'POST', pattern: `${ADMIN_CATALOG_PATH}/groups`, permission: 'catalog.manage' },
+  { method: 'POST', pattern: `${ADMIN_CATALOG_PATH}/groups/:id`, permission: 'catalog.manage' },
+  { method: 'POST', pattern: `${ADMIN_CATALOG_PATH}/services`, permission: 'catalog.manage' },
+  { method: 'POST', pattern: `${ADMIN_CATALOG_PATH}/services/:id`, permission: 'catalog.manage' },
+  { method: 'POST', pattern: `${ADMIN_CATALOG_PATH}/synonyms`, permission: 'catalog.manage' },
+  { method: 'POST', pattern: `${ADMIN_CATALOG_PATH}/synonyms/:id`, permission: 'catalog.manage' },
+  { method: 'GET', pattern: `${ADMIN_CATALOG_PATH}/:entity/:id/revisions`, permission: 'catalog.manage' },
+];
+
 /** Registro completo das rotas admin (H-102 + H-104 + H-073 + H-103 + H-108). Fonte unica para a guarda da API. */
 export const ADMIN_ROUTES: readonly AdminRouteSpec[] = [
   ...ADMIN_ROUTES_H102,
@@ -124,4 +140,5 @@ export const ADMIN_ROUTES: readonly AdminRouteSpec[] = [
   ...ADMIN_ROUTES_H073,
   ...ADMIN_ROUTES_H103,
   ...ADMIN_ROUTES_H108,
+  ...ADMIN_ROUTES_H107,
 ];

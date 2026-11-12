@@ -10,6 +10,7 @@ import type { AdminPermission } from './roles.js';
 import {
   ADMIN_ACCESS_CASES_PATH,
   ADMIN_AUDIT_QUERY_PATH,
+  ADMIN_CATALOG_PATH,
   ADMIN_OPS_PANEL_PATH,
   type AdminMethod,
   type AdminRouteSpec,
@@ -109,7 +110,7 @@ export const ADMIN_CONSOLE_SCREENS: readonly AdminConsoleScreen[] = [
     id: 'catalogo',
     rotulo: 'Catálogo',
     permissao: 'catalog.manage',
-    rota: null,
+    rota: { method: 'GET', pattern: ADMIN_CATALOG_PATH },
     historiaDona: 'H-107',
   },
   {
