@@ -18,6 +18,7 @@ import {
 import type { SqlClient } from './jobs-tick.js';
 import {
   challengeAad,
+  challengeHmacHex,
   challengeSha256Hex,
   loadChallengeKey,
   openChallengeBlob,
@@ -249,15 +250,29 @@ interface UserFindRow {
  * linha (idempotente). Usuario bloqueado devolve 'bloqueado' (link_invalido, sem sessao).
  */
 export class PgCustomerAccounts implements CustomerAccountPort {
+  /**
+   * emailHash (H-097, F-1): HMAC do e-mail normalizado (PEPPER_EMAIL_HMAC), o mesmo do pedido de login.
+   * Quando informado, grava app.app_user.email_hmac pela private.app_user_set_email_hmac (idempotente).
+   */
   constructor(
     private readonly client: SqlClient,
     private readonly authAdmin: AuthUserAdminPort,
+    private readonly emailHash?: (email: string) => string,
   ) {}
+
+  private async gravarHmac(userId: string, email: string): Promise<void> {
+    if (this.emailHash === undefined) return;
+    await this.client.query('select private.app_user_set_email_hmac($1::uuid, $2) as ok', [
+      userId,
+      this.emailHash(email),
+    ]);
+  }
 
   async ensureCustomer(email: string, nowMs: number): Promise<CustomerAccountResult> {
     const achado = await this.client.query('select * from private.app_user_find($1)', [email]);
     const existente = achado.rows[0] as UserFindRow | undefined;
     if (existente) {
+      await this.gravarHmac(existente.out_user_id, email);
       return existente.out_status === 'ativo'
         ? { status: 'ok', userId: existente.out_user_id }
         : { status: 'bloqueado' };
@@ -273,6 +288,7 @@ export class PgCustomerAccounts implements CustomerAccountPort {
     );
     const linha = gravado.rows[0] as UserFindRow | undefined;
     if (!linha) return { status: 'falha' };
+    await this.gravarHmac(linha.out_user_id, email);
     return linha.out_status === 'ativo'
       ? { status: 'ok', userId: linha.out_user_id }
       : { status: 'bloqueado' };
@@ -304,9 +320,14 @@ export interface ConsumeWiring {
 
 export function buildConsumeDeps(w: ConsumeWiring): ConsumeDeps {
   const key = loadChallengeKey(w.env);
+  const pepperEmail = (w.env ?? process.env).PEPPER_EMAIL_HMAC;
   return {
     repo: new PgConsumeRepository(w.client),
-    accounts: new PgCustomerAccounts(w.client, w.authAdmin),
+    accounts: new PgCustomerAccounts(
+      w.client,
+      w.authAdmin,
+      pepperEmail !== undefined ? (email) => challengeHmacHex(pepperEmail, email) : undefined,
+    ),
     stages: new PgSessionStageStore(w.client),
     decryptEmail: (emailEnc, challengeId) =>
       openChallengeBlob(key, emailEnc, challengeAad(challengeId, 'email_enc')),

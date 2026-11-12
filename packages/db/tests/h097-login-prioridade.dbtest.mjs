@@ -2,12 +2,14 @@
 // Executado no banco de desenvolvimento (APP_ENV=development) com: node --test --test-concurrency=1 <este arquivo>.
 // Cada teste roda em transacao com rollback; relogio fixo em 2099; sem rede (provedor simulado).
 // Desenho: docs/factory/86-DESENHO-H097.md §2 e §5. Resultado e contagem: relatorio da Issue 107.
-// Fora deste arquivo (pendente): aceite adiado a 90 (critico) e digest a 85, que dependem da ingestao de
-// eventos; regra de conta nao cadastrada (F-1, bloqueio registrado na Issue 107).
+// T-H097-07 (parte F-1) e T-H097-08 usam a regra de conta da migracao 20261112100000 (email_hmac). Antes de
+// executar, a migracao precisa estar aplicada no banco de desenvolvimento (ver relatorio da Issue 107).
+// Fora deste arquivo (pendente): aceite adiado a 90 (critico) e digest a 85, que dependem da ingestao de eventos.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { connect } from '../scripts/lib/env.mjs';
+import { challengeHmacHex } from '../dist/challenges-crypto.js';
 import {
   ChallengeEmailProvider,
   ChallengeRecipientDirectory,
@@ -74,19 +76,36 @@ async function semearCota(usadoDia) {
   );
 }
 
-/** Cria um desafio de login pelo pedido real (segredos cifrados de verdade) e devolve a saida. */
-async function criarDesafio(nowMs) {
+/** Conta do cliente com o HMAC do e-mail (como o consumo grava; F-1). E-mail sintetico, minusculo. */
+async function criarConta(email) {
+  const hmac = challengeHmacHex(SEGREDOS.secrets.pepperEmail, email);
+  await client.query(
+    `insert into app.app_user (id, email, auth_user_id, status, email_verified_at, created_at, email_hmac)
+     values (gen_random_uuid(), $1, gen_random_uuid(), ativo, clock_timestamp(), clock_timestamp(), $2)`,
+    [email, hmac],
+  );
+}
+
+/** Pedido real (segredos cifrados de verdade). Devolve o id da saida criada. */
+async function pedir(nowMs, email, purpose) {
   const store = new StoreCapturado(client);
-  await requestChallenge(
+  const r = await requestChallenge(
     {
       store,
       ...SEGREDOS,
       clock: new FakeClock(new Date(nowMs).toISOString()),
       dispatch: { schedule: () => undefined },
     },
-    { email: `h097-${randomBytes(4).toString('hex')}@example.test` },
+    { email, purpose },
   );
+  assert.equal(r.status, 202);
   return store.ultimo.outboxId;
+}
+
+/** Login de uma conta cadastrada criada na propria transacao. */
+async function criarDesafio(nowMs, email = `h097-${randomBytes(4).toString('hex')}@example.test`) {
+  await criarConta(email);
+  return pedir(nowMs, email, 'login');
 }
 
 /** Pipeline de envio com o provedor simulado por baixo do decorador do login. */
@@ -130,26 +149,18 @@ test('T-H097-01: 200 saidas de aceite e digest pendentes na fila; o login vai ao
     const pendentesAntes = await contarPendentesT01();
     assert.equal(pendentesAntes, 200);
 
-    const store = new StoreCapturado(client);
-    const r = await requestChallenge(
-      {
-        store,
-        ...SEGREDOS,
-        clock: new FakeClock(new Date(NOW_MS).toISOString()),
-        dispatch: { schedule: () => undefined },
-      },
-      { email: `h097-t01-${randomBytes(4).toString('hex')}@example.test` },
-    );
-    assert.equal(r.status, 202);
+    const email = `h097-t01-${randomBytes(4).toString('hex')}@example.test`;
+    await criarConta(email);
+    const saida = await pedir(NOW_MS, email, 'login');
 
     // Envio logo apos a resposta: so a linha do login e reivindicada, sem varrer a fila.
     const provedor = new FakeEmailProvider();
-    await dispatchChallengeOutbox(pipeline(provedor, NOW_MS), store.ultimo.outboxId);
+    await dispatchChallengeOutbox(pipeline(provedor, NOW_MS), saida);
 
     assert.equal(provedor.calls.length, 1, 'so o login foi ao provedor');
     assert.equal(provedor.calls[0].templateKey, 'acesso_login', 'o primeiro envio e o login');
     assert.equal(await contarPendentesT01(), 200, 'as 200 saidas continuam pendentes');
-    const login = await client.query('select state from ops.email_outbox where id = $1', [store.ultimo.outboxId]);
+    const login = await client.query('select state from ops.email_outbox where id = $1', [saida]);
     assert.equal(login.rows[0].state, 'enviado');
   }));
 
@@ -159,6 +170,32 @@ async function contarPendentesT01() {
   );
   return q.rows[0].n;
 }
+
+test('T-H097-07 (F-1): login sem conta: 202, saida descartada (conta_inexistente), provedor nao chamado, cota intacta', () =>
+  tx(async () => {
+    await semearCota(0);
+    const email = `h097-sem-conta-${randomBytes(4).toString('hex')}@example.test`;
+    const saida = await pedir(NOW_MS, email, 'login');
+    const provedor = new FakeEmailProvider();
+    await dispatchChallengeOutbox(pipeline(provedor, NOW_MS), saida);
+    assert.equal(provedor.calls.length, 0);
+    const r = await client.query('select state, reason_code from ops.email_outbox where id = $1', [saida]);
+    assert.equal(r.rows[0].state, 'descartado');
+    assert.equal(r.rows[0].reason_code, 'conta_inexistente');
+    assert.equal(await usoDoDia(DIA), 0);
+  }));
+
+test('T-H097-08: finalidade publish sem conta envia (a conta nasce no consumo)', () =>
+  tx(async () => {
+    await semearCota(0);
+    const email = `h097-publish-${randomBytes(4).toString('hex')}@example.test`;
+    const saida = await pedir(NOW_MS, email, 'publish');
+    const provedor = new FakeEmailProvider();
+    await dispatchChallengeOutbox(pipeline(provedor, NOW_MS), saida);
+    assert.equal(provedor.calls.length, 1);
+    const r = await client.query('select state from ops.email_outbox where id = $1', [saida]);
+    assert.equal(r.rows[0].state, 'enviado');
+  }));
 
 test('T-H097-02: uso do dia 50, o login sai e o contador passa a 51', () =>
   tx(async () => {
