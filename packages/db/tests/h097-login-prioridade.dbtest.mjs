@@ -81,7 +81,7 @@ async function criarConta(email) {
   const hmac = challengeHmacHex(SEGREDOS.secrets.pepperEmail, email);
   await client.query(
     `insert into app.app_user (id, email, auth_user_id, status, email_verified_at, created_at, email_hmac)
-     values (gen_random_uuid(), $1, gen_random_uuid(), ativo, clock_timestamp(), clock_timestamp(), $2)`,
+     values (gen_random_uuid(), $1, gen_random_uuid(), 'ativo', clock_timestamp(), clock_timestamp(), $2)`,
     [email, hmac],
   );
 }
