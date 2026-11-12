@@ -7,6 +7,7 @@ import {
   ADDRESS_SUGGEST_PATH,
   ADMIN_ACCESS_CASES_PATH,
   ADMIN_AUDIT_QUERY_PATH,
+  ADMIN_AUTH_SESSION_PATH,
   ADMIN_CONSOLE_MENU_PATH,
   ADMIN_STEP_UP_PATH,
   CATALOG_SEARCH_PATH,
@@ -22,6 +23,10 @@ import {
 import { handleAdminStepUpRoute, type AdminStepUpRouteOptions } from './admin-step-up-route.js';
 import { handleAdminAuditQuery, type AdminAuditRouteOptions } from './admin-audit-route.js';
 import { handleAdminConsoleMenu, type AdminConsoleRouteOptions } from './admin-console-route.js';
+import {
+  handleAdminAuthSessionRoute,
+  type AdminAuthSessionRouteOptions,
+} from './admin-auth-session-route.js';
 import { handleCatalogSearch, type CatalogRouteOptions } from './catalog/catalog-route.js';
 import { handleConsume, type ConsumeRouteOptions } from './consume-route.js';
 import {
@@ -69,6 +74,8 @@ export interface AppOptions {
   readonly admin?: AdminAuditRouteOptions;
   /** Menu do console por papel (H-103). Sem esta opcao a rota GET /v1/admin/console/menu nao existe (404). */
   readonly adminConsole?: AdminConsoleRouteOptions;
+  /** Estado da sessao admin para a interface (H-103). Sem esta opcao a rota GET /v1/admin/auth/session nao existe (404). */
+  readonly adminAuthSession?: AdminAuthSessionRouteOptions;
   /** Acesso excepcional a conversa (H-073). Sem esta opcao as rotas /v1/admin/access-cases nao existem (404). */
   readonly accessCase?: AdminAccessCaseRouteOptions;
   /** Confirmacao recente do segundo fator da sessao admin (H-073, 60 §4). Sem esta opcao a rota nao existe (404). */
@@ -174,6 +181,10 @@ export async function handleRequest(
   }
   if (req.method === 'GET' && path === ADMIN_CONSOLE_MENU_PATH && opts.adminConsole) {
     await handleAdminConsoleMenu(req, res, opts.adminConsole);
+    return;
+  }
+  if (req.method === 'GET' && path === ADMIN_AUTH_SESSION_PATH && opts.adminAuthSession) {
+    await handleAdminAuthSessionRoute(req, res, opts.adminAuthSession);
     return;
   }
   if (req.method === 'POST' && path === ADDRESS_SUGGEST_PATH && opts.geo) {
