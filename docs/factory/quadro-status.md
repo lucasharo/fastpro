@@ -94,16 +94,16 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #136 | [E7] Mensagem automática do aceite |
 | #137 | [E11] Canal “no site” |
 
-## Product Owner (1)
+## Product Owner (0)
+
+| Issue | Título |
+|---|---|
+
+## Arquitetura (2)
 
 | Issue | Título |
 |---|---|
 | #40 | [E3] Redução e reencode das fotos |
-
-## Arquitetura (1)
-
-| Issue | Título |
-|---|---|
 | #43 | [E3] Revisão e confirmação expressa |
 
 ## Desenvolvimento (2)
