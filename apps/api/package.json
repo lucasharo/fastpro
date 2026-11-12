@@ -20,7 +20,8 @@
   },
   "dependencies": {
     "@fastpro/db": "workspace:*",
-    "@fastpro/domain": "workspace:*"
+    "@fastpro/domain": "workspace:*",
+    "@fastpro/email": "workspace:*"
   },
   "devDependencies": {
     "@fastpro/config": "workspace:*"

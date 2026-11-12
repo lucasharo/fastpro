@@ -47,6 +47,9 @@ importers:
       '@fastpro/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@fastpro/email':
+        specifier: workspace:*
+        version: link:../../packages/email
     devDependencies:
       '@fastpro/config':
         specifier: workspace:*
