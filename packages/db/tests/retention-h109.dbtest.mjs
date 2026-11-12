@@ -780,3 +780,78 @@ test('rollback 20261112110000 roda em transacao, restaura a regra antiga e nao d
       'update app.professional_profile set public_name = $2, slug = $3 where user_id = $1', [id, 'Nome X', 'nome-x']));
     assert.equal(erro?.code, '23514', 'regra antiga recusa nome sem documento');
   }));
+
+// ---------------------------------------------------------------------------------------------------------------
+// Ciclo de correcao do QA (Issue #118): CA-H109-05 (pedido com gatilho futuro nao muda) e CA-H109-08 (cadeia de
+// auditoria integra antes e depois do expurgo e da anonimizacao).
+
+/** Linha inteira de app_user como jsonb, para comparar antes e depois de um lote. */
+async function linhaUsuario(id) {
+  const { rows } = await client.query('select to_jsonb(u) as l from app.app_user u where id = $1', [id]);
+  return rows[0].l;
+}
+
+/** Linha inteira de professional_profile como jsonb. */
+async function linhaPerfil(userId) {
+  const { rows } = await client.query(
+    'select to_jsonb(p) as l from app.professional_profile p where user_id = $1', [userId]);
+  return rows[0].l;
+}
+
+// CA-H109-05 | pedido cujo gatilho ainda nao ocorreu (conta criada depois do corte; perfil verificado depois do
+// corte): o lote nao marca nem altera a linha. Comparacao da linha inteira antes e depois.
+test('CA-H109-05 pedido com gatilho futuro: a linha nao muda depois do lote', () =>
+  tx(async () => {
+    const { policyId: pUsuario } = await executavel('RC-02', 'anonimizar');
+    const { policyId: pPerfil } = await executavel('RC-01', 'excluir');
+
+    const futuroUsuario = randomUUID();
+    await client.query(
+      `insert into app.app_user (id, email, auth_user_id, status, email_verified_at, created_at, email_hmac)
+       values ($1, $2, $3, 'bloqueado', now(), $4, $5)`,
+      [futuroUsuario, `${randomUUID()}@example.test`, randomUUID(), at(T0 - 10 * DIA), createHashHex()]);
+    const futuroPerfil = await profissionalComDocumento(T0 - 10 * DIA);
+    const vencido = await usuarioBloqueado(`${randomUUID()}@example.test`);
+    const vencidoPerfil = await profissionalComDocumento(T0 - 60 * DIA);
+
+    const antesUsuario = await linhaUsuario(futuroUsuario);
+    const antesPerfil = await linhaPerfil(futuroPerfil);
+
+    const marcadosUsuario = await lote(pUsuario);
+    const marcadosPerfil = await lote(pPerfil);
+    assert.ok(marcadosUsuario.includes(vencido), 'controle: o vencido entra no lote');
+    assert.ok(marcadosPerfil.includes(vencidoPerfil), 'controle: o vencido entra no lote');
+    assert.equal(marcadosUsuario.includes(futuroUsuario), false, 'gatilho futuro fora do lote (conta)');
+    assert.equal(marcadosPerfil.includes(futuroPerfil), false, 'gatilho futuro fora do lote (perfil)');
+
+    assert.deepEqual(await linhaUsuario(futuroUsuario), antesUsuario, 'a linha da conta nao mudou');
+    assert.deepEqual(await linhaPerfil(futuroPerfil), antesPerfil, 'a linha do perfil nao mudou');
+  }));
+
+// CA-H109-08 | cadeia de auditoria: verify ok antes de qualquer expurgo, e depois de cada fase C (RC-01 excluir
+// e RC-02 anonimizar). Os eventos gravados pelo expurgo entram na cadeia sem quebra; nenhum evento e alterado.
+test('CA-H109-08 cadeia de auditoria integra antes e depois do expurgo e da anonimizacao', () =>
+  tx(async () => {
+    const verifica = async () => {
+      const { rows } = await client.query('select ok, checked, first_bad_seq, reason from private.audit_verify_chain(1, null)');
+      return rows[0];
+    };
+    const antes = await verifica();
+    assert.equal(antes.ok, true, `cadeia integra antes do expurgo (motivo: ${antes.reason})`);
+
+    const { policyId: pPerfil } = await executavel('RC-01', 'excluir');
+    const perfil = await profissionalComDocumento(T0 - 60 * DIA);
+    await lote(pPerfil);
+    assert.deepEqual(await faseC(pPerfil, [perfil], T0 + 1000), { processed: 1, held: 0, failed: 0 });
+    const depoisPerfil = await verifica();
+    assert.equal(depoisPerfil.ok, true, `cadeia integra depois do expurgo RC-01 (motivo: ${depoisPerfil.reason}, seq ${depoisPerfil.first_bad_seq})`);
+    assert.ok(Number(depoisPerfil.checked) > Number(antes.checked), 'os eventos novos entram na cadeia');
+
+    const { policyId: pUsuario } = await executavel('RC-02', 'anonimizar');
+    const usuario = await usuarioBloqueado(`${randomUUID()}@example.test`);
+    await lote(pUsuario);
+    assert.deepEqual(await faseC(pUsuario, [usuario], T0 + 2000), { processed: 1, held: 0, failed: 0 });
+    const depoisUsuario = await verifica();
+    assert.equal(depoisUsuario.ok, true, `cadeia integra depois da anonimizacao RC-02 (motivo: ${depoisUsuario.reason}, seq ${depoisUsuario.first_bad_seq})`);
+    assert.ok(Number(depoisUsuario.checked) > Number(depoisPerfil.checked), 'eventos da anonimizacao entram na cadeia');
+  }));
