@@ -63,7 +63,8 @@ create or replace function private.draft_create(
   p_now timestamptz,
   p_ttl_days integer,
   p_expired_hash text,
-  p_fields jsonb)
+  p_fields jsonb,
+  p_live_cap integer)
 returns table (
   out_id uuid, out_status text, out_service_id uuid, out_address_text text,
   out_urgency text, out_description text, out_expires_at timestamptz, out_updated_at timestamptz)
@@ -73,9 +74,14 @@ set search_path = ''
 as $$
 declare
   v_row app.request_draft;
+  v_vivos bigint;
 begin
   if p_hash is null or p_ip_hmac is null or p_now is null or p_ttl_days is null
      or p_ttl_days < 1 or p_ttl_days > 30 or p_fields is null or jsonb_typeof(p_fields) <> 'object' then
+    raise exception 'draft_entrada_invalida' using errcode = '22023';
+  end if;
+
+  if p_live_cap is null or p_live_cap < 1 or p_live_cap > 1000000 then
     raise exception 'draft_entrada_invalida' using errcode = '22023';
   end if;
 
@@ -94,6 +100,15 @@ begin
     ) then
       raise exception 'servico_invalido' using errcode = 'P0001';
     end if;
+  end if;
+
+  -- Teto global (A1): rascunhos vivos (prazo nao vencido) contados antes da insercao; ao atingir, recusa.
+  select count(*) into v_vivos
+    from app.request_draft r
+   where r.status in ('aberto', 'aguardando_email')
+     and r.expires_at > p_now;
+  if v_vivos >= p_live_cap then
+    raise exception 'teto_global_rascunhos' using errcode = 'P0001';
   end if;
 
   insert into app.request_draft (
@@ -194,7 +209,7 @@ $$;
 -- Privilegios: nenhuma funcao para PUBLIC, anon, authenticated ou service_role; execute so para app_api.
 revoke all on function private.draft_get(text, timestamptz)
   from public, anon, authenticated, service_role;
-revoke all on function private.draft_create(text, text, timestamptz, integer, text, jsonb)
+revoke all on function private.draft_create(text, text, timestamptz, integer, text, jsonb, integer)
   from public, anon, authenticated, service_role;
 revoke all on function private.draft_patch(text, timestamptz, integer, jsonb)
   from public, anon, authenticated, service_role;
@@ -202,6 +217,6 @@ revoke all on function private.draft_discard(text, timestamptz)
   from public, anon, authenticated, service_role;
 
 grant execute on function private.draft_get(text, timestamptz) to app_api;
-grant execute on function private.draft_create(text, text, timestamptz, integer, text, jsonb) to app_api;
+grant execute on function private.draft_create(text, text, timestamptz, integer, text, jsonb, integer) to app_api;
 grant execute on function private.draft_patch(text, timestamptz, integer, jsonb) to app_api;
 grant execute on function private.draft_discard(text, timestamptz) to app_api;

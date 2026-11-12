@@ -98,6 +98,8 @@ class MemStore implements DraftStorePort {
       const velho = this.linhas.get(input.expiredSecretHash);
       if (velho && velho.status === 'aberto' && velho.expiresMs <= input.nowMs) velho.status = 'descartado';
     }
+    const vivos = [...this.linhas.values()].filter((x) => this.vivo(x, input.nowMs)).length;
+    if (vivos >= input.liveCap) return { ok: false, code: 'teto_global' };
     const l: Linha = {
       id: `rascunho-${++this.seq}`,
       status: 'aberto',
@@ -170,7 +172,7 @@ interface Mundo {
 
 const servidores: Server[] = [];
 
-async function iniciar(opcoes: { semRotas?: boolean } = {}): Promise<Mundo> {
+async function iniciar(opcoes: { semRotas?: boolean; liveCap?: number } = {}): Promise<Mundo> {
   const store = new MemStore();
   const rate = new MemRate();
   const relogio = { agora: T0 };
@@ -180,6 +182,7 @@ async function iniciar(opcoes: { semRotas?: boolean } = {}): Promise<Mundo> {
     rate,
     hasher: createDraftHasher(CHAVE_IP),
     newSecret: () => segredo(mundo.contadorSegredo++),
+    liveCap: opcoes.liveCap,
     clock: { nowMs: () => relogio.agora },
   };
   const server = createServer((req, res) => {
@@ -565,3 +568,34 @@ describe('DELETE, descarte e limite de salvamento', () => {
 function hashDe(segredoEmClaro: string): string {
   return createDraftHasher(CHAVE_IP).secretHash(segredoEmClaro);
 }
+
+describe('A1: teto global de rascunhos vivos', () => {
+  it('ao atingir o teto a criacao responde 429 neutro e nao grava; rascunhos vencidos nao contam', async () => {
+    const m = await iniciar({ liveCap: 2 });
+    expect((await chamar(m.porta, 'POST', DRAFT_PATH, { corpo: CORPO_OK })).status).toBe(201);
+    expect((await chamar(m.porta, 'POST', DRAFT_PATH, { corpo: CORPO_OK })).status).toBe(201);
+    const r = await chamar(m.porta, 'POST', DRAFT_PATH, { corpo: CORPO_OK });
+    expect(r.status).toBe(429);
+    expect(JSON.parse(r.body)).toEqual({ code: 'muitos_pedidos', retry_after_seconds: 3600 });
+    expect(m.store.linhas.size).toBe(2);
+    m.relogio.agora += 8 * DIA;
+    expect((await chamar(m.porta, 'POST', DRAFT_PATH, { corpo: CORPO_OK })).status).toBe(201);
+  });
+});
+
+describe('A3: limite de leitura por IP no GET', () => {
+  it('120 leituras com 200 passam e a 121a responde 429; respostas 404 nao contam', async () => {
+    const m = await iniciar();
+    const c = enviaCookie(segredoDe(await chamar(m.porta, 'POST', DRAFT_PATH, { corpo: CORPO_OK })));
+    for (let i = 0; i < 300; i++) {
+      expect((await chamar(m.porta, 'GET', DRAFT_CURRENT_PATH, { cookie: enviaCookie(segredo(5000 + i)) })).status).toBe(404);
+    }
+    for (let i = 0; i < 120; i++) {
+      expect((await chamar(m.porta, 'GET', DRAFT_CURRENT_PATH, { cookie: c })).status).toBe(200);
+    }
+    const barrado = await chamar(m.porta, 'GET', DRAFT_CURRENT_PATH, { cookie: c });
+    expect(barrado.status).toBe(429);
+    expect(Number(barrado.headers['retry-after'])).toBeGreaterThan(0);
+    expect(JSON.parse(barrado.body)).toMatchObject({ code: 'muitos_pedidos' });
+  });
+});

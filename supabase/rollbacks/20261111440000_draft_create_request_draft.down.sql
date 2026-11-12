@@ -5,7 +5,7 @@ begin;
 
 drop function if exists private.draft_discard(text, timestamptz);
 drop function if exists private.draft_patch(text, timestamptz, integer, jsonb);
-drop function if exists private.draft_create(text, text, timestamptz, integer, text, jsonb);
+drop function if exists private.draft_create(text, text, timestamptz, integer, text, jsonb, integer);
 drop function if exists private.draft_get(text, timestamptz);
 drop table if exists app.request_draft;
 

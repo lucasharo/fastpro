@@ -20,7 +20,7 @@ import type { SqlClient } from './jobs-tick.js';
 
 export const SQL_DRAFT_GET = 'select * from private.draft_get($1, $2::timestamptz)';
 export const SQL_DRAFT_CREATE =
-  'select * from private.draft_create($1, $2, $3::timestamptz, $4::integer, $5, $6::jsonb)';
+  'select * from private.draft_create($1, $2, $3::timestamptz, $4::integer, $5, $6::jsonb, $7::integer)';
 export const SQL_DRAFT_PATCH = 'select * from private.draft_patch($1, $2::timestamptz, $3::integer, $4::jsonb)';
 export const SQL_DRAFT_DISCARD = 'select private.draft_discard($1, $2::timestamptz) as ok';
 export const SQL_DRAFT_RL_CHECK =
@@ -68,7 +68,9 @@ function paraRegistro(row: Record<string, unknown>): DraftRecord {
 /** Codigos fixos que o banco pode levantar (mensagem da funcao). Qualquer outra falha sobe como erro. */
 function codigoDoBanco(erro: unknown): DraftStoreError | null {
   const msg = erro instanceof Error ? erro.message : '';
-  return msg === 'servico_invalido' ? 'servico_invalido' : null;
+  if (msg === 'servico_invalido') return 'servico_invalido';
+  if (msg === 'teto_global_rascunhos') return 'teto_global';
+  return null;
 }
 
 /** Rascunho no banco: leitura, criacao, salvamento e descarte, todos por funcao. */
@@ -91,6 +93,7 @@ export class PgDraftStore implements DraftStorePort {
         DRAFT_TTL_DAYS,
         input.expiredSecretHash,
         JSON.stringify(input.fields),
+        input.liveCap,
       ],
       false,
     );

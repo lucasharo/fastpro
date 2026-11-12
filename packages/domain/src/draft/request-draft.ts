@@ -20,6 +20,10 @@ export const DRAFT_ADDRESS_MIN = ADDRESS_QUERY_MIN;
 export const DRAFT_ADDRESS_MAX = ADDRESS_LABEL_MAX;
 /** Segredo do cookie: 32 bytes em base64url, sempre 43 caracteres. */
 export const DRAFT_SECRET_LENGTH = 43;
+/** Teto global de rascunhos vivos (aberto ou aguardando_email, prazo nao vencido). Padrao 5.000 (desenho §3, R1). */
+export const DRAFT_LIVE_CAP_DEFAULT = 5000;
+/** Retry-After neutro quando o teto global e atingido (sem revelar o numero). */
+export const DRAFT_CAP_RETRY_S = 3600;
 
 export const DRAFT_URGENCY = [
   'imediato',
@@ -247,7 +251,7 @@ export const DRAFT_HEADERS: Readonly<Record<string, string>> = {
 // ---------------------------------------------------------------------------------------------
 
 export interface DraftRatePolicy {
-  readonly id: 'criacao_hora' | 'criacao_dia' | 'salvar_ip' | 'salvar_rascunho';
+  readonly id: 'criacao_hora' | 'criacao_dia' | 'salvar_ip' | 'salvar_rascunho' | 'leitura_ip';
   readonly spanS: number;
   readonly bucketS: number;
   readonly limit: number;
@@ -259,6 +263,8 @@ export const DRAFT_RATE_CRIACAO_DIA: DraftRatePolicy = { id: 'criacao_dia', span
 /** Salvamento por IP-HMAC: 120 por 60 s. Por rascunho: 60 por 60 s (chave = hash do segredo). */
 export const DRAFT_RATE_SALVAR_IP: DraftRatePolicy = { id: 'salvar_ip', spanS: 60, bucketS: 10, limit: 120 };
 export const DRAFT_RATE_SALVAR_RASCUNHO: DraftRatePolicy = { id: 'salvar_rascunho', spanS: 60, bucketS: 10, limit: 60 };
+/** Leitura do rascunho por IP-HMAC: 120 por 60 s. So pedido com 200 conta; 404 e so checado (A3). */
+export const DRAFT_RATE_LEITURA_IP: DraftRatePolicy = { id: 'leitura_ip', spanS: 60, bucketS: 10, limit: 120 };
 
 // ---------------------------------------------------------------------------------------------
 // Revisao (D-H025-5; CA-04 fica para H-030). Funcao pura, sem bloqueio nesta historia.

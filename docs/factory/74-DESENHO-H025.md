@@ -84,3 +84,12 @@ Padrão do repositório `[VERIFICADO]`: testes de unidade/rota (`*.test.ts`) e d
 5. **CA-04 do refino fica para H-030/H-013** com a função pura de H-025. Recomendação: aceitar; ajustar o critério na Issue #38 para não prometer a tela de revisão.
 6. **Rotas com `current` em vez de `{id}`** (diverge do texto de 11-ARQ §2.2, que não fixa o caminho). Recomendação: aceitar; `/drafts/{id}/review` de H-030 passa a aceitar `current` ou o id só se o cookie conferir.
 7. **PATCH em `aguardando_email`** permitido. Recomendação: aceitar (corrigir antes de confirmar o link).
+
+## 6. Lacunas aceitas na revisão (2026-11-11)
+
+Registro das lacunas aceitas pelo líder na revisão da #38. Aceitas para a fase de ensaio (sem usuário real); revisitar antes de abrir ao público.
+
+- **A2 (prazo e limites em `ops.app_config`): aceita como lacuna.** O prazo do rascunho (7 dias, teto de 30), os limites de criação e de salvamento, o limite de leitura e o teto global estão como constantes de código (`DRAFT_*` no domínio), e o teto global é passado pela composição (padrão 5.000). A leitura de `ops.app_config` exige ligação de composição e variáveis de ambiente que ainda não existem. Os valores padrão estão fixados e testados. Motivo da aceitação: escopo da etapa sem banco; sem usuário real na fase de ensaio. Revisitar junto com H-110, antes do lançamento.
+- **Teto global sem trava de concorrência.** A contagem de rascunhos vivos em `private.draft_create` não usa trava. Em disparos simultâneos o teto pode ser ultrapassado em poucas unidades. Aceito na fase de ensaio; revisitar com carga real.
+- **Limite de leitura (A3) por IP-HMAC: 120 por 60 s.** Só a resposta 200 conta; a 404 é apenas checada. Assim, sondagem com cookie inexistente não consome a cota. Parâmetro proposto pela revisão, a ajustar após o ensaio.
+- **DraftGate real (D-11) ainda não ligada.** Continua pendente, fora desta revisão.

@@ -23,7 +23,7 @@ const lower = (s) => s.toLowerCase().replace(/\s+/g, ' ');
 const tabela = sql.slice(sql.indexOf('create table if not exists app.request_draft'), sql.indexOf(');', sql.indexOf('create table if not exists app.request_draft')));
 const FUNCOES = [
   'private.draft_get(text, timestamptz)',
-  'private.draft_create(text, text, timestamptz, integer, text, jsonb)',
+  'private.draft_create(text, text, timestamptz, integer, text, jsonb, integer)',
   'private.draft_patch(text, timestamptz, integer, jsonb)',
   'private.draft_discard(text, timestamptz)',
 ];
@@ -129,6 +129,14 @@ describe('T-H025-10 estatico da migracao app.request_draft', () => {
     );
     expect(lower(sql)).toContain('create index if not exists request_draft_expires_at_idx on app.request_draft (expires_at)');
     expect(lower(sql)).toContain('create index if not exists request_draft_ip_created_idx on app.request_draft (ip_hmac, created_at)');
+  });
+
+  it('A1 teto global: draft_create conta os vivos e recusa antes de inserir', () => {
+    const create = sql.slice(sql.indexOf('function private.draft_create'), sql.indexOf('$$;', sql.indexOf('function private.draft_create')));
+    expect(lower(create)).toContain("r.status in ('aberto', 'aguardando_email') and r.expires_at > p_now");
+    expect(create).toMatch(/raise exception 'teto_global_rascunhos'/);
+    expect(create.indexOf('teto_global_rascunhos')).toBeLessThan(create.indexOf('insert into app.request_draft'));
+    expect(create).toMatch(/p_live_cap < 1 or p_live_cap > 1000000/);
   });
 
   it('servico precisa estar ativo na criacao e no salvamento', () => {

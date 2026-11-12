@@ -22,7 +22,7 @@ export interface DraftRecord {
 }
 
 /** Codigos de falha da escrita, sempre fixos (nenhum texto de banco sai). */
-export type DraftStoreError = 'nao_encontrado' | 'servico_invalido';
+export type DraftStoreError = 'nao_encontrado' | 'servico_invalido' | 'teto_global';
 
 export type DraftWriteResult =
   | { readonly ok: true; readonly draft: DraftRecord }
@@ -36,6 +36,8 @@ export interface DraftCreateInput {
   readonly nowMs: number;
   /** SHA-256 do cookie vencido que sera marcado como descartado, ou null. */
   readonly expiredSecretHash: string | null;
+  /** Teto global de rascunhos vivos; ao atingi-lo a escrita responde teto_global (sem criar). */
+  readonly liveCap: number;
   readonly fields: DraftFieldsPatch;
 }
 

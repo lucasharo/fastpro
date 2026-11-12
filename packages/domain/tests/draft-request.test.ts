@@ -7,7 +7,10 @@ import {
   DRAFT_CLEAR_COOKIE_HEADER,
   DRAFT_COOKIE_NAME,
   DRAFT_DESCRIPTION_MAX,
+  DRAFT_CAP_RETRY_S,
+  DRAFT_LIVE_CAP_DEFAULT,
   DRAFT_LIVE_STATUSES,
+  DRAFT_RATE_LEITURA_IP,
   DRAFT_NOT_FOUND_BODY,
   DRAFT_RATE_CRIACAO_DIA,
   DRAFT_RATE_CRIACAO_HORA,
@@ -255,6 +258,14 @@ describe('origem e tipo (R4)', () => {
     expect(checkDraftJson('application/json; charset=utf-8')).toEqual({ ok: true });
     expect(checkDraftJson('text/plain')).toEqual({ ok: false, status: 415 });
     expect(checkDraftJson(undefined)).toEqual({ ok: false, status: 415 });
+  });
+});
+
+describe('A1 e A3: teto global e limite de leitura', () => {
+  it('teto global padrao 5.000 com Retry-After neutro de 1 h; leitura por IP: 120 por 60 s', () => {
+    expect(DRAFT_LIVE_CAP_DEFAULT).toBe(5000);
+    expect(DRAFT_CAP_RETRY_S).toBe(3600);
+    expect([DRAFT_RATE_LEITURA_IP.spanS, DRAFT_RATE_LEITURA_IP.limit]).toEqual([60, 120]);
   });
 });
 

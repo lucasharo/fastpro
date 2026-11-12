@@ -106,7 +106,7 @@ export async function handleDraftRoute(
     if (path === DRAFT_CURRENT_PATH) {
       // Cookie ausente, malformado ou repetido: 404 imediato, sem leitura do corpo e sem banco.
       if (segredo === null) return enviar(res, draftNotFound());
-      if (metodo === 'GET') return enviar(res, await getDraft(segredo, opts.deps));
+      if (metodo === 'GET') return enviar(res, await getDraft(segredo, ip, opts.deps));
       if (metodo === 'DELETE') return enviar(res, await discardDraft(segredo, opts.deps));
       if (metodo === 'PATCH') {
         const { text, bytes } = await lerCorpo(req, DRAFT_BODY_LIMIT_BYTES);

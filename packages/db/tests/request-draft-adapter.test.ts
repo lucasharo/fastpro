@@ -98,6 +98,7 @@ describe('criacao (private.draft_create)', () => {
     ipHmac: HASH_IP,
     nowMs: AGORA,
     expiredSecretHash: null,
+    liveCap: 5000,
     fields: { urgency: 'imediato' },
   };
 
@@ -108,7 +109,7 @@ describe('criacao (private.draft_create)', () => {
     expect(r.ok).toBe(true);
     expect(sql.chamadas[0]).toEqual({
       text: SQL_DRAFT_CREATE,
-      params: [HASH_SEGREDO, HASH_IP, AGORA_ISO, DRAFT_TTL_DAYS, null, '{"urgency":"imediato"}'],
+      params: [HASH_SEGREDO, HASH_IP, AGORA_ISO, DRAFT_TTL_DAYS, null, '{"urgency":"imediato"}', 5000],
     });
   });
 
@@ -123,6 +124,12 @@ describe('criacao (private.draft_create)', () => {
     const sql = new FakeSql();
     sql.enfileira(erroBanco('servico_invalido'));
     expect(await new PgDraftStore(sql).create(entrada)).toEqual({ ok: false, code: 'servico_invalido' });
+  });
+
+  it('teto global atingido no banco: codigo teto_global, sem criar', async () => {
+    const sql = new FakeSql();
+    sql.enfileira(erroBanco('teto_global_rascunhos'));
+    expect(await new PgDraftStore(sql).create(entrada)).toEqual({ ok: false, code: 'teto_global' });
   });
 
   it('erro do banco que nao e codigo conhecido sobe como erro (o servico responde 503)', async () => {

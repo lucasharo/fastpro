@@ -9,6 +9,9 @@ import {
   DRAFT_RATE_SALVAR_IP,
   DRAFT_RATE_SALVAR_RASCUNHO,
   DRAFT_CLEAR_COOKIE_HEADER,
+  DRAFT_CAP_RETRY_S,
+  DRAFT_LIVE_CAP_DEFAULT,
+  DRAFT_RATE_LEITURA_IP,
   draftCookieHeader,
   rateLimited,
   toDraftView,
@@ -32,6 +35,8 @@ export interface DraftDeps {
   /** Gera o segredo de um rascunho novo. Injetado para o teste; em producao, newDraftSecret. */
   readonly newSecret: () => string;
   readonly clock: DraftClockPort;
+  /** Teto global de rascunhos vivos. Padrao DRAFT_LIVE_CAP_DEFAULT (5.000). */
+  readonly liveCap?: number;
 }
 
 /** Resposta pronta para a rota: status, cabecalhos e corpo ja serializado (vazio no 204). */
@@ -51,7 +56,10 @@ export function draftNotFound(): DraftOutcome {
 }
 
 function erroDeEscrita(code: DraftStoreError): DraftOutcome {
-  return code === 'servico_invalido' ? json(422, { code: 'servico_invalido' }) : draftNotFound();
+  if (code === 'servico_invalido') return json(422, { code: 'servico_invalido' });
+  // Teto global: 429 neutro, mesma forma do limite por IP (sem revelar o numero).
+  if (code === 'teto_global') return resposta429(DRAFT_CAP_RETRY_S);
+  return draftNotFound();
 }
 
 /** Maior Retry-After entre as politicas que barraram; null quando nenhuma barrou. */
@@ -135,6 +143,7 @@ export async function postDraft(input: PostDraftInput, deps: DraftDeps): Promise
     ipHmac,
     nowMs: now,
     expiredSecretHash: input.secret === null ? null : deps.hasher.secretHash(input.secret),
+    liveCap: deps.liveCap ?? DRAFT_LIVE_CAP_DEFAULT,
     fields: input.fields,
   });
   if (!r.ok) return erroDeEscrita(r.code);
@@ -162,10 +171,19 @@ export async function patchDraft(input: PatchDraftInput, deps: DraftDeps): Promi
   return json(200, toDraftView(r.draft), { 'Set-Cookie': draftCookieHeader(input.secret) });
 }
 
-/** GET /v1/drafts/current: so le o rascunho vivo do cookie (sem efeito colateral). */
-export async function getDraft(secret: string, deps: DraftDeps): Promise<DraftOutcome> {
-  const d = await deps.store.find(deps.hasher.secretHash(secret), deps.clock.nowMs());
-  return d === null ? draftNotFound() : json(200, toDraftView(d));
+/**
+ * GET /v1/drafts/current: le o rascunho vivo do cookie. Limite por IP-HMAC (A3): so o 200 conta;
+ * o 404 e apenas checado, para que sondagem com cookie inexistente nao consuma a cota.
+ */
+export async function getDraft(secret: string, ip: string, deps: DraftDeps): Promise<DraftOutcome> {
+  const now = deps.clock.nowMs();
+  const ipHmac = deps.hasher.ipHmac(ip);
+  const espera = await barradoPor(deps.rate, [[DRAFT_RATE_LEITURA_IP, ipHmac]], now);
+  if (espera !== null) return resposta429(espera);
+  const d = await deps.store.find(deps.hasher.secretHash(secret), now);
+  if (d === null) return draftNotFound();
+  await contar(deps.rate, [[DRAFT_RATE_LEITURA_IP, ipHmac]], now);
+  return json(200, toDraftView(d));
 }
 
 /** DELETE /v1/drafts/current: descarta o rascunho vivo e limpa o cookie (204). */
