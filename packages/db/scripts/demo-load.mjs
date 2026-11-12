@@ -423,7 +423,7 @@ function lerChavesDeTeste() {
   for (const nome of ['DOCUMENT_HMAC_KEY', 'DATA_ENC_KEY_ACTIVE_VERSION', 'ADDRESS_HASH_KEY']) {
     env[nome] = loadEnvValue(nome);
   }
-  const versao = (env.DATA_ENC_KEY_ACTIVE_VERSION ?? '').trim();
+  const versao = (env.DATA_ENC_KEY_ACTIVE_VERSION ?? '').trim().replace(/^[vV]/, '');
   if (/^[1-9][0-9]{0,2}$/.test(versao)) {
     env[`DATA_ENC_KEY_V${Number(versao)}`] = loadEnvValue(`DATA_ENC_KEY_V${Number(versao)}`);
   }
@@ -439,7 +439,11 @@ async function main(argv) {
     return 2;
   }
 
-  const envTrava = { FASTPRO_DEMO_ALLOW: loadEnvValue('FASTPRO_DEMO_ALLOW') };
+  const envTrava = {
+    FASTPRO_DEMO_ALLOW: loadEnvValue('FASTPRO_DEMO_ALLOW'),
+    APP_ENV: loadEnvValue('APP_ENV'),
+    NEXT_PUBLIC_SUPABASE_URL: loadEnvValue('NEXT_PUBLIC_SUPABASE_URL'),
+  };
   const dbUrl = loadEnvValue('DATABASE_URL_MIGRATIONS');
   const recusaTrava = demoGuardRefusal(envTrava, dbUrl);
   if (recusaTrava !== null) {

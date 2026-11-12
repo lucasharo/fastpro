@@ -30,36 +30,56 @@ export function hostOfDbUrl(dbUrl) {
   return url.hostname.replace(/^\[|\]$/g, '').toLowerCase();
 }
 
-/** Trava de ambiente (itens 1 e 2 de §1). Devolve null quando a carga pode prosseguir. */
+/** Ref do projeto Supabase (20 caracteres minusculos) a partir da URL publica do .env.local. */
+export function projectRefOf(supabaseUrl) {
+  const m = typeof supabaseUrl === 'string' ? supabaseUrl.match(/^https:\/\/([a-z0-9]{20})\.supabase\.co/) : null;
+  return m ? m[1] : null;
+}
+
+/**
+ * Trava de ambiente. Devolve null quando a carga pode prosseguir.
+ * Aceita (decisao 58): banco local com FASTPRO_DEMO_ALLOW="local"; OU o banco de DESENVOLVIMENTO
+ * do proprio projeto (APP_ENV="development", ref do projeto na URL do banco igual ao ref de
+ * NEXT_PUBLIC_SUPABASE_URL). Qualquer outro host, ambiente ou parametro e recusado.
+ */
 export function demoGuardRefusal(env, dbUrl) {
-  if (env.FASTPRO_DEMO_ALLOW !== DEMO_ALLOW_VALUE) {
-    return recusa('ambiente_nao_permitido', 'FASTPRO_DEMO_ALLOW precisa ser exatamente "local"');
-  }
   if (typeof dbUrl !== 'string' || dbUrl === '') {
     return recusa('banco_nao_configurado', 'DATABASE_URL_MIGRATIONS ausente (ambiente ou .env.local)');
   }
   const host = hostOfDbUrl(dbUrl);
   if (host === null) return recusa('banco_invalido', 'DATABASE_URL_MIGRATIONS nao pode ser lida');
   let params;
+  let usuario;
   try {
-    params = new URL(dbUrl).searchParams;
+    const u = new URL(dbUrl);
+    params = u.searchParams;
+    usuario = decodeURIComponent(u.username);
   } catch {
     return recusa('banco_invalido', 'DATABASE_URL_MIGRATIONS nao pode ser lida');
   }
   if (params.has('host') || params.has('hostaddr')) {
-    return recusa('host_nao_local', 'a URL traz parametro de host; use somente host local');
+    return recusa('host_nao_local', 'a URL traz parametro de host; use somente host local ou o banco de desenvolvimento');
   }
-  if (!LOCAL_HOSTS.has(host)) {
-    return recusa('host_nao_local', 'o banco nao e local (127.0.0.1, localhost ou ::1); recusado sempre');
+  if (LOCAL_HOSTS.has(host)) {
+    if (env.FASTPRO_DEMO_ALLOW !== DEMO_ALLOW_VALUE) {
+      return recusa('ambiente_nao_permitido', 'banco local exige FASTPRO_DEMO_ALLOW exatamente "local"');
+    }
+    return null;
   }
-  return null;
+  // Banco de desenvolvimento do projeto: APP_ENV=development e o mesmo ref do NEXT_PUBLIC_SUPABASE_URL.
+  const ref = projectRefOf(env.NEXT_PUBLIC_SUPABASE_URL);
+  const noProjeto = ref !== null && (host.includes(ref) || usuario.includes(ref));
+  if (env.APP_ENV === 'development' && noProjeto && host.endsWith('.supabase.co') || (env.APP_ENV === 'development' && noProjeto && host.endsWith('.pooler.supabase.com'))) {
+    return null;
+  }
+  return recusa('host_nao_local', 'o banco nao e local nem o banco de desenvolvimento deste projeto (APP_ENV=development)');
 }
 
 /** Chaves de teste locais (nomes fixos de 19 §7 e 54 §5). Ausente ou invalida = recusa, sem valor. */
 export function loadDemoKeys(env) {
   const faltando = [];
   const hmacRaw = env.DOCUMENT_HMAC_KEY ?? '';
-  const versaoRaw = (env.DATA_ENC_KEY_ACTIVE_VERSION ?? '').trim();
+  const versaoRaw = (env.DATA_ENC_KEY_ACTIVE_VERSION ?? '').trim().replace(/^[vV]/, '');
   const addressKey = env.ADDRESS_HASH_KEY ?? '';
   if (hmacRaw.trim() === '') faltando.push('DOCUMENT_HMAC_KEY');
   if (!/^[1-9][0-9]{0,2}$/.test(versaoRaw)) faltando.push('DATA_ENC_KEY_ACTIVE_VERSION');
