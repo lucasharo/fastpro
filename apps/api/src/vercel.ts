@@ -9,6 +9,8 @@ import { abrirClienteSql } from './sql-pool.js';
 import { criarFabricaCatalogo } from './catalog/fabrica-pg.js';
 import { abrirPoolCatalogo } from './catalog/pool-pg.js';
 import { criarFabricaRascunho } from './drafts/compose.js';
+// H-025 (D-11) | Sugestao de endereco ligada ao rascunho real; so monta com as variaveis completas (sem elas, 404).
+import { memoizarCliente, montarSugestaoEndereco } from './geo/composicao-sugestao.js';
 import { montarAprovacaoDupla, montarCatalogoAdmin } from './admin-composicao.js';
 // H-097 (Issue 107) | Pedido de login por link ou codigo; so monta com as variaveis existentes (sem elas, 404).
 import { montarPedidoLogin } from './challenge-request-composicao.js';
@@ -19,6 +21,8 @@ import { montarConsumoEVerificacao } from './modules/identity/consumo-link-compo
 const fabricaCatalogo = criarFabricaCatalogo(abrirPoolCatalogo);
 /** H-025: fabrica do rascunho sem conta sobre o papel app_api (um cliente SQL por URL, reaproveitado). */
 const fabricaRascunho = criarFabricaRascunho(abrirClienteSql);
+/** H-025 (D-11): cliente do papel app_system para a cota da sugestao (um por URL, reaproveitado). */
+const abrirClienteSistema = memoizarCliente(abrirClienteSql);
 
 export default async function vercelHandler(
   req: IncomingMessage,
@@ -41,9 +45,15 @@ export default async function vercelHandler(
       metrica: (nome, rotulos) => metric(nome, 1, rotulos),
     });
     const consumoLink = montarConsumoEVerificacao(process.env, { abrirCliente: abrirClienteSql });
+    // H-025 (D-11): a sugestao usa a porta real do rascunho (createDraftGate) e a cota do app_system.
+    const sugestao = montarSugestaoEndereco(process.env, {
+      abrirCliente: abrirClienteSistema,
+      rascunho: integracoes.drafts,
+    });
     await handleRequest(req, res, {
       tickSecret: process.env.JOBS_TICK_SECRET,
       catalog: integracoes.catalog,
+      ...(sugestao !== undefined ? { geo: sugestao } : {}),
       ...(pedidoLogin.options !== undefined ? { challengeRequest: pedidoLogin.options } : {}),
       ...(consumoLink.consume !== undefined ? { consume: consumoLink.consume } : {}),
       ...(consumoLink.verify !== undefined ? { challengeVerify: consumoLink.verify } : {}),
