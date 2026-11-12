@@ -34,7 +34,8 @@ export interface AdminStepUpRequest {
 export interface AdminStepUpDeps {
   /** Guarda, conta da sessao e avanco de totp_at: so estes tres metodos do repositorio. */
   readonly repo: Pick<AdminRepository, 'guard' | 'sessionSubject' | 'stepUp'>;
-  readonly auth: AdminAuthPort;
+  /** So a prova de senha e TOTP do login (o step-up nao usa mais nada do provedor). */
+  readonly auth: Pick<AdminAuthPort, 'signInWithPasswordAndTotp'>;
   readonly limits: AdminLoginLimits;
   readonly log: AdminLogger;
   readonly baseUrl: string;

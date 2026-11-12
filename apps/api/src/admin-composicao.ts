@@ -66,7 +66,7 @@ export const ADMIN_CONFIRMACAO_PORTAS_FALTANTES = [
 export interface AdminConfirmacaoOpcoes {
   readonly abrirCliente?: (connectionString: string) => SqlClient;
   /** Provedor de login (senha e TOTP). Ainda nao existe adaptador no repositorio. */
-  readonly auth?: AdminAuthPort;
+  readonly auth?: Pick<AdminAuthPort, 'signInWithPasswordAndTotp'>;
   /** Limites de tentativas (H-015). Ainda nao existe adaptador no repositorio. */
   readonly limits?: AdminLoginLimits;
   readonly log?: AdminLogger;

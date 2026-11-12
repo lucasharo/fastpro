@@ -24,7 +24,7 @@ const NO_STORE = { 'Cache-Control': 'no-store' } as const;
 export interface AdminStepUpRouteOptions {
   readonly repo: Pick<AdminRepository, 'guard' | 'sessionSubject' | 'stepUp'>;
   /** Porta do provedor de autenticacao (mesma do login de H-102). */
-  readonly auth: AdminAuthPort;
+  readonly auth: Pick<AdminAuthPort, 'signInWithPasswordAndTotp'>;
   /** Limites de tentativas (H-015): 5 por e-mail e 20 por IP em 15 min. */
   readonly limits: AdminLoginLimits;
   /** Registro sem dado pessoal (o dominio so passa evento, resultado e motivo). */
