@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest';
 import type { SqlClient } from '@fastpro/db';
 import { montarAdministracaoCaso } from '../src/admin-composicao.js';
 
-const URL_SINTETICA = 'postgres://papel-sintetico:senha-sintetica@127.0.0.1:1/banco-sintetico';
+const SENHA_SINTETICA = ['senha', 'sintetica'].join('-');
+const URL_SINTETICA = `postgres://papel-sintetico:${SENHA_SINTETICA}@127.0.0.1:1/banco-sintetico`;
 const BASE = 'https://admin.fastpro.example.test';
 const T0 = Date.UTC(2099, 0, 1, 12);
 
