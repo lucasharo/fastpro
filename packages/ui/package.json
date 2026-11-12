@@ -19,7 +19,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "devDependencies": {
-    "@fastpro/config": "workspace:*"
+    "@fastpro/config": "workspace:*",
+    "happy-dom": "^21.0.4"
   },
   "dependencies": {
     "@fastpro/tokens": "workspace:*"
