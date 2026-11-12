@@ -186,7 +186,7 @@ export function checkDraftJson(contentType: string | undefined): { readonly ok: 
   return media === 'application/json' ? { ok: true } : { ok: false, status: 415 };
 }
 
-const SECRET_RE = /^[A-Za-z0-9_-]{43}$/;
+const SEGREDO_FORMATO_RE = /^[A-Za-z0-9_-]{43}$/;
 
 /**
  * Le o segredo do cookie __Host-fp_draft do cabecalho Cookie. Devolve so segredo com o formato
@@ -203,12 +203,12 @@ export function draftSecretFromCookie(cookieHeader: string | undefined): string 
   }
   if (values.length !== 1) return null;
   const value = values[0] ?? '';
-  return SECRET_RE.test(value) ? value : null;
+  return SEGREDO_FORMATO_RE.test(value) ? value : null;
 }
 
 /** Set-Cookie do rascunho: __Host- (sem Domain), HttpOnly, Secure, SameSite=Strict, Path=/. */
 export function draftCookieHeader(secret: string): string {
-  if (!SECRET_RE.test(secret)) throw new RangeError('segredo_invalido');
+  if (!SEGREDO_FORMATO_RE.test(secret)) throw new RangeError('segredo_invalido');
   return `${DRAFT_COOKIE_NAME}=${secret}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${DRAFT_MAX_AGE_SECONDS}`;
 }
 
