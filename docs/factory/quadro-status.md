@@ -100,22 +100,22 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | Issue | Título |
 |---|---|
 
-## Arquitetura (2)
+## Arquitetura (1)
 
 | Issue | Título |
 |---|---|
 | #43 | [E3] Revisão e confirmação expressa |
-| #26 | [E1] Código de 6 dígitos e nonce |
 
 ## QA (1)
 
 | Issue | Título |
 |---|---|
 
-## Desenvolvimento (2)
+## Desenvolvimento (3)
 
 | Issue | Título |
 |---|---|
+| #26 | [E1] Código de 6 dígitos e nonce |
 | #29 | [E1] Cadastro e login do profissional |
 | #129 | [E15] Dados sintéticos de demonstração |
 
