@@ -111,9 +111,8 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 | Issue | Título |
 |---|---|
-| #29 | [E1] Cadastro e login do profissional |
 
-## Desenvolvimento (3)
+## Desenvolvimento (2)3)
 
 | Issue | Título |
 |---|---|

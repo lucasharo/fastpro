@@ -245,3 +245,9 @@ Nota: o número 56 aparece duplicado nas rodadas 19 (decisões de H-022 e H-026)
 - **74:** Playwright e @axe-core/playwright como devDependencies gratuitas, para os testes de navegador.
 - **75:** duas páginas estáticas no web, sem framework.
 - **Portão:** a construção da #43 começa só depois da #26 (decisão 59).
+
+## Rodada 24 (QA da #29, ciclo de correção 1 de 2)
+
+- **76 (CA-23, cliente que vira profissional):** segue o desenho 33 §3.1 e 67 §9: o e-mail verificado é do app_user. Aceito como decisão do dono do produto; o critério literal "nasce não verificado" fica substituído por esta decisão.
+- **77 (CA-06, envio):** vale a decisão 55 (envio liberado, com trava de destinatário na conta registrada). O texto de Mailpit no CA-06 é atualizado.
+- **78 (CA-12):** autorizada a execução do teste de concorrência de login no banco de desenvolvimento, com limpeza no final (sem resíduo).
