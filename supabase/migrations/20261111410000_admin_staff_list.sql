@@ -1,4 +1,4 @@
--- H-103 (#112) | Listagem da equipe administrativa (private.admin_staff_list), so leitura. Docs:
+-- H-103 (Issue 112) | Listagem da equipe administrativa (private.admin_staff_list), so leitura. Docs:
 -- docs/factory/70-DESENHO-H103.md §2 (GET /v1/admin/staff) e §4 (T-H103-09). Idempotente.
 -- Desfazer: supabase/rollbacks/20261111410000_admin_staff_list.down.sql (manual, so em dev).
 -- Depende de 20261111190000 (app.admin_staff), 20261111220000 (app.admin_user_role, private.admin_has_permission)
