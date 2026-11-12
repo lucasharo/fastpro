@@ -69,6 +69,7 @@ Padrão do repositório `[VERIFICADO]`: testes de unidade/rota (`*.test.ts`) e d
 - **D-06 (CA-08)** nenhuma rota desta história cria `service_request` nem altera `status` para `publicado`.
 - **D-07 (CA-09)** com relógio injetado: vivo em 7 d − 1 s, 404 em 7 d; salvamento renova; teto de 30 d respeitado; POST com cookie vencido cria novo com segredo diferente e marca o antigo `descartado`.
 - **D-08 (CA-10)** 11ª criação na hora, mesmo IP ⇒ 429 com `Retry-After`, sem campo que revele o limite; `rl_hit` só após aceite.
+  - Decisão (ciclo QA #38): a prova no banco fica em `packages/db/tests/draft-request-h025.dbtest.mjs` (`rl_check`/`rl_hit`: 10 aceitas na hora, a 11ª barrada com `retry_after`; consulta não conta). A chave do balde é o SHA-256 de `draft:<política>:<valor>`, porque `ops.rate_counter.key_hmac` exige 64 hex; o adaptador antes enviava o texto prefixado e o `rl_hit` falharia na restrição.
 - **D-09 (validação)** `service_id` inexistente ou inativo ⇒ 422; descrição de 2001 caracteres ⇒ 422; corpo de 8 KB + 1 ⇒ 413; controle/`\0` ⇒ 422; chaves extras ⇒ 422; vazio ⇒ 422.
 - **D-10 (segurança de banco)** RLS habilitada e forçada; `anon/authenticated/service_role/PUBLIC` sem privilégio na tabela e nas funções; `search_path` vazio; migração idempotente (aplicar duas vezes) e desfazer funciona.
 - **D-11 (H-020)** a porta real: `ok` só com rascunho vivo; sem cookie ⇒ `no_principal`; fora de `aberto|aguardando_email` ⇒ `not_draft`; e o teste de ponta a ponta de CA-01/CA-02 de H-020 (56 §118) passa com ela.

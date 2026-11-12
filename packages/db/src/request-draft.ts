@@ -16,6 +16,7 @@ import {
   type DraftUrgency,
   type DraftWriteResult,
 } from '@fastpro/domain';
+import { createHash } from 'node:crypto';
 import type { SqlClient } from './jobs-tick.js';
 
 export const SQL_DRAFT_GET = 'select * from private.draft_get($1, $2::timestamptz)';
@@ -141,8 +142,9 @@ export class PgDraftStore implements DraftStorePort {
 export class PgDraftRate implements DraftRatePort {
   constructor(private readonly client: SqlClient) {}
 
+  /** rl_check/rl_hit exigem 64 hex (ops.rate_counter.key_hmac). O prefixo da politica entra no hash. */
   private chave(policy: DraftRatePolicy, key: string): string {
-    return `${DRAFT_RATE_KEY_PREFIX}:${policy.id}:${key}`;
+    return createHash('sha256').update(`${DRAFT_RATE_KEY_PREFIX}:${policy.id}:${key}`, 'utf8').digest('hex');
   }
 
   async check(policy: DraftRatePolicy, key: string, nowMs: number): Promise<DraftRateCheck> {

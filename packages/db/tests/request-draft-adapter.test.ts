@@ -2,6 +2,8 @@
 // Prova: mapeamento de linha, parametros (so HMAC e hash, nunca IP ou segredo em claro), codigos de erro
 // do banco e que o adaptador so chama funcoes private.draft_* e private.rl_* (sem escrita direta).
 import { describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
+
 import {
   DRAFT_RATE_CRIACAO_HORA,
   DRAFT_RATE_SALVAR_IP,
@@ -23,7 +25,9 @@ import type { SqlClient } from '../src/jobs-tick.js';
 
 const HASH_SEGREDO = 'a'.repeat(64);
 const HASH_IP = 'b'.repeat(64);
-const AGORA = Date.UTC(2026, 10, 11, 12, 0, 0);
+
+// rl_check/rl_hit exigem 64 hex: a chave e o SHA-256 do texto prefixado pela politica (sem IP em claro).
+const CHAVE_RL_CRIACAO = createHash('sha256').update(`draft:criacao_hora:${HASH_IP}`, 'utf8').digest('hex');const AGORA = Date.UTC(2026, 10, 11, 12, 0, 0);
 const AGORA_ISO = '2026-11-11T12:00:00.000Z';
 const SERVICO = '0c9e2f7a-3b1d-4e8f-9a6b-1f2e3d4c5b6a';
 
@@ -190,7 +194,7 @@ describe('limite de taxa (private.rl_check e private.rl_hit)', () => {
     expect(r).toEqual({ ok: true });
     expect(sql.chamadas[0]).toEqual({
       text: SQL_DRAFT_RL_CHECK,
-      params: [`draft:criacao_hora:${HASH_IP}`, 3600, 300, 10, AGORA_ISO],
+      params: [CHAVE_RL_CRIACAO, 3600, 300, 10, AGORA_ISO],
     });
   });
 
@@ -215,7 +219,7 @@ describe('limite de taxa (private.rl_check e private.rl_hit)', () => {
     await new PgDraftRate(sql).hit(DRAFT_RATE_CRIACAO_HORA, HASH_IP, AGORA);
     expect(sql.chamadas[0]).toEqual({
       text: SQL_DRAFT_RL_HIT,
-      params: [`draft:criacao_hora:${HASH_IP}`, 300, AGORA_ISO],
+      params: [CHAVE_RL_CRIACAO, 300, AGORA_ISO],
     });
   });
 });

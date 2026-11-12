@@ -387,3 +387,78 @@ test('D-05 sem coordenada: nenhuma coluna de latitude, longitude, ponto ou geome
     assert.equal(linha.out_address_text, 'Praca Exemplo 9', 'so o texto do endereco e gravado');
   }));
 
+
+// D-09 (banco) | servico inativo e recusado com servico_invalido (o 422 e o mapeamento da rota) e zero linhas gravadas.
+test('D-09 servico inativo e recusado com servico_invalido e nenhuma linha e gravada', () =>
+  tx(async () => {
+    const grupo = randomUUID();
+    await client.query('insert into app.service_group (id, name, position, active) values ($1, $2, 1, true)', [
+      grupo,
+      `Grupo inativo ${grupo}`,
+    ]);
+    const { rows: [servico] } = await client.query(
+      `insert into app.service (group_id, name, modality, regulated, active)
+       values ($1, $2, 'online', false, false) returning id`,
+      [grupo, `Servico inativo ${grupo}`],
+    );
+    const antes = (await client.query('select count(*)::int as n from app.request_draft')).rows[0].n;
+    const h = novoHash();
+    const erro = await erroEm(() => criar(h, { service_id: servico.id, address_text: 'Rua Inativa 1' }));
+    assert.equal(erro?.code, 'P0001');
+    assert.match(erro.message, /servico_invalido/);
+    assert.equal(await linhasDoHash(h), 0, 'nenhuma linha do rascunho recusado');
+    const depois = (await client.query('select count(*)::int as n from app.request_draft')).rows[0].n;
+    assert.equal(depois, antes, 'a tabela inteira nao muda');
+  }));
+
+// D-08 (banco, R1) | limite de criacao por IP-HMAC com private.rl_check e private.rl_hit: 10 por hora.
+// rl_check so consulta (nao conta); rl_hit conta o pedido aceito. A 11a criacao na mesma hora e barrada com Retry-After.
+test('D-08 limite de criacao: 10 pedidos aceitos na hora, a 11a e barrada com retry_after; rl_check nao conta', () =>
+  tx(async () => {
+    const chave = sha(`draft:criacao_hora:${sha(`ip-teste-${randomUUID()}`)}`);
+    const agora = at(T0);
+    const check = async () =>
+      (await client.query('select out_ok, out_retry_after from private.rl_check($1, $2, $3, $4, $5::timestamptz)',
+        [chave, 3600, 300, 10, agora])).rows[0];
+
+    for (let i = 0; i < 20; i++) assert.equal((await check()).out_ok, true, 'consultar sem contar nao esgota o limite');
+    for (let i = 0; i < 10; i++) {
+      assert.equal((await check()).out_ok, true, `criacao ${i + 1} aceita`);
+      await client.query('select private.rl_hit($1, $2, $3::timestamptz)', [chave, 300, agora]);
+    }
+    const barrada = await check();
+    assert.equal(barrada.out_ok, false, 'a 11a criacao na mesma hora e barrada');
+    assert.ok(Number(barrada.out_retry_after) >= 1, 'Retry-After positivo');
+  }));
+
+// D-10 (banco) | aplicar a migracao duas vezes: a segunda nao falha e o estado final e igual ao da primeira aplicacao.
+test('D-10 aplicar a migracao duas vezes deixa o mesmo estado da primeira aplicacao', async () => {
+  const estado = async () => {
+    const { rows } = await client.query(`
+      select jsonb_build_object(
+        'tabela', to_regclass('app.request_draft')::text,
+        'rls', (select jsonb_build_object('h', relrowsecurity, 'f', relforcerowsecurity, 'acl', relacl::text)
+                  from pg_class where oid = to_regclass('app.request_draft')),
+        'indices', (select jsonb_agg(indexdef order by indexname) from pg_indexes
+                      where schemaname = 'app' and tablename = 'request_draft'),
+        'colunas', (select jsonb_agg(column_name || ':' || data_type order by column_name) from information_schema.columns
+                      where table_schema = 'app' and table_name = 'request_draft'),
+        'funcoes', (select jsonb_agg(jsonb_build_object('a', p.oid::regprocedure::text, 'acl', p.proacl::text,
+                      'corpo', md5(pg_get_functiondef(p.oid))) order by p.oid::regprocedure::text)
+                      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                     where n.nspname = 'private' and p.proname like 'draft\_%')
+      ) as e`);
+    return rows[0].e;
+  };
+  await client.query('begin');
+  try {
+    await client.query(MIGRACAO);
+    const primeira = await estado();
+    await client.query(MIGRACAO);
+    const segunda = await estado();
+    assert.ok(primeira.funcoes && primeira.funcoes.length === 4, 'quatro funcoes de rascunho');
+    assert.deepEqual(segunda, primeira, 'segunda aplicacao nao altera nada');
+  } finally {
+    await client.query('rollback');
+  }
+});
