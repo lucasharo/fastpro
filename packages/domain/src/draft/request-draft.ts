@@ -257,6 +257,9 @@ export interface DraftRatePolicy {
     | 'salvar_ip'
     | 'salvar_rascunho'
     | 'leitura_ip'
+    // H-030: confirmacao expressa (90 §2.2): por rascunho e por IP-HMAC.
+    | 'confirmar_rascunho'
+    | 'confirmar_ip'
     // H-026: politicas de foto em quarentena (88 §3). Mesmo balde de rl_check/rl_hit, prefixo proprio.
     | 'media_emissao_rascunho_hora'
     | 'media_emissao_rascunho_dia'

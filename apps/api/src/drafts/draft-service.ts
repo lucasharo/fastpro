@@ -24,6 +24,11 @@ import {
   type DraftStorePort,
   type DraftWriteResult,
   type IdentityFields,
+  DRAFT_RATE_CONFIRMAR_IP,
+  DRAFT_RATE_CONFIRMAR_RASCUNHO,
+  DRAFT_TTL_DAYS,
+  decideReview,
+  type DraftReviewStorePort,
 } from '@fastpro/domain';
 import type { DraftHasher } from './draft-hash.js';
 
@@ -48,6 +53,8 @@ export interface DraftDeps {
   readonly liveCap?: number;
   /** Identificacao (nome e e-mail). Ausente: as rotas /identity respondem 404. */
   readonly identity?: DraftIdentityDeps;
+  /** H-030: revisao e confirmacao expressa. Ausente: as rotas /review e /confirm respondem 404. */
+  readonly review?: DraftReviewStorePort;
 }
 
 /** Resposta pronta para a rota: status, cabecalhos e corpo ja serializado (vazio no 204). */
@@ -243,4 +250,55 @@ export async function putIdentity(fields: IdentityFields, secret: string, ip: st
   if (r === null) return draftNotFound();
   await contar(deps.rate, paresSalvar(ipHmac, hash), now);
   return identidadeView(r);
+}
+
+/**
+ * GET /v1/drafts/current/review (H-030, 90 §2.1). Nao altera nada. Limite de leitura por IP-HMAC; conta toda
+ * resposta que nao seja 404 (200, 409 e 422), porque a tela consulta esta rota durante a espera do e-mail.
+ */
+export async function getReview(secret: string, ip: string, deps: DraftDeps): Promise<DraftOutcome> {
+  if (deps.review === undefined) return draftNotFound();
+  const now = deps.clock.nowMs();
+  const ipHmac = deps.hasher.ipHmac(ip);
+  const espera = await barradoPor(deps.rate, [[DRAFT_RATE_LEITURA_IP, ipHmac]], now);
+  if (espera !== null) return resposta429(espera);
+  const r = await deps.review.reviewGet(deps.hasher.secretHash(secret), now);
+  if (r === null) return draftNotFound();
+  await contar(deps.rate, [[DRAFT_RATE_LEITURA_IP, ipHmac]], now);
+  const decisao = decideReview(r);
+  if (decisao.kind === 'campos_faltando') return json(422, { code: 'campos_faltando', missing: decisao.missing });
+  if (decisao.kind === 'email_nao_confirmado') return json(409, { code: 'email_nao_confirmado' });
+  return json(200, decisao.view);
+}
+
+export interface PostConfirmInput {
+  /** Versao do conteudo que o cliente viu (corpo, ja validado). */
+  readonly contentRev: number;
+  /** Segredo do cookie, ja validado no formato. A rota responde 404 antes quando ele falta. */
+  readonly secret: string;
+  readonly ip: string;
+}
+
+/**
+ * POST /v1/drafts/current/confirm (H-030, 90 §2.2). Limites de 10/60 s por rascunho e 30/60 s por IP-HMAC,
+ * contados so depois de aceita (200). Nunca publica: a resposta traz "confirmado" e nunca prazo ou pedido.
+ */
+export async function postConfirm(input: PostConfirmInput, deps: DraftDeps): Promise<DraftOutcome> {
+  if (deps.review === undefined) return draftNotFound();
+  const now = deps.clock.nowMs();
+  const ipHmac = deps.hasher.ipHmac(input.ip);
+  const hash = deps.hasher.secretHash(input.secret);
+  const pares = [
+    [DRAFT_RATE_CONFIRMAR_RASCUNHO, hash],
+    [DRAFT_RATE_CONFIRMAR_IP, ipHmac],
+  ] as const;
+  const espera = await barradoPor(deps.rate, pares, now);
+  if (espera !== null) return resposta429(espera);
+  const r = await deps.review.confirm({ secretHash: hash, nowMs: now, contentRev: input.contentRev, ttlDays: DRAFT_TTL_DAYS });
+  if (r.kind === 'nao_encontrado') return draftNotFound();
+  if (r.kind === 'campos_faltando') return json(422, { code: 'campos_faltando', missing: r.missing });
+  if (r.kind === 'email_nao_confirmado') return json(409, { code: 'email_nao_confirmado' });
+  if (r.kind === 'conteudo_alterado') return json(409, { code: 'conteudo_alterado' });
+  await contar(deps.rate, pares, now);
+  return json(200, { status: 'confirmado', confirmed_at: r.confirmedAt, content_rev: r.contentRev });
 }

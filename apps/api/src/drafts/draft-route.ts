@@ -16,13 +16,19 @@ import {
   DRAFT_BODY_LIMIT_BYTES,
   IDENTITY_BODY_LIMIT_BYTES,
   parseIdentityBody,
+  DRAFT_REVIEW_PATH,
+  DRAFT_CONFIRM_PATH,
+  DRAFT_CONFIRM_BODY_LIMIT_BYTES,
+  parseConfirmBody,
 } from '@fastpro/domain';
 import {
   discardDraft,
   draftNotFound,
   getDraft,
   getIdentity,
+  getReview,
   patchDraft,
+  postConfirm,
   postDraft,
   putIdentity,
   type DraftDeps,
@@ -41,7 +47,13 @@ export const DRAFT_IDENTITY_PATH = `${DRAFT_CURRENT_PATH}/identity` as const;
 
 /** Rotas desta historia (para o roteador). Qualquer metodo nelas cai no mesmo 404 uniforme. */
 export function isDraftRoute(path: string): boolean {
-  return path === DRAFT_PATH || path === DRAFT_CURRENT_PATH || path === DRAFT_IDENTITY_PATH;
+  return (
+    path === DRAFT_PATH ||
+    path === DRAFT_CURRENT_PATH ||
+    path === DRAFT_IDENTITY_PATH ||
+    path === DRAFT_REVIEW_PATH ||
+    path === DRAFT_CONFIRM_PATH
+  );
 }
 
 function cabecalho(valor: string | string[] | undefined): string | undefined {
@@ -120,6 +132,21 @@ export async function handleDraftRoute(
         if (!corpo.ok) return enviar(res, erro(corpo.status, corpo.code));
         return enviar(res, await putIdentity(corpo.fields, segredo, ip, opts.deps));
       }
+    }
+
+    if (path === DRAFT_REVIEW_PATH && metodo === 'GET') {
+      // H-030 (90 §2.1): cookie (formato; ausente = 404 sem banco) -> limite -> banco. Nao altera nada.
+      if (segredo === null) return enviar(res, draftNotFound());
+      return enviar(res, await getReview(segredo, ip, opts.deps));
+    }
+
+    if (path === DRAFT_CONFIRM_PATH && metodo === 'POST') {
+      // H-030 (90 §2.2): Origin e Content-Type ja conferidos acima; cookie -> corpo (1 KB, so content_rev) -> banco.
+      if (segredo === null) return enviar(res, draftNotFound());
+      const { text, bytes } = await lerCorpo(req, DRAFT_CONFIRM_BODY_LIMIT_BYTES);
+      const corpo = parseConfirmBody(text, bytes);
+      if (!corpo.ok) return enviar(res, erro(corpo.status, corpo.code));
+      return enviar(res, await postConfirm({ contentRev: corpo.contentRev, secret: segredo, ip }, opts.deps));
     }
 
     if (path === DRAFT_CURRENT_PATH) {

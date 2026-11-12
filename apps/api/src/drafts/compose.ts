@@ -3,7 +3,12 @@
 // propria do IP (>= 32 caracteres) e SITE_URL. Qualquer falta, ou ausencia da fabrica do pool, devolve
 // undefined: as rotas continuam inexistentes (404). Nenhum valor e registrado; so os nomes sao citados.
 import { challengeHmacHex, PgDraftRate, PgDraftStore, type SqlClient } from '@fastpro/db';
-import type { DraftIdentityStorePort, DraftRatePort, DraftStorePort } from '@fastpro/domain';
+import type {
+  DraftIdentityStorePort,
+  DraftRatePort,
+  DraftReviewStorePort,
+  DraftStorePort,
+} from '@fastpro/domain';
 import { createDraftHasher, DRAFT_IP_KEY_MIN_LENGTH, newDraftSecret } from './draft-hash.js';
 import type { DraftClockPort } from './draft-service.js';
 import type { DraftRouteOptions } from './draft-route.js';
@@ -24,6 +29,8 @@ export interface DraftPortsFactory {
     readonly rate: DraftRatePort;
     /** H-013: identificacao do rascunho (mesmo adaptador Pg do rascunho). */
     readonly identity?: DraftIdentityStorePort;
+    /** H-030: revisao e confirmacao expressa (mesmo adaptador Pg do rascunho). */
+    readonly review?: DraftReviewStorePort;
   };
 }
 
@@ -53,7 +60,7 @@ export function montarRascunho(
   const databaseUrl = env[DRAFT_DATABASE_URL_ENV] ?? '';
   const ipKey = env[DRAFT_IP_KEY_ENV] ?? '';
   const siteUrl = env[DRAFT_SITE_URL_ENV] ?? '';
-  const { store, rate, identity } = fabrica.criar(databaseUrl);
+  const { store, rate, identity, review } = fabrica.criar(databaseUrl);
   // H-013 (91 §1.5): identificacao so liga com o pepper do e-mail (o mesmo HMAC de auth_challenge.email_hash).
   const pepperEmail = (env.PEPPER_EMAIL_HMAC ?? '').trim();
   return {
@@ -66,6 +73,7 @@ export function montarRascunho(
       ...(identity !== undefined && pepperEmail !== ''
         ? { identity: { store: identity, emailHmac: (email: string) => challengeHmacHex(pepperEmail, email) } }
         : {}),
+      ...(review !== undefined ? { review } : {}),
     },
     siteUrl,
   };
@@ -85,7 +93,7 @@ export function criarFabricaRascunho(abrirCliente: (connectionString: string) =>
         clientes.set(databaseUrl, cliente);
       }
       const porta = new PgDraftStore(cliente);
-      return { store: porta, rate: new PgDraftRate(cliente), identity: porta };
+      return { store: porta, rate: new PgDraftRate(cliente), identity: porta, review: porta };
     },
   };
 }
