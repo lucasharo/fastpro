@@ -22,6 +22,7 @@ export {
   PgChallengeStore,
   dispatchChallengeOutbox,
   requestChallenge,
+  verifyChallengeCode,
   type ChallengeEmailOptions,
   type ChallengeHttpResponse,
   type ChallengeSecrets,
@@ -31,6 +32,7 @@ export {
   type OutboxDispatchPort,
   type RateContext,
   type RequestChallengeDeps,
+  type VerifyChallengeDeps,
 } from './challenges.js';
 
 // H-019 | Adaptadores Pg da busca de servico (limite de taxa e transacao curta).

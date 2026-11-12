@@ -49,6 +49,12 @@ import {
   handleChallengeRequest,
   type ChallengeRequestRouteOptions,
 } from './challenge-request-route.js';
+// H-097 (Issue 107) | Verificacao do codigo de 6 digitos (POST /v1/auth/challenges/verify, PROPOSTA).
+import {
+  CHALLENGE_VERIFY_PATH,
+  handleChallengeVerify,
+  type ChallengeVerifyRouteOptions,
+} from './challenge-verify-route.js';
 import {
   handleProfessionalLogin,
   handleProfessionalRegister,
@@ -95,6 +101,8 @@ export interface AppOptions {
   readonly consume?: ConsumeRouteOptions;
   /** Pedido de login por link ou codigo (H-097). Sem esta opcao a rota POST /v1/auth/challenges nao existe (404). */
   readonly challengeRequest?: ChallengeRequestRouteOptions;
+  /** Verificacao do codigo (H-097, caminho proposto). Sem esta opcao a rota POST /v1/auth/challenges/verify nao existe (404). */
+  readonly challengeVerify?: ChallengeVerifyRouteOptions;
   /** Sessao de 7 dias e step-up (H-014). Sem esta opcao as rotas nao existem (404). */
   readonly session?: SessionRouteOptions;
   /** Autocomplete de endereco temporario (H-020). Sem esta opcao a rota nao existe (404). */
@@ -207,6 +215,10 @@ export async function handleRequest(
   }
   if (req.method === 'POST' && path === CHALLENGE_REQUEST_PATH && opts.challengeRequest) {
     await handleChallengeRequest(req, res, opts.challengeRequest);
+    return;
+  }
+  if (req.method === 'POST' && path === CHALLENGE_VERIFY_PATH && opts.challengeVerify) {
+    await handleChallengeVerify(req, res, opts.challengeVerify);
     return;
   }
   if (req.method === 'POST' && path === ADMIN_STEP_UP_PATH && opts.adminStepUp) {

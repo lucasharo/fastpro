@@ -3,7 +3,7 @@
 // em 2099; sem rede (provedor simulado). Desenho: docs/factory/86-DESENHO-H097.md §2 e §5.
 // Pendente (fora deste arquivo): T-H097-01 (200 saidas de aceite/digest na fila) e a parte de aceite
 // adiado a 90 (critico) e digest a 85, que dependem da ingestao de eventos.
-import { test } from 'node:test';
+import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { connect } from '../scripts/lib/env.mjs';
@@ -33,10 +33,10 @@ const SEGREDOS = {
 };
 
 let client;
-test.before(async () => {
+before(async () => {
   client = await connect();
 });
-test.after(async () => {
+after(async () => {
   await client?.end();
 });
 
