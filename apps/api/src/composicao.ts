@@ -12,6 +12,7 @@ import {
 } from '@fastpro/email';
 import type { ClockPort, EmailProviderPort } from '@fastpro/domain';
 import type { SqlClient } from '@fastpro/db';
+import { PgAdminSessionRepository, PgRetentionAdmin } from '@fastpro/db';
 import {
   montarAdministracaoCaso,
   montarPainelOperacional,
@@ -26,6 +27,7 @@ import {
 import type { AdminAccessCaseRouteOptions } from './admin-access-case-route.js';
 import type { AdminStepUpRouteOptions } from './admin-step-up-route.js';
 import type { AdminOpsRouteOptions } from './admin-ops-route.js';
+import type { AdminRetentionRouteOptions } from './admin-retention-route.js';
 import {
   CATALOG_DATABASE_URL_ENV,
   CATALOG_RATE_KEY_ENV,
@@ -204,5 +206,33 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     pendenciasCaso,
     pendenciasRascunho,
     pendenciasPerfil: perfil.pendencias,
+  };
+}
+
+// H-109 | Rotas de retencao (cadastro de politica e hold). So monta com DATABASE_URL_APP_SYSTEM e ADMIN_BASE_URL;
+// sem eles, a rota nao existe (404). Um cliente por URL, reaproveitado entre chamadas.
+const clientesRetencao = new Map<string, SqlClient>();
+
+export function montarRetencaoAdmin(
+  env: Readonly<Partial<Record<'DATABASE_URL_APP_SYSTEM' | 'ADMIN_BASE_URL', string>>>,
+  opcoes: {
+    readonly abrirCliente?: (connectionString: string) => SqlClient;
+    readonly relogio?: { nowMs(): number };
+  } = {},
+): AdminRetentionRouteOptions | undefined {
+  const url = env.DATABASE_URL_APP_SYSTEM;
+  const baseUrl = env.ADMIN_BASE_URL;
+  if (!url || !baseUrl || opcoes.abrirCliente === undefined) return undefined;
+  let cliente = clientesRetencao.get(url);
+  if (cliente === undefined) {
+    cliente = opcoes.abrirCliente(url);
+    clientesRetencao.set(url, cliente);
+  }
+  const sessao = new PgAdminSessionRepository(cliente);
+  return {
+    guard: (secret, nowMs) => sessao.guard(secret, nowMs),
+    port: new PgRetentionAdmin(cliente),
+    baseUrl,
+    clock: opcoes.relogio ?? { nowMs: () => Date.now() },
   };
 }

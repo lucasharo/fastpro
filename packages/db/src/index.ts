@@ -30,3 +30,5 @@ export * from './catalog-admin.js';
 // H-105 (Issue 114) | Adaptador Pg da dupla aprovacao de estorno e suspensao (private.approval_dual_*).
 export * from './admin-dual-approval.js';
 export * from './request-draft.js';
+// H-109 (Issue 118) | Adaptador Pg da politica de retencao e do hold (private.retention_*, private.legal_hold_*).
+export * from './retention-store.js';

@@ -28,6 +28,11 @@ import { handleAdminAuditQuery, type AdminAuditRouteOptions } from './admin-audi
 import { handleAdminConsoleMenu, type AdminConsoleRouteOptions } from './admin-console-route.js';
 import { handleAdminOpsPanel, type AdminOpsRouteOptions } from './admin-ops-route.js';
 import {
+  handleAdminRetentionRoute,
+  RETENTION_BASE_PATH,
+  type AdminRetentionRouteOptions,
+} from './admin-retention-route.js';
+import {
   handleAdminDualApprovalRoute,
   type AdminDualApprovalRouteOptions,
 } from './admin-dual-approval-route.js';
@@ -100,6 +105,8 @@ export interface AppOptions {
   readonly accessCase?: AdminAccessCaseRouteOptions;
   /** Dupla aprovacao de estorno e suspensao (H-105). Sem esta opcao as rotas /v1/admin/{refund|suspension}-approvals nao existem (404). */
   readonly dualApproval?: AdminDualApprovalRouteOptions;
+  /** Cadastro de politica de retencao e hold (H-109). Sem esta opcao as rotas /v1/admin/retention/* nao existem (404). */
+  readonly adminRetention?: AdminRetentionRouteOptions;
   /** Confirmacao recente do segundo fator da sessao admin (H-073, 60 §4). Sem esta opcao a rota nao existe (404). */
   readonly adminStepUp?: AdminStepUpRouteOptions;
   /** Busca de servico com sinonimos (H-019). Sem esta opcao a rota nao existe (404). */
@@ -222,6 +229,10 @@ export async function handleRequest(
   }
   if (opts.adminCatalog && path.startsWith('/v1/admin/catalog')) {
     await handleAdminCatalogRoute(req, res, opts.adminCatalog, path);
+    return;
+  }
+  if (path.startsWith(`${RETENTION_BASE_PATH}/`) && opts.adminRetention) {
+    await handleAdminRetentionRoute(req, res, opts.adminRetention, path);
     return;
   }
   if (req.method === 'GET' && path === ADMIN_AUTH_SESSION_PATH && opts.adminAuthSession) {

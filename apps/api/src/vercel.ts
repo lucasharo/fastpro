@@ -3,7 +3,7 @@
 // variaveis completas. Sem fabrica de pool, a busca de servico continua 404.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { handleRequest } from './app.js';
-import { montarIntegracoes } from './composicao.js';
+import { montarIntegracoes, montarRetencaoAdmin } from './composicao.js';
 import { abrirClienteSql } from './sql-pool.js';
 import { criarFabricaCatalogo } from './catalog/fabrica-pg.js';
 import { abrirPoolCatalogo } from './catalog/pool-pg.js';
@@ -26,11 +26,14 @@ export default async function vercelHandler(
     const adminCatalog = montarCatalogoAdmin(process.env, { abrirCliente: abrirClienteSql });
     // H-105: dupla aprovacao de estorno e suspensao; so monta com DATABASE_URL_APP_SYSTEM e ADMIN_BASE_URL (sem eles, 404).
     const dualApproval = montarAprovacaoDupla(process.env, { abrirCliente: abrirClienteSql });
+    // H-109: cadastro de retencao; so monta com DATABASE_URL_APP_SYSTEM e ADMIN_BASE_URL (sem eles, 404).
+    const adminRetention = montarRetencaoAdmin(process.env, { abrirCliente: abrirClienteSql });
     await handleRequest(req, res, {
       tickSecret: process.env.JOBS_TICK_SECRET,
       catalog: integracoes.catalog,
       ...(adminCatalog !== undefined ? { adminCatalog } : {}),
       ...(dualApproval !== undefined ? { dualApproval } : {}),
+      ...(adminRetention !== undefined ? { adminRetention } : {}),
       ...(integracoes.drafts !== undefined ? { drafts: integracoes.drafts } : {}),
       ...(integracoes.accessCase !== undefined ? { accessCase: integracoes.accessCase } : {}),
       ...(integracoes.adminStepUp !== undefined ? { adminStepUp: integracoes.adminStepUp } : {}),
