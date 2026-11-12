@@ -116,6 +116,7 @@ let server: Server | undefined;
 let base = '';
 const porta = new PortaMemoria();
 let agora = T0;
+let pisoMs = 0;
 
 function post(path: string, body: string, contentType = 'application/json'): Promise<Resposta> {
   return new Promise((resolve, reject) => {
@@ -146,7 +147,7 @@ async function iniciar(): Promise<void> {
   server = createServer((req, res) => {
     void handleRequest(req, res, {
       tickSecret: undefined,
-      professional: { port: porta, clock: { nowMs: () => agora } },
+      professional: { port: porta, clock: { nowMs: () => agora }, responseFloorMs: pisoMs },
     });
   });
   await new Promise<void>((ok) => server?.listen(0, '127.0.0.1', ok));
@@ -358,6 +359,24 @@ describe('T-H016-12 bloqueio progressivo (CA-H016-12)', () => {
     const bloqueadas = respostas.filter((r) => r.status === 429).length;
     expect(porta.verificacoes).toBe(4);
     expect(bloqueadas).toBe(50 - 4);
+  });
+});
+
+describe('piso de tempo de resposta (33 §5.1 passo 4, pedido de revisao)', () => {
+  it('cadastro e login so respondem depois do piso, inclusive nas recusas', async () => {
+    pisoMs = 120;
+    try {
+      const inicio = Date.now();
+      const cadastro = await post('/v1/auth/professional/register', json({ email: 'x', password: 'y' }));
+      expect(cadastro.status).toBe(422);
+      expect(Date.now() - inicio).toBeGreaterThanOrEqual(110);
+      const inicio2 = Date.now();
+      const login = await post(PATH_LOGIN, json({ email: 'nao-e-email', password: 'y' }));
+      expect(login.status).toBe(401);
+      expect(Date.now() - inicio2).toBeGreaterThanOrEqual(110);
+    } finally {
+      pisoMs = 0;
+    }
   });
 });
 

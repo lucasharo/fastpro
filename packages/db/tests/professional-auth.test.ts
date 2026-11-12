@@ -45,6 +45,8 @@ class ClienteFalso implements SqlClient {
 
 /** Auth falso: registra remocoes e devolve o que o teste configurar. */
 class AuthFalso implements ProfessionalAuthGateway {
+  deleteFalha = false;
+  senhasTrocadas: Array<{ authUserId: string; senha: string }> = [];
   criarResultado: { authUserId: string } | 'existente' = { authUserId: 'auth-1' };
   entrarResultado: { authUserId: string } | null = { authUserId: 'auth-1' };
   removidos: string[] = [];
@@ -54,19 +56,25 @@ class AuthFalso implements ProfessionalAuthGateway {
     return this.criarResultado;
   }
   async deleteUser(authUserId: string): Promise<void> {
+    if (this.deleteFalha) throw new Error('falha de remocao simulada');
     this.removidos.push(authUserId);
+  }
+  async updatePassword(authUserId: string, password: string): Promise<void> {
+    this.senhasTrocadas.push({ authUserId, senha: password });
   }
   async signInWithPassword(): Promise<{ authUserId: string } | null> {
     return this.entrarResultado;
   }
 }
 
-function montar(opcoes: { cliente?: ClienteFalso; auth?: AuthFalso } = {}) {
+function montar(opcoes: { cliente?: ClienteFalso; auth?: AuthFalso; mailFalha?: boolean } = {}) {
+  const eventos: Array<[string, Record<string, string>]> = [];
   const cliente = opcoes.cliente ?? new ClienteFalso();
   const auth = opcoes.auth ?? new AuthFalso();
   const enviados: Array<{ email: string; token: string }> = [];
   const mail: ProfessionalMailPort = {
     async verificationLink(email, token) {
+      if (opcoes.mailFalha) throw new Error('falha de envio simulada');
       enviados.push({ email, token });
     },
   };
@@ -76,10 +84,11 @@ function montar(opcoes: { cliente?: ClienteFalso; auth?: AuthFalso } = {}) {
     gateway: auth,
     mail,
     pepperEmail: PEPPER,
+    evento: (nome, dados) => eventos.push([nome, dados]),
     newId: () => `id-${++n}`,
     newSecret: () => 'segredo-x',
   });
-  return { porta, cliente, auth, enviados };
+  return { porta, cliente, auth, enviados, eventos };
 }
 
 describe('T-H016-01 cadastro no adaptador (CA-H016-01, 33 §3.2)', () => {
@@ -108,7 +117,7 @@ describe('T-H016-01 cadastro no adaptador (CA-H016-01, 33 §3.2)', () => {
     auth.criarResultado = 'existente';
     const { porta, enviados } = montar({ cliente, auth });
     await porta.register(EMAIL, SENHA, AGORA);
-    expect(cliente.chamadas).toEqual([]);
+    expect(cliente.chamada('professional_register_create')).toBeUndefined();
     expect(enviados).toEqual([]);
   });
 
@@ -227,6 +236,86 @@ describe('T-H016-16 sessao por senha no adaptador (33 §5.1 passo 5)', () => {
     await expect(porta.openSession({ userId: 'u-1', emailVerified: true, active: true }, AGORA)).rejects.toThrow(
       'sessao_nao_aberta',
     );
+  });
+});
+
+
+describe('cadastro: falhas de envio e de compensacao (33 §3.2, pedido de revisao)', () => {
+  it('falha do envio do link: a conta fica e o cadastro repetido reenvia (nova senha, link novo, sessoes revogadas)', async () => {
+    const cliente = new ClienteFalso([
+      { contem: 'professional_register_create', rows: [{ out_resultado: 'criado' }] },
+      {
+        contem: 'professional_account_by_email',
+        rows: [{ out_user_id: 'u-1', out_auth_user_id: 'auth-1', out_active: false, out_verified: false, out_professional: true }],
+      },
+      { contem: 'professional_register_resend', rows: [{ out_resultado: 'reenviado' }] },
+    ]);
+    const { porta, auth, enviados } = montar({ cliente, mailFalha: true });
+    await expect(porta.register(EMAIL, SENHA, AGORA)).rejects.toThrow('falha de envio simulada');
+    expect(auth.removidos).toEqual([]);
+    expect(enviados).toEqual([]);
+
+    // Segunda vez: o Auth ja conhece o e-mail; o envio agora funciona.
+    auth.criarResultado = 'existente';
+    const mailOk = montar({ cliente, auth });
+    await mailOk.porta.register(EMAIL, 'nova-senha-x', AGORA);
+    expect(auth.senhasTrocadas).toEqual([{ authUserId: 'auth-1', senha: 'nova-senha-x' }]);
+    expect(cliente.chamada('professional_register_resend')?.params).toEqual([
+      'u-1',
+      hmac(EMAIL),
+      'id-1',
+      challengeSha256Hex('segredo-x'),
+      AGORA_ISO,
+    ]);
+    expect(mailOk.enviados).toEqual([{ email: EMAIL, token: 'segredo-x' }]);
+  });
+
+  it('conta verificada ou sem perfil profissional: nada e trocado nem enviado', async () => {
+    const cliente = new ClienteFalso([
+      {
+        contem: 'professional_account_by_email',
+        rows: [{ out_user_id: 'u-1', out_auth_user_id: 'auth-1', out_active: true, out_verified: true, out_professional: true }],
+      },
+    ]);
+    const auth = new AuthFalso();
+    auth.criarResultado = 'existente';
+    const { porta, enviados } = montar({ cliente, auth });
+    await porta.register(EMAIL, SENHA, AGORA);
+    expect(auth.senhasTrocadas).toEqual([]);
+    expect(cliente.chamada('professional_register_resend')).toBeUndefined();
+    expect(enviados).toEqual([]);
+  });
+
+  it('falha ao desfazer no Auth depois de erro do banco: registra pendencia sem e-mail e repassa o erro do banco', async () => {
+    const cliente = new ClienteFalso();
+    cliente.falhaEm = 'professional_register_create';
+    const auth = new AuthFalso();
+    auth.deleteFalha = true;
+    const { porta, eventos } = montar({ cliente, auth });
+    await expect(porta.register(EMAIL, SENHA, AGORA)).rejects.toThrow('falha de banco simulada');
+    expect(eventos).toEqual([
+      ['professional_auth_compensacao_pendente', { motivo: 'banco', auth_user_id: 'auth-1' }],
+    ]);
+    expect(JSON.stringify(eventos)).not.toContain(EMAIL);
+  });
+
+  it('banco diz existente e a remocao falha: o cadastro responde normalmente (sem erro que revele o e-mail)', async () => {
+    const cliente = new ClienteFalso([{ contem: 'professional_register_create', rows: [{ out_resultado: 'existente' }] }]);
+    const auth = new AuthFalso();
+    auth.deleteFalha = true;
+    const { porta, eventos } = montar({ cliente, auth });
+    await expect(porta.register(EMAIL, SENHA, AGORA)).resolves.toBeUndefined();
+    expect(eventos[0][0]).toBe('professional_auth_compensacao_pendente');
+  });
+
+  it('e-mail existente e falha ao consultar a conta: responde normalmente e registra o evento', async () => {
+    const cliente = new ClienteFalso();
+    cliente.falhaEm = 'professional_account_by_email';
+    const auth = new AuthFalso();
+    auth.criarResultado = 'existente';
+    const { porta, eventos } = montar({ cliente, auth });
+    await expect(porta.register(EMAIL, SENHA, AGORA)).resolves.toBeUndefined();
+    expect(eventos).toEqual([['professional_reenvio_falhou', { etapa: 'reenvio' }]]);
   });
 });
 

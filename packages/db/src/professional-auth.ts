@@ -25,6 +25,8 @@ export interface ProfessionalAuthGateway {
   createUser(email: string, password: string): Promise<{ readonly authUserId: string } | 'existente'>;
   /** Remove o usuario do Auth (compensacao quando o banco recusa). */
   deleteUser(authUserId: string): Promise<void>;
+  /** Troca a senha de um usuario existente (reenvio do link de conta ainda nao verificada). */
+  updatePassword(authUserId: string, password: string): Promise<void>;
   /** Confere a senha. Nulo para senha errada ou usuario inexistente. Nao guarda os tokens devolvidos. */
   signInWithPassword(email: string, password: string): Promise<{ readonly authUserId: string } | null>;
 }
@@ -40,6 +42,8 @@ export interface PgProfessionalAuthDeps {
   readonly mail: ProfessionalMailPort;
   /** PEPPER_EMAIL_HMAC: chave do HMAC do e-mail (email_hash e chave do contador). */
   readonly pepperEmail: string;
+  /** Registro de eventos sem dados pessoais (reconciliacao). Padrao: nenhum. */
+  readonly evento?: (nome: string, dados: Record<string, string>) => void;
   /** Identificadores novos (padrao: UUID aleatorio). Injetado nos testes. */
   readonly newId?: () => string;
   /** Segredos novos (padrao: 32 bytes em base64url). Injetado nos testes. */
@@ -69,41 +73,74 @@ export class PgProfessionalAuth implements ProfessionalAuthPort {
     return challengeHmacHex(this.deps.pepperEmail, `${PROFESSIONAL_LOGIN_KEY_PURPOSE}${email}`);
   }
 
+  private evento(nome: string, dados: Record<string, string>): void {
+    try {
+      this.deps.evento?.(nome, dados);
+    } catch {
+      // Registrar evento nunca derruba a resposta ao cliente.
+    }
+  }
+
+  /** Desfaz o usuario criado no Auth. Se falhar, deixa pendencia registrada (sem e-mail) e nao lanca. */
+  private async desfazerAuth(authUserId: string, motivo: string): Promise<void> {
+    try {
+      await this.deps.gateway.deleteUser(authUserId);
+    } catch {
+      this.evento('professional_auth_compensacao_pendente', { motivo, auth_user_id: authUserId });
+    }
+  }
+
   /**
-   * Cadastro (33 §3.2): Auth primeiro, depois a transacao do banco. Se o banco recusar ou o e-mail ja
-   * existir no banco, o usuario recem-criado no Auth e removido. Em 'existente' nada e enviado.
+   * Cadastro (33 §3.1 e §3.2). Auth primeiro. Conta nova: se o banco recusar, desfaz o usuario do Auth;
+   * se o envio do link falhar, a conta fica e a rota responde 503 (o cadastro repetido reenvia o link).
+   * E-mail ja existente no Auth: nada e criado; so se a conta for de profissional ainda nao verificada o
+   * link e reenviado. Esse ramo nunca lanca, para a resposta nao revelar a existencia.
    */
   async register(email: string, password: string, nowMs: number): Promise<void> {
     const criado = await this.deps.gateway.createUser(email, password);
-    if (criado === 'existente') return;
+    if (criado === 'existente') {
+      await this.reenviarSeCabivel(email, password, nowMs);
+      return;
+    }
 
     const userId = this.newId();
     const challengeId = this.newId();
     const token = this.newSecret();
-    let resultado: string | undefined;
+    let resultado: string;
     try {
       const res = await this.deps.client.query(
         'select * from private.professional_register_create($1, $2, $3, $4, $5, $6, $7::timestamptz)',
-        [
-          userId,
-          criado.authUserId,
-          email,
-          this.emailHash(email),
-          challengeId,
-          challengeSha256Hex(token),
-          iso(nowMs),
-        ],
+        [userId, criado.authUserId, email, this.emailHash(email), challengeId, challengeSha256Hex(token), iso(nowMs)],
       );
       resultado = String(linhaUnica(res.rows)?.out_resultado ?? '');
     } catch (err) {
-      await this.deps.gateway.deleteUser(criado.authUserId).catch(() => undefined);
+      await this.desfazerAuth(criado.authUserId, 'banco');
       throw err;
     }
     if (resultado !== 'criado') {
-      await this.deps.gateway.deleteUser(criado.authUserId);
+      await this.desfazerAuth(criado.authUserId, 'existente_no_banco');
       return;
     }
     await this.deps.mail.verificationLink(email, token);
+  }
+
+  /** Reenvio: conta de profissional nao verificada. Troca a senha no Auth, troca o link e revoga sessoes. */
+  private async reenviarSeCabivel(email: string, password: string, nowMs: number): Promise<void> {
+    try {
+      const conta = await this.deps.client.query('select * from private.professional_account_by_email($1)', [email]);
+      const linha = linhaUnica(conta.rows);
+      if (!linha || linha.out_professional !== true || linha.out_verified === true) return;
+      await this.deps.gateway.updatePassword(String(linha.out_auth_user_id), password);
+      const token = this.newSecret();
+      const res = await this.deps.client.query(
+        'select * from private.professional_register_resend($1, $2, $3, $4, $5::timestamptz)',
+        [String(linha.out_user_id), this.emailHash(email), this.newId(), challengeSha256Hex(token), iso(nowMs)],
+      );
+      if (linhaUnica(res.rows)?.out_resultado !== 'reenviado') return;
+      await this.deps.mail.verificationLink(email, token);
+    } catch {
+      this.evento('professional_reenvio_falhou', { etapa: 'reenvio' });
+    }
   }
 
   async confirmVerification(token: string, nowMs: number): Promise<boolean> {
@@ -225,6 +262,15 @@ export class SupabaseAuthGateway implements ProfessionalAuthGateway {
       headers: this.adminHeaders(),
     });
     if (!res.ok && res.status !== 404) throw new Error(`auth_deleteUser_${res.status}`);
+  }
+
+  async updatePassword(authUserId: string, password: string): Promise<void> {
+    const res = await this.http(`${this.base}/auth/v1/admin/users/${encodeURIComponent(authUserId)}`, {
+      method: 'PUT',
+      headers: this.adminHeaders(),
+      body: JSON.stringify({ password }),
+    });
+    if (!res.ok) throw new Error(`auth_updatePassword_${res.status}`);
   }
 
   async signInWithPassword(email: string, password: string): Promise<{ readonly authUserId: string } | null> {

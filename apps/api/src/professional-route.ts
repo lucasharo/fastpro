@@ -3,8 +3,9 @@
 //   POST /v1/auth/professional/register              202 uniforme (cadastro ou e-mail ja existente).
 //   POST /v1/auth/professional/verification/confirm  204 (consumiu o link) ou 410 unico.
 //   POST /v1/auth/professional/login                 200 + cookie de sessao de 7 dias; 401/403/429.
-// Ordem: Content-Type JSON, corpo com teto de 4 KB, depois a regra. Nenhuma resposta ou log traz
-// senha, token ou e-mail. A persistencia fica na porta; o teste usa repositorio em memoria.
+// Ordem: Content-Type JSON, corpo com teto de 4 KB, depois a regra. Cadastro e login respondem so
+// depois de um piso de tempo (33 §5.1 passo 4), para o tempo nao revelar se o e-mail existe.
+// Nenhuma resposta ou log traz senha, token ou e-mail. A persistencia fica na porta.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import {
   ACCOUNT_UNAVAILABLE_BODY,
@@ -14,16 +15,16 @@ import {
   PROFESSIONAL_ACCEPTED_BODY,
   PROFESSIONAL_LOGIN_PATH,
   PROFESSIONAL_REGISTER_PATH,
+  PROFESSIONAL_RESPONSE_FLOOR_MS,
   PROFESSIONAL_VERIFY_CONFIRM_PATH,
   SERVICE_UNAVAILABLE_BODY,
   SESSION_MAX_AGE_SECONDS,
   checkProfessionalRegister,
-  type ProfessionalAuthPort,
-  type ProfessionalCredential,
   isProfessionalLinkToken,
   loginEmailOrNull,
   loginPasswordOrNull,
   sessionCookieHeader,
+  type ProfessionalAuthPort,
 } from '@fastpro/domain';
 
 /** Corpo maximo aceito por estas rotas (senha de 72 bytes cabe folgado). */
@@ -33,14 +34,30 @@ const NO_STORE = { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer'
 export interface ProfessionalRouteOptions {
   readonly port: ProfessionalAuthPort;
   readonly clock: { nowMs(): number };
+  /** Piso de tempo de resposta em ms (padrao: PROFESSIONAL_RESPONSE_FLOOR_MS). Zero so em teste. */
+  readonly responseFloorMs?: number;
 }
 
-function send(
+type Piso = () => Promise<void>;
+
+/** Marca o inicio da requisicao; o piso espera o que faltar para o tempo minimo antes de responder. */
+function iniciarPiso(opts: ProfessionalRouteOptions): Piso {
+  const inicio = Date.now();
+  const minimo = opts.responseFloorMs ?? PROFESSIONAL_RESPONSE_FLOOR_MS;
+  return async () => {
+    const falta = minimo - (Date.now() - inicio);
+    if (falta > 0) await new Promise<void>((ok) => setTimeout(ok, falta));
+  };
+}
+
+async function enviar(
+  piso: Piso,
   res: ServerResponse,
   status: number,
   headers: Record<string, string>,
   body: unknown,
-): void {
+): Promise<void> {
+  await piso();
   const texto = body === undefined ? '' : JSON.stringify(body);
   res.writeHead(status, {
     ...NO_STORE,
@@ -85,19 +102,21 @@ export async function handleProfessionalRegister(
   res: ServerResponse,
   opts: ProfessionalRouteOptions,
 ): Promise<void> {
+  const piso = iniciarPiso(opts);
   const corpo = await lerJson(req);
-  if (!corpo.ok) return send(res, corpo.status, {}, undefined);
+  if (!corpo.ok) return enviar(piso, res, corpo.status, {}, undefined);
   const entrada = checkProfessionalRegister(corpo.value);
   if (!entrada.ok) {
-    return send(res, 422, {}, { code: 'campo_invalido', campo: entrada.campo, motivo: entrada.motivo });
+    return enviar(piso, res, 422, {}, { code: 'campo_invalido', campo: entrada.campo, motivo: entrada.motivo });
   }
   try {
     await opts.port.register(entrada.email, entrada.password, opts.clock.nowMs());
   } catch {
-    // Nunca 202 falso: a falha de infraestrutura nao pode parecer cadastro feito.
-    return send(res, 503, {}, SERVICE_UNAVAILABLE_BODY);
+    // Nunca 202 falso: a falha de infraestrutura nao pode parecer cadastro feito. A rota nao diz
+    // se o e-mail existe; o adaptador ja trata o caso "existente" sem erro.
+    return enviar(piso, res, 503, {}, SERVICE_UNAVAILABLE_BODY);
   }
-  return send(res, 202, {}, PROFESSIONAL_ACCEPTED_BODY);
+  return enviar(piso, res, 202, {}, PROFESSIONAL_ACCEPTED_BODY);
 }
 
 /** Consumo do link (POST; o GET da pagina nao consome). 410 unico para qualquer link que nao sirva. */
@@ -107,16 +126,19 @@ export async function handleProfessionalVerifyConfirm(
   opts: ProfessionalRouteOptions,
 ): Promise<void> {
   const corpo = await lerJson(req);
-  if (!corpo.ok) return send(res, corpo.status, {}, undefined);
+  if (!corpo.ok) return enviar(iniciarPiso({ ...opts, responseFloorMs: 0 }), res, corpo.status, {}, undefined);
   const token = (corpo.value as { token?: unknown } | null)?.token;
-  if (!isProfessionalLinkToken(token)) return send(res, 410, {}, LINK_INVALID_BODY);
+  if (!isProfessionalLinkToken(token)) {
+    return enviar(iniciarPiso({ ...opts, responseFloorMs: 0 }), res, 410, {}, LINK_INVALID_BODY);
+  }
   let ok: boolean;
   try {
     ok = await opts.port.confirmVerification(token, opts.clock.nowMs());
   } catch {
-    return send(res, 503, {}, SERVICE_UNAVAILABLE_BODY);
+    return enviar(iniciarPiso({ ...opts, responseFloorMs: 0 }), res, 503, {}, SERVICE_UNAVAILABLE_BODY);
   }
-  return ok ? send(res, 204, {}, undefined) : send(res, 410, {}, LINK_INVALID_BODY);
+  const piso = iniciarPiso({ ...opts, responseFloorMs: 0 });
+  return ok ? enviar(piso, res, 204, {}, undefined) : enviar(piso, res, 410, {}, LINK_INVALID_BODY);
 }
 
 /**
@@ -128,46 +150,43 @@ export async function handleProfessionalLogin(
   res: ServerResponse,
   opts: ProfessionalRouteOptions,
 ): Promise<void> {
+  const piso = iniciarPiso(opts);
   const corpo = await lerJson(req);
-  if (!corpo.ok) return send(res, corpo.status, {}, undefined);
+  if (!corpo.ok) return enviar(piso, res, corpo.status, {}, undefined);
   const dados = (corpo.value ?? {}) as { email?: unknown; password?: unknown };
   const email = loginEmailOrNull(dados.email);
   const password = loginPasswordOrNull(dados.password);
-  if (email === null || password === null) return send(res, 401, {}, INVALID_CREDENTIALS_BODY);
+  if (email === null || password === null) return enviar(piso, res, 401, {}, INVALID_CREDENTIALS_BODY);
 
   const agora = opts.clock.nowMs();
   let portao: Awaited<ReturnType<ProfessionalAuthPort['loginGate']>>;
   try {
     portao = await opts.port.loginGate(email, agora);
   } catch {
-    return send(res, 503, {}, SERVICE_UNAVAILABLE_BODY);
+    return enviar(piso, res, 503, {}, SERVICE_UNAVAILABLE_BODY);
   }
   if (portao.kind === 'bloqueada') {
-    return send(
-      res,
-      429,
-      { 'Retry-After': String(portao.retryAfterSeconds) },
-      LOGIN_BLOCKED_BODY,
-    );
+    return enviar(piso, res, 429, { 'Retry-After': String(portao.retryAfterSeconds) }, LOGIN_BLOCKED_BODY);
   }
 
   let credencial: Awaited<ReturnType<ProfessionalAuthPort['verifyPassword']>>;
-  let sessao: Awaited<ReturnType<ProfessionalAuthPort['openSession']>>;
   try {
     credencial = await opts.port.verifyPassword(email, password);
   } catch {
-    return send(res, 503, {}, SERVICE_UNAVAILABLE_BODY);
+    return enviar(piso, res, 503, {}, SERVICE_UNAVAILABLE_BODY);
   }
-  if (credencial === null) return send(res, 401, {}, INVALID_CREDENTIALS_BODY);
-  if (!credencial.active) return send(res, 403, {}, ACCOUNT_UNAVAILABLE_BODY);
+  if (credencial === null) return enviar(piso, res, 401, {}, INVALID_CREDENTIALS_BODY);
+  if (!credencial.active) return enviar(piso, res, 403, {}, ACCOUNT_UNAVAILABLE_BODY);
 
+  let sessao: Awaited<ReturnType<ProfessionalAuthPort['openSession']>>;
   try {
     await opts.port.loginSucceeded(email);
     sessao = await opts.port.openSession(credencial, agora);
   } catch {
-    return send(res, 503, {}, SERVICE_UNAVAILABLE_BODY);
+    return enviar(piso, res, 503, {}, SERVICE_UNAVAILABLE_BODY);
   }
-  return send(
+  return enviar(
+    piso,
     res,
     200,
     { 'Set-Cookie': sessionCookieHeader(sessao.secret, SESSION_MAX_AGE_SECONDS) },
