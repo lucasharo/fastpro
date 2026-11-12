@@ -249,7 +249,9 @@ async function iniciar(opcoes: { globalCap?: number } = {}): Promise<Mundo> {
   const reducer = new FakeReducer();
   const reduzidos = new MemReduceStorage(store.diario);
   // Original de teste: a reducao falsa devolve sempre a mesma saida; so os bytes de entrada importam pouco aqui.
+  // H-028 (#41, 96-DESENHO §7): o original falso comeca com a assinatura JPEG (a checagem recusa o resto).
   reduzidos.padraoOriginal = new Uint8Array(1000).fill(1);
+  reduzidos.padraoOriginal.set([0xff, 0xd8, 0xff, 0xe0]);
   const deps: MediaDeps = {
     store,
     storage,

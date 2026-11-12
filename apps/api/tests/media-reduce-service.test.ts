@@ -17,7 +17,9 @@ const T0 = Date.UTC(2026, 10, 12, 12, 0, 0);
 const MIN = 60_000;
 const HASH = 'a'.repeat(64);
 const uuid = (n: number): string => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+// H-028 (#41, 96-DESENHO §7): o original falso comeca com a assinatura JPEG; o FakeReducer nao decodifica nada.
 const ORIG = new Uint8Array(1000).fill(7);
+ORIG.set([0xff, 0xd8, 0xff, 0xe0]);
 
 function linha(id: string, extra: Partial<LinhaR> = {}): LinhaR {
   return {

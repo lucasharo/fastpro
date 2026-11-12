@@ -5,6 +5,7 @@
 import {
   DRAFT_HEADERS,
   MEDIA_REDUCE_CEILING_BYTES,
+  detectarTipoImagem,
   MEDIA_REDUCE_DEADLINE_MS,
   MEDIA_REDUCE_LEASE_S,
   type ImageReducerPort,
@@ -146,6 +147,12 @@ async function reduzirTentativa(id: string, tentativa: number, deps: ReduceDeps,
   }
   // Original ausente na quarentena: nao ha o que reduzir; a foto e recusada (decisao 84, falha que nao se resolve).
   if (original === null) return recusar(id, tentativa, 'imagem_invalida', deps, nowMs);
+  // H-028 (#41, decisoes 93 e 96; 96-DESENHO §2.3): o conteudo decide o tipo. Sem assinatura de JPEG, PNG ou WebP,
+  // a foto e recusada antes de o decodificador ser chamado. Nome e tipo declarado nao entram aqui.
+  if (detectarTipoImagem(original) === null) {
+    deps.contadores.incrementar('recusa_assinatura');
+    return recusar(id, tentativa, 'imagem_invalida', deps, nowMs);
+  }
 
   let r: ReduceOutcome;
   try {
