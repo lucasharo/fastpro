@@ -8,7 +8,7 @@ export const PROFESSIONAL_REGISTER_PATH = '/v1/auth/professional/register';
 export const PROFESSIONAL_VERIFY_CONFIRM_PATH = '/v1/auth/professional/verification/confirm';
 export const PROFESSIONAL_LOGIN_PATH = '/v1/auth/professional/login';
 
-/** Falhas sem espera: a 5a falha ja gera espera (33 §2.6, D-H016-4). */
+/** Tentativas que passam sem espera: a 5a e barrada com espera (33 §2.6, D-H016-4). */
 export const PROFESSIONAL_LOGIN_FREE_FAILURES = 4;
 /** Espera = 30 s dobrando a cada falha a partir da 5a, teto de 15 min. */
 export const PROFESSIONAL_LOGIN_WAIT_BASE_SECONDS = 30;
@@ -48,32 +48,44 @@ export const LOGIN_THROTTLE_EMPTY: LoginThrottleState = {
 };
 
 export type LoginGate =
-  | { readonly kind: 'bloqueada'; readonly retryAfterSeconds: number }
+  | { readonly kind: 'bloqueada'; readonly retryAfterSeconds: number; readonly next: LoginThrottleState }
   | { readonly kind: 'tentativa'; readonly next: LoginThrottleState };
 
 /**
- * Decide se a tentativa pode ser verificada. A tentativa ja nasce contada (DD-4): se passar, o
- * contador avanca; se a falha for a 5a ou depois, a espera correspondente vale para as seguintes.
- * Durante a espera nada e verificado e o contador nao anda (nem a senha certa passa, CA-H016-12).
+ * Decide se a tentativa pode ser verificada. O contador ja conta a tentativa que passa (DD-4).
+ * Ate a 4a falha nada espera. A tentativa seguinte (5a) e barrada com espera de 30 s e nao conta.
+ * Depois da espera, uma tentativa passa e conta; se falhar, a espera seguinte dobra (60 s, 120 s...).
+ * Enquanto a espera vale, nada passa, nem a senha certa, e o contador nao anda (CA-H016-12).
  */
 export function gateProfessionalLogin(state: LoginThrottleState, nowMs: number): LoginGate {
   if (state.lockedUntilMs !== null && state.lockedUntilMs > nowMs) {
     return {
       kind: 'bloqueada',
       retryAfterSeconds: Math.ceil((state.lockedUntilMs - nowMs) / 1000),
+      next: state,
     };
   }
   const antigas =
     state.lastFailureMs !== null && nowMs - state.lastFailureMs > PROFESSIONAL_LOGIN_RESET_AFTER_MS;
-  const failures = (antigas ? 0 : state.failures) + 1;
-  const espera = professionalLoginWaitSeconds(failures);
+  const base = antigas ? 0 : state.failures;
+  const proximo = base + 1;
+  if (proximo <= PROFESSIONAL_LOGIN_FREE_FAILURES) {
+    return {
+      kind: 'tentativa',
+      next: { failures: proximo, lastFailureMs: nowMs, lockedUntilMs: null },
+    };
+  }
+  const espera = professionalLoginWaitSeconds(proximo);
+  if (state.lockedUntilMs === null) {
+    return {
+      kind: 'bloqueada',
+      retryAfterSeconds: espera,
+      next: { failures: base, lastFailureMs: state.lastFailureMs, lockedUntilMs: nowMs + espera * 1000 },
+    };
+  }
   return {
     kind: 'tentativa',
-    next: {
-      failures,
-      lastFailureMs: nowMs,
-      lockedUntilMs: espera > 0 ? nowMs + espera * 1000 : null,
-    },
+    next: { failures: proximo, lastFailureMs: nowMs, lockedUntilMs: nowMs + espera * 1000 },
   };
 }
 

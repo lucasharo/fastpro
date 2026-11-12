@@ -14,6 +14,17 @@ import {
 
 const T0 = Date.UTC(2099, 0, 1, 12);
 
+/** Aplica tentativas que passam e devolve o estado seguinte (falha registrada). */
+function falhas(estado: LoginThrottleState, n: number, agora: number): LoginThrottleState {
+  let atual = estado;
+  for (let i = 0; i < n; i++) {
+    const portao = gateProfessionalLogin(atual, agora);
+    expect(portao.kind).toBe('tentativa');
+    atual = portao.next;
+  }
+  return atual;
+}
+
 describe('T-H016-12 espera do login (33 §2.6)', () => {
   it('nao espera ate a 4a falha; a 5a gera 30 s e dobra ate o teto de 900 s', () => {
     expect([1, 2, 3, 4].map(professionalLoginWaitSeconds)).toEqual([0, 0, 0, 0]);
@@ -26,24 +37,37 @@ describe('T-H016-12 espera do login (33 §2.6)', () => {
   });
 });
 
-describe('T-H016-12 contador de tentativas', () => {
-  it('a tentativa ja nasce contada; durante a espera nada avanca', () => {
-    let estado = LOGIN_THROTTLE_EMPTY;
-    for (let i = 0; i < 5; i++) {
-      const portao = gateProfessionalLogin(estado, T0);
-      expect(portao.kind).toBe('tentativa');
-      if (portao.kind === 'tentativa') estado = portao.next;
-    }
-    expect(estado.failures).toBe(5);
-    const bloqueada = gateProfessionalLogin(estado, T0 + 1000);
-    expect(bloqueada).toEqual({ kind: 'bloqueada', retryAfterSeconds: 29 });
-    expect(gateProfessionalLogin(estado, T0 + 1000)).toEqual(bloqueada);
+describe('T-H016-12 contador de tentativas (quatro verificacoes, depois espera)', () => {
+  it('as quatro primeiras passam e contam; a quinta e barrada com 30 s e nao conta', () => {
+    const estado = falhas(LOGIN_THROTTLE_EMPTY, 4, T0);
+    expect(estado.failures).toBe(4);
+    const barrada = gateProfessionalLogin(estado, T0);
+    expect(barrada.kind).toBe('bloqueada');
+    if (barrada.kind !== 'bloqueada') return;
+    expect(barrada.retryAfterSeconds).toBe(30);
+    expect(barrada.next.failures).toBe(4);
   });
 
-  it('depois da espera a tentativa passa de novo', () => {
-    const estado = { failures: 5, lastFailureMs: T0, lockedUntilMs: T0 + 30_000 };
-    const portao = gateProfessionalLogin(estado, T0 + 30_000);
-    expect(portao.kind).toBe('tentativa');
+  it('durante a espera nada passa, nem a senha certa, e o pedido nao muda o contador', () => {
+    const barrada = gateProfessionalLogin(falhas(LOGIN_THROTTLE_EMPTY, 4, T0), T0);
+    if (barrada.kind !== 'bloqueada') throw new Error('esperava bloqueio');
+    const durante = gateProfessionalLogin(barrada.next, T0 + 1000);
+    expect(durante).toEqual({ kind: 'bloqueada', retryAfterSeconds: 29, next: barrada.next });
+  });
+
+  it('depois da espera, uma tentativa passa e conta; se falhar, a espera dobra', () => {
+    const barrada = gateProfessionalLogin(falhas(LOGIN_THROTTLE_EMPTY, 4, T0), T0);
+    if (barrada.kind !== 'bloqueada') throw new Error('esperava bloqueio');
+    const servida = gateProfessionalLogin(barrada.next, T0 + 30_000);
+    expect(servida.kind).toBe('tentativa');
+    if (servida.kind !== 'tentativa') return;
+    expect(servida.next.failures).toBe(5);
+    expect(servida.next.lockedUntilMs).toBe(T0 + 30_000 + 30_000);
+    const seguinte = gateProfessionalLogin(servida.next, T0 + 61_000);
+    expect(seguinte.kind).toBe('tentativa');
+    if (seguinte.kind !== 'tentativa') return;
+    expect(seguinte.next.failures).toBe(6);
+    expect(seguinte.next.lockedUntilMs).toBe(T0 + 61_000 + 60_000);
   });
 
   it('zera o contador apos 24 h sem falha', () => {

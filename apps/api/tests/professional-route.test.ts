@@ -82,8 +82,8 @@ class PortaMemoria implements ProfessionalAuthPort {
   ): Promise<{ kind: 'bloqueada'; retryAfterSeconds: number } | { kind: 'tentativa' }> {
     const estado = this.contadores.get(email) ?? LOGIN_THROTTLE_EMPTY;
     const portao = gateProfessionalLogin(estado, nowMs);
-    if (portao.kind === 'bloqueada') return portao;
     this.contadores.set(email, portao.next);
+    if (portao.kind === 'bloqueada') return { kind: 'bloqueada', retryAfterSeconds: portao.retryAfterSeconds };
     return { kind: 'tentativa' };
   }
 
@@ -306,54 +306,56 @@ describe('T-H016-11 login e anti-enumeracao (CA-H016-10, CA-H016-11, CA-H016-13)
 });
 
 describe('T-H016-12 bloqueio progressivo (CA-H016-12)', () => {
-  it('4 falhas sem espera; a 5a gera 30 s; a senha certa durante a espera recebe 429', async () => {
+  it('quatro tentativas passam; a quinta espera 30 s, e a senha certa tambem recebe 429', async () => {
     await criarConta();
-    for (let i = 0; i < 5; i++) {
-      const r = await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }));
-      expect(r.status).toBe(401);
+    for (let i = 0; i < 4; i++) {
+      expect((await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }))).status).toBe(401);
     }
-    const bloqueada = await post(PATH_LOGIN, json({ email: EMAIL, password: SENHA }));
-    expect(bloqueada.status).toBe(429);
-    expect(bloqueada.headers['retry-after']).toBe('30');
-    expect(JSON.parse(bloqueada.text)).toEqual({ code: 'login_temporarily_blocked' });
+    const barrada = await post(PATH_LOGIN, json({ email: EMAIL, password: SENHA }));
+    expect(barrada.status).toBe(429);
+    expect(barrada.headers['retry-after']).toBe('30');
+    expect(JSON.parse(barrada.text)).toEqual({ code: 'login_temporarily_blocked' });
   });
 
   it('apos a espera, a senha certa entra e zera o contador', async () => {
     await criarConta();
-    for (let i = 0; i < 5; i++) await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }));
+    for (let i = 0; i < 4; i++) await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }));
+    expect((await post(PATH_LOGIN, json({ email: EMAIL, password: SENHA }))).status).toBe(429);
     agora += 31 * 1000;
     const r = await post(PATH_LOGIN, json({ email: EMAIL, password: SENHA }));
     expect(r.status).toBe(200);
     expect(porta.contadores.has(EMAIL)).toBe(false);
   });
 
-  it('cada nova falha dobra a espera (30 s, 60 s) e o pedido bloqueado nao conta', async () => {
+  it('cada nova falha depois da espera dobra a espera (30 s, 60 s) e o pedido barrado nao conta', async () => {
     await criarConta();
-    for (let i = 0; i < 5; i++) await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }));
+    for (let i = 0; i < 4; i++) await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }));
+    expect((await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }))).status).toBe(429);
     agora += 31 * 1000;
-    const sexta = await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }));
-    expect(sexta.status).toBe(401);
+    expect((await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }))).status).toBe(401);
     agora += 31 * 1000;
-    const bloqueada = await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }));
-    expect(bloqueada.status).toBe(429);
-    expect(bloqueada.headers['retry-after']).toBe('29');
+    expect((await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }))).status).toBe(401);
+    agora += 31 * 1000;
+    const barrada = await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }));
+    expect(barrada.status).toBe(429);
+    expect(barrada.headers['retry-after']).toBe('29');
   });
 
   it('e-mail inexistente tambem conta e recebe a mesma espera', async () => {
-    for (let i = 0; i < 5; i++) await post(PATH_LOGIN, json({ email: 'fantasma@example.test', password: 'senha-errada-x' }));
+    for (let i = 0; i < 4; i++) await post(PATH_LOGIN, json({ email: 'fantasma@example.test', password: 'senha-errada-x' }));
     const r = await post(PATH_LOGIN, json({ email: 'fantasma@example.test', password: 'senha-errada-x' }));
     expect(r.status).toBe(429);
     expect(r.headers['retry-after']).toBe('30');
   });
 
-  it('50 tentativas simultaneas: no maximo 5 verificacoes reais e o resto recebe 429', async () => {
+  it('50 tentativas simultaneas: exatamente 4 verificacoes reais e o resto recebe 429', async () => {
     await criarConta();
     const respostas = await Promise.all(
       Array.from({ length: 50 }, () => post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }))),
     );
     const bloqueadas = respostas.filter((r) => r.status === 429).length;
-    expect(porta.verificacoes).toBeLessThanOrEqual(5);
-    expect(bloqueadas).toBe(50 - porta.verificacoes);
+    expect(porta.verificacoes).toBe(4);
+    expect(bloqueadas).toBe(50 - 4);
   });
 });
 
