@@ -324,3 +324,11 @@ Nota: o número 56 aparece duplicado nas rodadas 19 (decisões de H-022 e H-026)
 - **121 (D-H029-5):** textos da tela aprovados, inclusive o aviso sobre fachada, interior e rostos.
 - **122 (D-H029-6):** H-027 entra como dependencia da #42 no backlog.
 - **123 (D-H029-7):** deduplicacao de foto repetida fica fora desta historia.
+
+## Rodada 34 (desenho da cobertura booleana, #37 / H-024)
+
+- **124:** rota minima do estado do dono entregue junto, se a #47 nao existir na construcao.
+- **125:** a #36 cria as funcoes de regra de descoberta (discovery_*), compartilhadas com a cobertura.
+- **126:** limites de sondagem aceitos (20 por pedido, 60 por dono e 60 por IP por hora), medidos depois.
+- **127:** a tolerancia da fronteira do raio segue a decisao 104.
+- **128:** textos "com" e "sem" (BK-5) continuam pendentes; bloqueiam o fechamento, nao o desenvolvimento.
