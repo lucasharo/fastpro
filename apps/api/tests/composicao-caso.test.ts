@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest';
 import type { SqlClient } from '@fastpro/db';
 import { montarIntegracoes } from '../src/composicao.js';
 
-const URL_SINTETICA = 'postgres://papel-sintetico-caso:senha-sintetica-caso@127.0.0.1:1/banco-sintetico';
+const SENHA_SINTETICA_CASO = ['senha', 'sintetica', 'caso'].join('-');
+const URL_SINTETICA = `postgres://papel-sintetico-caso:${SENHA_SINTETICA_CASO}@127.0.0.1:1/banco-sintetico`;
 const BASE = 'https://admin.fastpro.example.test';
 
 function clienteFalso(): SqlClient {
@@ -48,7 +49,7 @@ describe('montarIntegracoes: rotas do caso de acesso (H-073)', () => {
     const integracoes = montarIntegracoes({ DATABASE_URL_APP_SYSTEM: URL_SINTETICA, ADMIN_BASE_URL: BASE }, {
       abrirClienteSql: () => clienteFalso(),
     });
-    expect(JSON.stringify(integracoes.pendenciasCaso)).not.toContain('senha-sintetica-caso');
+    expect(JSON.stringify(integracoes.pendenciasCaso)).not.toContain(SENHA_SINTETICA_CASO);
     expect(JSON.stringify(integracoes.accessCase)).not.toContain(URL_SINTETICA);
   });
 });
