@@ -339,3 +339,10 @@ Nota: o número 56 aparece duplicado nas rodadas 19 (decisões de H-022 e H-026)
 - **130:** base geocodificada por "localidade" aceita agora, por coerencia com a #34; precisao maior fica como parametro futuro.
 - **131:** servicos sem historico "vigente desde"; mudar servico vale ja para a descoberta de pedidos abertos (possivel Issue futura).
 - **132:** remocao de base fica para uma historia propria, depois.
+
+## Rodada 36 (desenho da pre-visualizacao e reordenacao das fotos, #42 / H-029)
+
+- **133:** a migracao altera a regra de confirmacao do pedido, para que excluir ou reordenar foto zere a confirmacao; o desenvolvimento copia a funcao vigente e confere que os testes da #43 seguem verdes.
+- **134:** textos novos da tela aprovados como estao (titulo, contador, dialogo de exclusao, anuncios).
+- **135:** o aviso de fachada, interior e rostos fica sempre visivel, mesmo sem fotos.
+- **Portao:** o desenvolvimento da #42 comeca so quando a #41 sair de desenvolvimento (mesmos arquivos de midia).
