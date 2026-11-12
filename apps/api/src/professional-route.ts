@@ -45,10 +45,10 @@ export interface ProfessionalRouteOptions {
   readonly responseFloorMs?: number;
 }
 
-type Piso = () => Promise<void>;
+export type Piso = () => Promise<void>;
 
 /** Marca o inicio da requisicao; o piso espera o que faltar para o tempo minimo antes de responder. */
-function iniciarPiso(opts: ProfessionalRouteOptions): Piso {
+export function iniciarPiso(opts: { readonly responseFloorMs?: number }): Piso {
   const inicio = Date.now();
   const minimo = opts.responseFloorMs ?? PROFESSIONAL_RESPONSE_FLOOR_MS;
   return async () => {
@@ -57,7 +57,7 @@ function iniciarPiso(opts: ProfessionalRouteOptions): Piso {
   };
 }
 
-async function enviar(
+export async function enviar(
   piso: Piso,
   res: ServerResponse,
   status: number,
@@ -74,10 +74,10 @@ async function enviar(
   res.end(texto);
 }
 
-type Corpo = { readonly ok: true; readonly value: unknown } | { readonly ok: false; readonly status: 400 | 413 | 415 };
+export type Corpo = { readonly ok: true; readonly value: unknown } | { readonly ok: false; readonly status: 400 | 413 | 415 };
 
 /** Le o corpo JSON com teto. O excedente e so contado (sem reset de conexao). */
-function lerJson(req: IncomingMessage): Promise<Corpo> {
+export function lerJson(req: IncomingMessage): Promise<Corpo> {
   return new Promise((resolve, reject) => {
     const tipo = req.headers['content-type'] ?? '';
     if (!/^application\/json\b/i.test(tipo)) {
