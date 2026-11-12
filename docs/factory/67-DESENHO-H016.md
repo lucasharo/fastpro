@@ -85,3 +85,12 @@ Camadas (sem Docker, D-H016-7): **U** unidade (Vitest); **B** banco de desenvolv
 ## Resumo em linguagem simples
 
 O profissional cria conta com e-mail e senha, confirma o e-mail por um link que vale 15 minutos e só funciona uma vez, e entra com a senha. Depois de 5 erros seguidos o sistema o faz esperar, e a espera cresce até 15 minutos. Quem esqueceu a senha recebe um link para trocá-la, e a troca encerra os outros acessos. Enquanto o e-mail não for confirmado e uma pessoa não aprovar o cadastro, o profissional não publica nem aceita trabalho. Já existia um desenho completo; este documento resume e aponta onde ele precisa ser ajustado ao que já foi construído. Depende do dono: desligar o cadastro aberto do serviço de contas.
+
+## 9. Conflito do CA-H016-23 (registrado na #29, WF-03)
+
+- **Critério literal (32-REFINO-H016, CA-H016-23):** cadastro de profissional sobre e-mail que já tem usuário (cliente por link de H-012, ou cadastro não verificado) deve nascer com e-mail **não verificado** e exigir nova verificação, sem herdar a verificação do usuário existente.
+- **Desenho §3.1, linha 4 (33-DESENHO-H016):** e-mail verificado é do `app_user` (DD-2, §3). Cliente verificado sem perfil profissional recebe desafio `professional_activate`; nenhuma credencial muda até o consumo. O consumo do link cria o `professional_profile` (`pendente`), define a senha, revoga as sessões e marca o e-mail como verificado só se estava nulo.
+- **Conflito:** o literal exige um estado de verificação separado para o perfil profissional; o desenho mantém um único `app_user.email_verified_at`. Não dá para atender os dois sem duplicar a fonte de verdade (DD-2).
+- **Decisão adotada no desenvolvimento (orientação do Orquestrador):** seguir o desenho §3.1. A proteção que motivou o CA (pré-cadastro com e-mail de outra pessoa não ganha acesso) é atendida porque o pré-cadastro só gera um link ao dono do e-mail; sem o consumo, não há perfil nem sessão nova, e a conta existente não tem a senha trocada.
+- **Efeito no código:** `private.professional_challenge_create` com `professional_activate` (migração `20261112100500`) e `password_reset_consume` criam o perfil pendente e mantêm `email_verified_at` existente.
+- **Quem confirma:** Arquiteto (decisão de desenho) e Orquestrador (aceitação do critério). Até lá, CA-H016-23 fica como **PARCIAL** na Issue, com esta seção como referência.
