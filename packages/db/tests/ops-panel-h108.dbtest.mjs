@@ -128,6 +128,36 @@ test('T-H108-11 cota: periodo corrente (UTC) com uso, limite, alerta e data de a
       'servico sem linha no periodo nao aparece com dado inventado');
   }));
 
+// T-H108-10 (fila vazia) | sem linhas em ops.email_outbox: nenhum estado, nenhuma falha e idade nula.
+// Os zeros por estado sao preenchidos no dominio (filaDoPainel); aqui o banco so nao inventa valor.
+test('T-H108-10 fila vazia: sem estados, sem falhas e idade do pendente nula', () =>
+  tx(async () => {
+    await client.query('delete from ops.email_outbox');
+
+    const p = await painel();
+    assert.deepEqual(p.fila.por_estado, {}, 'nenhum estado com contagem');
+    assert.equal(p.fila.idade_pendente_s, null, 'idade nula sem pendente');
+    assert.deepEqual(p.fila.falhas_por_codigo, {}, 'nenhuma falha por codigo');
+  }));
+
+// T-H108-11 (servico sem linha) | servico sem linha no periodo nao aparece na leitura: o dominio o transforma em
+// sem_dados (CA-H108-10), nunca em 0%. So o e-mail tem linha nesta transacao.
+test('T-H108-11 cota: servico sem linha no periodo nao aparece na leitura (vira sem_dados no dominio)', () =>
+  tx(async () => {
+    await client.query(
+      `insert into ops.external_quota (service, period, period_start, used, soft_limit, hard_limit, alert_level, alerted_at)
+       values ('email', 'dia_utc', date '2099-01-01', 10, 80, 100, 0, null)
+       on conflict (service, period, period_start) do update set used = excluded.used`);
+
+    const p = await painel();
+    assert.equal(p.cotas.some((c) => c.servico === 'email' && c.periodo === 'dia_utc'), true,
+      'o servico com linha aparece');
+    for (const servico of ['mapbox_permanent', 'mapbox_geocoding_temp', 'storage', 'banco']) {
+      assert.equal(p.cotas.some((c) => c.servico === servico), false,
+        `${servico} sem linha nao aparece na leitura`);
+    }
+  }));
+
 // T-H108-12 | ops_metric: metrica fora da lista e dimensao fora do formato sao recusadas; soma sem duplicar
 test('T-H108-12 ops_metric recusa metrica e dimensao fora do formato', () =>
   tx(async () => {
