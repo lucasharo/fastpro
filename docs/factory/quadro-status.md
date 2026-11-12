@@ -17,7 +17,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #40 | [E3] Redução e reencode das fotos |
 | #41 | [E3] Remoção de EXIF e tipo por conteúdo |
 | #42 | [E3] Pré-visualização e reordenação de fotos |
-| #43 | [E3] Revisão e confirmação expressa |
 | #44 | [E3] Publicação idempotente com 7 dias |
 | #45 | [E3] Visibilidade de localização |
 | #46 | [E3] Opt-in de telefone no pedido |
@@ -96,6 +95,12 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #135 | [E6] Aviso “apenas conecta” nos termos |
 | #136 | [E7] Mensagem automática do aceite |
 | #137 | [E11] Canal “no site” |
+
+## Arquitetura (1)
+
+| Issue | Título |
+|---|---|
+| #43 | [E3] Revisão e confirmação expressa |
 
 ## Desenvolvimento (3)
 
