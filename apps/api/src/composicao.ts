@@ -34,6 +34,8 @@ import {
   type CatalogEnv,
 } from './catalog/compose.js';
 import type { CatalogRouteOptions } from './catalog/catalog-route.js';
+import { faltantesRascunho, montarRascunho, type DraftPortsFactory } from './drafts/compose.js';
+import type { DraftRouteOptions } from './drafts/draft-route.js';
 // H-035 | Cadastro do documento do perfil profissional (PUT/GET /v1/professional/profile).
 import { montarPerfilProfissional } from './professional-profile-composicao.js';
 import type { ProfessionalProfileRouteOptions } from './professional-profile-route.js';
@@ -71,6 +73,8 @@ export interface ComposicaoOpcoes {
   readonly confirmacaoAdmin?: AdminConfirmacaoOpcoes;
   /** fetch do provedor de login admin (Supabase Auth). Padrao: o global. */
   readonly fetchAuth?: typeof fetch;
+  /** Fabrica das portas do rascunho sem conta (H-025) sobre o papel app_api. Sem ela, as rotas nao ligam (404). */
+  readonly fabricaRascunho?: DraftPortsFactory;
 }
 
 export interface Integracoes {
@@ -86,6 +90,10 @@ export interface Integracoes {
   readonly pendencias: readonly string[];
   /** Nomes (nunca valores) que impedem as rotas do caso de acesso (H-073) de ligar. */
   readonly pendenciasCaso: readonly string[];
+  /** Opcoes das rotas do rascunho sem conta (H-025), ou undefined (404). */
+  readonly drafts: DraftRouteOptions | undefined;
+  /** Nomes (nunca valores) que impedem as rotas do rascunho sem conta (H-025) de ligar. */
+  readonly pendenciasRascunho: readonly string[];
   /** Rotas do documento do perfil profissional (H-035), ou undefined (404). */
   readonly professionalProfile: ProfessionalProfileRouteOptions | undefined;
   /** Nomes (nunca valores) que impedem as rotas do perfil profissional (H-035) de ligar. */
@@ -168,6 +176,13 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     pendenciasCaso.push(...faltantes);
   }
 
+  // H-025: rascunho sem conta. Pendencias proprias (so nomes), separadas das da busca e do caso.
+  const pendenciasRascunho = faltantesRascunho(env);
+  if (pendenciasRascunho.length === 0 && opcoes.fabricaRascunho === undefined) {
+    pendenciasRascunho.push('fabrica do pool do rascunho (ainda nao montada na funcao)');
+  }
+  const drafts = montarRascunho(env, opcoes.fabricaRascunho);
+
   // H-035: perfil profissional. Pendencias proprias (so nomes), separadas das demais integracoes.
   const perfil = montarPerfilProfissional(env, { abrirCliente: opcoes.abrirClienteSql, relogio: opcoes.clock });
 
@@ -176,9 +191,11 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     email,
     accessCase,
     adminStepUp,
+    drafts,
     professionalProfile: perfil.options,
     pendencias,
     pendenciasCaso,
+    pendenciasRascunho,
     pendenciasPerfil: perfil.pendencias,
   };
 }
