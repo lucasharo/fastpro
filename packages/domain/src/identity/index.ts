@@ -13,3 +13,5 @@ export * from './password.js';
 export * from './common-passwords.js';
 // H-016 | Cadastro, verificacao e login do profissional (logica pura; I/O fica no adaptador).
 export * from './professional-auth.js';
+// H-035 | Validacao pura de CPF/CNPJ, nome publico e slug do perfil profissional (sem cifra).
+export * from './professional-document.js';

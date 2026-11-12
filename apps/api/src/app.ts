@@ -38,6 +38,12 @@ import {
   isProfessionalPath,
   type ProfessionalRouteOptions,
 } from './professional-route.js';
+import {
+  handleProfessionalProfileGet,
+  handleProfessionalProfilePut,
+  PROFESSIONAL_PROFILE_PATH,
+  type ProfessionalProfileRouteOptions,
+} from './professional-profile-route.js';
 import { handleAddressSuggest, type GeoRouteOptions } from './geo/address-suggest-route.js';
 import { handleDraftRoute, isDraftRoute, type DraftRouteOptions } from './drafts/draft-route.js';
 import {
@@ -91,6 +97,8 @@ export interface AppOptions {
   readonly drafts?: DraftRouteOptions;
   /** Cadastro, verificacao e login por senha do profissional (H-016). Sem esta opcao as rotas nao existem (404). */
   readonly professional?: ProfessionalRouteOptions;
+  /** Cadastro do documento e leitura do perfil profissional (H-035). Sem esta opcao as rotas nao existem (404). */
+  readonly professionalProfile?: ProfessionalProfileRouteOptions;
 }
 
 export interface BodyReadResult {
@@ -209,6 +217,10 @@ export async function handleRequest(
   if (req.method === 'POST' && path === CATALOG_SEARCH_PATH && opts.catalog) {
     await handleCatalogSearch(req, res, opts.catalog);
     return;
+  }
+  if (opts.professionalProfile && path === PROFESSIONAL_PROFILE_PATH) {
+    if (req.method === 'PUT') return handleProfessionalProfilePut(req, res, opts.professionalProfile);
+    if (req.method === 'GET') return handleProfessionalProfileGet(req, res, opts.professionalProfile);
   }
   if (req.method === 'POST' && opts.professional && isProfessionalPath(path)) {
     const profissional = opts.professional;
