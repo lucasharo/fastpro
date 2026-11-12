@@ -9,6 +9,8 @@ export * from './renderer.js';
 export * from './auth-renderer.js';
 // H-016 | Modelos versionados do profissional (verificacao, recuperacao, ativacao e aviso de senha alterada).
 export * from './professional-renderer.js';
+// H-016 | Adaptador das portas de recuperacao e de aviso para os modelos (sink desligado ou de captura).
+export * from './professional-mail.js';
 export * from './transports.js';
 export * from './resend.js';
 export * from './select.js';
