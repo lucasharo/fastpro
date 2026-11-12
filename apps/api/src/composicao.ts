@@ -34,6 +34,9 @@ import {
   type CatalogEnv,
 } from './catalog/compose.js';
 import type { CatalogRouteOptions } from './catalog/catalog-route.js';
+// H-035 | Cadastro do documento do perfil profissional (PUT/GET /v1/professional/profile).
+import { montarPerfilProfissional } from './professional-profile-composicao.js';
+import type { ProfessionalProfileRouteOptions } from './professional-profile-route.js';
 
 /** Nomes da busca que faltam (so nomes; a chave curta aparece marcada, sem tamanho nem valor). */
 function faltantesCatalogo(env: CatalogEnv): readonly string[] {
@@ -83,6 +86,10 @@ export interface Integracoes {
   readonly pendencias: readonly string[];
   /** Nomes (nunca valores) que impedem as rotas do caso de acesso (H-073) de ligar. */
   readonly pendenciasCaso: readonly string[];
+  /** Rotas do documento do perfil profissional (H-035), ou undefined (404). */
+  readonly professionalProfile: ProfessionalProfileRouteOptions | undefined;
+  /** Nomes (nunca valores) que impedem as rotas do perfil profissional (H-035) de ligar. */
+  readonly pendenciasPerfil: readonly string[];
 }
 
 const RELOGIO_PADRAO: ClockPort = {
@@ -161,5 +168,17 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     pendenciasCaso.push(...faltantes);
   }
 
-  return { catalog, email, accessCase, adminStepUp, pendencias, pendenciasCaso };
+  // H-035: perfil profissional. Pendencias proprias (so nomes), separadas das demais integracoes.
+  const perfil = montarPerfilProfissional(env, { abrirCliente: opcoes.abrirClienteSql, relogio: opcoes.clock });
+
+  return {
+    catalog,
+    email,
+    accessCase,
+    adminStepUp,
+    professionalProfile: perfil.options,
+    pendencias,
+    pendenciasCaso,
+    pendenciasPerfil: perfil.pendencias,
+  };
 }

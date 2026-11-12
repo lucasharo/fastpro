@@ -23,6 +23,7 @@ export default async function vercelHandler(
       catalog: integracoes.catalog,
       ...(integracoes.accessCase !== undefined ? { accessCase: integracoes.accessCase } : {}),
       ...(integracoes.adminStepUp !== undefined ? { adminStepUp: integracoes.adminStepUp } : {}),
+      ...(integracoes.professionalProfile !== undefined ? { professionalProfile: integracoes.professionalProfile } : {}),
     });
   } catch {
     // Sem detalhe de erro na resposta nem no log (ADR-013: sem dado sensivel).
