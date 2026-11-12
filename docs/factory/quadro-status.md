@@ -110,13 +110,12 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #39 | [E3] Upload de fotos em quarentena |
 | #129 | [E15] Dados sintéticos de demonstração |
 
-## Aguardando aprovação (1)
+## Concluído (45)
 
 | Issue | Título |
 |---|---|
 | #35 | [E2] Célula generalizada e match_point |
-
-## Concluído (44)
+44)
 
 | Issue | Título |
 |---|---|
