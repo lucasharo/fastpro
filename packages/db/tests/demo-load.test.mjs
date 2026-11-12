@@ -90,17 +90,18 @@ describe('T-H120-06 carga da camada 1 (CA-H120-04, CA-H120-09)', () => {
   });
 });
 
-describe('T-H120-07 camada 2 nao executa sem a tabela (CA-H120-04, cliente falso)', () => {
-  it('sem tabela: consulta cada bloco e nao escreve nada', async () => {
+describe('T-H120-07 camada 2 nao executa sem a tabela ou sem Storage (CA-H120-04, cliente falso)', () => {
+  it('sem tabela: consulta as tabelas de cada bloco e nao escreve nada', async () => {
     const c = fakeClient({ presente: false });
-    const blocos = await runCamada2(c);
+    const blocos = await runCamada2(c, { keys: chaves(), storage: null });
+    const tabelas = CAMADA2_BLOCOS.flatMap((b) => b.tabelas);
     expect(blocos).toHaveLength(CAMADA2_BLOCOS.length);
-    expect(c.log).toHaveLength(CAMADA2_BLOCOS.length);
-    expect(c.log.every(({ sql }) => sql === SQL.camada2Existe)).toBe(true);
+    expect(c.log.filter(({ sql }) => sql === SQL.camada2Existe)).toHaveLength(tabelas.length);
+    expect(c.log.some(({ sql }) => ESCRITA.test(sql))).toBe(false);
     expect(blocos.every((b) => b.status.includes('tabela ausente'))).toBe(true);
   });
 
-  it('mesmo com a tabela presente, o bloco ainda nao executa escrita', async () => {
+  it('sem chaves nem Storage, com tabelas presentes: nenhum bloco escreve', async () => {
     const c = fakeClient({ presente: true });
     const blocos = await runCamada2(c);
     expect(c.log.some(({ sql }) => ESCRITA.test(sql))).toBe(false);

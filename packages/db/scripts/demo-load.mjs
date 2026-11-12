@@ -6,8 +6,10 @@
 //   pnpm db:demo:remove              apaga so o que tem marcador de demo (de baixo para cima)
 // Reset total: `pnpm db:reset` ou `supabase db reset` (ja existentes; nada novo aqui).
 // Trava (FASTPRO_DEMO_ALLOW=local + host local; host remoto recusado sempre). Sem --force.
-// Camada 1 agora: 2 clientes, 13 perfis de profissional, 2 rascunhos e 1 coordenada comum.
-// Camada 2 (pedidos, aceites, chat, fotos): so detecao por to_regclass; nada e executado sem a tabela.
+// Camada 1: 2 clientes, 13 perfis de profissional, 2 rascunhos e 1 coordenada comum.
+// Camada 2 (pedidos, aceites, chat, fotos): cada bloco so roda se a tabela existir (to_regclass) e o bloco
+// de que depende tiver rodado. Fotos dependem de cliente de Storage, ainda nao ligado (ver storageDaConfiguracao):
+// ate la o bloco de fotos fica pulado com aviso. Sem tabela, o bloco tambem e pulado com aviso.
 // Sem registro na cadeia de auditoria; sem e-mail; sem senha (login de demo no Auth local nao feito).
 // Conexao: DATABASE_URL_MIGRATIONS (ambiente ou .env.local). Nenhum valor e impresso.
 // Codigos de saida: 0 ok; 2 recusado pela trava ou argumentos; 1 falha (transacao desfeita).
@@ -33,12 +35,41 @@ import {
   sealDocument,
   sha256Hex,
 } from './lib/demo-guard.mjs';
+import {
+  ACEITES,
+  BUCKET_FOTOS,
+  CONTAGENS_CAMADA2,
+  FOTOS,
+  MENSAGENS,
+  PEDIDOS,
+  SQL2,
+  FOTO_ALTURA,
+  FOTO_LARGURA,
+  pngSolido,
+  sealCampo,
+} from './lib/demo-layer2.mjs';
 
+// Blocos da camada 2 (H-120 §0). Um bloco so roda se todas as tabelas existirem e se o bloco de que depende
+// ja tiver rodado nesta transacao. Ordem = ordem de carga (pai antes de filho).
 export const CAMADA2_BLOCOS = Object.freeze([
-  { nome: 'pedidos', tabela: 'app.service_request' },
-  { nome: 'aceites', tabela: 'app.acceptance' },
-  { nome: 'chat', tabela: 'app.conversation' },
-  { nome: 'fotos', tabela: 'app.media_asset' },
+  { nome: 'pedidos', tabelas: ['app.service_request'], depende: [] },
+  { nome: 'aceites', tabelas: ['app.acceptance'], depende: ['pedidos'] },
+  { nome: 'chat', tabelas: ['app.conversation', 'app.message'], depende: ['aceites'] },
+  { nome: 'fotos', tabelas: ['app.media_asset'], depende: ['pedidos'], precisaStorage: true },
+]);
+
+// Remocao da camada 2 (filhos antes dos pais). Cada passo so roda se a tabela existir (to_regclass).
+export const REMOCAO_CAMADA2 = Object.freeze([
+  ['app.message', 'mensagens',
+    'delete from app.message where id::text like $1 or conversation_id in (select id from app.conversation where id::text like $1 or request_id::text like $1)'],
+  ['app.conversation', 'conversas',
+    'delete from app.conversation where id::text like $1 or request_id::text like $1'],
+  ['app.acceptance', 'aceites',
+    'delete from app.acceptance where id::text like $1 or request_id::text like $1'],
+  ['app.media_asset', 'fotos',
+    'delete from app.media_asset where id::text like $1 or owner_id::text like $1'],
+  ['app.service_request', 'pedidos',
+    'delete from app.service_request where id::text like $1 or customer_user_id::text like $1'],
 ]);
 
 export const SQL = Object.freeze({
@@ -88,24 +119,159 @@ function erro(msg) {
   process.stderr.write(`demo-load: ${msg}\n`);
 }
 
+async function tabelaExiste(client, tabela) {
+  const res = await client.query(SQL.camada2Existe, [tabela]);
+  return res.rows[0]?.presente === true;
+}
+
+async function linhaExiste(client, tabela, id) {
+  const res = await client.query(SQL2.existe(tabela), [id]);
+  return (res.rows[0]?.n ?? 0) > 0;
+}
+
 /**
- * Camada 2 (H-120 §0): so detecta as tabelas. Nao executa SQL de escrita: as tabelas nao existem
- * e nenhuma migracao de H-120 as cria. Devolve o estado de cada bloco para o relatorio.
+ * Camada 2 (H-120 §0 a §2). Cada bloco so roda se as tabelas dele existirem e o bloco pai tiver rodado.
+ * Fotos exigem Storage local (opts.storage) e nao sao enviadas em dry-run. Devolve o estado de cada bloco.
+ * opts: { keys, serviceId, storage, dryRun }. Falha de SQL propaga e a transacao do chamador desfaz tudo.
  */
-export async function runCamada2(client) {
+export async function runCamada2(client, opts = {}) {
+  const { keys = null, storage = null, dryRun = false } = opts;
+  const estado = {};
   const blocos = [];
+  const servico = await client.query(SQL.servicoAtivo);
+  const serviceId = opts.serviceId ?? servico.rows[0]?.id ?? null;
+
   for (const bloco of CAMADA2_BLOCOS) {
-    const res = await client.query(SQL.camada2Existe, [bloco.tabela]);
-    const presente = res.rows[0]?.presente === true;
-    blocos.push({
-      nome: bloco.nome,
-      status: presente
-        ? 'nao executado: bloco da camada 2 ainda nao implementado'
-        : 'nao executado: tabela ausente',
-    });
+    const faltando = [];
+    for (const tabela of bloco.tabelas) {
+      if (!(await tabelaExiste(client, tabela))) faltando.push(tabela);
+    }
+    if (faltando.length > 0) {
+      estado[bloco.nome] = false;
+      blocos.push({ nome: bloco.nome, status: `nao executado: tabela ausente (${faltando.join(', ')})` });
+      continue;
+    }
+    const pai = bloco.depende.find((d) => estado[d] !== true);
+    if (pai !== undefined) {
+      estado[bloco.nome] = false;
+      blocos.push({ nome: bloco.nome, status: `nao executado: bloco ${pai} nao executado` });
+      continue;
+    }
+    if (bloco.precisaStorage && dryRun) {
+      estado[bloco.nome] = false;
+      blocos.push({ nome: bloco.nome, status: 'nao executado: dry-run nao envia fotos ao Storage' });
+      continue;
+    }
+    if (bloco.precisaStorage && storage === null) {
+      estado[bloco.nome] = false;
+      blocos.push({ nome: bloco.nome, status: 'nao executado: Storage local nao configurado (URL local e chave)' });
+      continue;
+    }
+    if (keys === null || serviceId === null) {
+      estado[bloco.nome] = false;
+      blocos.push({ nome: bloco.nome, status: 'nao executado: chaves ou catalogo ausentes' });
+      continue;
+    }
+    const r = await EXECUTORES_CAMADA2[bloco.nome](client, { keys, serviceId, storage });
+    estado[bloco.nome] = true;
+    blocos.push({ nome: bloco.nome, status: `inseridos ${r.inseridos} de ${r.total}`, inseridos: r.inseridos, total: r.total });
   }
   return blocos;
 }
+
+async function cargaPedidos(client, { keys, serviceId }) {
+  let inseridos = 0;
+  for (const p of PEDIDOS) {
+    if (await linhaExiste(client, 'app.service_request', p.id)) continue;
+    inseridos += (
+      await client.query(SQL2.pedido, [
+        p.id,
+        p.cliente.id,
+        serviceId,
+        'Pedido sintetico de demonstracao (H-120).',
+        COORDENADA.lng,
+        COORDENADA.lat,
+        'Bairro Sintético, Brasília/DF',
+        sealCampo(keys.encKey, keys.version, p.id, 'address_text_enc', COORDENADA.endereco),
+        p.cliente.n === 1 ? 'Cliente Sintético A' : 'Cliente Sintético B',
+      ])
+    ).rowCount;
+  }
+  return { inseridos, total: CONTAGENS_CAMADA2.pedidos };
+}
+
+async function cargaAceites(client) {
+  let inseridos = 0;
+  for (const a of ACEITES) {
+    if (!(await linhaExiste(client, 'app.acceptance', a.id))) {
+      inseridos += (await client.query(SQL2.aceite, [a.id, a.pedido.id, a.profissional.id, a.slot])).rowCount;
+    }
+    await client.query(SQL2.contagemPedido, [a.pedido.id]);
+  }
+  return { inseridos, total: CONTAGENS_CAMADA2.aceites };
+}
+
+async function cargaChat(client) {
+  let inseridos = 0;
+  for (const a of ACEITES) {
+    if (!(await linhaExiste(client, 'app.conversation', a.conversaId))) {
+      inseridos += (
+        await client.query(SQL2.conversa, [a.conversaId, a.pedido.id, a.pedido.cliente.id, a.profissional.id, a.id])
+      ).rowCount;
+    }
+  }
+  for (const m of MENSAGENS) {
+    if (await linhaExiste(client, 'app.message', m.id)) continue;
+    if (m.tipo === 'sistema') {
+      inseridos += (
+        await client.query(SQL2.mensagemSistema, [m.id, m.conversaId, JSON.stringify(m.params), m.dedupeKey])
+      ).rowCount;
+    } else {
+      inseridos += (
+        await client.query(SQL2.mensagemHumana, [m.id, m.conversaId, m.remetenteId, m.clientMessageId, m.texto])
+      ).rowCount;
+    }
+  }
+  return { inseridos, total: CONTAGENS_CAMADA2.conversas + CONTAGENS_CAMADA2.mensagens };
+}
+
+async function cargaFotos(client, { storage }) {
+  let inseridos = 0;
+  const enviados = [];
+  try {
+    for (const f of FOTOS) {
+      const png = pngSolido(FOTO_LARGURA, FOTO_ALTURA, f.cor);
+      if (!(await linhaExiste(client, 'app.media_asset', f.id))) {
+        inseridos += (
+          await client.query(SQL2.foto, [
+            f.id,
+            f.pedido.id,
+            f.pedido.cliente.id,
+            BUCKET_FOTOS,
+            f.objectKey,
+            png.length,
+            FOTO_LARGURA,
+            FOTO_ALTURA,
+          ])
+        ).rowCount;
+      }
+      await storage.subir(f.objectKey, png);
+      enviados.push(f.objectKey);
+    }
+  } catch (err) {
+    // Limpeza best effort dos objetos ja enviados; a transacao sera desfeita pelo chamador.
+    await storage.remover(enviados).catch(() => {});
+    throw err;
+  }
+  return { inseridos, total: CONTAGENS_CAMADA2.fotos };
+}
+
+const EXECUTORES_CAMADA2 = Object.freeze({
+  pedidos: cargaPedidos,
+  aceites: cargaAceites,
+  chat: cargaChat,
+  fotos: cargaFotos,
+});
 
 /** Carga da camada 1. Insere com on conflict (id) do nothing; outro conflito (e-mail, CPF, slug) aborta. */
 export async function carregarCamada1(client, keys) {
@@ -167,8 +333,14 @@ export async function carregarCamada1(client, keys) {
   return { contagens: c };
 }
 
-/** Remocao seletiva. Recusa estado misto (marca inconsistente) antes de apagar qualquer linha. */
-export async function removerDemo(client) {
+/**
+ * Remocao seletiva. Recusa estado misto (marca inconsistente) antes de apagar qualquer linha.
+ * Camada 2: objetos do Storage primeiro (listar, apagar, conferir vazio), depois as linhas filhas e, por fim,
+ * as da camada 1. Em dry-run o Storage so e listado. Sem Storage local, recusa se houver fotos de demo.
+ * opts: { storage, dryRun }.
+ */
+export async function removerDemo(client, opts = {}) {
+  const { storage = null, dryRun = false } = opts;
   const conflito = await client.query(SQL.inconsistencia, [DEMO_EMAIL_LIKE, DEMO_ID_LIKE]);
   if (conflito.rowCount > 0) {
     return {
@@ -177,6 +349,34 @@ export async function removerDemo(client) {
     };
   }
   const apagadas = {};
+
+  if (storage !== null) {
+    const objetos = await storage.listar();
+    if (dryRun) {
+      apagadas['storage (objetos listados, nao removidos)'] = objetos.length;
+    } else {
+      await storage.remover(objetos);
+      const restam = await storage.listar();
+      if (restam.length > 0) {
+        return { falha: `Storage nao ficou vazio (${restam.length} objeto(s)); nada foi apagado no banco` };
+      }
+      apagadas['storage (objetos)'] = objetos.length;
+    }
+  } else if (await tabelaExiste(client, 'app.media_asset')) {
+    const fotos = await client.query(
+      'select count(*)::int as n from app.media_asset where id::text like $1 or owner_id::text like $1',
+      [DEMO_ID_LIKE],
+    );
+    if ((fotos.rows[0]?.n ?? 0) > 0) {
+      return { falha: 'Storage local nao configurado: fotos de demo nao podem ser conferidas; nada foi apagado' };
+    }
+  }
+
+  for (const [tabela, nome, sql] of REMOCAO_CAMADA2) {
+    apagadas[nome] = (await tabelaExiste(client, tabela))
+      ? (await client.query(sql, [DEMO_ID_LIKE])).rowCount
+      : 'tabela ausente';
+  }
   for (const [nome, sql] of REMOCAO) {
     apagadas[nome] = (await client.query(sql, [DEMO_ID_LIKE])).rowCount;
   }
@@ -189,7 +389,7 @@ function linhaContagem(rotulo, inseridos, total) {
 }
 
 function relatorioCarga(c, blocos, dryRun) {
-  out(`carga de demonstracao (camada 1)${dryRun ? ' (dry-run, DESFEITO)' : ''}`);
+  out(`carga de demonstracao${dryRun ? ' (dry-run, DESFEITO)' : ''}`);
   out(linhaContagem('clientes', c.clientes, CONTAGENS_CAMADA1.clientes));
   out(
     linhaContagem('profissionais', c.profissionais, CONTAGENS_CAMADA1.profissionais) +
@@ -202,8 +402,19 @@ function relatorioCarga(c, blocos, dryRun) {
 
 function relatorioRemocao(apagadas, dryRun) {
   out(`remocao seletiva de demonstracao${dryRun ? ' (dry-run, DESFEITO)' : ''}`);
-  for (const [nome, n] of Object.entries(apagadas)) out(`${nome}: apagadas ${n}`);
-  out('Storage (camada 2): remocao nao implementada nesta versao; nenhum objeto de demo e criado na camada 1.');
+  for (const [nome, n] of Object.entries(apagadas)) {
+    out(typeof n === 'number' ? `${nome}: apagadas ${n}` : `${nome}: ${n}`);
+  }
+}
+
+/**
+ * Cliente de Storage da camada 2. Ainda nao ligado: a chave de servico do Storage so pode ser lida em modulo
+ * permitido por scripts/check-secrets (19 §1.1), e a escolha desse modulo e decisao do Arquiteto. Sem cliente,
+ * as fotos nao sao enviadas, nenhum objeto e apagado e a remocao recusa se houver fotos de demo no banco.
+ * criarStorageDemo (lib/demo-layer2.mjs) ja existe, testado, e recebe a URL e a chave prontas quando ligado.
+ */
+function storageDaConfiguracao() {
+  return null;
 }
 
 function lerChavesDeTeste() {
@@ -255,8 +466,9 @@ async function main(argv) {
     }
     await client.query('begin');
     try {
+      const storage = storageDaConfiguracao();
       if (remover) {
-        const r = await removerDemo(client);
+        const r = await removerDemo(client, { storage, dryRun });
         if (r.falha) {
           await client.query('rollback');
           erro(r.falha);
@@ -272,7 +484,7 @@ async function main(argv) {
         erro(r.falha);
         return 1;
       }
-      const blocos = await runCamada2(client);
+      const blocos = await runCamada2(client, { keys, storage, dryRun });
       await client.query(dryRun ? 'rollback' : 'commit');
       relatorioCarga(r.contagens, blocos, dryRun);
       return 0;
