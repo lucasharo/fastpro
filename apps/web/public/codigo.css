@@ -1,0 +1,101 @@
+/* H-013 (91 §5) | Tela do codigo de 6 digitos. Cores so por tokens EDS (tokens.css); sem hexadecimal solto. */
+body {
+  margin: 0;
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-size: 16px;
+  font-family: system-ui, sans-serif;
+}
+
+.codigo-pagina {
+  box-sizing: border-box;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+}
+
+.codigo-pagina h1 {
+  margin: 0 0 var(--space-3);
+  font-size: 1.5rem;
+}
+
+.codigo-campo {
+  display: block;
+  margin-bottom: var(--space-4);
+}
+
+.codigo-campo label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+}
+
+.codigo-campo input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--input-height);
+  padding: var(--space-3);
+  font-size: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-button);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.codigo-acoes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.codigo-acoes button {
+  box-sizing: border-box;
+  min-height: var(--button-height-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: 16px;
+  border: 0;
+  border-radius: var(--radius-button);
+  background: var(--color-brand);
+  color: var(--color-surface);
+  cursor: pointer;
+}
+
+.codigo-acoes button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.codigo-acoes button.secundario {
+  background: transparent;
+  color: var(--color-brand);
+  border: 1px solid var(--color-brand);
+}
+
+/* Foco visivel de 3 px com deslocamento de 2 px (WCAG 2.2 AA, componente >= 3:1). */
+.codigo-pagina input:focus-visible,
+.codigo-pagina button:focus-visible {
+  outline: 3px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+.codigo-erro {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3);
+  border-radius: var(--radius-button);
+  color: var(--color-error-text);
+  background: var(--color-error-background);
+}
+
+.codigo-erro:empty {
+  display: none;
+}
+
+.codigo-status {
+  margin: 0 0 var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .codigo-acoes button {
+    width: auto;
+  }
+}
