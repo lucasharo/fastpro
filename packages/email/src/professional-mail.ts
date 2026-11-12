@@ -1,9 +1,11 @@
 // H-016 | Adaptador de envio dos e-mails do profissional (docs/factory/33-DESENHO-H016.md §4, §6.1, §10;
-// CA-H016-06). Liga as portas de db (link de verificacao, link de recuperacao ou ativacao, aviso de senha
-// alterada) aos modelos versionados de professional-renderer.ts. Quem entrega e um sink: nesta etapa so ha o
-// sink desligado (nenhuma chamada de provedor, nada sai) e o de captura (testes). Sem rede aqui.
-// Envio desligado nao e erro: responder 503 apenas nos pedidos de conta existente revelaria a conta. Por isso o
-// sink desligado aceita a mensagem e a descarta. O envio real so entra no lancamento (decisao do lider).
+// CA-H016-06, decisao 55 de 11-DECISOES.md). Liga as portas de db (link de verificacao, link de recuperacao ou
+// ativacao, aviso de senha alterada) aos modelos versionados de professional-renderer.ts. A entrega passa por um
+// sink: em producao, providerSink() usa o mesmo EmailProviderPort (Resend) que o login usa; nos testes,
+// capturaEmMemoria(). Sem interruptor de liga/desliga. Falha de entrega nao vira erro para quem chama: responder
+// 503 so nos pedidos de conta existente revelaria a conta; por isso a falha vira evento sem dado pessoal.
+import { createHash } from 'node:crypto';
+import type { EmailProviderPort } from '@fastpro/domain';
 import type { EmailRenderer } from './renderer.js';
 import {
   PASSWORD_CHANGED_TEMPLATE,
@@ -27,18 +29,40 @@ export interface ProfessionalMailMessage {
   readonly templateVersion: number;
   readonly subject: string;
   readonly text: string;
+  /** Parametros do modelo (o link ja vai aqui; o provedor renderiza a partir deles). */
+  readonly params: Readonly<Record<string, unknown>>;
+  /** Mesmo link, mesma chave: um reenvio do mesmo segredo nao gera segundo e-mail no provedor. */
+  readonly idempotencyKey: string;
 }
 
-/** Ponto de entrega. Nenhuma implementacao chama provedor nesta etapa. */
+/** Ponto de entrega. */
 export interface ProfessionalMailSink {
   deliver(message: ProfessionalMailMessage): Promise<void>;
 }
 
-/** Sink desligado: aceita e descarta. Nenhuma chamada a provedor, nenhum dado gravado. */
-export function envioDesligado(): ProfessionalMailSink {
+/**
+ * Sink de producao: entrega pelo EmailProviderPort (Resend, o mesmo do login). Resultado que nao seja 'aceito'
+ * vira evento sem destinatario nem link; nao lanca, para a resposta da rota nao revelar a conta.
+ */
+export function providerSink(
+  provider: EmailProviderPort,
+  evento?: (nome: string, motivo: string) => void,
+): ProfessionalMailSink {
   return {
-    async deliver() {
-      // Desligado por decisao (CA-H016-06): nada sai.
+    async deliver(message) {
+      let resultado: { readonly kind: string; readonly code?: string };
+      try {
+        resultado = await provider.send({
+          to: message.to,
+          templateKey: message.templateKey,
+          params: message.params,
+          idempotencyKey: message.idempotencyKey,
+        });
+      } catch {
+        evento?.('professional_envio_falhou', 'excecao');
+        return;
+      }
+      if (resultado.kind !== 'aceito') evento?.('professional_envio_nao_aceito', resultado.code ?? resultado.kind);
     },
   };
 }
@@ -98,12 +122,18 @@ export function createProfessionalMailAdapter(opts: ProfessionalMailAdapterOptio
   async function enviar(email: string, templateKey: string, params: Record<string, unknown>): Promise<void> {
     if (!EMAIL_RE.test(email)) throw new ProfessionalMailInputError();
     const rendered = opts.renderer.render(templateKey, params);
+    // A chave nao contem o link: so o digest dele, para o provedor deduplicar sem ver o segredo.
+    const idempotencyKey = createHash('sha256')
+      .update(`${templateKey}|${email}|${String(params.link ?? '')}`)
+      .digest('hex');
     await opts.sink.deliver({
       to: email,
       templateKey,
       templateVersion: PROFESSIONAL_TEMPLATE_VERSIONS[templateKey] ?? 0,
       subject: rendered.subject,
       text: rendered.text,
+      params,
+      idempotencyKey,
     });
   }
 
