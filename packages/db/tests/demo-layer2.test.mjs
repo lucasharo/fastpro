@@ -3,6 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import { Buffer } from 'node:buffer';
 import { createDecipheriv, randomBytes } from 'node:crypto';
+import { conjuntoDemoEmMemoria, excecoesCpfDemo, varrerTextos } from '../scripts/lib/demo-sweep.mjs';
 import { readdirSync, readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import { join } from 'node:path';
@@ -427,5 +428,58 @@ describe('T-H120-15 reserva de tipos de id da camada 2', () => {
     const usados1 = new Set(Object.values(KIND));
     for (const v of Object.values(KIND2)) expect(usados1.has(v)).toBe(false);
     expect(demoId(KIND2.PEDIDO, 6)).toBe('fa57d120-0000-4000-8000-000000000106');
+  });
+});
+
+describe('T-H120-16 varredura T-11 sobre o conjunto gerado em memoria (CA-H120-01, CA-01)', () => {
+  const sobre = (texto) => varrerTextos([{ origem: 'teste', texto }]).map((a) => a.tipo);
+
+  it('o conjunto de demo gerado em memoria sai limpo (sem CPF, e-mail real ou telefone fora da lista)', () => {
+    const conjunto = conjuntoDemoEmMemoria();
+    expect(conjunto.length).toBeGreaterThan(40);
+    expect(conjunto.some((i) => /documento/.test(i.origem))).toBe(true);
+    expect(varrerTextos(conjunto)).toEqual([]);
+  });
+
+  it('a lista de excecoes tem exatamente os CPFs de demo da carga (um por profissional)', () => {
+    expect(excecoesCpfDemo().size).toBe(PROFISSIONAIS.length);
+  });
+
+  it('acusa CPF valido fora da lista, com e sem pontuacao', () => {
+    expect(sobre('documento 12345678909')).toContain('CPF fora da lista de demo');
+    expect(sobre('documento 123.456.789-09')).toContain('CPF fora da lista de demo');
+  });
+
+  it('acusa e-mail real, e aceita o dominio de teste', () => {
+    expect(sobre('contato maria.silva@gmail.com')).toContain('e-mail fora de .test');
+    expect(sobre('cliente.a@sintetico.test')).toEqual([]);
+  });
+
+  it('acusa telefone real em formatos comuns', () => {
+    expect(sobre('ligue (11) 98765-4321')).toContain('telefone');
+    expect(sobre('ligue +55 11 98765-4321')).toContain('telefone');
+    // 11 digitos corridos casam com o padrao de CPF antes do de telefone: o importante e ser acusado.
+    expect(sobre('ligue 11987654321').length).toBeGreaterThan(0);
+  });
+
+  it('acusa CNPJ', () => {
+    expect(sobre('empresa 11.222.333/0001-81')).toContain('CNPJ');
+  });
+
+  it('aceita CPF de demo quando escrito de qualquer forma, por ser excecao exata', () => {
+    const [primeiro] = [...excecoesCpfDemo()];
+    const formatado = `${primeiro.slice(0, 3)}.${primeiro.slice(3, 6)}.${primeiro.slice(6, 9)}-${primeiro.slice(9)}`;
+    expect(sobre(`documento ${primeiro}`)).toEqual([]);
+    expect(sobre(`documento ${formatado}`)).toEqual([]);
+  });
+
+  it('falha se dado real entrar no conjunto de demo', () => {
+    const contaminado = [...conjuntoDemoEmMemoria(), { origem: 'vazamento simulado', texto: 'maria.silva@gmail.com' }];
+    expect(varrerTextos(contaminado)).toEqual([{ tipo: 'e-mail fora de .test', origem: 'vazamento simulado' }]);
+  });
+
+  it('achados nao trazem o valor encontrado', () => {
+    const [achado] = varrerTextos([{ origem: 'teste', texto: 'maria.silva@gmail.com' }]);
+    expect(JSON.stringify(achado)).not.toContain('maria');
   });
 });

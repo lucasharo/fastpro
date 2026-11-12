@@ -98,3 +98,12 @@ Registradas após a revisão que aprovou a entrega para QA com ressalva.
 - **Fotos no Storage:** saem de H-120 e viram **história própria**. O cliente de Storage (`criarStorageDemo`) está testado, mas não ligado, porque ler a chave de serviço fora de módulo permitido reprova `scripts/check-secrets`.
 - **Colunas da camada 2:** validar contra as migrações quando chegarem (`app.service_request`, `app.acceptance`, `app.conversation`, `app.message`, `app.media_asset`). Pontos a confirmar: `identity_id` nulo no aceite; formato de `address_text_enc`; gatilhos de DELETE em aceite e mensagem, que podem bloquear a remoção (a transação desfaz, falha segura).
 - **Enquanto as tabelas não existirem:** os blocos da camada 2 ficam pulados com aviso, e o CA-H120-04 da camada 2 não se aplica a nenhum banco.
+
+### 7.1 Retorno do QA (Issue #129): varredura T-11 e telefone
+
+Decisões registradas conforme instrução do coordenador ao devolver a #129 ao desenvolvimento. Confirmar pelo líder.
+
+- **Varredura T-11 (CA-01), implementada em `packages/db/scripts/lib/demo-sweep.mjs`:** roda sobre o conjunto gerado em memória (clientes, profissionais, endereço, textos fixos, mensagens, caminhos de foto e os documentos de demo em dígitos e formatados), sem banco e sem rede. Regras: e-mail só com domínio `.test`; CPF e CNPJ só nas exceções exatas de demo (um CPF por profissional, 84 §8 D4), sem liberar o padrão; telefone sem exceção. Achados trazem tipo e origem, nunca o valor. Teste `T-H120-16` em `demo-layer2.test.mjs` falha se CPF fora da lista, e-mail real ou telefone real aparecer.
+- **Limite conhecido da varredura:** os textos fixos da camada 1 (descrição do rascunho e nome público) ficam como literais em `demo-load.mjs`, fora do conjunto varrido. Os da camada 2 foram movidos para `TEXTOS_CAMADA2` e entram na varredura. Mover os da camada 1 exige tocar código já aprovado; fica para decisão.
+- **Telefone (84 §3), desvio:** a demo não grava telefone em nenhuma tabela das camadas 1 e 2, então o item "faixa claramente fictícia" não tem efeito prático. Exceções de telefone: nenhuma. Alternativa, se o líder quiser telefone de demo: faixa de DDD inexistente (ex.: `00`), que é claramente fictícia e não casa com número real. Recomendação do DEV: manter sem telefone nesta história.
+- **Pendências que não bloqueiam esta rodada:** verificação contra o banco (dry-run local, CA-H120-04 da camada 2) e Storage (fotos), ambos registrados em §7.

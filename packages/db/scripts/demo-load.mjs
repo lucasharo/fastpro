@@ -42,6 +42,7 @@ import {
   FOTOS,
   MENSAGENS,
   PEDIDOS,
+  TEXTOS_CAMADA2,
   SQL2,
   FOTO_ALTURA,
   FOTO_LARGURA,
@@ -188,12 +189,12 @@ async function cargaPedidos(client, { keys, serviceId }) {
         p.id,
         p.cliente.id,
         serviceId,
-        'Pedido sintetico de demonstracao (H-120).',
+        TEXTOS_CAMADA2.descricaoPedido,
         COORDENADA.lng,
         COORDENADA.lat,
-        'Bairro Sintético, Brasília/DF',
+        TEXTOS_CAMADA2.rotuloPublico,
         sealCampo(keys.encKey, keys.version, p.id, 'address_text_enc', COORDENADA.endereco),
-        p.cliente.n === 1 ? 'Cliente Sintético A' : 'Cliente Sintético B',
+        p.cliente.n === 1 ? TEXTOS_CAMADA2.nomeClienteA : TEXTOS_CAMADA2.nomeClienteB,
       ])
     ).rowCount;
   }

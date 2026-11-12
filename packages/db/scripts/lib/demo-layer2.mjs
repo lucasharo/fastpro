@@ -11,6 +11,13 @@ import { CLIENTES, DEMO_STORAGE_PREFIX, PROFISSIONAIS, demoId } from './demo-ids
 // Tipos de id da camada 2 (hexadecimal livre no prefixo fa57d120-0000-4000-8000-000000000<tipo><nn>).
 export const KIND2 = Object.freeze({ PEDIDO: '1', ACEITE: '2', CONVERSA: '3', MENSAGEM: '4', FOTO: '5' });
 export const BUCKET_FOTOS = 'request-photos';
+// Textos fixos gravados pela camada 2 (entram na varredura T-11 de lib/demo-sweep.mjs).
+export const TEXTOS_CAMADA2 = Object.freeze({
+  descricaoPedido: 'Pedido sintetico de demonstracao (H-120).',
+  rotuloPublico: 'Bairro Sintético, Brasília/DF',
+  nomeClienteA: 'Cliente Sintético A',
+  nomeClienteB: 'Cliente Sintético B',
+});
 export const FOTO_LARGURA = 640;
 export const FOTO_ALTURA = 480;
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
