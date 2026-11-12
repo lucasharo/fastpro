@@ -47,7 +47,8 @@
 5. Resposta: sucesso e duplicidade devolvem o **mesmo corpo e status** (R3, dúvida 1 aceita): `201 {"status":"received","verification":"pending"}` (a máscara dos 2 últimos dígitos entra igual nos dois casos). O profissional vê "Recebemos seu cadastro; vamos analisar" nos dois casos. Estado interno `retida_duplicidade` nunca aparece na resposta. [PROPOSTA]
 6. Tempo: aplicar o piso de tempo de `PROFESSIONAL_RESPONSE_FLOOR_MS` (400 ms), igual a H-016, para o caminho de duplicidade não ser mais lento. [VERIFICADO] o mecanismo existe.
 
-Transições (09 §4): H-035 só cria `pendente` ou `retida_duplicidade`. Nada de `em_revisao`, `aprovada`, `recusada`. `app_api`/`app_system` não recebem `update` em `verification_status`. [DECIDIDO]
+Transições (09 §4): H-035 só cria `pendente` ou `retida_duplicidade`. Nada de `em_revisao`, `aprovada`, `recusada`. [DECIDIDO]
+**Decisão 54 (revisão da #48, substitui a versão anterior deste ponto):** `app_api` não recebe `update` em `verification_status`. `app_system` recebe `update` **por coluna** só em `public_name`, `slug`, `document_type`, `document_enc`, `document_hmac`, `verification_status` e `updated_at`. Um gatilho `BEFORE UPDATE` em `app.professional_profile` (1) torna os campos do documento write-once depois de gravados e (2) aceita mudança de `verification_status` só no primeiro cadastro: de `pendente` para `pendente` ou `retida_duplicidade`, com `document_hmac` preenchido na mesma atualização. Qualquer outra mudança de status é recusada, inclusive para `aprovada`, `em_revisao`, `recusada` e `suspensa`. A função `private.professional_profile_set_document` não usa `security definer`; ela trata `23505` do índice de HMAC repetindo a checagem e gravando como retida; colisão de slug é re-lançada. [DECIDIDO] (11-DECISOES.md, decisão 54)
 
 ## 3. Contratos de rota
 
@@ -74,7 +75,7 @@ Todas em `apps/api`, no estilo de `professional-route.ts` (JSON, teto de 4 KB, `
 | Origem das chaves em produção | SD-11 pendente (jurídico). Em desenvolvimento, `.env.local`. [DECIDIDO] decisão 13 |
 | Falso positivo de duplicidade (R-26) | Retenção reversível por H-040, sem bloqueio definitivo (RF-049). |
 | Dois perfis do mesmo titular com CPF e CNPJ | Aceito, dúvida 5. |
-| Autoaprovação | Sem `update` em `verification_status` para papéis da aplicação. |
+| Autoaprovação | `app_system` só altera `verification_status` no primeiro cadastro, por gatilho no banco (decisão 54); aprovação e recusa ficam para a função própria de H-039, fora desta história. Testes estáticos na migração e cenários descritos em `identity-professional-profile-document.dbtest.mjs` (não executados). |
 
 ## 5. Testes e critérios verificáveis
 

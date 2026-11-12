@@ -11,6 +11,12 @@ begin
 end
 $$;
 
+drop function if exists private.professional_profile_set_document(uuid, text, text, text, bytea, text, timestamptz);
+drop trigger if exists professional_profile_guard_update on app.professional_profile;
+drop function if exists private.professional_profile_guard_update();
+revoke update (public_name, slug, document_type, document_enc, document_hmac, verification_status, updated_at)
+  on app.professional_profile from app_system;
+
 drop index if exists app.professional_profile_document_hmac_vivo_key;
 drop index if exists app.professional_profile_slug_key;
 
