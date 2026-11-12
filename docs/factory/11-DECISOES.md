@@ -251,3 +251,13 @@ Nota: o número 56 aparece duplicado nas rodadas 19 (decisões de H-022 e H-026)
 - **76 (CA-23, cliente que vira profissional):** segue o desenho 33 §3.1 e 67 §9: o e-mail verificado é do app_user. Aceito como decisão do dono do produto; o critério literal "nasce não verificado" fica substituído por esta decisão.
 - **77 (CA-06, envio):** vale a decisão 55 (envio liberado, com trava de destinatário na conta registrada). O texto de Mailpit no CA-06 é atualizado.
 - **78 (CA-12):** autorizada a execução do teste de concorrência de login no banco de desenvolvimento, com limpeza no final (sem resíduo).
+
+## Rodada 25 (refino da redução e reencode das fotos, #40 / H-027)
+
+- **79 (D-H027-1):** a rotação da foto fica na #40, para a medida de 1.280 px sair no eixo certo.
+- **80 (D-H027-2):** HEIC continua recusado com 415 até haver conversão comprovada.
+- **81 (D-H027-3):** o reencode acontece de forma síncrona no envio final (o job gratuito roda uma vez por dia).
+- **82 (D-H027-4):** o original é apagado logo depois de gravar a versão reduzida. Isso altera a condição 2 do desenho 88 §8; o desenho deve ser atualizado.
+- **83 (D-H027-5 e D-H027-6):** alvo de 0,5 MB e teto de 0,75 MB; a redução acontece no navegador antes de emitir o tamanho declarado.
+- **84 (D-H027-7 e D-H027-8):** rejeição definitiva só para falha que não se resolve; tempo, memória e erro de armazenamento são transitórios. A saída é JPEG (medido no S-06).
+- **85 (D-H027-9):** a carga do sharp em Linux precisa ser verificada antes da construção (não bloqueia o desenho).
