@@ -3,11 +3,18 @@
 -- (o operador decide). Sem esses pedidos, restaura as guardas, as constraints e os tipos anteriores.
 begin;
 
--- 0. Recusa se houver linha dos tipos novos (nada e alterado antes desta checagem).
+-- 0. Recusa se houver linha dos tipos novos ou evento de auditoria deles (nada e alterado antes desta checagem).
+--    Evento de auditoria nao se apaga (audit.audit_event recusa DELETE): sem esta checagem, o catalogo nao sai
+--    e o erro seria de chave estrangeira, sem explicacao.
 do $$
 begin
   if exists (select 1 from app.approval_request where action_type in ('estorno', 'suspensao_permanente')) then
     raise exception 'rollback_recusado: ha pedidos estorno ou suspensao_permanente (H-105); decida antes de desfazer'
+      using errcode = '23514';
+  end if;
+  if exists (select 1 from audit.audit_event where action in ('approval.requested', 'approval.voted',
+       'approval.cancelled', 'approval.expired', 'approval.vote_denied')) then
+    raise exception 'rollback_recusado: ha eventos de auditoria de aprovacao (H-105); a trilha nao se apaga, decida antes de desfazer'
       using errcode = '23514';
   end if;
 end
