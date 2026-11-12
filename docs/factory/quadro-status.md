@@ -111,17 +111,14 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #43 | [E3] Revisão e confirmação expressa |
 | #129 | [E15] Dados sintéticos de demonstração |
 
-## Code Review (1)
+## Code Review (0)
 
-| Issue | Título |
-|---|---|
-| #40 | [E3] Redução e reencode das fotos |
-
-## QA (1)
+## QA (2)
 
 | Issue | Título |
 |---|---|
 | #26 | [E1] Código de 6 dígitos e nonce |
+| #40 | [E3] Redução e reencode das fotos |
 
 ## Concluído (47)
 
