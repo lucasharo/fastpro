@@ -91,21 +91,21 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 ## Product Owner (0)
 
-## Arquitetura (4)
+## Arquitetura (3)
 
 | Issue | Título |
 |---|---|
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
 | #42 | [E3] Pré-visualização e reordenação de fotos |
-| #49 | [E4] Perfil: serviços, base e raio |
 
-## Desenvolvimento (3)
+## Desenvolvimento (4)
 
 | Issue | Título |
 |---|---|
 | #41 | [E3] Remoção de EXIF e tipo por conteúdo |
 | #43 | [E3] Revisão e confirmação expressa |
+| #49 | [E4] Perfil: serviços, base e raio |
 | #129 | [E15] Dados sintéticos de demonstração |
 
 ## Code Review (0)
