@@ -119,13 +119,10 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #40 | [E3] Redução e reencode das fotos |
 
-## Concluído (47)
+## Concluído (48)
 
 | Issue | Título |
 |---|---|
-| #29 | [E1] Cadastro e login do profissional |
-| #39 | [E3] Upload de fotos em quarentena |
-| #35 | [E2] Célula generalizada e match_point |
 | #2 | [TESTE] Validação de criação de Issue pelo Orquestrador |
 | #3 | [E0] Monorepo pnpm e Turborepo |
 | #4 | [Spike] PostGIS, pg_cron e pg_net no Supabase Free |
@@ -149,13 +146,17 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #23 | [E0] Keep-alive e backup manual |
 | #24 | [E1] Desafio de acesso do cliente |
 | #25 | [E1] Consumo do link por POST |
+| #26 | [E1] Código de 6 dígitos e nonce |
 | #27 | [E1] Sessão de 7 dias e step-up |
 | #28 | [E1] Anti-enumeração e limites |
+| #29 | [E1] Cadastro e login do profissional |
 | #31 | [E2] Catálogo com seed de 25 grupos [PROPOSTA] |
 | #32 | [E2] Autocomplete de serviço e sinônimos |
 | #33 | [E2] Autocomplete de endereço Mapbox temporário |
 | #34 | [E2] Coordenada permanente (uma chamada) |
+| #35 | [E2] Célula generalizada e match_point |
 | #38 | [E3] Rascunho de pedido sem conta |
+| #39 | [E3] Upload de fotos em quarentena |
 | #48 | [E4] Cadastro profissional com CPF/CNPJ cifrado |
 | #83 | [E7] Acesso excepcional a conversa |
 | #102 | [E11] Pipeline de notificações e cooldown |
@@ -177,10 +178,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #110 | [E11] Teste de ausência de interruptor |
 
-## Aguardando aprovação (1)
-
-| Issue | Título |
-|---|---|
-| #26 | [E1] Código de 6 dígitos e nonce |
+## Aguardando aprovação (0)
 
 ## Bloqueado (0)
