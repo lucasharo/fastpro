@@ -13,10 +13,11 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "copy:tokens": "node scripts/copy-tokens.mjs",
+    "build": "node scripts/copy-tokens.mjs && tsc -p tsconfig.json",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "node scripts/copy-tokens.mjs && vitest run --passWithNoTests"
   },
   "devDependencies": {
     "@fastpro/config": "workspace:*",

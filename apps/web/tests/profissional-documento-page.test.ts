@@ -267,4 +267,14 @@ describe('pagina estatica e CSP (H-035, CA-12)', () => {
     expect(csp).toContain("script-src 'self'");
     expect(csp).toContain("form-action 'none'");
   });
+
+  it('os tokens sao publicados e a pagina os carrega antes da folha propria (sem cor literal)', () => {
+    const tokens = lerArquivo('../public/tokens.css');
+    const definidas = new Set([...tokens.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
+    const usadas = new Set([...lerArquivo('../public/profissional-documento.css').matchAll(/var\((--[a-z0-9-]+)\)/g)].map((m) => m[1]));
+    expect(usadas.size).toBeGreaterThan(0);
+    for (const nome of usadas) expect(definidas.has(nome), `token ausente: ${nome}`).toBe(true);
+    expect(html.indexOf('href="/tokens.css"')).toBeGreaterThan(-1);
+    expect(html.indexOf('href="/tokens.css"')).toBeLessThan(html.indexOf('href="/profissional-documento.css"'));
+  });
 });

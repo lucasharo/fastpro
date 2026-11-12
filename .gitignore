@@ -24,3 +24,5 @@ backups/
 
 # artefato de build do TypeScript
 *.tsbuildinfo
+# H-035: copia publicada dos tokens (gerada por apps/web/scripts/copy-tokens.mjs; a fonte e packages/tokens)
+apps/web/public/tokens.css
