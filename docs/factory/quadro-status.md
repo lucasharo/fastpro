@@ -115,7 +115,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 ## QA (0)
 
-## Concluído (48)
+## Concluído (49)
 
 | Issue | Título |
 |---|---|
@@ -153,6 +153,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #35 | [E2] Célula generalizada e match_point |
 | #38 | [E3] Rascunho de pedido sem conta |
 | #39 | [E3] Upload de fotos em quarentena |
+| #40 | [E3] Redução e reencode das fotos |
 | #48 | [E4] Cadastro profissional com CPF/CNPJ cifrado |
 | #83 | [E7] Acesso excepcional a conversa |
 | #102 | [E11] Pipeline de notificações e cooldown |
@@ -174,10 +175,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #110 | [E11] Teste de ausência de interruptor |
 
-## Aguardando aprovação (1)
-
-| Issue | Título |
-|---|---|
-| #40 | [E3] Redução e reencode das fotos |
+## Aguardando aprovação (0)
 
 ## Bloqueado (0)
