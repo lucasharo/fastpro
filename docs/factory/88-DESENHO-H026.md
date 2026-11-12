@@ -128,10 +128,11 @@ Cobertura de critérios: CA-01 M-01/M-15; CA-02 M-02; CA-03 M-03; CA-04 M-04; CA
 
 ## 8. Condição de liberação (D-H026-2) — não vai para produção sozinha
 H-026 pode ser desenvolvida, revisada, testada e movida normalmente, mas **o fluxo de envio não é aberto a visitantes reais** (rota desligada na composição de produção ou bucket sem uso) até:
-1. **H-027 pronta**: redução para ≈ 0,5 MB / ≤ 1.280 px e só a versão reduzida persistida (I-29, "sem original no Storage"; hoje a quarentena guarda o original de até 10 MB).
-2. **H-028 pronta**: remoção de EXIF/metadados e detecção do tipo pelo conteúdo (RF-027). Enquanto não, o original com GPS fica retido na quarentena.
+1. **H-027 pronta** (desenho em `93-DESENHO-H027.md`): redução para ≈ 0,5 MB / ≤ 1.280 px e só a versão reduzida persistida (I-29, "sem original no Storage"; hoje a quarentena guarda o original de até 10 MB).
+2. **H-028 pronta**: prova formal de remoção de EXIF/metadados e detecção do tipo pelo conteúdo (RF-027). **Revisada pela decisão 82 (2026-11-12):** com a H-027, o original é apagado da quarentena logo depois de gravar a versão reduzida (e em toda recusa definitiva), então o original com GPS deixa de ficar retido depois do `finalize`; a quarentena só guarda o original entre o envio e o `finalize` (até 30 min) e o envio nunca finalizado até o expurgo (condição 3). A saída reduzida sai sem metadado de entrada por construção na #40 (93 §5.1); a condição 2 continua exigindo a **prova formal** e a checagem de tipo da H-028, que ainda não existem. Texto anterior: "Enquanto não, o original com GPS fica retido na quarentena."
 3. **Expurgo agendado** `[PROPOSTA ao líder, adicional]`: a varredura de §4 rodando por tick (H-005/H-110) ou manualmente documentada, para que o original com EXIF não passe de ~1 dia na quarentena. Sem isso, o pendente confirmado de um rascunho vivo ficaria até 7 dias (até 30 pelo teto). O líder confirma ou dispensa na fase de ensaio sem usuário real (mesma lacuna aceita em H-025 §6).
-4. HEIC só passa de 415 para aceito quando H-027 ligar a conversão (D-H026-3), em mudança própria.
+4. HEIC só passa de 415 para aceito quando houver conversão comprovada, em mudança própria. **Revisada pela decisão 80:** a H-027 não liga a conversão; HEIC continua recusado com 415 depois dela.
+5. **Nota sobre o `finalize`** (decisão 81): a H-027 faz o `finalize` reduzir de forma síncrona e é a única que grava `ready` (via `media_reduce_done`). O trecho "Nunca grava `ready`" de §1 vale para a H-026 isolada; o novo contrato está em `93-DESENHO-H027.md` §2.3.
 
 ## 9. Documentos atualizados nesta entrega
 - `08-ARQUITETURA.md` §10.2 passo 2: referência trocada de "FA-028" (que trata do chat) para "FA-001; P-01, F-09" (D-H026-7).
