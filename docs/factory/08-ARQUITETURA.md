@@ -367,7 +367,7 @@ Hipótese: 1,3 chamadas por pedido publicado ⇒ **1.000 pedidos/mês ≈ US$ 6,
 
 ### 10.2 Pipeline de upload
 1. API cria um `media_asset(status=pending)` e devolve **URL de upload assinada de uso único** para `quarantine` (limite de tamanho e tipo declarados).
-2. Cliente envia; chama `finalize`. Idempotente por `asset_id` (reenvio não duplica, FA-028).
+2. Cliente envia; chama `finalize`. Idempotente por `asset_id` (reenvio não duplica, FA-001; P-01, F-09).
 3. Worker, por tipo de dono: **(a) fotos do pedido/rascunho:** o navegador já redimensiona e comprime antes de enviar; o worker confere tamanho de entrada (≤ 10 MB), **detecta o tipo pelo conteúdo** (JPG/PNG/WebP; HEIC convertido por biblioteca suportada, com limites de memória e tempo), aplica a rotação do EXIF e **remove todo EXIF/metadados** (RF-027), **reencoda para ≤ 1.280 px e ≈ 0,5 MB** (teto técnico `[PROPOSTA]` 0,75 MB, `app_config`; recompressão em passos; se não couber, recusa com mensagem) e **guarda somente essa versão reduzida**; o original e qualquer *master* maior **nunca são persistidos**. **(b) documentos de identidade/certificação:** validação por conteúdo, sem renderização no servidor, acesso só da Verificação (09 §7). **O chat não tem upload:** não há pipeline de mídia de chat (decisão 33).
 4. Move para o bucket final com nome aleatório; `status=ready` ou `rejected` (usuário informado, sem caminho interno).
 5. Fotos do rascunho e documentos exigem cota por usuário/IP/dia (`[PROPOSTA]`, §16) e expurgo de órfãos.
