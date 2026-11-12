@@ -22,7 +22,7 @@ export const ADMIN_STEP_UP_BODY_LIMIT_BYTES = 1024;
 const NO_STORE = { 'Cache-Control': 'no-store' } as const;
 
 export interface AdminStepUpRouteOptions {
-  readonly repo: AdminRepository;
+  readonly repo: Pick<AdminRepository, 'guard' | 'sessionSubject' | 'stepUp'>;
   /** Porta do provedor de autenticacao (mesma do login de H-102). */
   readonly auth: AdminAuthPort;
   /** Limites de tentativas (H-015): 5 por e-mail e 20 por IP em 15 min. */

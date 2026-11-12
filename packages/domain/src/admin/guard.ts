@@ -49,7 +49,8 @@ export interface AdminGuardRequest {
 }
 
 export interface AdminGuardDeps {
-  readonly repo: AdminRepository;
+  /** So a guarda de cada requisicao (AdminRepository.guard): o adaptador implementa so isso. */
+  readonly repo: Pick<AdminRepository, 'guard'>;
   readonly registry: readonly AdminRouteSpec[];
   readonly baseUrl: string;
 }
