@@ -97,17 +97,17 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #37 | [E2] Cobertura booleana sem contagem |
 
-## Arquitetura (2)
+## Arquitetura (1)
 
 | Issue | Título |
 |---|---|
 | #36 | [E2] Descoberta por raio e online nacional |
-| #41 | [E3] Remoção de EXIF e tipo por conteúdo |
 
-## Desenvolvimento (2)
+## Desenvolvimento (3)
 
 | Issue | Título |
 |---|---|
+| #41 | [E3] Remoção de EXIF e tipo por conteúdo |
 | #43 | [E3] Revisão e confirmação expressa |
 | #129 | [E15] Dados sintéticos de demonstração |
 
