@@ -107,7 +107,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #43 | [E3] Revisão e confirmação expressa |
 | #26 | [E1] Código de 6 dígitos e nonce |
 
-## Code Review (1)
+## QA (1)
 
 | Issue | Título |
 |---|---|
