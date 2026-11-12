@@ -106,7 +106,7 @@ test('parametros de sessao: somente leitura por padrao nos dois papeis', async (
 // teste estatico que exige a revogacao na propria migracao (geocode-point-migration, draft-migration):
 //   app.geocode_point, app.geocode_budget: 68-DESENHO-H021 §2.3 (leitura direta so por funcao).
 //   app.request_draft: H-025, teste D-10 (revoke total a papeis de API e de backup).
-// Os dados dessas tres tabelas nao entram no backup ate o Orquestrador decidir (ver relatorio da #29).
+// Motivo: dados pessoais e geograficos restritos (geocodificacao). DECISAO A CONFIRMAR PELO ARQUITETO (#29): a exclusao do backup e aceita ate la.
 const EXCECOES_BACKUP_LEITURA = new Set(['app.geocode_point', 'app.geocode_budget', 'app.request_draft']);
 
 test('T-BK-09: app_backup_reader le toda tabela e sequencia de dominio (exceto as excecoes declaradas)', async () => {
