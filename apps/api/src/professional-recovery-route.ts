@@ -20,6 +20,7 @@ import { enviar, iniciarPiso, lerJson } from './professional-route.js';
 
 export const PASSWORD_RECOVERY_PATH = '/v1/auth/password/recovery';
 export const PASSWORD_RESET_PATH = '/v1/auth/password/reset';
+export const PROFESSIONAL_RESEND_PATH = '/v1/auth/professional/verification/resend';
 
 /** Porta da recuperacao. Implementada no Postgres (@fastpro/db) e em memoria nos testes. */
 export interface ProfessionalRecoveryPort {

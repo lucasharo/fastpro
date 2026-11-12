@@ -68,6 +68,26 @@ import {
   PROFESSIONAL_PROFILE_PATH,
   type ProfessionalProfileRouteOptions,
 } from './professional-profile-route.js';
+// H-016 | Conta do profissional (GET /v1/professional/me), recuperacao, reenvio e troca de senha.
+import {
+  handleProfessionalMe,
+  PROFESSIONAL_ME_PATH,
+  type ProfessionalAccountRouteOptions,
+} from './professional-account-route.js';
+import {
+  handlePasswordRecovery,
+  handlePasswordReset,
+  handleVerificationResend,
+  PASSWORD_RECOVERY_PATH,
+  PASSWORD_RESET_PATH,
+  PROFESSIONAL_RESEND_PATH,
+  type ProfessionalRecoveryRouteOptions,
+} from './professional-recovery-route.js';
+import {
+  handleProfessionalPasswordChange,
+  PROFESSIONAL_PASSWORD_CHANGE_PATH,
+  type ProfessionalPasswordRouteOptions,
+} from './professional-password-route.js';
 import { handleAddressSuggest, type GeoRouteOptions } from './geo/address-suggest-route.js';
 import { handleDraftRoute, isDraftRoute, type DraftRouteOptions } from './drafts/draft-route.js';
 import { handleMediaRoute, isMediaRoute, type MediaRouteOptions } from './media/media-route.js';
@@ -134,6 +154,12 @@ export interface AppOptions {
   readonly media?: MediaRouteOptions;
   /** Cadastro, verificacao e login por senha do profissional (H-016). Sem esta opcao as rotas nao existem (404). */
   readonly professional?: ProfessionalRouteOptions;
+  /** H-016: GET /v1/professional/me. Sem esta opcao a rota nao existe (404). */
+  readonly professionalAccount?: ProfessionalAccountRouteOptions;
+  /** H-016: recuperacao, redefinicao e reenvio do link. Sem esta opcao as rotas nao existem (404). */
+  readonly professionalRecovery?: ProfessionalRecoveryRouteOptions;
+  /** H-016: troca de senha do profissional logado. Sem esta opcao a rota nao existe (404). */
+  readonly professionalPassword?: ProfessionalPasswordRouteOptions;
   /** Cadastro do documento e leitura do perfil profissional (H-035). Sem esta opcao as rotas nao existem (404). */
   readonly professionalProfile?: ProfessionalProfileRouteOptions;
 }
@@ -285,6 +311,18 @@ export async function handleRequest(
   if (opts.professionalProfile && path === PROFESSIONAL_PROFILE_PATH) {
     if (req.method === 'PUT') return handleProfessionalProfilePut(req, res, opts.professionalProfile);
     if (req.method === 'GET') return handleProfessionalProfileGet(req, res, opts.professionalProfile);
+  }
+  // H-016 | Conta do profissional, recuperacao, reenvio e troca de senha (cada rota so existe com a sua opcao).
+  if (req.method === 'GET' && path === PROFESSIONAL_ME_PATH && opts.professionalAccount) {
+    return handleProfessionalMe(req, res, opts.professionalAccount);
+  }
+  if (req.method === 'POST' && opts.professionalRecovery) {
+    if (path === PASSWORD_RECOVERY_PATH) return handlePasswordRecovery(req, res, opts.professionalRecovery);
+    if (path === PASSWORD_RESET_PATH) return handlePasswordReset(req, res, opts.professionalRecovery);
+    if (path === PROFESSIONAL_RESEND_PATH) return handleVerificationResend(req, res, opts.professionalRecovery);
+  }
+  if (req.method === 'POST' && path === PROFESSIONAL_PASSWORD_CHANGE_PATH && opts.professionalPassword) {
+    return handleProfessionalPasswordChange(req, res, opts.professionalPassword);
   }
   if (req.method === 'POST' && opts.professional && isProfessionalPath(path)) {
     const profissional = opts.professional;

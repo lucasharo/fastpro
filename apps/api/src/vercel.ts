@@ -16,6 +16,8 @@ import { montarAprovacaoDupla, montarCatalogoAdmin } from './admin-composicao.js
 import { montarPedidoLogin } from './challenge-request-composicao.js';
 // H-097 (Issue 107) | Consumo do link e verificacao do codigo; so montam com as variaveis existentes (sem elas, 404).
 import { montarConsumoEVerificacao } from './modules/identity/consumo-link-composicao.js';
+// H-016 | Cadastro, login, conta, recuperacao e troca de senha do profissional (so monta com as variaveis).
+import { montarProfissional } from './professional-composicao.js';
 
 /** H-019: fabrica da busca de servico sobre o pool real (um pool por URL, reaproveitado entre chamadas). */
 const fabricaCatalogo = criarFabricaCatalogo(abrirPoolCatalogo);
@@ -50,9 +52,16 @@ export default async function vercelHandler(
       abrirCliente: abrirClienteSistema,
       rascunho: integracoes.drafts,
     });
+    // H-016: cadastro, login, conta, recuperacao e troca de senha do profissional; so monta com as variaveis
+    // completas (sem elas, 404). Usa o mesmo provedor de e-mail do login (decisao 55).
+    const profissional = montarProfissional(process.env, { abrirCliente: abrirClienteSistema });
     await handleRequest(req, res, {
       tickSecret: process.env.JOBS_TICK_SECRET,
       catalog: integracoes.catalog,
+      ...(profissional.professional !== undefined ? { professional: profissional.professional } : {}),
+      ...(profissional.professionalAccount !== undefined ? { professionalAccount: profissional.professionalAccount } : {}),
+      ...(profissional.professionalRecovery !== undefined ? { professionalRecovery: profissional.professionalRecovery } : {}),
+      ...(profissional.professionalPassword !== undefined ? { professionalPassword: profissional.professionalPassword } : {}),
       ...(sugestao !== undefined ? { geo: sugestao } : {}),
       ...(pedidoLogin.options !== undefined ? { challengeRequest: pedidoLogin.options } : {}),
       ...(consumoLink.consume !== undefined ? { consume: consumoLink.consume } : {}),
