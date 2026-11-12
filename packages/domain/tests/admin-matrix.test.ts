@@ -48,6 +48,8 @@ describe('T-H102-05 matriz de rotas do registro H-102 x papel', () => {
       financeiro: ['finance.refund.request', 'finance.refund.approve'],
       suporte: ['support.completion.correct', 'case.open_sensitive', 'account.suspend.request'],
       auditor: ['audit.read'],
+      // Papel de governanca de dados (H-109): ja estava no mapa do dominio; o teste ainda nao o listava.
+      governanca_dados: ['retention.policy.manage', 'retention.hold.manage'],
     });
   });
 
