@@ -29,8 +29,8 @@ Permitir que o administrador responsável mantenha o catálogo público (grupos,
 ## 4. Critérios de aceite (Given/When/Then)
 
 **CA-01 Permissão** [DECIDIDO]
-- Dado um administrador sem o papel Superadmin, quando tenta criar, alterar ou desativar grupo, serviço ou sinônimo pela tela ou pela API, então a operação é negada e nada muda.
-- Dado uma chamada sem sessão, então a resposta é 401; com sessão sem permissão, 403. [PROPOSTA, mesma regra de H-102]
+- Dado um administrador sem o papel Superadmin (sem a permissão `catalog.manage`), ou uma chamada sem sessão, ou sem verificação em dois fatores (`aal2`), quando tenta criar, alterar ou desativar grupo, serviço ou sinônimo pela tela ou pela API, então a resposta é 404 idêntico ao de rota inexistente, nada muda e o banco de catálogo não é chamado.
+- Esta rota não usa 401 nem 403: toda recusa sai como 404 idêntico. [DECIDIDO pelo líder (P-107-1, opção do 81 §7); já implementado em `apps/api/src/admin-catalog-route.ts`]
 
 **CA-02 MFA** [DECIDIDO RF-145]
 - Dado um Superadmin sem verificação em dois fatores (sessão sem `aal2`), quando tenta qualquer alteração no catálogo, então é negado.

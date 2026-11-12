@@ -158,7 +158,7 @@ export const ADMIN_ROUTES_H105: readonly AdminRouteSpec[] = [
   ...familiaDeAprovacao(ADMIN_SUSPENSION_APPROVALS_PATH, 'account.suspend.request', 'account.suspend.approve'),
 ];
 
-/** Registro completo das rotas admin (H-102 + H-104 + H-073 + H-103 + H-108 + H-105). Fonte unica para a guarda da API. */
+/** Registro completo das rotas admin (H-102 + H-104 + H-073 + H-103 + H-108 + H-107 + H-105). Fonte unica para a guarda da API. */
 export const ADMIN_ROUTES: readonly AdminRouteSpec[] = [
   ...ADMIN_ROUTES_H102,
   { method: 'POST', pattern: ADMIN_AUDIT_QUERY_PATH, permission: 'audit.read' },
