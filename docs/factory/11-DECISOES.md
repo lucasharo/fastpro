@@ -273,3 +273,7 @@ Nota: o número 56 aparece duplicado nas rodadas 19 (decisões de H-022 e H-026)
 - **89:** cobertura é só "com" ou "sem" profissional na área, mostrada depois de publicar o pedido; sem contagem, identificador ou coordenada, e com limite contra sondagem. Antes da publicação não há cobertura (decisão 56).
 - **90:** não há rota pública de cobertura (conflito com a decisão 46 registrado em 11-ARQ §2.2); a informação sai só na resposta do dono do pedido publicado.
 - **91:** a #37 depende da #36 (H-023, descoberta por raio) e da #49 (H-036, base do profissional) para ser construída; o refino está pronto e a construção espera essas duas.
+
+## Rodada 28 (descarte da #110)
+
+- **92:** não haverá interruptor de e-mail (decisão 23 prevalece sobre a 27 nesse ponto). A Issue #110 (teste de ausência de interruptor) fica descartada; não será construída.

@@ -174,7 +174,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #118 | [E13] Mecanismo de retenção sem prazos |
 | #125 | [E15] Testes de injeção e abuso |
 
-## Bloqueado (1)
+## Descartado (1)
 
 | Issue | Título |
 |---|---|
