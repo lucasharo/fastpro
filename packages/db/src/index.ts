@@ -25,4 +25,6 @@ export * from './professional-send-limit.js';
 export * from './admin-ops-panel.js';
 // H-035 | Adaptador Pg do cadastro do documento do perfil profissional (private.professional_profile_set_document).
 export * from './professional-profile.js';
+// H-107 (Issue 116) | Adaptador Pg da gestao do catalogo (private.catalog_admin_list, *_save, catalog_revision_list).
+export * from './catalog-admin.js';
 export * from './request-draft.js';
