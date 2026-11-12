@@ -21,6 +21,8 @@ export * from './catalog-search.js';
 export * from './professional-auth.js';
 // H-016 | Contador de envios do cadastro e do reenvio sobre ops.rate_counter (rl_check e rl_hit).
 export * from './professional-send-limit.js';
+// H-108 (Issue 117) | Adaptador Pg da leitura do painel operacional (private.ops_panel_read).
+export * from './admin-ops-panel.js';
 // H-035 | Adaptador Pg do cadastro do documento do perfil profissional (private.professional_profile_set_document).
 export * from './professional-profile.js';
 export * from './request-draft.js';

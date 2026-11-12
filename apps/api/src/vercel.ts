@@ -27,6 +27,7 @@ export default async function vercelHandler(
       ...(integracoes.drafts !== undefined ? { drafts: integracoes.drafts } : {}),
       ...(integracoes.accessCase !== undefined ? { accessCase: integracoes.accessCase } : {}),
       ...(integracoes.adminStepUp !== undefined ? { adminStepUp: integracoes.adminStepUp } : {}),
+      ...(integracoes.adminOps !== undefined ? { adminOps: integracoes.adminOps } : {}),
       ...(integracoes.professionalProfile !== undefined ? { professionalProfile: integracoes.professionalProfile } : {}),
     });
   } catch {

@@ -14,6 +14,7 @@ import type { ClockPort, EmailProviderPort } from '@fastpro/domain';
 import type { SqlClient } from '@fastpro/db';
 import {
   montarAdministracaoCaso,
+  montarPainelOperacional,
   montarConfirmacaoAdmin,
   ADMIN_CASO_ENV_OBRIGATORIAS,
   ADMIN_AUTH_ENV_OBRIGATORIAS,
@@ -24,6 +25,7 @@ import {
 } from './admin-composicao.js';
 import type { AdminAccessCaseRouteOptions } from './admin-access-case-route.js';
 import type { AdminStepUpRouteOptions } from './admin-step-up-route.js';
+import type { AdminOpsRouteOptions } from './admin-ops-route.js';
 import {
   CATALOG_DATABASE_URL_ENV,
   CATALOG_RATE_KEY_ENV,
@@ -86,6 +88,8 @@ export interface Integracoes {
   readonly accessCase: AdminAccessCaseRouteOptions | undefined;
   /** Confirmacao recente do segundo fator (POST /v1/admin/session/step-up), ou undefined (404). */
   readonly adminStepUp: AdminStepUpRouteOptions | undefined;
+  /** Painel operacional (H-108, GET /v1/admin/ops/panel), ou undefined (404). */
+  readonly adminOps: AdminOpsRouteOptions | undefined;
   /** Nomes (nunca valores) que impedem cada integracao de ligar. */
   readonly pendencias: readonly string[];
   /** Nomes (nunca valores) que impedem as rotas do caso de acesso (H-073) de ligar. */
@@ -154,6 +158,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     pendenciasCaso.push('fabrica do cliente SQL do caso de acesso (ainda nao montada na funcao)');
   }
   const accessCase = montarAdministracaoCaso(env, { abrirCliente: opcoes.abrirClienteSql });
+  // H-108: so com DATABASE_URL_APP_SYSTEM e a fabrica da borda (sem eles, o painel segue 404).
+  const adminOps = montarPainelOperacional(env, { abrirCliente: opcoes.abrirClienteSql });
 
   // H-073 (60 §4): confirmacao recente. Provedor (Supabase Auth) e limites (Pg) montados pela propria
   // composicao quando os nomes existem; as portas injetadas em opcoes tem precedencia (testes).
@@ -191,6 +197,7 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     email,
     accessCase,
     adminStepUp,
+    adminOps,
     drafts,
     professionalProfile: perfil.options,
     pendencias,

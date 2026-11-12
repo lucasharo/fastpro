@@ -9,10 +9,12 @@ import {
   PgAccessCasePort,
   PgAdminLoginLimits,
   PgAdminSessionRepository,
+  PgOpsPanelReader,
   type SqlClient,
 } from '@fastpro/db';
 import type { AdminAuthPort, AdminLogger, AdminLoginLimits } from '@fastpro/domain';
 import type { AdminAccessCaseRouteOptions } from './admin-access-case-route.js';
+import type { AdminOpsRouteOptions } from './admin-ops-route.js';
 import type { AdminStepUpRouteOptions } from './admin-step-up-route.js';
 import { criarAuthAdminSupabase } from './admin-auth-supabase.js';
 
@@ -60,6 +62,28 @@ export function montarAdministracaoCaso(
       newCaseId: opcoes.novoIdCaso ?? randomUUID,
     },
     baseUrl,
+    clock: opcoes.relogio ?? { nowMs: () => Date.now() },
+  };
+}
+
+/**
+ * Painel operacional (H-108, 76 §2): guarda do console e leitura agregada (private.ops_panel_read) pelo papel
+ * app_system. Mesmo molde de montarAdministracaoCaso: so monta com DATABASE_URL_APP_SYSTEM e a fabrica da borda;
+ * sem eles a rota GET /v1/admin/ops/panel nao existe (404). A leitura so e chamada depois da guarda.
+ */
+export function montarPainelOperacional(
+  env: AdminCasoEnv,
+  opcoes: AdminCasoOpcoes = {},
+): AdminOpsRouteOptions | undefined {
+  const url = env.DATABASE_URL_APP_SYSTEM;
+  if (!url || opcoes.abrirCliente === undefined) return undefined;
+
+  const cliente = clienteDe(url, opcoes.abrirCliente);
+  const sessao = new PgAdminSessionRepository(cliente);
+  const leitor = new PgOpsPanelReader(cliente);
+  return {
+    guard: (secret, nowMs) => sessao.guard(secret, nowMs),
+    ler: (nowMs) => leitor.ler(nowMs),
     clock: opcoes.relogio ?? { nowMs: () => Date.now() },
   };
 }

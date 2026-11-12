@@ -34,3 +34,51 @@ body {
   color: var(--color-primary);
   font-weight: var(--font-weight-semibold, 600);
 }
+
+/* H-108 (Issue 117) | Painel operacional: blocos com a mesma moldura das telas do console. */
+.ops-atualizado {
+  color: var(--color-text-secondary);
+}
+
+.ops-bloco {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  margin-bottom: var(--space-4, 16px);
+  padding: var(--space-4, 16px);
+}
+
+.ops-bloco h2 {
+  color: var(--color-brand);
+  font-size: 1.125rem;
+  font-weight: var(--font-weight-semibold, 600);
+  margin-top: 0;
+}
+
+.ops-bloco h3 {
+  font-size: 1rem;
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.ops-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ops-lista li {
+  padding: var(--space-1, 4px) 0;
+}
+
+.ops-bloco progress {
+  accent-color: var(--color-primary);
+  vertical-align: middle;
+  width: 8rem;
+}
+
+.ops-alerta {
+  background: var(--color-warning-background);
+  border-radius: var(--radius-button);
+  color: var(--color-warning-text);
+  padding: 0 var(--space-2, 8px);
+}
