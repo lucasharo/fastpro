@@ -277,3 +277,11 @@ Nota: o número 56 aparece duplicado nas rodadas 19 (decisões de H-022 e H-026)
 ## Rodada 28 (descarte da #110)
 
 - **92:** não haverá interruptor de e-mail (decisão 23 prevalece sobre a 27 nesse ponto). A Issue #110 (teste de ausência de interruptor) fica descartada; não será construída.
+
+## Rodada 29 (refino da remocao de EXIF e tipo por conteudo, #41 / H-028)
+
+- **93 (D-H028-1):** o conteudo do arquivo decide o tipo (aceita se JPG, PNG ou WebP); o nome e o tipo declarado nao decidem.
+- **94 (D-H028-2):** nao instalar ferramenta externa de prova (ExifTool); a checagem fica com leitura propria, com a limitacao registrada na Issue.
+- **95 (D-H028-3):** HEIC/HEIF recusado com imagem_invalida, sem codigo novo nem migracao.
+- **96 (D-H028-4):** checagem de assinatura antes do decodificador (CA-05).
+- **97 (D-H028-5):** a janela do original ate o finalize nao muda nesta historia; a condicao 2 do desenho 88 §8 segue o que a decisao 82 registrou.
