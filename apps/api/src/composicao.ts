@@ -12,8 +12,15 @@ import {
 } from '@fastpro/email';
 import type { ClockPort, EmailProviderPort } from '@fastpro/domain';
 import type { SqlClient } from '@fastpro/db';
-import { montarAdministracaoCaso, ADMIN_CASO_ENV_OBRIGATORIAS } from './admin-composicao.js';
+import {
+  montarAdministracaoCaso,
+  montarConfirmacaoAdmin,
+  ADMIN_CASO_ENV_OBRIGATORIAS,
+  ADMIN_CONFIRMACAO_PORTAS_FALTANTES,
+  type AdminConfirmacaoOpcoes,
+} from './admin-composicao.js';
 import type { AdminAccessCaseRouteOptions } from './admin-access-case-route.js';
+import type { AdminStepUpRouteOptions } from './admin-step-up-route.js';
 import {
   CATALOG_DATABASE_URL_ENV,
   CATALOG_RATE_KEY_ENV,
@@ -54,6 +61,8 @@ export interface ComposicaoOpcoes {
   readonly clock?: ClockPort;
   /** Fabrica do cliente SQL do papel app_system (H-073). Sem ela, as rotas do caso nao ligam (404). */
   readonly abrirClienteSql?: (connectionString: string) => SqlClient;
+  /** Portas da confirmacao recente (step-up, H-073): provedor de login e limites. Hoje sem adaptador. */
+  readonly confirmacaoAdmin?: AdminConfirmacaoOpcoes;
 }
 
 export interface Integracoes {
@@ -63,6 +72,8 @@ export interface Integracoes {
   readonly email: EmailProviderPort | undefined;
   /** Rotas do caso de acesso a conversa (H-073), ou undefined (404). */
   readonly accessCase: AdminAccessCaseRouteOptions | undefined;
+  /** Confirmacao recente do segundo fator (POST /v1/admin/session/step-up), ou undefined (404). */
+  readonly adminStepUp: AdminStepUpRouteOptions | undefined;
   /** Nomes (nunca valores) que impedem cada integracao de ligar. */
   readonly pendencias: readonly string[];
   /** Nomes (nunca valores) que impedem as rotas do caso de acesso (H-073) de ligar. */
@@ -124,5 +135,10 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   }
   const accessCase = montarAdministracaoCaso(env, { abrirCliente: opcoes.abrirClienteSql });
 
-  return { catalog, email, accessCase, pendencias, pendenciasCaso };
+  // H-073 (60 §4): confirmacao recente. So liga com as tres portas; hoje o provedor e os limites faltam.
+  const confirmacao = opcoes.confirmacaoAdmin ?? {};
+  const adminStepUp = montarConfirmacaoAdmin(env, { ...confirmacao, abrirCliente: opcoes.abrirClienteSql });
+  if (adminStepUp === undefined) pendenciasCaso.push(...ADMIN_CONFIRMACAO_PORTAS_FALTANTES);
+
+  return { catalog, email, accessCase, adminStepUp, pendencias, pendenciasCaso };
 }
