@@ -40,6 +40,18 @@ function p95(valores) {
   return s[Math.ceil(0.95 * s.length) - 1];
 }
 
+/** Registra as chamadas ao repositorio (metodo) e delega ao PgChallengeStore real. */
+class StoreGravador extends PgChallengeStore {
+  constructor(cliente, chamadas) {
+    super(cliente);
+    this.chamadas = chamadas;
+  }
+  async create(input) {
+    this.chamadas.push('create');
+    return super.create(input);
+  }
+}
+
 test('CA-07 (apoio): 40 pedidos com conta e 40 sem conta, alternados; medianas e p95', async () => {
   await client.query('begin');
   try {
@@ -57,11 +69,17 @@ test('CA-07 (apoio): 40 pedidos com conta e 40 sem conta, alternados; medianas e
 
     const tempoA = [];
     const tempoB = [];
+    const respostasA = [];
+    const respostasB = [];
+    // Chamadas ao repositorio (camada TypeScript), por pedido: devem ser iguais nos dois casos.
+    const sequenciaA = [];
+    const sequenciaB = [];
     for (let i = 0; i < N; i++) {
       for (const caso of ['A', 'B']) {
         const email =
           caso === 'A' ? comConta[i] : `h097-ca07-b-${sufixo}-${i}@example.test`;
-        const store = new PgChallengeStore(client);
+        const chamadas = [];
+        const store = new StoreGravador(client, chamadas);
         const inicio = performance.now();
         const r = await requestChallenge(
           {
@@ -75,7 +93,22 @@ test('CA-07 (apoio): 40 pedidos com conta e 40 sem conta, alternados; medianas e
         const decorrido = performance.now() - inicio;
         assert.equal(r.status, 202, 'a resposta e 202 nos dois casos');
         (caso === 'A' ? tempoA : tempoB).push(decorrido);
+        (caso === 'A' ? respostasA : respostasB).push(r);
+        (caso === 'A' ? sequenciaA : sequenciaB).push(chamadas.join('>'));
       }
+    }
+
+    // T-H097-07 (desenho 86 §5): corpo e cabecalhos da resposta iguais entre com conta e sem conta.
+    const resposta = JSON.stringify(respostasA[0]);
+    assert.deepEqual(respostasA[0].body, { status: 'recebido' }, 'corpo 202 uniforme');
+    for (const r of [...respostasA, ...respostasB]) {
+      assert.equal(JSON.stringify(r), resposta, 'resposta (status, corpo e cabecalhos) identica nos dois casos');
+    }
+    // Sequencia de chamadas ao repositorio: a mesma em todos os pedidos dos dois casos.
+    const sequencia = sequenciaA[0];
+    assert.equal(sequencia, 'create', 'um unico create por pedido');
+    for (const s of [...sequenciaA, ...sequenciaB]) {
+      assert.equal(s, sequencia, 'sequencia de chamadas ao repositorio identica nos dois casos');
     }
 
     const medA = mediana(tempoA);
