@@ -65,3 +65,12 @@ privilegio em tabela, sem BYPASSRLS), ambos `NOLOGIN` e sem senha. Rollback manu
 codigo (variaveis `DATABASE_URL_BACKUP_READ` e `DATABASE_URL_KEEPALIVE`, so nomes no `.env.example`).
 Sem login, o backup real e o keep-alive real nao podem rodar; o teste de catalogo
 (`packages/db/tests/backup-roles.dbtest.mjs`) cobre os privilegios.
+
+## Ordem de desfazer (H-030 e H-029)
+
+As migracoes `20261112190000_media_expand_photo_order` (#42) e `20261112150000_draft_expand_review_confirmation`
+(#43) estao encadeadas: a #42 redefine `private.draft_confirmation_guard()` e o gatilho `request_draft_confirmation_guard`
+criados pela #43, e usa as colunas `content_rev` e `confirmed_at`. Para desfazer, a ordem e a inversa da aplicacao:
+primeiro `supabase/rollbacks/20261112190000_media_expand_photo_order.down.sql` (#42), depois
+`supabase/rollbacks/20261112150000_draft_expand_review_confirmation.down.sql` (#43). Desfazer a #43 antes da #42
+deixa a #42 apontando para colunas e funcoes que ja nao existem.
