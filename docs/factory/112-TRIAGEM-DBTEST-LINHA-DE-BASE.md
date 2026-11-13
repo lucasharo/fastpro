@@ -241,3 +241,120 @@ Contagem: 21 falhas da linha de base. Corrigidas nesta rodada: 1, 3, 4-11, 12, 1
 Runner: `...\scratchpad\run-rodada2.sh`. Resumo por arquivo: `...\scratchpad\dbtest-baseline\rodada2\resumo.tsv`. Logs: `...\scratchpad\dbtest-baseline\rodada2\<arquivo>.log`. Execução: uma por vez, timeout 300 s por arquivo, em segundo plano.
 
 Resultado: a série ainda está em andamento neste ponto; a contagem final entra no relatório ao líder, a partir do `resumo.tsv`, e não é declarada aqui antes de terminar.
+
+## 12. Terceira rodada (#140, Desenvolvimento): tabela final, falhas conhecidas e o que não foi verificado
+
+### 12.1 Correções desta rodada
+
+- `37a666b` (`test(E15): T-BK-09 aceita identity_document e ops.media_access_daily...`): a lista de exceções do backup passa a incluir `app.identity_document` (desenho 107, H-037) e `ops.media_access_daily` (desenho 105, H-110), ambas com revoke de `app_backup_reader` declarado no desenho. `app.media_asset` não entrou: a migração 20261112120000 revoga o papel, mas nenhuma decisão registrada aceita essa exclusão (a decisão 147 cobre só as três tabelas de profissional). Virou #145.
+- T-H018-13 (catalog-service) e D-10 (draft-rollback-h025): não corrigidos. T-H018-13 exige a semente ausente, e o DEV já a tem (seção 11.1). D-10 exige desfazer as migrações posteriores de H-025 na ordem certa. Nenhuma das duas é fixture sustentada por decisão registrada (decisão 264). Viraram #146 e #147.
+- Teste 9 de backup-roles: passou a reprovar `apps/api/tests/identity-docs-montagem.test.ts` (#50, commit 9a55eb8, 09:45 do dia 13/11), que tem uma URL de exemplo com senha que não é placeholder. É a mesma classe da seção 10, já corrigida em `bf2147d` para outros arquivos. Como `apps/` está fora do escopo desta Issue, o arquivo não foi alterado. Virou #148.
+- Nada em `apps/` ou `packages/*/src` foi alterado. Não houve remoção, migração, carga, Docker, MCP do Supabase nem escrita no Project.
+
+### 12.2 Contagens reais
+
+- Rodada 3, série completa de 64 arquivos (`dbtest-baseline/rodada3/resumo.tsv`): 670 testes, 654 passam, 4 falham, 12 ignorados.
+- Reexecução dos 3 arquivos afetados, em série, timeout 300 s (`dbtest-baseline/rodada3/resumo-final.tsv`): backup-roles foi de 6 para 5 passes e de 1 para 2 falhas; catalog-service e draft-rollback não mudaram.
+- Totais da tabela 12.3 (rodada 3 com os 3 arquivos substituídos pela reexecução): 64 arquivos, 670 testes, 653 passam, 5 falham, 12 ignorados.
+- O teste 9 passou na série 3 porque o backup-roles rodou antes do commit 9a55eb8. Ele é o 3º de 64 arquivos em ordem alfabética, e a série levou 2018 s. Isso é inferência pela ordem e pelo horário, não verificado por log.
+
+### 12.3 Tabela final por arquivo
+
+Valores da rodada 3, exceto os 3 arquivos reexecutados (valores da reexecução). Código de saída 0 ou 1; segundos; testes; passam; falham; ignorados.
+
+| arquivo | código de saída | segundos | testes | passam | falham | ignorados | observação |
+|---|---|---|---|---|---|---|---|
+| admin-access-case-list.dbtest.mjs | 0 | 9 | 5 | 5 | 0 | 0 |  |
+| admin-access-case.dbtest.mjs | 0 | 47 | 18 | 18 | 0 | 0 |  |
+| admin-rbac.dbtest.mjs | 0 | 42 | 22 | 22 | 0 | 0 |  |
+| admin-staff-list.dbtest.mjs | 0 | 7 | 5 | 5 | 0 | 0 |  |
+| admin-staff.dbtest.mjs | 0 | 12 | 6 | 6 | 0 | 0 |  |
+| approval-dual-h105-concorrencia.dbtest.mjs | 0 | 23 | 3 | 3 | 0 | 0 |  |
+| approval-dual-h105.dbtest.mjs | 0 | 73 | 27 | 27 | 0 | 0 |  |
+| audit-query.dbtest.mjs | 0 | 93 | 12 | 12 | 0 | 0 |  |
+| audit.dbtest.mjs | 0 | 101 | 27 | 25 | 0 | 2 | 2 ignorados, sem motivo registrado |
+| auth-challenge.dbtest.mjs | 0 | 10 | 10 | 10 | 0 | 0 |  |
+| backup-roles.dbtest.mjs | 1 | 5 | 9 | 5 | 2 | 2 | T-BK-09 (media_asset): #145; teste 9 (fixture em apps/api, #50): #148 |
+| catalog-h107.dbtest.mjs | 0 | 22 | 7 | 7 | 0 | 0 |  |
+| catalog-promo-ausente.dbtest.mjs | 0 | 1 | 3 | 2 | 0 | 1 |  |
+| catalog-search.dbtest.mjs | 0 | 72 | 8 | 8 | 0 | 0 |  |
+| catalog-service.dbtest.mjs | 1 | 52 | 13 | 12 | 1 | 0 | T-H018-13: #146 |
+| catalog.dbtest.mjs | 0 | 6 | 9 | 9 | 0 | 0 |  |
+| challenge-concorrencia-h013.dbtest.mjs | 0 | 41 | 5 | 4 | 0 | 1 |  |
+| challenges-jobs.dbtest.mjs | 0 | 3 | 3 | 3 | 0 | 0 |  |
+| challenges-store.dbtest.mjs | 0 | 2 | 1 | 1 | 0 | 0 |  |
+| demo.dbtest.mjs | 0 | 37 | 4 | 4 | 0 | 0 |  |
+| draft-identity-h013.dbtest.mjs | 0 | 18 | 7 | 7 | 0 | 0 |  |
+| draft-request-h025.dbtest.mjs | 0 | 31 | 17 | 17 | 0 | 0 |  |
+| draft-review-h030.dbtest.mjs | 0 | 74 | 14 | 14 | 0 | 0 |  |
+| draft-rollback-h025.dbtest.mjs | 1 | 4 | 3 | 1 | 2 | 0 | D-10 testes 2 e 3 (2BP01): #147 |
+| geo-geocode-point.dbtest.mjs | 0 | 30 | 34 | 34 | 0 | 0 |  |
+| geo-mapbox-quota.dbtest.mjs | 0 | 8 | 7 | 7 | 0 | 0 |  |
+| geo-match-point.dbtest.mjs | 0 | 77 | 27 | 27 | 0 | 0 |  |
+| h013-provas-banco.dbtest.mjs | 0 | 30 | 4 | 4 | 0 | 0 |  |
+| h097-ca04-aceite-adiado.dbtest.mjs | 0 | 5 | 1 | 1 | 0 | 0 |  |
+| h097-login-prioridade.dbtest.mjs | 0 | 16 | 7 | 7 | 0 | 0 |  |
+| h097-tempo-uniforme.dbtest.mjs | 0 | 27 | 1 | 1 | 0 | 0 |  |
+| identity-active-session.dbtest.mjs | 0 | 46 | 10 | 10 | 0 | 0 |  |
+| identity-docs-h037.dbtest.mjs | 0 | 28 | 24 | 24 | 0 | 0 |  |
+| identity-professional-profile-document.dbtest.mjs | 0 | 16 | 16 | 15 | 0 | 1 |  |
+| identity-professional-recovery.dbtest.mjs | 0 | 16 | 10 | 10 | 0 | 0 |  |
+| identity-professional-session.dbtest.mjs | 0 | 7 | 6 | 6 | 0 | 0 |  |
+| identity-session-stage.dbtest.mjs | 0 | 13 | 8 | 8 | 0 | 0 |  |
+| identity-step-up-code.dbtest.mjs | 0 | 31 | 16 | 16 | 0 | 0 |  |
+| jobs-tick.dbtest.mjs | 0 | 92 | 17 | 16 | 0 | 1 |  |
+| media-gallery-h029.dbtest.mjs | 0 | 22 | 12 | 12 | 0 | 0 |  |
+| media-gallery.dbtest.mjs | 0 | 9 | 6 | 6 | 0 | 0 |  |
+| media-quarantine-h026.dbtest.mjs | 0 | 19 | 11 | 11 | 0 | 0 |  |
+| media-reduce-h027.dbtest.mjs | 0 | 20 | 11 | 11 | 0 | 0 |  |
+| notifications-cancelamento.dbtest.mjs | 0 | 5 | 2 | 2 | 0 | 0 |  |
+| notifications-cortes.dbtest.mjs | 0 | 14 | 3 | 3 | 0 | 0 |  |
+| notifications-cota-h094.dbtest.mjs | 0 | 38 | 17 | 17 | 0 | 0 |  |
+| notifications-email.dbtest.mjs | 0 | 5 | 4 | 4 | 0 | 0 |  |
+| notifications-flush.dbtest.mjs | 0 | 3 | 3 | 1 | 0 | 2 |  |
+| notifications-motor.dbtest.mjs | 0 | 21 | 10 | 9 | 0 | 1 |  |
+| notifications-rede.dbtest.mjs | 0 | 1 | 5 | 5 | 0 | 0 |  |
+| notifications-rollback.dbtest.mjs | 0 | 2 | 1 | 1 | 0 | 0 |  |
+| notifications-vigencia.dbtest.mjs | 0 | 5 | 3 | 3 | 0 | 0 |  |
+| notifications.dbtest.mjs | 0 | 39 | 12 | 12 | 0 | 0 |  |
+| ops-panel-h108.dbtest.mjs | 0 | 14 | 11 | 11 | 0 | 0 |  |
+| ops-purge-h110.dbtest.mjs | 0 | 28 | 18 | 18 | 0 | 0 |  |
+| platform.dbtest.mjs | 0 | 29 | 15 | 15 | 0 | 0 |  |
+| professional-login-concurrency.dbtest.mjs | 0 | 2 | 1 | 1 | 0 | 0 |  |
+| professional-offering-pg.dbtest.mjs | 0 | 17 | 9 | 9 | 0 | 0 |  |
+| profile-offering.dbtest.mjs | 0 | 67 | 17 | 17 | 0 | 0 |  |
+| rate-limit.dbtest.mjs | 0 | 55 | 13 | 13 | 0 | 0 |  |
+| request-publish-h031.dbtest.mjs | 0 | 34 | 12 | 12 | 0 | 0 |  |
+| retention-h109.dbtest.mjs | 0 | 86 | 26 | 26 | 0 | 0 |  |
+| role-exclusivity-concorrencia.dbtest.mjs | 0 | 286 | 4 | 4 | 0 | 0 |  |
+| role-exclusivity.dbtest.mjs | 0 | 57 | 18 | 17 | 0 | 1 |  |
+
+### 12.4 Falhas conhecidas (decisão 266: cada uma com Issue de origem)
+
+| Issue | Arquivo | Teste | Causa | Categoria | Decisão pendente |
+|---|---|---|---|---|---|
+| #145 | backup-roles.dbtest.mjs | T-BK-09 | `app.media_asset` sem SELECT ao papel de backup (migração 20261112120000), sem decisão registrada | conflito de decisão (não é fixture) | dono ou Arquiteto: incluir no backup, ou registrar a exclusão como a decisão 147 |
+| #146 | catalog-service.dbtest.mjs | T-H018-13 | o teste espera a semente ausente; o DEV tem a semente gravada; o insert manual dá 23505 | F (fixture dependente do estado do DEV) | como isolar a semente dentro da transação |
+| #147 | draft-rollback-h025.dbtest.mjs | D-10, testes 2 e 3 | 2BP01: `app.request_draft` tem dependentes posteriores (H-026, H-030); o teste desfaz fora da ordem | C (ordem de desfazer) | desfazer em ordem reversa, ou tratar o rollback como não suportado |
+| #148 | backup-roles.dbtest.mjs | teste 9 | URL de exemplo com senha que não é placeholder em `apps/api/tests/identity-docs-montagem.test.ts` (#50) | C (fixture, fora de `packages/`) | trocar por placeholder no arquivo de #50 |
+
+Total: 5 falhas em 4 Issues de origem. Nenhuma Issue foi movida no Project. Nenhuma falha foi confirmada como bug de produto (categoria D).
+
+### 12.5 Linha de base contra o estado atual
+
+Itens da seção 6 e 11.1 (21 falhas da linha de base): 16 passam hoje (itens 1, 4 a 11, 12, 14, 15, 18, 19, 20 e 21). Cinco falham: item 2 (#145), item 3 (#148, reaberto após a série 3), item 13 (#146), itens 16 e 17 (#147). Soma: 16 + 5 = 21.
+
+- A seção 6 conta 21 falhas. O líder citou 22. Não verificado de onde vem a diferença; não foi reconciliado.
+- Resíduo de `ops.job` (+2, decisão 261): sem origem identificada e sem remoção. Não tratado nesta rodada.
+
+### 12.6 O que não foi verificado
+
+- Os 61 arquivos fora da reexecução não foram rodados de novo. Os valores vêm da série 3. Podem mudar se algum commit posterior à série afetar o banco ou os testes. Não verificado.
+- Motivo dos 12 testes ignorados: não investigado.
+- `corepack pnpm db:test` como comando único: não executado (decisão 263: série por arquivo).
+- Nenhuma leitura nova de privilégios, funções ou migrações do DEV nesta rodada. A decisão sobre `app.media_asset` depende de humano.
+- Não verificado se as Issues #145 a #148 entraram sozinhas no Project pela automação do GitHub. Nenhum comando as adicionou ao Project, e nenhum card foi movido.
+
+### 12.7 Pode ir para Code Review?
+
+Recomendação do DEV: sim, com ressalva. As 5 falhas restantes estão aceitas pela decisão 266, porque cada uma tem Issue de origem. Zero continua sendo o alvo, e #145 precisa de decisão humana. Quem move o cartão é o líder; o DEV não moveu o Project.
