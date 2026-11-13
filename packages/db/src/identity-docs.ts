@@ -80,7 +80,11 @@ function tipoDeclarado(valor: unknown): IdentityDocDeclaredType | null {
 }
 
 export class PgIdentityDocStore {
-  constructor(private readonly client: SqlClient) {}
+  /** O relogio e o deps.clock do servico (injetado); sem ele, usa o relogio do processo. Nao muda o contrato da porta. */
+  constructor(
+    private readonly client: SqlClient,
+    private readonly relogio: { nowMs(): number } = { nowMs: () => Date.now() },
+  ) {}
 
   private async consulta(sql: string, params: unknown[]): Promise<Record<string, unknown>[]> {
     try {
@@ -117,7 +121,7 @@ export class PgIdentityDocStore {
   async list(userId: string): Promise<{ readonly documents: readonly IdentityDocListItem[]; readonly slotsRemaining: number }> {
     const linhas = await this.consulta('select * from private.idoc_list($1::uuid, $2::timestamptz)', [
       userId,
-      new Date().toISOString(),
+      new Date(this.relogio.nowMs()).toISOString(),
     ]);
     const documents: IdentityDocListItem[] = linhas.map((l) => ({
       id: texto(l['out_id']),
