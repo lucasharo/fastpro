@@ -88,20 +88,25 @@ export class PgMediaGallery implements MediaGalleryStorePort {
 
 /** Leitura da versao reduzida 'p/<uuid>' (request-photos). Sem chave de original e sem URL assinada. */
 export class SupabaseReducedPhotoReader implements ReducedPhotoReaderPort {
-  private readonly fetchImpl: typeof fetch;
+  // Campos privados (#): a chave de servico nao aparece em JSON.stringify, Object.keys nem em inspecao.
+  readonly #baseUrl: string;
+  readonly #serviceKey: string;
+  readonly #fetchImpl: typeof fetch;
 
-  constructor(private readonly opts: QuarantineStorageOpcoes) {
-    this.fetchImpl = opts.fetchImpl ?? fetch;
+  constructor(opts: QuarantineStorageOpcoes) {
+    this.#baseUrl = opts.baseUrl;
+    this.#serviceKey = opts.serviceKey;
+    this.#fetchImpl = opts.fetchImpl ?? fetch;
   }
 
   async readReduced(id: string): Promise<Uint8Array | null> {
     if (!isMediaId(id)) throw new QuarantineStorageError();
-    const url = `${this.opts.baseUrl}/storage/v1/object/${MEDIA_REDUCED_BUCKET}/${mediaReducedKey(id.toLowerCase())}`;
+    const url = `${this.#baseUrl}/storage/v1/object/${MEDIA_REDUCED_BUCKET}/${mediaReducedKey(id.toLowerCase())}`;
     let res: Response;
     try {
-      res = await this.fetchImpl(url, {
+      res = await this.#fetchImpl(url, {
         method: 'GET',
-        headers: { authorization: `Bearer ${this.opts.serviceKey}`, apikey: this.opts.serviceKey },
+        headers: { authorization: `Bearer ${this.#serviceKey}`, apikey: this.#serviceKey },
       });
     } catch {
       throw new QuarantineStorageError();
