@@ -99,7 +99,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
 
-## Desenvolvimento (1)
+## Desenvolvimento (0)
 
 | Issue | Título |
 |---|---|
