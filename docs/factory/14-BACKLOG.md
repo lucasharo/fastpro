@@ -140,7 +140,7 @@ Colunas: **Rastro** = RF, FA, ADR, invariante (I-xx) ou decisão · **Dep.** = h
 |---|---|---|---|---|---|---|---|
 | H-035 | Cadastro profissional: CPF/CNPJ criptografado (Enc) e HMAC único; perfil público base | RF-046; 09 §3.3, §7 | CPF nunca em log; mesmo documento em dois perfis cai em retenção (H-040) | H-016, H-003 | M | Chave de criptografia (SD-11) | T-11, T-13 |
 | H-036 | Perfil profissional: serviços (presencial ou online), base com coordenada permanente e raio de 5 a 100 km; mudança vale só para pedidos novos | RF-051; AMB-15 A; G-07; 09 §3.3 | Raio fora de 5–100 km recusado; mudança não altera pedido publicado | H-035, H-021, H-018 | M | Limite de taxa de alteração | G-07; FA-010 |
-| H-037 | Documentos de identidade: imagem (JPG/PNG/WebP) e PDF; até 5 arquivos de 5 MB cada (**provisório**, decisão 34); validação por conteúdo; acesso só da Verificação | RF-046, RF-052, RF-148; decisão 34; AMB-33 B | Tipo ou tamanho fora do limite → recusado; leitura por não Verificação → negada | H-026, H-016; S-06 | M | Limite pode estourar o orçamento de Storage (Achado A-2; BK-1) | T-07; FA-031 |
+| H-037 | Documentos de identidade: imagem (JPG/PNG/WebP) e PDF; até 5 arquivos de 5 MB cada (**provisório**, decisão 34); validação por conteúdo; acesso só da Verificação | RF-046, RF-052, RF-148; decisão 34; AMB-33 B | Tipo ou tamanho fora do limite → recusado; leitura por não Verificação → negada | H-026, H-016, H-035; S-06 | M | Limite pode estourar o orçamento de Storage (Achado A-2; BK-1) | T-07; FA-031 |
 | H-038 | Certificações para atividades regulamentadas (flag do catálogo): anexo obrigatório; verificação do conteúdo | RF-047; FA-004 (último item) | Atividade REG sem certificação → aprovação não concluída | H-018, H-037 | M | **BLQ-JUR L4** (verificação do conteúdo) | FA-004 |
 | H-039 | Fila de verificação: aprovar, recusar, reter, explicar e registrar recurso; meta de 2 dias úteis (não promessa); auditoria | RF-047 a RF-049, RF-147; 09 §3.3 `verification_case` | Cada decisão gera evento de auditoria com ator e data | H-037, H-006, H-102 | G | Gargalo operacional (R-07 de 01) | FA-004; T-08 |
 | H-040 | Retenção por duplicidade (mesmo CPF/CNPJ ou identidade), com explicação e recurso; sem bloqueio definitivo automático | RF-049; 08 §15; I-02 | Duplicidade vai para `retida_duplicidade`; nada é bloqueado sem decisão humana | H-035, H-039 | M | Falso positivo | FA-004 |
@@ -302,7 +302,7 @@ Nota: o épico E7 do relatório se chamava "Chat e anexos". Pelas decisões 32 e
 | BLQ-JUR L6 (lojas) | Contas de desenvolvedor e revisão | H-122, H-124 | Usuário (SD-13) |
 | BLQ-JUR L7 (responsabilidade) | Texto do selo "verificado" e conteúdo trocado | H-043, H-063, H-113 | Jurídico |
 | BLQ-EXEC (SD-14 / Gate 2) | Criar contas e chaves: Supabase, Vercel, Mercado Pago (sandbox), Mapbox (cartão), Resend e domínio | H-009, H-010, H-021, H-047, H-093; spikes S-01 a S-04, S-09, S-11 | Usuário (autorização de execução) |
-| BLQ-DEC | Confirmar que Mapbox permanente pago é aceito (BK-2); limites de documentos (BK-1); texto de sem vaga (BK-5); SD-09 (BK-4); SD-13 | H-021, H-037, H-059, H-024, H-082, H-122 | Usuário ou líder |
+| BLQ-DEC | Confirmar que Mapbox permanente pago é aceito (BK-2); texto de sem vaga (BK-5); SD-09 (BK-4); SD-13 | H-021, H-059, H-024, H-082, H-122 | Usuário ou líder |
 | BLQ-SPK | Resultado de spike antes de implementar | H-008, H-022, H-020, H-021, H-027, H-047 a H-051, H-070, H-093, H-009 | Spikes da Onda 0 |
 
 ---

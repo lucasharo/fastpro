@@ -75,7 +75,7 @@ erDiagram
 **professional_service**: `professional_id`, `service_id`, `modality` {`presencial|online`}; PK composta.
 **professional_area**: `professional_id`, `base_point geography(Point)` (privado; **somente de resultado `permanent=true`**, `geocoded_at`), `base_label`, `radius_m` (CHECK 5.000–100.000, [DELEGADO]), `updated_at`; mudança limitada em taxa; histórico em auditoria.
 **verification_case**: `id`, `professional_id`, `status` (`pendente|em_revisao|retida_duplicidade|aprovada|recusada|suspensa`), `assigned_to`, `reason_code`, `explanation_to_professional`, `appeal_status`, `decided_by`, `decided_at`, `sla_target_at` (meta, não promessa). **verification_case_event** (histórico imutável).
-**identity_document**: `id`, `professional_id`, `kind` {`identidade|certificacao`}, `service_id?` (certificação), `media_asset_id`, `status`. Conteúdo em bucket `identity-docs`.
+**identity_document**: `id`, `professional_id`, `kind` {`identidade|certificacao`}, `service_id?` (certificação, acrescentada pela #51), `status` {`pendente_envio|recebido|substituido`}, `declared_type`, `stored_type`, `stored_bytes`, `content_sha256` (nunca exposto), `received_at`, `analyzed_at` (definido pela #52 na primeira leitura da Verificação), `purge_requested_at`. **Sem `media_asset_id`**: não é foto e não usa `media_asset` (decisão 213). Entrada em `identity-incoming`; conteúdo final em `identity-docs` (detalhe em 107-DESENHO-H037 §4.1).
 
 ### 3.4 requests
 **request_draft**: `id`, `browser_nonce_hash`, `email?`, `first_name?`, `service_id?`, `address_text?`, `exact_point?` (**só após geocodificação permanente**), `geocoded_at?`, `geocode_calls` smallint (teto 3), `urgency?`, `description?`, `phone_enc?`, `phone_share_opt_in` (default false), `email_hmac?`, `email_verified_at?` (H-013, 91 §2.1), `status` {`aberto|aguardando_email|descartado|publicado`}, `expires_at` (TTL, `[PROPOSTA]` configurável), `ip_hmac`. Fotos: `media_asset(draft_id)`. Expurgo por TTL.
@@ -199,7 +199,7 @@ Avaliar `EXPLAIN` com dados sintéticos de volume realista antes do lançamento;
 | media_asset | dono | via função autorizada (sem leitura direta) | idem |
 | contact_consent | dono | nenhum (resultado só pela API) | caso |
 | professional_profile | — | próprio (campos próprios) | Verificação (fila) |
-| identity_document | — | próprio | Verificação com tarefa atribuída |
+| identity_document | — | próprio (escreve e exclui até `analyzed_at`; sem leitura, decisão 170) | Verificação com tarefa atribuída (leitura só na #52) |
 | billing.* | — | próprio (leitura) | Financeiro |
 | audit.* | — | — | Auditor (SELECT), ninguém grava fora da transação de domínio |
 Todos os papéis `anon`/`authenticated`: sem grant nas tabelas; exceção `realtime.messages` para canais privados (autorização por participação).
@@ -218,7 +218,7 @@ Controles: **Enc** = criptografia de aplicação em coluna/objeto com chave vers
 | Fotos do pedido | bucket request-photos | C3 | dono; participantes; elegíveis (marca d'água) | EXIF removido; URL ~60 s; sem original a profissionais | `media_access_log` | RC-03 |
 | Mensagens | message | C3 | membros; admin com caso | sem edição/exclusão; trigger | `sensitive_access_log` | RC-04 | Conversas (somente texto) | idem; moderação | excluir/anonimizar; *legal hold* | `[PENDENTE JURÍDICO]` L1 |
 | CPF/CNPJ | professional_profile.document_enc / document_hmac | C3 | profissional; Verificação (tarefa) | Enc + HMAC para unicidade; nunca em log | sim | RC-01 |
-| Documentos de identidade/certificação | bucket identity-docs | C3 | profissional; Verificação (tarefa); admin com caso | Enc de objeto `[PROPOSTA]`; URL ~60 s | `sensitive_access_log` | RC-01 |
+| Documentos de identidade/certificação | bucket identity-docs | C3 | Verificação (tarefa atribuída, #52); admin com caso; o dono não lê (decisão 170) | Enc de objeto `[PROPOSTA]`; URL ~60 s | `sensitive_access_log` | RC-01 |
 | Perfil público | professional_profile (campos públicos) | C0 | todos | só campos permitidos | — | RC-02 |
 | Avaliações | review | C0/C2 | todos (publicadas) | autor fixo "Cliente do FastPro" | decisões auditadas | RC-05 |
 | Pagamentos | billing.payment | C2 (financeiro) | profissional (próprios); Financeiro | sem dados de cartão (checkout do MP) | auditoria | RC-06 |

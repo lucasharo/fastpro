@@ -363,7 +363,7 @@ Hipótese: 1,3 chamadas por pedido publicado ⇒ **1.000 pedidos/mês ≈ US$ 6,
 |---|---|---|
 | `quarantine` | Uploads recém-enviados (rascunho, documentos) | Nenhum acesso de leitura por usuário; TTL curto |
 | `request-photos` | Fotos do pedido, **apenas a versão reduzida** (≤ 1.280 px, ≈ 0,5 MB); sem original nem *master* | Via API (§10.3) |
-| `identity-docs` | Documentos de identidade/certificações | Via API; criptografia de aplicação `[PROPOSTA]` (ver 09 §7) |
+| `identity-docs` | Documentos de identidade/certificações (entrada em `identity-incoming`, decisão 213) | Sem leitura pela aplicação (decisão 170): o dono envia e exclui até a análise; leitura só da Verificação (#52), com tarefa atribuída; criptografia de aplicação `[PROPOSTA]` (ver 09 §7) |
 
 ### 10.2 Pipeline de upload
 1. API cria um `media_asset(status=pending)` e devolve **URL de upload assinada de uso único** para `quarantine` (limite de tamanho e tipo declarados).
