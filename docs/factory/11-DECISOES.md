@@ -681,3 +681,16 @@ Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
 ## Rodada 67 (decisao do usuario sobre a pergunta 158, 2026-11-13)
 - **158 (historico de acesso as fotos) — AUTORIZADA PELO USUARIO, opcao A:** remover por completo o historico de acesso as fotos (`media_access_log`) e o resumo diario dele (`ops.media_access_daily`). O usuario nao pediu esse historico e ele consome o banco. **Substitui RF-030 e o criterio de aceite do D10** no que exigem log de acesso. Escopo: nova Issue **#150** (Backlog -> Product Owner); remover referencias no codigo, nos documentos (04, 05, 08, 09, 103, 108, 14-BACKLOG) e nos testes; nova migracao que remove a tabela do historico e a de resumo, se existirem no DEV, pelo executor oficial (`db:migrate`) ou `npx supabase`, SEM editar migracao antiga; nenhum outro dado apagado e nenhuma senha rotacionada. A #150 segue a ordem completa de colunas, um especialista por vez.
 - **Impacto conhecido:** as Issues #69 e #70 (fotos a elegiveis com marca d'agua; limite de visualizacao e sinal de raspagem) dependiam do historico; o refino da #150 define a protecao contra raspagem sem historico de acesso ([PROPOSTA] do PO, decisao do lider depois). Tambem afeta o bloco de rollup da migracao de expurgos da #119 e o teste CA-16 dela.
+
+## Rodada 68 (refino da #150 — 117-REFINO-REMOCAO-HISTORICO-ACESSO.md)
+Fato verificado pelo PO: `ops.media_access_log` nunca foi criada em migracao (o bloco E8 do expurgo sempre devolveu `pulado_ausente`); `ops.media_access_daily` foi criada pela migracao 20261112230000 (aplicada no DEV) e deve estar vazia (contagem real a registrar antes de remover). Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar), todas a opcao (a):
+- **320:** protecao contra raspagem sem historico: URL de 60 s de uso unico, marca d'agua opaca do profissional, contador de visualizacoes por profissional em `rate_counter`, sinal em `abuse_signal` so quando o limite estoura. Perde-se: quem viu qual foto e quando, prova por registro e deteccao de padrao alem da janela.
+- **321:** sinal registrado so no estouro, sem gravar cada acesso.
+- **322:** suspensao cautelar so do acesso a fotos (nao banir a conta).
+- **323:** NAO reabrir a #119 (Concluida); a #150 faz a remocao (bloco E8 e CA-H110-09; CA-H110-16 permanece para provider_event).
+- **324:** manter E9 e a auditoria como estao.
+- **325:** as chaves de configuracao do recurso removido saem na mesma migracao nova e voltam no rollback.
+- **326:** rollback no padrao do projeto, sem copiar codigo antigo.
+- **327:** remover `ops.media_access_daily` da lista de excecoes do backup (T-BK-09); a #145 segue com `app.media_asset`.
+- **328 (juridico, RC-07):** registrado para o usuario confirmar no pedido de L1; NAO bloqueia a #150.
+- **#150 avanca de Product Owner para Arquitetura.** #69 pode seguir sem log; #70 depende da protecao definida na #150.
