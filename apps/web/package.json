@@ -14,13 +14,18 @@
   },
   "scripts": {
     "copy:tokens": "node scripts/copy-tokens.mjs",
-    "build": "node scripts/copy-tokens.mjs && tsc -p tsconfig.json",
+    "build:fotos-envio": "node scripts/build-fotos-envio.mjs",
+    "build": "node scripts/copy-tokens.mjs && node scripts/build-fotos-envio.mjs && tsc -p tsconfig.json",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node scripts/copy-tokens.mjs && vitest run --passWithNoTests"
+    "test": "node scripts/copy-tokens.mjs && node scripts/build-fotos-envio.mjs && vitest run --passWithNoTests",
+    "test:e2e": "node scripts/copy-tokens.mjs && playwright test"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@fastpro/config": "workspace:*",
-    "@fastpro/domain": "workspace:*"
+    "@fastpro/domain": "workspace:*",
+    "@playwright/test": "^1.65.0",
+    "esbuild": "^0.28.2"
   }
 }
