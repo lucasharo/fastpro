@@ -268,3 +268,5 @@ Gatilhos: 70% ⇒ alerta; 85% ⇒ endurece cotas e expurgos; 95% ⇒ bloqueia no
 
 ## 10. Expurgos operacionais obrigatórios
 Rascunhos e uploads em `quarantine` por TTL; desafios e sessões vencidos; `provider_event` processado; `outbox_event` despachado; `idempotency_key` vencido; `media_access_log` com *rollup* diário (preserva contagem por profissional/dia para detecção) e remoção do detalhe depois de janela técnica; anexos órfãos. Todos jobs idempotentes, com *lease* e métricas (§14 de `08`).
+
+**Nota de implementação (H-110, Issue #119):** o expurgo está em `supabase/migrations/20261112230000_ops_create_operational_purge.sql`, com rollback em `supabase/rollbacks/`. A migração não semeia TTL: sem chave em `ops.app_config` o bloco fica desligado. Os valores propostos (`[PROPOSTA]`) e as pendências (decisões 158, 209 e 208) estão em `docs/factory/108-RUNBOOK-TTL-EXPURGOS.md`. Métrica em `ops.ops_metric` fica fora (decisão 205); só auditoria. A remoção de arquivo da quarentena e dos órfãos no Storage (E1 e E9) é provada só com Storage fake até a #141.
