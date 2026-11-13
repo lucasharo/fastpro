@@ -56,6 +56,8 @@ export * from './admin-dual-approval.js';
 export * from './request-draft.js';
 // H-031 (#44) | Adaptador Pg da publicacao idempotente do pedido (private.* do servico, 110-DESENHO-H031 §4).
 export * from './request-publish.js';
+// Issue 45 (H-032) | Adaptador Pg da leitura do pedido por papel (dono e profissional elegivel).
+export * from './request-visibility.js';
 // H-026 | Adaptadores da quarentena de fotos (media_* e Storage quarantine).
 export * from './media-quarantine.js';
 // H-029 (Issue #42) | Galeria do dono: consulta, exclusao, reordenacao e leitura da versao reduzida.
