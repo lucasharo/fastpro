@@ -425,3 +425,55 @@ test('T-D16 reversibilidade: o rollback remove as duas funcoes e a migracao reap
     assert.notEqual(volta.rows[0].a, null);
   });
 });
+
+test('T-D12 paridade: o ramo com raio devolve o mesmo conjunto que private.match_points_within (CA-01, reuso)', async () => {
+  await isolado(async () => {
+    const prof = await profissional(client);
+    const svc = await servico(client, { modalidade: 'presencial' });
+    await base(client, prof, SP, 20000);
+    await declara(client, prof, svc, 'presencial');
+    for (const km of [2, 7, 12, 17, 25, 40, 55, 80, 99]) {
+      await pedido(client, { svc, p: norte(SP, km) });
+      await pedido(client, { svc, p: norte(SP, -km) });
+    }
+    const esperado = (
+      await client.query(
+        `select r.id from private.match_points_within($1::float8, $2::float8, 20000, 5000, 1::smallint) m
+           join app.service_request r on r.origin_draft_id = m.out_subject_id
+          where r.service_id = $3::uuid and r.status = 'publicado' and $4::timestamptz < r.acceptance_deadline_at`,
+        [SP.lon, SP.lat, svc, AGORA],
+      )
+    ).rows.map((r) => r.id);
+    const obtido = ids(await varre(prof, SP, 20000));
+    assert.equal(obtido.length, 8, 'pedidos a 2, 7, 12 e 17 km, nos dois rumos');
+    assert.deepEqual(new Set(obtido), new Set(esperado));
+  });
+});
+
+test('T-D13 desempenho (medido, nao condicao): o plano da janela usa o indice parcial, sem Seq Scan (CA-13)', async () => {
+  await isolado(async () => {
+    await client.query(
+      `insert into app.geocode_point (subject_kind, subject_id, address_hash, state, exact_point, geocode_mode, precision, geocoded_at)
+       select 'request', gen_random_uuid(), md5(s::text) || md5((s + 7919)::text), 'ok',
+              extensions.st_setsrid(extensions.st_makepoint(-46.6333 + (random() - 0.5) * 3, -23.5505 + (random() - 0.5) * 3), 4326)::extensions.geography,
+              'permanent', 'endereco', $1::timestamptz
+         from generate_series(1, 50000) s`,
+      [AGORA],
+    );
+    await client.query('analyze app.geocode_point');
+    const w = await client.query('select out_cell_lo as lo, out_cell_hi as hi from private.match_janela($1::float8, $2::float8, 100000)', [SP.lon, SP.lat]);
+    const lo = Number(w.rows[0].lo);
+    const hi = Number(w.rows[0].hi);
+    const inicio = Date.now();
+    const plano = await client.query(
+      `explain (analyze, buffers) select g.id from app.geocode_point g
+        where g.match_grid_version = 1 and g.match_cell between ${lo} and ${hi}
+          and g.subject_kind = 'request' and g.state = 'ok'`,
+    );
+    const tempo = Date.now() - inicio;
+    const texto = plano.rows.map((r) => r['QUERY PLAN']).join('\n');
+    console.log(`T-D13 EXPLAIN ANALYZE (50.000 pontos, raio 100 km): ${tempo} ms com o plano; meta de 200 ms medida, nao condicao.`);
+    assert.match(texto, /geocode_point_match_cell_idx/);
+    assert.doesNotMatch(texto, /Seq Scan on geocode_point/);
+  });
+});
