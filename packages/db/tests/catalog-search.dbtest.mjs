@@ -65,7 +65,9 @@ async function semente() {
     JSON.stringify(SEED),
   ]);
   await client.query('reset role');
-  assert.equal(res.rows[0].r.status, 'aplicada');
+  // 'ja_aplicada' e aceito: o DEV ja tem a semente gravada com o mesmo checksum (catalog_seed_run).
+  // A funcao so devolve 'ja_aplicada' para o mesmo checksum; os testes leem a semente existente (#140).
+  assert.ok(['aplicada', 'ja_aplicada'].includes(res.rows[0].r.status), res.rows[0].r.status);
 }
 
 /** Chama a busca como o visitante anonimo (papel app_api, principal anonymous). Nao cria nada. */
