@@ -190,7 +190,7 @@ test('T-08: sem REG aprova; REG ativo sem certificacao completa recusa (VRF05, f
     await vincularRegulado(reg.prof);
     const v = await versao(reg.caso.id);
     assert.equal((await falha(SQL_DECIDE, argsDecisao(reg, 'aprovada', 'aprovado', null, v)))?.message,
-      'certificacao_pendente', 'REG sem funcao de certificacao (#51 ausente): recusa');
+      'certificacao_pendente', 'REG sem funcao de certificacao (Issue 51 ausente): recusa');
     await client.query(`create or replace function private.certificacoes_completas(p uuid)
       returns boolean language sql stable as $$ select false $$`);
     assert.equal((await falha(SQL_DECIDE, argsDecisao(reg, 'aprovada', 'aprovado', null, v)))?.message,
