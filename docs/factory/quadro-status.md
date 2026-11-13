@@ -111,11 +111,10 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 ## QA (0)
 
-## Concluído (52)
+## Concluído (51)
 
 | Issue | Título |
 |---|---|
-| #129 | [E15] Dados sintéticos de demonstração |
 | #2 | [TESTE] Validação de criação de Issue pelo Orquestrador |
 | #3 | [E0] Monorepo pnpm e Turborepo |
 | #4 | [Spike] PostGIS, pg_cron e pg_net no Supabase Free |
