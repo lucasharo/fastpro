@@ -54,6 +54,8 @@ export * from './catalog-admin.js';
 // H-105 (Issue 114) | Adaptador Pg da dupla aprovacao de estorno e suspensao (private.approval_dual_*).
 export * from './admin-dual-approval.js';
 export * from './request-draft.js';
+// H-031 (#44) | Adaptador Pg da publicacao idempotente do pedido (private.* do servico, 110-DESENHO-H031 §4).
+export * from './request-publish.js';
 // H-026 | Adaptadores da quarentena de fotos (media_* e Storage quarantine).
 export * from './media-quarantine.js';
 // H-029 (Issue #42) | Galeria do dono: consulta, exclusao, reordenacao e leitura da versao reduzida.

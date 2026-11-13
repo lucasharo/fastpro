@@ -2,21 +2,22 @@
 // Ordem: begin (banco, sem custo) -> geocodificacao fora de transacao (porta; so com provedor) -> commit (banco).
 // Toda saida que nao cria nem repete o pedido chama abort (libera a chave que a propria API abriu).
 // Nenhum erro interno sai daqui: falha vira codigo fixo. Nada de coordenada, endereco, e-mail ou nome na resposta.
-import { DRAFT_HEADERS, DRAFT_NOT_FOUND_BODY } from '@fastpro/domain';
 import {
+  DRAFT_HEADERS,
+  DRAFT_NOT_FOUND_BODY,
   PUBLISH_ERROR_RESPONSES,
   issueDuplicateAck,
   publishBodyHash,
   verifyDuplicateAck,
   type PublishBody,
-} from '../../../../packages/domain/src/request/index.js';
+} from '@fastpro/domain';
 import type {
   PublishAbortInput,
   PublishBeginInput,
   PublishBeginOutcome,
   PublishCommitInput,
   PublishCommitOutcome,
-} from '../../../../packages/db/src/request-publish.js';
+} from '@fastpro/db';
 import type { DraftHasher } from '../drafts/draft-hash.js';
 import { ensurePermanentPoint, type EnsurePermanentDeps } from '../geo/permanent-geocode-service.js';
 

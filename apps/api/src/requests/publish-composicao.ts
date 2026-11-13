@@ -4,9 +4,8 @@
 // Sem o provedor de geocodificacao (BLQ-EXEC, decisao 239) a rota existe e responde 503 (D-12).
 // Nunca le, grava nem registra o valor das variaveis: so o nome aparece nas pendencias.
 import { createHmac } from 'node:crypto';
-import { PgGeoPointStore, PgSessionRepository, type SqlClient } from '@fastpro/db';
+import { PgGeoPointStore, PgRequestPublishStore, PgSessionRepository, type SqlClient } from '@fastpro/db';
 import { parseBreakerCaps } from '@fastpro/domain';
-import { PgRequestPublishStore } from '../../../../packages/db/src/request-publish.js';
 import { createDraftHasher } from '../drafts/draft-hash.js';
 import { createAddressHasher } from '../geo/address-hash.js';
 import type { GeocodingPermanentPort } from '../geo/permanent-ports.js';

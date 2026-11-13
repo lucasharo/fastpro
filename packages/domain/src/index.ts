@@ -18,3 +18,5 @@ export * from './media/index.js';
 export * from './ops-purge/index.js';
 // H-037 (Issue #50) | Documentos de identidade do profissional (barril do modulo; 107-DESENHO-H037 §11).
 export * from './identity-docs/index.js';
+// H-031 (#44) | Publicacao do pedido: regras puras, corpo, chave e token de duplicidade (110-DESENHO-H031).
+export * from './request/index.js';

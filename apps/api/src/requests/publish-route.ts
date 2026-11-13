@@ -12,13 +12,11 @@ import {
   draftSecretFromCookie,
   normalizeClientIp,
   siteOriginOf,
-} from '@fastpro/domain';
-import { hashSessionSecret } from '@fastpro/db';
-import {
   PUBLISH_BODY_MAX_BYTES,
   isPublishIdempotencyKey,
   parsePublishBody,
-} from '../../../../packages/domain/src/request/index.js';
+} from '@fastpro/domain';
+import { hashSessionSecret } from '@fastpro/db';
 import { publicacaoNaoEncontrada, publishRequest, type PublishOutcome, type PublishServiceDeps } from './publish-service.js';
 
 /** Rota desta historia (o roteador de app.ts entra na FASE 2). */
