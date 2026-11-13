@@ -100,18 +100,15 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #37 | [E2] Cobertura booleana sem contagem |
 | #59 | [E5] Planos e preços em centavos |
 
-## Desenvolvimento (2)
-
-| Issue | Título |
-|---|---|
-| #150 | [E6] Remover o histórico de acesso às fotos (media_access_log e resumo diário) |
-| #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
-
-## Code Review (1)
+## Desenvolvimento (3)
 
 | Issue | Título |
 |---|---|
 | #44 | [E3] Publicação idempotente com 7 dias |
+| #150 | [E6] Remover o histórico de acesso às fotos (media_access_log e resumo diário) |
+| #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
+
+## Code Review (0)
 
 ## QA (1)
 
