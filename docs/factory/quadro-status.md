@@ -97,13 +97,12 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
 
-## Desenvolvimento (3)
+## Desenvolvimento (2)
 
 | Issue | Título |
 |---|---|
 | #58 | [E5] Acesso comercial derivado |
 | #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
-| #44 | [E3] Publicação idempotente com 7 dias |
 
 ## Code Review (0)
 
@@ -111,7 +110,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 | Issue | Título |
 |---|---|
-| #50 | [E4] Documentos de identidade |
+| #44 | [E3] Publicação idempotente com 7 dias |
 
 ## Concluído (57)
 
@@ -181,6 +180,10 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #110 | [E11] Teste de ausência de interruptor |
 
-## Aguardando aprovação (0)
+## Aguardando aprovação (1)
+
+| Issue | Título |
+|---|---|
+| #50 | [E4] Documentos de identidade |
 
 ## Bloqueado (0)
