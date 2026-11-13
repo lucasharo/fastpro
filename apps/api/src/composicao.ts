@@ -239,22 +239,22 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   // H-036: servicos, base e raio. Sem o provedor permanente (BLQ-EXEC, decisao 116) as rotas seguem 404.
   const oferta = montarOfertaProfissional(env, { abrirCliente: opcoes.abrirClienteSql, relogio: opcoes.clock });
 
-  // E3: midia. Liga so com MEDIA_UPLOAD_ENABLED=1 e os itens completos (decisao 190); sem isso, 404.
-  // H-037 (#50): documentos de identidade; fechados por trava (sem pendencias) ou incompletos (com nomes).
-  const documentos = montarDocumentosDoAmbiente(env, {
-    abrirCliente: opcoes.abrirClienteSistema,
-    gate: opcoes.reducaoMidia?.gate,
-  });
-
   // H-031 (#44): publicacao do pedido sobre o papel app_system; sem chave, banco ou provedor, a rota nao liga (404; 503 sem provedor).
   const publicacao = montarPublicacaoPedido(env, { abrirCliente: opcoes.abrirClienteSistema });
 
+  // E3: midia. Liga so com MEDIA_UPLOAD_ENABLED=1 e os itens completos (decisao 190); sem isso, 404.
   // A galeria (H-029) entra junto, pelas portas montadas na borda; sem a midia ligada, ela tambem fica 404.
   const galeriaMidia = portasGaleriaMidia(env, opcoes.abrirClienteApi);
   const midia = montarMidia(env, {
     abrirCliente: opcoes.abrirClienteApi,
     reducao: opcoes.reducaoMidia,
     ...(galeriaMidia !== undefined ? { galeria: galeriaMidia } : {}),
+  });
+
+  // H-037 (#50): documentos de identidade; fechados por trava (sem pendencias) ou incompletos (com nomes).
+  const documentos = montarDocumentosDoAmbiente(env, {
+    abrirCliente: opcoes.abrirClienteSistema,
+    gate: opcoes.reducaoMidia?.gate,
   });
 
   return {
