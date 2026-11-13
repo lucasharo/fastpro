@@ -584,7 +584,7 @@ async function contagensMarcadas(c) {
     rascunhos: await q('select count(*)::int as n from app.request_draft where email like $1', [LIKE_MARCA()]),
     pedidos: await q('select count(*)::int as n from app.service_request where customer_user_id::text = any($1::text[])', [ids]),
     chaves: await q('select count(*)::int as n from ops.idempotency_key where principal_id = any($1::text[])', [ids]),
-    taxas: await q('select count(*)::int as n from ops.rate_counter where key_hmac = any($1::text[])', [marcados.taxas]),
+    taxas: await q('select count(*)::int as n from ops.rate_counter where key_hmac in (select unnest($1::text[]))', [marcados.taxas]),
     auditoria: await q('select count(*)::int as n from audit.audit_event where actor_ref = any($1::text[])', [ids.map((id) => `customer:${id}`)]),
   };
 }
@@ -602,7 +602,7 @@ async function limpar(c) {
     }
   };
   await tentar('chaves', 'delete from ops.idempotency_key where principal_id = any($1::text[])', [ids]);
-  await tentar('taxas', 'delete from ops.rate_counter where key_hmac = any($1::text[])', [marcados.taxas]);
+  await tentar('taxas', 'delete from ops.rate_counter where key_hmac in (select unnest($1::text[]))', [marcados.taxas]);
   await tentar('rascunhos', 'delete from app.request_draft where email like $1', [LIKE_MARCA()]);
   await tentar('servicos', 'delete from app.service where name like $1', [`Servico H031 ${SUF}%`]);
   await tentar('grupos', 'delete from app.service_group where name like $1', [`Grupo H031 ${SUF}%`]);

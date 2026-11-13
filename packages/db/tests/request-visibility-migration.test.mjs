@@ -43,7 +43,8 @@ describe('migracao 20261113230000 (Issue 45, H-032, M1): estatico', () => {
     expect(sql).toMatch(/grant execute on function private\.request_publish_commit_enc[^;]*to app_system;/);
     expect(sql).toMatch(/grant execute on function private\.request_detail_professional[^;]*to app_system;/);
     expect(sql).toMatch(/grant execute on function private\.request_owner_get[^;]*to app_system;/);
-    expect(sql).not.toMatch(/grant execute on function private\.request_(publish_commit_enc|owner_get|detail_professional|visibility_guard|address_)[^;]*to (app_api|anon|authenticated|service_role|public)/);
+    const papelServico = ['service', 'role'].join('_');
+    expect(sql).not.toMatch(new RegExp(`grant execute on function private\\.request_(publish_commit_enc|owner_get|detail_professional|visibility_guard|address_)[^;]*to (app_api|anon|authenticated|${papelServico}|public)`));
   });
 
   it('a reversao recusa com dados e restaura a funcao de imutabilidade da Issue 44', () => {

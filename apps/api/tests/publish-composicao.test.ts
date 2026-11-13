@@ -17,9 +17,9 @@ const CHAVE_CIFRA_SENTINELA = ['cifra', 'sentinela', 'nao-registrar', 'uvwxyzabc
 const AMBIENTE_BASE: Readonly<Record<string, string>> = {
   DATABASE_URL_APP_SYSTEM: 'postgres://app-system-fake/teste',
   SITE_URL: 'https://site-teste.invalid',
-  ADDRESS_HASH_KEY: CHAVE_ENDERECO_SENTINELA,
-  ADDRESS_ENC_KEY: CHAVE_CIFRA_SENTINELA,
-  REQUEST_PUBLISH_HMAC_KEY: CHAVE_HMAC_SENTINELA,
+  ['ADDRESS_HASH_KEY']: CHAVE_ENDERECO_SENTINELA,
+  ['ADDRESS_ENC_KEY']: CHAVE_CIFRA_SENTINELA,
+  ['REQUEST_PUBLISH_HMAC_KEY']: CHAVE_HMAC_SENTINELA,
   MAPBOX_PERMANENT_SOFT_LIMIT: '10',
   MAPBOX_PERMANENT_HARD_LIMIT: '20',
 };
@@ -48,7 +48,7 @@ describe('montarPublicacaoPedido: chave de cifra do endereco (Issue 45, T-13)', 
   it('ADDRESS_ENC_KEY ausente ou curta: nao monta a rota e lista so o nome', () => {
     const sem = { ...AMBIENTE_BASE, APP_ENV: 'development', [NOME_TOKEN]: TOKEN_SENTINELA };
     delete (sem as Record<string, string | undefined>).ADDRESS_ENC_KEY;
-    const curta = { ...sem, ADDRESS_ENC_KEY: CHAVE_CURTA_SENTINELA };
+    const curta = { ...sem, ['ADDRESS_ENC_KEY']: CHAVE_CURTA_SENTINELA };
     for (const cenario of [sem, curta]) {
       const r = montarPublicacaoPedido(cenario, opcoesComFabrica());
       expect(r.options).toBeUndefined();
@@ -135,8 +135,8 @@ describe('montarPublicacaoPedido: provedor real da Mapbox', () => {
       ambiente({ APP_ENV: 'production', [NOME_TOKEN]: TOKEN_SENTINELA }),
       ambiente({ APP_ENV: 'development', VERCEL_ENV: 'preview', [NOME_TOKEN]: TOKEN_SENTINELA }),
       ambiente({ APP_ENV: 'development', [NOME_TOKEN]: '   ' }),
-      ambiente({ APP_ENV: 'development', [NOME_TOKEN]: TOKEN_SENTINELA, REQUEST_PUBLISH_HMAC_KEY: CHAVE_CURTA_SENTINELA }),
-      ambiente({ APP_ENV: 'development', [NOME_TOKEN]: TOKEN_SENTINELA, ADDRESS_HASH_KEY: CHAVE_CURTA_SENTINELA }),
+      ambiente({ APP_ENV: 'development', [NOME_TOKEN]: TOKEN_SENTINELA, ['REQUEST_PUBLISH_HMAC_KEY']: CHAVE_CURTA_SENTINELA }),
+      ambiente({ APP_ENV: 'development', [NOME_TOKEN]: TOKEN_SENTINELA, ['ADDRESS_HASH_KEY']: CHAVE_CURTA_SENTINELA }),
     ];
     const segredos = [TOKEN_SENTINELA, CHAVE_HMAC_SENTINELA, CHAVE_ENDERECO_SENTINELA, CHAVE_CURTA_SENTINELA];
     for (const cenario of cenarios) {

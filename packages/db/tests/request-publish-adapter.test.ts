@@ -40,11 +40,13 @@ function clienteFalso(resposta: SqlResult | Error): { client: SqlClient; chamada
   return { client, chamadas };
 }
 
+const idem = '6f1d2c3b-4a5e-4f60-8b7c-9d0e1f2a3b4c';
+
 const beginInput: PublishBeginInput = {
   userId: USER,
   draftId: DRAFT,
   secretHash: 'a'.repeat(64),
-  idemKey: '6f1d2c3b-4a5e-4f60-8b7c-9d0e1f2a3b4c',
+  idemKey: idem,
   bodyHash: 'b'.repeat(64),
   contentRev: 3,
   userRateKey: 'c'.repeat(64),
@@ -56,7 +58,7 @@ const commitInput: PublishCommitInput = {
   userId: USER,
   draftId: DRAFT,
   secretHash: 'a'.repeat(64),
-  idemKey: '6f1d2c3b-4a5e-4f60-8b7c-9d0e1f2a3b4c',
+  idemKey: idem,
   bodyHash: 'b'.repeat(64),
   contentRev: 3,
   pointId: PONTO,
@@ -207,7 +209,7 @@ describe('PgRequestPublishStore.abort', () => {
     const { client, chamadas } = clienteFalso(resposta({ ok: true } as Partial<typeof linhaVazia>));
     const out = await new PgRequestPublishStore(client).abort({
       userId: USER,
-      idemKey: '6f1d2c3b-4a5e-4f60-8b7c-9d0e1f2a3b4c',
+      idemKey: idem,
       bodyHash: 'b'.repeat(64),
     });
     expect(out).toBe(true);
@@ -228,7 +230,7 @@ describe('isolamento do adaptador', () => {
     const store = new PgRequestPublishStore(client);
     await store.begin(beginInput);
     await store.commit(commitInput);
-    await store.abort({ userId: USER, idemKey: '6f1d2c3b-4a5e-4f60-8b7c-9d0e1f2a3b4c', bodyHash: 'b'.repeat(64) });
+    await store.abort({ userId: USER, idemKey: idem, bodyHash: 'b'.repeat(64) });
     for (const sql of todas) {
       expect(sql).toMatch(/^select (\* from )?private\.request_publish_/);
       expect(sql).not.toMatch(/\b(insert|update|delete)\b|\bapp\./i);
