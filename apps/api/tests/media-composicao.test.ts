@@ -16,6 +16,10 @@ import { montarMidia, MEDIA_FABRICA_PENDENCIA, MEDIA_GALERIA_PENDENCIA } from '.
 import { ReduceCounters } from '../src/media/media-reduce-service.js';
 import { ReduceGate } from '../src/media/reduce-gate.js';
 
+/** Segredo sentinela e nomes montados por partes: o gate de segredos nao ve atribuicao literal em teste. */
+const SENHA_SENTINELA = 'senha';
+const NOME_CHAVE_IP = ['DRAFT', 'IP', 'HMAC', 'KEY'].join('_');
+const NOME_CHAVE_STORAGE = ['SUPABASE', 'SECRET', 'KEY'].join('_');
 const SITE = 'https://fastpro.example.test';
 const LIBERACAO = 'MEDIA_UPLOAD_ENABLED (liberacao explicita)';
 const SENTINELA_APP_API = `postgres://sentinela-app-api-u1:${SENHA_SENTINELA}@db.example.test/app`;
@@ -25,10 +29,6 @@ const SENTINELA_STORAGE = 'sentinela-service-key-storage-s4-0123456789';
 const SENTINELA_URL = 'https://sentinela-projeto-u5.supabase.example.test';
 const COOKIE = '__Host-fp_draft';
 const SEGREDO = 'B'.repeat(43);
-/** Segredo sentinela e nomes montados por partes: o gate de segredos nao ve atribuicao literal em teste. */
-const SENHA_SENTINELA = 'senha';
-const NOME_CHAVE_IP = ['DRAFT', 'IP', 'HMAC', 'KEY'].join('_');
-const NOME_CHAVE_STORAGE = ['SUPABASE', 'SECRET', 'KEY'].join('_');
 
 const ENV_COMPLETO: Readonly<Record<string, string>> = {
   MEDIA_UPLOAD_ENABLED: '1',
