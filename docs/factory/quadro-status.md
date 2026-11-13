@@ -4,7 +4,7 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (80)
+## Backlog (79)
 
 | Issue | Título |
 |---|---|
@@ -71,7 +71,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #108 | [E11] E-mails de seleção, cancelamento e desistência |
 | #109 | [E11] Lembretes de prazo, trial e ciclo |
 | #115 | [E12] Estorno e chargeback manual |
-| #119 | [E13] Expurgos operacionais |
 | #120 | [E13] Direitos do titular (dsr_case) |
 | #121 | [E13] Consentimentos e trilha de revelação |
 | #122 | [E13] Termos, privacidade e DPO |
@@ -89,23 +88,24 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #136 | [E7] Mensagem automática do aceite |
 | #137 | [E11] Canal “no site” |
 
-## Product Owner (1)
+## Product Owner (2)
 
 | Issue | Título |
 |---|---|
+| #119 | [E13] Expurgos operacionais |
 | #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
 
-## Arquitetura (1)
-
-| Issue | Título |
-|---|---|
-| #37 | [E2] Cobertura booleana sem contagem |
-
-## Desenvolvimento (2)
+## Arquitetura (2)
 
 | Issue | Título |
 |---|---|
 | #36 | [E2] Descoberta por raio e online nacional |
+| #37 | [E2] Cobertura booleana sem contagem |
+
+## Desenvolvimento (1)
+
+| Issue | Título |
+|---|---|
 | #43 | [E3] Revisão e confirmação expressa |
 
 ## Code Review (0)
@@ -179,6 +179,10 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #110 | [E11] Teste de ausência de interruptor |
 
-## Aguardando aprovação (0)
+## Aguardando aprovação (1)
+
+| Issue | Título |
+|---|---|
+| #42 | [E3] Pré-visualização e reordenação de fotos |
 
 ## Bloqueado (0)
