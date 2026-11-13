@@ -6,6 +6,7 @@ globalThis.fetch = () => {
 };
 
 import { describe, expect, it } from 'vitest';
+import { inspect } from 'node:util';
 import { createServer, request, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { SqlClient } from '@fastpro/db';
@@ -233,5 +234,98 @@ describe('E3 app: 404 uniforme das rotas de midia sem montagem (CA-03)', () => {
       expect(r.status).toBe(404);
       expect(r.body).toBe('');
     });
+  });
+});
+
+/** Todas as formas comuns de serializar ou exibir um valor (erros de serializacao entram pela mensagem). */
+function visoes(valor: unknown): string {
+  const saidas: string[] = [];
+  const tenta = (f: () => string, rotulo: string) => {
+    try {
+      saidas.push(f());
+    } catch (e) {
+      saidas.push(`${rotulo}:${(e as Error).message}`);
+    }
+  };
+  tenta(() => JSON.stringify(valor), 'json');
+  tenta(() => inspect(valor, { showHidden: true, depth: null, getters: true, showProxy: true }), 'inspect');
+  tenta(() => String(valor), 'string');
+  tenta(() => JSON.stringify(structuredClone(valor)), 'clone');
+  tenta(() => JSON.stringify(Reflect.ownKeys(valor as object)), 'keys');
+  tenta(() => JSON.stringify(Object.entries(valor as object)), 'entries');
+  return saidas.join('\n');
+}
+
+// RISCO #141 (104 §2.3 e §3.2): a chave de servico do Storage e os segredos do ambiente nao podem aparecer em
+// nenhuma serializacao de options nem de nenhuma porta, mesmo com os adaptadores reais (Storage de quarentena e reducao).
+describe('E3 montarMidia: segredos fora de qualquer serializacao de options e das portas (CA-05, RISCO #141)', () => {
+  const SEGREDOS = [SENTINELA_STORAGE, SENTINELA_CHAVE_IP, SENTINELA_APP_API, SENTINELA_APP_SYSTEM];
+
+  it('options, cada porta e o resultado completo nao revelam nenhum segredo sentinela em nenhuma forma', () => {
+    const fetchNuncaChamado = (() => {
+      throw new Error('rede bloqueada na serializacao');
+    }) as unknown as typeof fetch;
+    const r = montarMidia(ENV_COMPLETO, {
+      abrirCliente: espiao([]),
+      fetchImpl: fetchNuncaChamado,
+      galeria: GALERIA_FALSA,
+    });
+    expect(r.options).toBeDefined();
+    const opcoes = r.options;
+    if (opcoes === undefined) return;
+
+    // Adaptadores reais: o Storage de quarentena e o da reducao guardam a chave; isso precisa estar confirmado.
+    expect(opcoes.deps.storage.constructor.name).toBe('SupabaseQuarantineStorage');
+    expect(opcoes.deps.reduce.storage.constructor.name).toBe('SupabaseMediaReduceStorage');
+
+    const portas: unknown[] = [
+      r,
+      opcoes,
+      opcoes.deps,
+      opcoes.deps.store,
+      opcoes.deps.storage,
+      opcoes.deps.rate,
+      opcoes.deps.hasher,
+      opcoes.deps.clock,
+      opcoes.deps.reduce,
+      opcoes.deps.reduce.store,
+      opcoes.deps.reduce.storage,
+      opcoes.deps.reduce.reducer,
+      opcoes.deps.reduce.gate,
+      opcoes.deps.reduce.contadores,
+      opcoes.galeria,
+      opcoes.galeria?.storage,
+      opcoes.galeria?.store,
+      opcoes.galeria?.rate,
+      opcoes.galeria?.hasher,
+      opcoes.galeria?.clock,
+    ];
+    for (const porta of portas) {
+      const texto = visoes(porta);
+      for (const segredo of SEGREDOS) {
+        expect(texto).not.toContain(segredo);
+      }
+    }
+    // Conferencia direta dos dois adaptadores que guardam a chave.
+    for (const adaptador of [opcoes.deps.storage, opcoes.deps.reduce.storage]) {
+      expect(JSON.stringify(adaptador)).not.toContain(SENTINELA_STORAGE);
+      expect(inspect(adaptador, { showHidden: true, depth: null })).not.toContain(SENTINELA_STORAGE);
+    }
+  });
+});
+
+describe('E3 montarMidia: SITE_URL invalida (pendencia sem eco do valor)', () => {
+  it('SITE_URL malformada deixa a midia fechada com a pendencia SITE_URL (invalida) e sem o valor', () => {
+    const valorInvalido = 'sentinela-site-invalido-u7';
+    const r = montarMidia({ ...ENV_COMPLETO, SITE_URL: valorInvalido }, { abrirCliente: espiao([]) });
+    expect(r.options).toBeUndefined();
+    expect(r.pendencias).toEqual(['SITE_URL (invalida)']);
+    expect(JSON.stringify(r.pendencias)).not.toContain(valorInvalido);
+  });
+
+  it('SITE_URL vazia continua sendo pendencia de ausencia (SITE_URL), nao de invalidez', () => {
+    const r = montarMidia({ ...ENV_COMPLETO, SITE_URL: '  ' }, { abrirCliente: espiao([]) });
+    expect(r.options).toBeUndefined();
+    expect(r.pendencias).toEqual(['SITE_URL']);
   });
 });

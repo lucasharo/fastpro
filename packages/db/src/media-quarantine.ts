@@ -212,13 +212,21 @@ export interface QuarantineStorageOpcoes {
  */
 export class SupabaseQuarantineStorage implements QuarantineStoragePort {
   private readonly fetchImpl: typeof fetch;
+  private readonly baseUrl: string;
+  /**
+   * Chave de servico em campo privado (#): nao e propriedade enumeravel nem visivel. JSON.stringify,
+   * util.inspect (inclusive showHidden), structuredClone e Reflect.ownKeys nao a revelam (#141, RISCO de serializacao).
+   */
+  readonly #serviceKey: string;
 
-  constructor(private readonly opts: QuarantineStorageOpcoes) {
+  constructor(opts: QuarantineStorageOpcoes) {
+    this.baseUrl = opts.baseUrl;
+    this.#serviceKey = opts.serviceKey;
     this.fetchImpl = opts.fetchImpl ?? fetch;
   }
 
   private cabecalhos(extra: Record<string, string> = {}): Record<string, string> {
-    return { authorization: `Bearer ${this.opts.serviceKey}`, apikey: this.opts.serviceKey, ...extra };
+    return { authorization: `Bearer ${this.#serviceKey}`, apikey: this.#serviceKey, ...extra };
   }
 
   private caminho(key: string): string {
@@ -241,7 +249,7 @@ export class SupabaseQuarantineStorage implements QuarantineStoragePort {
    */
   async createUploadUrl(key: string): Promise<{ readonly url: string }> {
     const path = this.caminho(key);
-    const res = await this.chamar(`${this.opts.baseUrl}/storage/v1/object/upload/sign/${MEDIA_BUCKET}/${path}`, {
+    const res = await this.chamar(`${this.baseUrl}/storage/v1/object/upload/sign/${MEDIA_BUCKET}/${path}`, {
       method: 'POST',
       headers: this.cabecalhos({ 'content-type': 'application/json' }),
       body: '{}',
@@ -250,12 +258,12 @@ export class SupabaseQuarantineStorage implements QuarantineStoragePort {
     const corpo = (await res.json().catch(() => null)) as { url?: unknown } | null;
     if (corpo === null || typeof corpo.url !== 'string' || corpo.url.length === 0) throw new QuarantineStorageError();
     const relativo = corpo.url.startsWith('/storage/v1') ? corpo.url : `/storage/v1${corpo.url}`;
-    return { url: `${this.opts.baseUrl}${relativo}` };
+    return { url: `${this.baseUrl}${relativo}` };
   }
 
   async stat(key: string): Promise<{ readonly bytes: number } | null> {
     const path = this.caminho(key);
-    const res = await this.chamar(`${this.opts.baseUrl}/storage/v1/object/info/${MEDIA_BUCKET}/${path}`, {
+    const res = await this.chamar(`${this.baseUrl}/storage/v1/object/info/${MEDIA_BUCKET}/${path}`, {
       method: 'GET',
       headers: this.cabecalhos(),
     });
@@ -269,7 +277,7 @@ export class SupabaseQuarantineStorage implements QuarantineStoragePort {
 
   async remove(key: string): Promise<void> {
     const path = this.caminho(key);
-    const res = await this.chamar(`${this.opts.baseUrl}/storage/v1/object/${MEDIA_BUCKET}/${path}`, {
+    const res = await this.chamar(`${this.baseUrl}/storage/v1/object/${MEDIA_BUCKET}/${path}`, {
       method: 'DELETE',
       headers: this.cabecalhos(),
     });
@@ -278,7 +286,7 @@ export class SupabaseQuarantineStorage implements QuarantineStoragePort {
   }
 
   async listOlderThan(antesDeMs: number, limite: number): Promise<readonly string[]> {
-    const res = await this.chamar(`${this.opts.baseUrl}/storage/v1/object/list/${MEDIA_BUCKET}`, {
+    const res = await this.chamar(`${this.baseUrl}/storage/v1/object/list/${MEDIA_BUCKET}`, {
       method: 'POST',
       headers: this.cabecalhos({ 'content-type': 'application/json' }),
       body: JSON.stringify({
@@ -308,17 +316,25 @@ export class SupabaseQuarantineStorage implements QuarantineStoragePort {
  */
 export class SupabaseMediaReduceStorage implements MediaReduceStoragePort {
   private readonly fetchImpl: typeof fetch;
+  private readonly baseUrl: string;
+  /**
+   * Chave de servico em campo privado (#): nao e propriedade enumeravel nem visivel. JSON.stringify,
+   * util.inspect (inclusive showHidden), structuredClone e Reflect.ownKeys nao a revelam (#141, RISCO de serializacao).
+   */
+  readonly #serviceKey: string;
 
-  constructor(private readonly opts: QuarantineStorageOpcoes) {
+  constructor(opts: QuarantineStorageOpcoes) {
+    this.baseUrl = opts.baseUrl;
+    this.#serviceKey = opts.serviceKey;
     this.fetchImpl = opts.fetchImpl ?? fetch;
   }
 
   private cabecalhos(extra: Record<string, string> = {}): Record<string, string> {
-    return { authorization: `Bearer ${this.opts.serviceKey}`, apikey: this.opts.serviceKey, ...extra };
+    return { authorization: `Bearer ${this.#serviceKey}`, apikey: this.#serviceKey, ...extra };
   }
 
   private url(bucket: string, path: string): string {
-    return `${this.opts.baseUrl}/storage/v1/object/${bucket}/${path}`;
+    return `${this.baseUrl}/storage/v1/object/${bucket}/${path}`;
   }
 
   private async chamar(url: string, init: RequestInit): Promise<Response> {
@@ -366,7 +382,7 @@ export class SupabaseMediaReduceStorage implements MediaReduceStoragePort {
   }
 
   async statReduced(id: string): Promise<{ readonly bytes: number } | null> {
-    const res = await this.chamar(`${this.opts.baseUrl}/storage/v1/object/info/${MEDIA_REDUCED_BUCKET}/${this.chaveReduzida(id)}`, {
+    const res = await this.chamar(`${this.baseUrl}/storage/v1/object/info/${MEDIA_REDUCED_BUCKET}/${this.chaveReduzida(id)}`, {
       method: 'GET',
       headers: this.cabecalhos(),
     });
