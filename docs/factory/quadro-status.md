@@ -1,6 +1,6 @@
 # Quadro da fábrica (fonte da verdade local)
 
-Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado de tempos em tempos (não a cada passo). Atualizado em 2026-11-12 15:23 UTC a partir do quadro do GitHub.
+Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado de tempos em tempos (não a cada passo). Atualizado em 2026-11-13 12:30 UTC (local).
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
@@ -117,7 +117,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
 | #50 | [E4] Documentos de identidade |
 
-## Concluído (54)
+## Concluído (55)
 
 | Issue | Título |
 |---|---|
@@ -159,6 +159,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #40 | [E3] Redução e reencode das fotos |
 | #41 | [E3] Remoção de EXIF e tipo por conteúdo |
 | #42 | [E3] Pré-visualização e reordenação de fotos |
+| #43 | [E3] Revisão e confirmação expressa |
 | #48 | [E4] Cadastro profissional com CPF/CNPJ cifrado |
 | #49 | [E4] Perfil: serviços, base e raio |
 | #83 | [E7] Acesso excepcional a conversa |
@@ -182,10 +183,9 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #110 | [E11] Teste de ausência de interruptor |
 
-## Aguardando aprovação (1)
+## Aguardando aprovação (0)
 
 | Issue | Título |
 |---|---|
-| #43 | [E3] Revisão e confirmação expressa |
 
 ## Bloqueado (0)
