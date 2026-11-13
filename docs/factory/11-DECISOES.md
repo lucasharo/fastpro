@@ -373,3 +373,7 @@ Recomendadas pelo lider; o usuario pode vetar (aguardando confirmacao).
 - Regra daqui em diante: todo commit usa `git commit -m ... -- <caminhos>` (so os arquivos da Issue) e confere `git diff --cached --stat` antes.
 - Desvio registrado: migracoes aplicadas pelo executor do repositorio (`corepack pnpm db:migrate`, tabela ops.schema_migration, dry-run transacional, documentado em supabase/README.md) e nao por `npx supabase db push`, que usa outra tabela de historico e poderia reexecutar as 59 migracoes. O MCP do Supabase continua proibido.
 - db:test completo no DEV: 22 falhas fora da #49 (D-02b, T-BK-09, T-H019-09..16, T-H018-11/13, D-01, D-10, T-DB02, desfazer de rascunho, CA-4 e T-CA10 de geo). Registrado para triagem; nao bloqueia a #49.
+
+## Rodada 39 (respostas do usuario, 2026-11-12)
+- **145:** SIM. A #41 em Concluido foi decisao do usuario (CONCLUIR). Nada a desfazer.
+- **144:** o usuario respondeu "sim" a "CONCLUIR ou BLOQUEAR a #129?". Resposta ambigua entre as duas opcoes; confirmacao pedida antes de mover. A #129 permanece em Aguardando aprovacao.
