@@ -153,7 +153,7 @@ Sequência sugerida (o DEV executa nesta ordem; spikes com conta só após autor
 | 0.9 | **S-06 (local)**, leituras S-03/S-04/S-11/S-08 | — | Sem conta |
 | 0.10 | **H-008** [M] tick de jobs | H-005; S-02, S-10 | Implementa A, B ou C conforme S-10; **C (oportunista) sempre presente** |
 | 0.11 | **H-009** [M] hospedagem (web, API função única, admin) | H-001; S-09; BLQ-EXEC | Hobby só em dev |
-| 0.12 | **H-010** [P] keep-alive + backup manual | H-003 | Periodicidade pendente (BK-7; recomendação b) |
+| 0.12 | **H-010** [P] keep-alive | H-003 | — |
 Saída M0: S-01..S-04, S-09..S-11 com resultado registrado; S-02 e S-10 decididos; H-001..H-010 concluídos.
 
 ### 3.2 Onda 1 — Identidade e base
@@ -204,7 +204,7 @@ Saída M2: C-05..C-11, C-13, C-15, F-02..F-08, F-12, B-01..B-10 (relógio contro
 
 ### 3.6 Onda 5 e portões posteriores
 - **Onda 5 (M3, ensaio fechado, sem cobrança real e sem e-mail real):** avaliações (H-086..H-091), admin (H-103..H-105, H-107, H-108; H-106 é do Gate M4 apesar de `14` §2 listá-la na Onda 5), retenção/LGPD (H-109, H-110, H-112, H-114), hardening (H-115..H-121).
-- **Gate M4 (bloqueado):** H-054, H-106, H-111, H-113 + domínio verificado no Resend, Vercel Pro, backup, tarifas MP, L1–L4 e L7; decisão humana CONCLUIR/BLOQUEAR.
+- **Gate M4 (bloqueado):** H-054, H-106, H-111, H-113 + domínio verificado no Resend, Vercel Pro, tarifas MP, L1–L4 e L7; decisão humana CONCLUIR/BLOQUEAR.
 - **Onda 6 (mobile):** H-122..H-124; não planejada para execução (SD-13, S-07).
 
 ### 3.7 Ajustes de ordem encontrados no backlog (recomendações ao Orquestrador)
@@ -459,7 +459,7 @@ Leituras: (a) **M1 (Ondas 0–3) = ≈ 220 pontos, cerca de metade do trabalho s
 | V-7 | Cota do Resend (100/dia, 3.000/mês) e **domínio inexistente** | sem login real; avisos adiados | A/A | Mailpit em dev; domínio antes do M4 (BK-10); contador, reserva, degradação |
 | V-8 | Mercado Pago: tarifas não obtidas; recorrência 3/6/12 meses incerta; sandbox/Pix e webhook a confirmar | billing pode virar avulso por ciclo | A/M | S-03; `PaymentGatewayPort`; livro `access_grant` independe do gateway |
 | V-9 | Vercel Hobby é não comercial | cobrar exige Pro | A/A (verificado) | Hobby só em dev/sandbox; Pro antes da primeira cobrança (H-054) |
-| V-10 | Supabase Free: pausa em 1 semana e **sem backup** | perda e indisponibilidade | A/A | keep-alive, backup manual (H-010), restauração testada (H-119); não usar dados reais antes |
+| V-10 | Supabase Free: pausa em 1 semana | perda e indisponibilidade | A/A | keep-alive (H-010); não usar dados reais antes |
 | V-11 | Máximo de 2 projetos Supabase ativos | sem espaço para dev remoto | M/M | dev 100% local; 1 projeto spikes/staging, 1 produção; admin no mesmo projeto |
 | V-12 | Ambiente Windows 11 Home: Docker Desktop/WSL2 ausentes, licença e desempenho | A1/A2 não montam | M/M | confirmar no Gate 3 antes de H-003; alternativa: runtime compatível com Docker `[NÃO VERIFICADO]`; CRLF tratado por `.gitattributes` |
 | V-13 | Minutos de CI do plano gratuito | CI bloqueado | M/M | filtros, cache, concorrência N≥100 só à noite; medir na Onda 0 |
@@ -480,7 +480,7 @@ Nenhum risco acima justifica mudar a stack aprovada; V-1, V-2, V-4 e V-8 podem f
 1. **Repositório:** `git init` em `D:\projetos\fastpro` (a pasta já tem `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` e `docs/`); criar o repositório remoto privado e a proteção da `main` (PR obrigatório, checks, sem force-push) — **SD-14/Gate 2**; primeiro commit apenas com documentação existente + `.gitignore`/`.gitattributes`.
 2. **Ferramentas:** ativar pnpm via Corepack; instalar Docker (WSL2) e Supabase CLI; confirmar versões; registrar no PR de H-001. **Nada foi instalado por este plano.**
 3. **Autorizações por spike (BK-6, recomendação b):** começar só pelo que não exige conta (S-02L, S-01, S-05, S-06 e leituras). Contas/projetos (Supabase Free, Vercel Hobby, Mercado Pago sandbox, Mapbox com cartão e limite, Resend + domínio) só quando o spike da vez exigir.
-4. **Diretrizes de rotina já decididas e adotadas aqui:** BK-7 (b) backup semanal e antes de migração destrutiva; BK-9 (a) seed de 25 grupos só em dev; BK-11 (a) matriz de telas admin pela AMB-08 A. Os BK-1..5 e BK-8 já estão resolvidos pelas decisões 35–40.
+4. **Diretrizes de rotina já decididas e adotadas aqui:** BK-9 (a) seed de 25 grupos só em dev; BK-11 (a) matriz de telas admin pela AMB-08 A. Os BK-1..5 e BK-8 já estão resolvidos pelas decisões 35–40.
 
 ### 10.2 As cinco primeiras histórias sugeridas (Onda 0)
 | Ordem | História | Por que primeiro | Entrega verificável | Spikes que acompanham |
