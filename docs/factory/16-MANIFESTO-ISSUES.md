@@ -60,7 +60,7 @@ Bloqueio: <se houver>
 | 18 | H-007 | [E0] Logs sem PII e varredura | `epic:E0`, `wave:0`, `size:M`, `type:infra` | H-001 | Objetivo: allowlist de log. Refs: P8, ADR-013. Testes: T-11 |
 | 19 | H-008 | [E0] Tick de jobs (A, B ou C) | `epic:E0`, `wave:0`, `size:M`, `type:infra` | H-005, S-02, S-10 | Objetivo: jobs sem cron pago. Refs: ADR-018, R-30. Testes: Q-14, F-08 |
 | 20 | H-009 | [E0] Hospedagem Vercel (web, API e admin) | `epic:E0`, `wave:0`, `size:M`, `type:infra`, `block:execucao` | H-001, S-09 | Objetivo: função única e origem comum. Refs: ADR-018, decisão 28. Testes: healthcheck |
-| 21 | H-010 | [E0] Keep-alive e backup manual | `epic:E0`, `wave:0`, `size:P`, `type:infra` | H-003 | Objetivo: procedimento de backup. Refs: ADR-020, R-08. Testes: D-01 (ver H-119). Decisão: periodicidade (BK-7) |
+| 21 | H-010 | [E0] Keep-alive | `epic:E0`, `wave:0`, `size:P`, `type:infra` | H-003 | Objetivo: procedimento de keep-alive. Refs: ADR-020, R-08. |
 
 ## 3. Épico E1 — Identidade e sessão
 
@@ -129,7 +129,7 @@ Bloqueio: <se houver>
 | 62 | H-051 | [E5] Adesão ao cartão e Pix manual | `epic:E5`, `wave:4`, `size:M`, `type:feature` | H-047 | Objetivo: sem renovação sem adesão. Refs: RF-058. Testes: FA-006 |
 | 63 | H-052 | [E5] Cancelamento com acesso até o fim | `epic:E5`, `wave:4`, `size:P`, `type:feature` | H-049, H-050 | Objetivo: cancel_at_period_end. Refs: RF-061. Testes: B-08 |
 | 64 | H-053 | [E5] Reconciliação diária MP × livro | `epic:E5`, `wave:4`, `size:M`, `type:feature` | H-048, H-005, H-008 | Objetivo: relatório, sem correção automática. Refs: 08 §8.8. Testes: T-09 |
-| 65 | H-054 | [E5] Gate de cobrança real | `epic:E5`, `wave:gate-M4`, `size:P`, `type:gate`, `block:decisao`, `block:juridico-L1`, `block:juridico-L4`, `block:juridico-L7` | H-009, H-010, H-047, H-048 | Objetivo: checklist de cobrança. Refs: decisões 28, 29; ADR-020. Testes: checklist |
+| 65 | H-054 | [E5] Gate de cobrança real | `epic:E5`, `wave:gate-M4`, `size:P`, `type:gate`, `block:decisao`, `block:juridico-L1`, `block:juridico-L4`, `block:juridico-L7` | H-009, H-047, H-048 | Objetivo: checklist de cobrança. Refs: decisões 28, 29; ADR-020. Testes: checklist |
 
 ## 8. Épico E6 — Distribuição e aceites
 
@@ -229,7 +229,7 @@ Bloqueio: <se houver>
 | 122 | H-111 | [E13] Direitos do titular (dsr_case) | `epic:E13`, `wave:gate-M4`, `size:G`, `type:feature`, `block:juridico-L1`, `block:juridico-L2` | H-109 | Objetivo: acesso, correção e eliminação. Refs: RF-140 |
 | 123 | H-112 | [E13] Consentimentos e trilha de revelação | `epic:E13`, `wave:5`, `size:M`, `type:feature` | H-033, H-058 | Objetivo: revelar telefone e endereço com registro. Refs: RF-016, RF-138, RF-139. Testes: T-03, FA-030 |
 | 124 | H-113 | [E13] Termos, privacidade e DPO | `epic:E13`, `wave:gate-M4`, `size:G`, `type:legal`, `block:juridico-L2`, `block:juridico-L7` | — | Objetivo: textos validados. Refs: RF-078, RF-140, RF-141, SD-11 |
-| 125 | H-114 | [E13] Runbook de incidente e reconciliação | `epic:E13`, `wave:5`, `size:M`, `type:infra` | H-010, H-053, H-119 | Objetivo: incidente e pós-restauração. Refs: D-03 a D-09. Testes: D-03, D-04 |
+| 125 | H-114 | [E13] Runbook de incidente e reconciliação | `epic:E13`, `wave:5`, `size:M`, `type:infra` | H-053 | Objetivo: incidente e reconciliação. Refs: D-04 a D-07 e D-09 (D-03 e D-08 removidos, #151). Testes: D-04 |
 
 ## 16. Épico E15 — Hardening e release
 
@@ -239,9 +239,9 @@ Bloqueio: <se houver>
 | 127 | H-116 | [E15] Testes de injeção e abuso | `epic:E15`, `wave:5`, `size:M`, `type:infra` | H-004 | Objetivo: XSS, CSRF, SSRF. Refs: T-10 |
 | 128 | H-117 | [E15] Suíte de concorrência e falha | `epic:E15`, `wave:5`, `size:G`, `type:infra` | H-058, H-059, H-062, H-081, H-084, H-048, H-005 | Objetivo: C-01 a C-18, F-01 a F-12. Refs: 11 §7 e §8, I-01 a I-22 |
 | 129 | H-118 | [E15] Acessibilidade WCAG 2.2 AA com evidência | `epic:E15`, `wave:5`, `size:G`, `type:feature`, `block:juridico-L5` | H-002, H-029, H-066 | Objetivo: teclado, leitor, contraste, responsivo. Refs: RF-161, RF-162, RF-164. Testes: FA-034, T-15 |
-| 130 | H-119 | [E15] Teste de restauração de backup | `epic:E15`, `wave:5`, `size:M`, `type:infra` | H-010, H-003, H-117 | Objetivo: restauração em ambiente limpo. Refs: 11 §9. Testes: D-01, D-02 |
+| 130 | H-119 | REMOVIDA do escopo (Rodada 73/75, #151). Texto original no histórico do git. | — | — | — |
 | 131 | H-120 | [E15] Dados sintéticos de demonstração | `epic:E15`, `wave:5`, `size:P`, `type:infra` | H-018, H-007 | Objetivo: seeds sem dado real. Refs: RF-163. Testes: T-11 |
-| 132 | H-121 | [E15] Gate de release do MVP web | `epic:E15`, `wave:gate-M4`, `size:P`, `type:gate`, `block:decisao` | H-117, H-119, H-093, H-054 | Objetivo: checklist; decisão humana. Refs: 11 §11, ADR-020 |
+| 132 | H-121 | [E15] Gate de release do MVP web | `epic:E15`, `wave:gate-M4`, `size:P`, `type:gate`, `block:decisao` | H-117, H-093, H-054 | Objetivo: checklist; decisão humana. Refs: 11 §11, ADR-020 |
 
 ## 17. Épico E14 — Mobile (fase posterior)
 
