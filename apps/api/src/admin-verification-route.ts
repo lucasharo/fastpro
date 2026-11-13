@@ -29,6 +29,9 @@ export const VERIFICACAO_BODY_LIMIT_BYTES = 4096;
 export const VERIFICACAO_CASOS_PATH = '/v1/admin/verificacao/casos';
 const BASE = VERIFICACAO_CASOS_PATH;
 const NO_STORE = { 'Cache-Control': 'no-store' } as const;
+/** Texto fixo da recusa de aprovacao com original vivo (Issue 53, dec. 534). Sem identificador do outro perfil. */
+const MENSAGEM_ORIGINAL_VIVO =
+  'Este cadastro não pode ser aprovado enquanto o documento estiver em uso por outro perfil ativo. Recuse ou aguarde.';
 
 export interface AdminVerificationRouteOptions {
   /** Guarda do banco para o segredo do cookie (mesma das rotas de caso). Nulo = sem sessao valida. */
@@ -42,7 +45,7 @@ export interface AdminVerificationRouteOptions {
   readonly leitor: (ctx: ContextoAtor, caseId: string, motivo: string, now: Date) => IdentityDocReaderPort;
 }
 
-type Acao = 'listar' | 'detalhe' | 'atribuir' | 'reatribuir' | 'leitura' | 'decisao';
+type Acao = 'listar' | 'detalhe' | 'duplicidade' | 'atribuir' | 'reatribuir' | 'leitura' | 'decisao';
 
 /** Rota -> acao. O id do caso e o quarto segmento de /v1/admin/verificacao/casos/{id}/... */
 function resolverRota(method: string, path: string): { acao: Acao; caseId: string | null } | null {
@@ -51,6 +54,7 @@ function resolverRota(method: string, path: string): { acao: Acao; caseId: strin
   if (partes.length === 0) return method === 'GET' ? { acao: 'listar', caseId: null } : null;
   const [caseId = null, acao, sub] = partes;
   if (partes.length === 1) return method === 'GET' ? { acao: 'detalhe', caseId } : null;
+  if (partes.length === 2 && acao === 'duplicidade') return method === 'GET' ? { acao: 'duplicidade', caseId } : null;
   if (method !== 'POST') return null;
   if (partes.length === 2 && acao === 'atribuir') return { acao: 'atribuir', caseId };
   if (partes.length === 2 && acao === 'reatribuir') return { acao: 'reatribuir', caseId };
@@ -76,6 +80,8 @@ function paraResposta(err: unknown): AdminResponse {
         });
       case 'entrada_invalida':
         return adminReply(400, { code: 'entrada_invalida' });
+      case 'original_vivo':
+        return adminReply(422, { code: 'original_vivo', message: MENSAGEM_ORIGINAL_VIVO });
       default:
         return adminReply(422, { code: err.codigo });
     }
@@ -226,6 +232,14 @@ async function despachar(
         versao,
       });
       return { status: 200, headers: NO_STORE, body: { status: r.status, versao: r.versao } };
+    }
+    case 'duplicidade': {
+      const v = await service.duplicateView(ctx, caseId ?? '');
+      return {
+        status: 200,
+        headers: NO_STORE,
+        body: { duplicada: v.duplicada, originalId: v.originalId, originalStatus: v.originalStatus, podeAprovar: v.podeAprovar },
+      };
     }
     case 'leitura': {
       const documento = typeof obj.documento === 'string' ? obj.documento : '';

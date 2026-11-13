@@ -13,6 +13,7 @@ import {
   type LinhaFila,
   type MotivoDecisao,
   type VerificationCasePort,
+  visaoDuplicidade,
 } from '@fastpro/domain';
 
 const SQL_LISTA = 'select * from private.verification_queue_list($1::uuid, $2::text, $3::text, $4::integer, $5::timestamptz, $6::uuid, $7::timestamptz)';
@@ -23,6 +24,11 @@ const SQL_REATRIBUIR =
 const SQL_DECIDIR =
   'select * from private.verification_case_decide($1::uuid, $2::text, $3::uuid, $4::text, $5::text, $6::text, $7::integer, $8::timestamptz)';
 const SQL_RECURSO = 'select * from private.verification_case_appeal($1::uuid, $2::timestamptz)';
+const SQL_DUPLICIDADE =
+  'select * from private.verification_duplicate_view($1::uuid, $2::text, $3::uuid, $4::timestamptz)';
+
+/** Restricao unica do documento entre perfis vivos (Issue 46 / H-035). Colisao no aprovar vira original_vivo. */
+const RESTRICAO_DOCUMENTO_VIVO = 'professional_profile_document_hmac_vivo_key';
 
 /** SQLSTATE e codigos VRF do banco para codigos do dominio. 42501 e a negacao uniforme (CA-H039-02). */
 const CODIGOS_BANCO: Readonly<Record<string, CodigoErroVerificacao>> = {
@@ -35,11 +41,16 @@ const CODIGOS_BANCO: Readonly<Record<string, CodigoErroVerificacao>> = {
   VRF05: 'certificacao_pendente',
   VRF06: 'documento_indisponivel',
   VRF07: 'perfil_suspenso',
+  VRF08: 'original_vivo',
 };
 
 /** Erro do banco vira VerificacaoErro com codigo do dominio; qualquer outra falha segue como esta (503 na rota). */
 export function traduzirErroVerificacao(err: unknown): unknown {
-  const code = (err as { code?: unknown } | null)?.code;
+  const erro = err as { code?: unknown; constraint?: unknown } | null;
+  const code = erro?.code;
+  if (code === '23505' && erro?.constraint === RESTRICAO_DOCUMENTO_VIVO) {
+    return new VerificacaoErro('original_vivo');
+  }
   if (typeof code === 'string' && code in CODIGOS_BANCO) {
     return new VerificacaoErro(CODIGOS_BANCO[code] as CodigoErroVerificacao);
   }
@@ -163,6 +174,22 @@ export class PgVerificationCasePort implements VerificationCasePort {
       entrada.now.toISOString(),
     ]);
     return { status: texto(r.out_status), versao: Number(r.out_version) };
+  }
+
+  /** Visao da duplicidade para a Verificacao (CA-H040-16): so os campos da visao; nenhum dado do outro perfil. */
+  async duplicateView(ctx: ContextoAtor, entrada: { readonly caseId: string; readonly now: Date }) {
+    const r = await this.consulta1(SQL_DUPLICIDADE, [
+      ctx.actorId,
+      ctx.sessionHash,
+      entrada.caseId,
+      entrada.now.toISOString(),
+    ]);
+    return visaoDuplicidade({
+      duplicada: r.out_is_duplicate === true,
+      originalShortId: (r.out_original_short_id as string | null) ?? null,
+      originalStatus: texto(r.out_original_status),
+      canApprove: r.out_can_approve === true,
+    });
   }
 
   async receberRecurso(professionalId: string, now: Date): Promise<'ok' | 'sem_caso' | 'nao_elegivel' | 'recurso_ja_usado'> {
