@@ -26,3 +26,7 @@ backups/
 *.tsbuildinfo
 # H-035: copia publicada dos tokens (gerada por apps/web/scripts/copy-tokens.mjs; a fonte e packages/tokens)
 apps/web/public/tokens.css
+# H-030 (#43): saida do Playwright (relatorios e capturas); os binarios do navegador ficam fora do repositorio
+apps/web/test-results/
+apps/web/playwright-report/
+blob-report/
