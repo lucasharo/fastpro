@@ -84,3 +84,5 @@ export * from './plan-pricing.js';
 export * from './discovery-requests.js';
 // Issue 37 (H-024) | Adaptador Pg da cobertura booleana (private.coverage_for_request, so com ou sem).
 export * from './coverage-requests.js';
+// Issue 46 (H-033) | Adaptador do telefone e do consentimento (docs/factory/129-DESENHO-H033.md, §5).
+export * from './contact-consent.js';
