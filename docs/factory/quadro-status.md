@@ -101,19 +101,18 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #52 | [E4] Fila de verificação |
 
-## Code Review (1)
+## Code Review (0)
 
 | Issue | Título |
 |---|---|
-| #36 | [E2] Descoberta por raio e online nacional |
 
 ## QA (1)
 
 | Issue | Título |
 |---|---|
-| #151 | [E15] Remover backup, restauração e exportação de dados do escopo do projeto |
+| #36 | [E2] Descoberta por raio e online nacional |
 
-## Concluído (63)
+## Concluído (64)
 
 | Issue | Título |
 |---|---|
@@ -159,6 +158,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #44 | [E3] Publicação idempotente com 7 dias |
 | #48 | [E4] Cadastro profissional com CPF/CNPJ cifrado |
 | #49 | [E4] Perfil: serviços, base e raio |
+| #151 | [E15] Remover backup, restauração e exportação de dados do escopo do projeto |
 | #59 | [E5] Planos e preços em centavos |
 | #50 | [E4] Documentos de identidade |
 | #58 | [E5] Acesso comercial derivado |
