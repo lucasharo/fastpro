@@ -62,3 +62,5 @@ export * from './retention-store.js';
 // H-036 | Oferta do perfil profissional (servicos, base e raio) e adaptador da porta de coordenada.
 export * from './professional-offering.js';
 export * from './geo-point-store.js';
+// H-017 (Issue #30) | Auditoria da recusa de exclusividade de papeis (private.audit_append).
+export * from './role-exclusivity.js';

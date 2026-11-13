@@ -328,14 +328,31 @@ export class PgCustomerAccounts implements CustomerAccountPort {
     ]);
   }
 
+  /**
+   * H-017 (101 §4.1): garante o perfil de cliente no banco. Conta de administrador devolve 'reservado',
+   * que vira 'bloqueado' (link_invalido uniforme, sem revelar a conta). Nada e gravado nesse caso.
+   */
+  private async resultadoCliente(userId: string, nowMs: number): Promise<CustomerAccountResult> {
+    const perfil = await this.client.query('select * from private.customer_profile_ensure($1::uuid, $2::timestamptz)', [
+      userId,
+      iso(nowMs),
+    ]);
+    const status = (perfil.rows[0] as { out_status?: string } | undefined)?.out_status;
+    if (status === 'ok') return { status: 'ok', userId };
+    return status === 'reservado' ? { status: 'bloqueado' } : { status: 'falha' };
+  }
+
   async ensureCustomer(email: string, nowMs: number): Promise<CustomerAccountResult> {
     const achado = await this.client.query('select * from private.app_user_find($1)', [email]);
     const existente = achado.rows[0] as UserFindRow | undefined;
     if (existente) {
-      await this.gravarHmac(existente.out_user_id, email);
-      return existente.out_status === 'ativo'
-        ? { status: 'ok', userId: existente.out_user_id }
-        : { status: 'bloqueado' };
+      if (existente.out_status !== 'ativo') {
+        await this.gravarHmac(existente.out_user_id, email);
+        return { status: 'bloqueado' };
+      }
+      const resultado = await this.resultadoCliente(existente.out_user_id, nowMs);
+      if (resultado.status === 'ok') await this.gravarHmac(existente.out_user_id, email);
+      return resultado;
     }
 
     const criado = await this.authAdmin.createUser(email);
@@ -348,10 +365,13 @@ export class PgCustomerAccounts implements CustomerAccountPort {
     );
     const linha = gravado.rows[0] as UserFindRow | undefined;
     if (!linha) return { status: 'falha' };
-    await this.gravarHmac(linha.out_user_id, email);
-    return linha.out_status === 'ativo'
-      ? { status: 'ok', userId: linha.out_user_id }
-      : { status: 'bloqueado' };
+    if (linha.out_status !== 'ativo') {
+      await this.gravarHmac(linha.out_user_id, email);
+      return { status: 'bloqueado' };
+    }
+    const resultado = await this.resultadoCliente(linha.out_user_id, nowMs);
+    if (resultado.status === 'ok') await this.gravarHmac(linha.out_user_id, email);
+    return resultado;
   }
 }
 

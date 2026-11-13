@@ -17,3 +17,5 @@ export * from './professional-auth.js';
 export * from './professional-document.js';
 // H-016 | Elegibilidade do profissional e corpo de GET /v1/professional/me (logica pura).
 export * from './professional-account.js';
+// H-017 (Issue #30) | Exclusividade de papeis: codigos de regra e traducao do erro do banco (logica pura).
+export * from './role-exclusivity.js';

@@ -365,7 +365,7 @@ describe('adaptadores Pg com SqlClient simulado', () => {
   });
 
   it('PgCustomerAccounts: usuario existente nao chama o Auth; novo chama uma vez e grava', async () => {
-    const existente = clientFake([[{ out_user_id: USER_ID, out_status: 'ativo' }]]);
+    const existente = clientFake([[{ out_user_id: USER_ID, out_status: 'ativo' }], [{ out_status: 'ok' }]]);
     let criacoes = 0;
     const auth: AuthUserAdminPort = {
       async createUser(): Promise<AuthCreateResult> {
@@ -379,13 +379,24 @@ describe('adaptadores Pg com SqlClient simulado', () => {
     });
     expect(criacoes).toBe(0);
 
-    const novo = clientFake([[], [{ out_user_id: USER_ID, out_status: 'ativo' }]]);
+    const novo = clientFake([[], [{ out_user_id: USER_ID, out_status: 'ativo' }], [{ out_status: 'ok' }]]);
     expect(await new PgCustomerAccounts(novo.client, auth).ensureCustomer(EMAIL, NOW)).toEqual({
       status: 'ok',
       userId: USER_ID,
     });
     expect(criacoes).toBe(1);
     expect(novo.chamadas[1]?.sql).toContain('private.app_user_ensure(');
+    expect(novo.chamadas[2]?.sql).toContain('private.customer_profile_ensure(');
+  });
+
+  it('PgCustomerAccounts (H-017): conta de administrador recebe reservado, vira bloqueado e nao grava HMAC', async () => {
+    const admin = clientFake([[{ out_user_id: USER_ID, out_status: 'ativo' }], [{ out_status: 'reservado' }]]);
+    const auth: AuthUserAdminPort = { createUser: async () => ({ status: 'ja_existe' }) };
+    const hmac = (e: string) => `hmac:${e}`;
+    expect(await new PgCustomerAccounts(admin.client, auth, hmac).ensureCustomer(EMAIL, NOW)).toEqual({
+      status: 'bloqueado',
+    });
+    expect(admin.chamadas.some((c) => c.sql.includes('app_user_set_email_hmac'))).toBe(false);
   });
 
   it('PgCustomerAccounts: bloqueado vira bloqueado; e-mail ja existente no Auth vira falha', async () => {
