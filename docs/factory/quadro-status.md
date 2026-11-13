@@ -81,17 +81,17 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 | #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 
-## Product Owner (2)
+## Product Owner (1)
+
+| Issue | Título |
+|---|---|
+| #51 | [E4] Certificações para atividades regulamentadas |
+
+## Arquitetura (1)
 
 | Issue | Título |
 |---|---|
 | #46 | [E3] Opt-in de telefone no pedido |
-| #51 | [E4] Certificações para atividades regulamentadas |
-
-## Arquitetura (0)
-
-| Issue | Título |
-|---|---|
 
 ## Desenvolvimento (2)
 
