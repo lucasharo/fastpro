@@ -9,8 +9,12 @@ begin;
 drop function if exists private.trial_activate(uuid, text, timestamptz, uuid);
 drop function if exists private.identity_id_from_document_hmac(text);
 
-delete from audit.action_catalog
- where (action = 'billing.trial.activated' and object_type = 'access_grant')
-    or (action = 'billing.trial.denied' and object_type = 'professional_profile');
+-- So remove a linha do catalogo sem eventos que a referenciem (audit_event_action_fk, on delete restrict).
+delete from audit.action_catalog c
+ where ((c.action = 'billing.trial.activated' and c.object_type = 'access_grant')
+     or (c.action = 'billing.trial.denied' and c.object_type = 'professional_profile'))
+   and not exists (
+     select 1 from audit.audit_event e
+      where e.action = c.action and e.object_type = c.object_type);
 
 commit;
