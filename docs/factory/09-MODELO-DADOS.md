@@ -226,7 +226,6 @@ Controles: **Enc** = criptografia de aplicação em coluna/objeto com chave vers
 | Sessões, desafios, IP (HMAC) | app_session, auth_challenge | C2/C4 | sistema | hash/HMAC; TTL curto | — | RC-09 |
 | Auditoria | audit_event | C1/C2 | Auditor | append-only; sem PII em claro | próprio | RC-07 |
 | Logs operacionais | provedor de logs | C1 (sem PII) | engenharia | allowlist | — | RC-08 |
-| Backups | destino de backup | herda C3 | operador autorizado | criptografia com chave separada | sim | RC-11 |
 
 ## 8. Classes de retenção (mecanismo, sem prazos)
 | Classe | Dados | Gatilho típico (a definir) | Ação possível | Período |
@@ -241,12 +240,12 @@ Controles: **Enc** = criptografia de aplicação em coluna/objeto com chave vers
 | RC-08 | Logs operacionais, métricas | técnico | expurgo rotativo | prazo técnico `[PROPOSTA]` (curto, restrito ao armazenamento gratuito) |
 | RC-09 | Desafios, sessões, rascunhos, idempotência, inbox | técnico (TTL) | expurgo | TTL técnico `[PROPOSTA]` (ex.: desafio 15 min, rascunho configurável) — **não** são prazos legais |
 | RC-10 | Consentimentos de contato | — | reter prova do consentimento | `[PENDENTE JURÍDICO]` L1/L2 |
-| RC-11 | Backups | rotação | sobrescrever | `[PENDENTE JURÍDICO]` L1 (exclusão do titular × cópias) |
+| RC-11 | REMOVIDA do escopo (Rodada 73/75, #151). Texto original no histórico do git. | — | — | — |
 Mecanismo: `retention_policy` (valor nulo = política não aprovada ⇒ job **desligado**), `legal_hold`, jobs de expurgo idempotentes e auditados, eliminação de objetos em Storage no mesmo ciclo. "Sem prazo comercial" de avaliação **não** autoriza retenção indefinida (doc 06 §7).
 Pendências que afetam o modelo: exclusão de conta × auditoria/moderação/financeiro; exigência de exclusão de conta nas lojas na fase mobile `[NÃO VERIFICADO]` (ADR-019); localização dos dados (SD-11).
 
 ## 9. Orçamento de dados no plano gratuito [limites VERIFICADOS (doc 13); estimativas PROPOSTA/hipótese]
-Supabase Free: **banco 500 MB**, **Storage 1 GB** (upload máx. 50 MB), **egress 5 GB/mês**, 50.000 MAU, logs de 1 dia, **sem backup**, pausa após 1 semana, 2 projetos ativos. Pro a partir de US$ 25/mês (limites do Pro não lidos).
+Supabase Free: **banco 500 MB**, **Storage 1 GB** (upload máx. 50 MB), **egress 5 GB/mês**, 50.000 MAU, logs de 1 dia, pausa após 1 semana, 2 projetos ativos. Pro a partir de US$ 25/mês (limites do Pro não lidos).
 
 **Premissas (decisões 30–33):** 5 fotos por pedido, cada uma reduzida a **≤ 1.280 px e ≈ 0,5 MB**, guardando **só a versão reduzida**; chat **somente texto, sem anexos**; Storage = **fotos do pedido + documentos de verificação de identidade**. Divisão usada: fotos ≈ 70% de 1 GB ≈ **700 MB**; documentos ≈ 30% ≈ 300 MB (≈ 100–300 profissionais a 1–3 MB).
 | Item | Cálculo | Resultado |
