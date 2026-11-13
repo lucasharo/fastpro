@@ -415,3 +415,18 @@ Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
 Perguntas ao usuario (numeracao continua):
 - **157 (P-141-10, executor de migracoes):** `npx supabase db push/migration list` deu 403 nesta conta (relatado pelo DEV da #42) e `db push` usa outra tabela de historico; o executor do repositorio (`corepack pnpm db:migrate`, ops.schema_migration, dry-run transacional) e' o que todos os agentes usam. Recomendacao: formalizar `db:migrate` como o executor oficial e manter proibido o MCP do Supabase. Aguardando decisao.
 - **P-141-2 e P-141-8:** ja respondidas pelo fluxo: a #42 espera a decisao do usuario com a ressalva; o teste ponta a ponta da #141 espera a decisao 150 (senhas).
+
+## Rodada 43 (refino dos expurgos operacionais, #119 / H-110 — 103-REFINO-H110.md)
+Pergunta ao usuario (numeracao continua):
+- **158 (Q-H110-1, juridico/produto):** o detalhe do registro de acesso a fotos (media_access_log) pode ser removido por janela tecnica? Conflito: 09 §7 o classifica como RC-03 (prazo legal, H-109) e 09 §10 manda a remocao no H-110. Recomendacao: (a) rollup agora e remocao do detalhe so quando L1 definir o prazo. Alternativas: (b) remover em 90 dias ja; (c) tirar do escopo. Enquanto nao houver resposta, o desenho segue (a), que e' a opcao conservadora.
+Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar), todas em app_config, [PROPOSTA]:
+- **159 (Q2):** rascunho expira por 30 dias de inatividade.
+- **160 (Q3):** upload em quarentena sem conclusao expira em 24 h.
+- **161 (Q4):** foto de rascunho expirado sai junto com o rascunho, quando nunca ficou pronta.
+- **162 (Q5):** RC-08 (logs do provedor) so documentado como configuracao do provedor, sem codigo.
+- **163 (Q6):** legal_hold suspende tambem os TTL tecnicos de todo dado do sujeito.
+- **164 (Q7):** um evento de auditoria por execucao diaria, so com contagens.
+- **165 (Q8):** comecar sem a parte de quarentena (E1), que depende da #141; E2 a E4, E6 e E7 podem seguir; E5 e E8 ficam como bloco pulado ate as tabelas existirem.
+- **166 (Q9):** email_outbox entra no expurgo de outbox, se a tabela existir.
+- **167 (Q10):** janela de idempotencia de 48 h, a confirmar com os prazos de reentrega dos provedores.
+- **168 (Q11):** sessao revogada e' removida apos 30 dias (a revogacao ja fica em audit_event).

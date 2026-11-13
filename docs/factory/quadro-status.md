@@ -88,16 +88,16 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #136 | [E7] Mensagem automática do aceite |
 | #137 | [E11] Canal “no site” |
 
-## Product Owner (1)
+## Product Owner (0)
+
+| Issue | Título |
+|---|---|
+
+## Arquitetura (4)
 
 | Issue | Título |
 |---|---|
 | #119 | [E13] Expurgos operacionais |
-
-## Arquitetura (3)
-
-| Issue | Título |
-|---|---|
 | #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
