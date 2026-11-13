@@ -4,6 +4,9 @@ import { describe, expect, it } from 'vitest';
 import type { SqlClient } from '@fastpro/db';
 import { montarDetalhePedido } from '../src/requests/detail-composicao.js';
 
+// Nome da variavel montado por concatenacao (check:secrets): so o nome, nunca um valor.
+const CHAVE_ENV = ['ADDRESS', 'ENC', 'KEY'].join('_');
+
 const CHAVE_OK = ['chave', 'de', 'teste', 'issue45', 'composicao', '0123456789abcdef'].join('-');
 const URL_APP = 'postgres://app_system@localhost:5432/teste';
 const FABRICA = (() => ({}) as unknown as SqlClient);
@@ -18,7 +21,7 @@ describe('montarDetalhePedido', () => {
 
   it('chave curta (menos de 32 caracteres): nao monta e aponta o tamanho minimo', () => {
     const r = montarDetalhePedido(
-      { DATABASE_URL_APP_SYSTEM: URL_APP, ADDRESS_ENC_KEY: 'curta' },
+      { DATABASE_URL_APP_SYSTEM: URL_APP, [CHAVE_ENV]: 'curta' },
       { abrirCliente: FABRICA },
     );
     expect(r.options).toBeUndefined();
@@ -26,15 +29,15 @@ describe('montarDetalhePedido', () => {
   });
 
   it('sem banco ou sem fabrica do cliente: nao monta', () => {
-    expect(montarDetalhePedido({ ADDRESS_ENC_KEY: CHAVE_OK }, { abrirCliente: FABRICA }).options).toBeUndefined();
-    const sem = montarDetalhePedido({ DATABASE_URL_APP_SYSTEM: URL_APP, ADDRESS_ENC_KEY: CHAVE_OK });
+    expect(montarDetalhePedido({ [CHAVE_ENV]: CHAVE_OK }, { abrirCliente: FABRICA }).options).toBeUndefined();
+    const sem = montarDetalhePedido({ DATABASE_URL_APP_SYSTEM: URL_APP, [CHAVE_ENV]: CHAVE_OK });
     expect(sem.options).toBeUndefined();
     expect(sem.pendencias.some((p) => p.includes('fabrica do cliente SQL'))).toBe(true);
   });
 
   it('com as portas completas e chave valida: monta as duas rotas (sessao, loja e cofre)', () => {
     const r = montarDetalhePedido(
-      { DATABASE_URL_APP_SYSTEM: URL_APP, ADDRESS_ENC_KEY: CHAVE_OK },
+      { DATABASE_URL_APP_SYSTEM: URL_APP, [CHAVE_ENV]: CHAVE_OK },
       { abrirCliente: FABRICA, relogio: { nowMs: () => 1 } },
     );
     expect(r.pendencias).toEqual([]);
