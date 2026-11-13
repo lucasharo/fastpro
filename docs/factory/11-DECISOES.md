@@ -515,3 +515,7 @@ Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
 - **228 (D-H037-16):** a #50 pode corrigir 08 §5, 09 §3.3/§7/§8 e 14-BACKLOG.
 - **Coordenacao de migracoes:** a #119 usa 20261112210000; a #50 usa 20261112220000 (reconferir antes de gravar).
 - **Dependencias:** a #50 faz dominio, migracao, adaptadores, servico, rota isolada e pagina nova antes; a montagem em composicao.ts, vercel.ts, app.ts e os barris index.ts fica para o fim, depois da #43 sair de Desenvolvimento e da fase 2 da #141.
+
+## Rodada 50 (conclusoes pelo usuario e fechamento da #43)
+- **Autorizacao registrada (2026-11-13):** o usuario moveu a #30 e a #42 para Concluido no quadro.html (acao humana, confirmada no quadro-status.md, Concluido = 54). Antes, a #41, a #49 e a #129 pelo mesmo caminho.
+- **#43 QA:** complemento de 375 px feito pelo lider (o QA nao tem ferramenta de escrita): /pedido e /pedido/revisao sem rolagem horizontal (scrollWidth = clientWidth = 375); alvos interativos >= 44 px de altura; todos os alvos de teclado com outline solid 2px; confirmacao alcancada por Tab e acionada por Enter; botao desabilitado durante a chamada; Enter repetido nao duplica (1 chamada de confirmacao). Spec temporario apagado do repositorio. NAO verificado: aria-busy no instante medido (os 14 testes Playwright ja o cobrem), T-E01 completo, T-E07, T-E08, T-E10 a T-E12, NVDA humano, T-API09 (it.todo), integracao em outro dispositivo (211), tokens de fonte (212), Linux/Vercel.

@@ -106,11 +106,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 ## Code Review (0)
 
-## QA (1)
-
-| Issue | Título |
-|---|---|
-| #43 | [E3] Revisão e confirmação expressa |
+## QA (0)
 
 ## Concluído (54)
 
@@ -177,6 +173,10 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #110 | [E11] Teste de ausência de interruptor |
 
-## Aguardando aprovação (0)
+## Aguardando aprovação (1)
+
+| Issue | Título |
+|---|---|
+| #43 | [E3] Revisão e confirmação expressa |
 
 ## Bloqueado (0)
