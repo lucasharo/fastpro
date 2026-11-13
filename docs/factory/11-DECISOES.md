@@ -435,3 +435,28 @@ Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar), todas em app_confi
 - Achado 1 (foco): h1#titulo e p#confirmado de pedido/revisao.html sem tabindex="-1" (e verificar resumo/titulo-email em pedido.html); corrigir com teste estatico.
 - Achado 2 (CA-14 sem evidencia de navegador): **decisao 169 do lider:** o DEV instala Playwright e @axe-core/playwright como devDependency gratuita e entrega os testes T-E essenciais (foco, aria, axe, clique unico, fluxo) para /pedido e /pedido/revisao; o roteiro humano com NVDA continua para a aprovacao. Se o ambiente nao permitir rodar o navegador, registrar como NAO VERIFICADO com o motivo; a infraestrutura serve tambem as proximas telas (#42, #141).
 - Achados 3 a 8: integracao /acesso -> /pedido/revisao testada no E2E conforme o desenho (aba original com polling; link em outro dispositivo e' limitacao a registrar); separar describe T-API06 e T-API09; registrar na documentacao de rollback a ordem 190000 antes de 150000; conferir tokens de tamanho de fonte em pedido.css; conferir que a ligacao da rota de revisao na composicao esta commitada.
+
+## Rodada 45 (refino dos documentos de identidade, #50 / H-037 — 106-REFINO-H037.md)
+Perguntas ao usuario (numeracao continua), com a recomendacao do lider; o desenho segue a recomendacao ate haver resposta:
+- **170 (Q-H037-2, leitura pelo dono):** quem le o documento enviado? Recomendacao (a): ninguem le pela aplicacao; o profissional so ve o estado e pode excluir enquanto nao analisado; a leitura e' da Verificacao (#52). Alternativa (b): o dono le a propria copia por URL curta. A (a) pede corrigir 08 §5 e 09 §8, que davam leitura ao dono.
+- **171 (Q-H037-12, producao antes de L1):** recomendacao (a): envio de documentos fechado em producao ate o parecer juridico L1 sobre retencao. Alternativa (b): abrir com retencao sem prazo.
+Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
+- **172 (Q1):** modelo proprio de documento de profissional (nao reaproveitar media_asset, que e' por rascunho).
+- **173 (Q3):** imagem de entrada ate 5 MB.
+- **174 (Q4):** PDF ate 2 MB (decisao 35, posterior e mais especifica que a 34).
+- **175 (Q5):** ate 5 arquivos vivos por profissional.
+- **176 (Q6):** imagem reduzida com as constantes de foto (1.280 px, 750 KB), com inspecao de legibilidade como gate.
+- **177 (Q7):** validacao do PDF por cabecalho e tamanho, mais recusa de acao embutida.
+- **178 (Q8):** PDF com senha e' recusado.
+- **179 (Q9):** envio aceito em pendente, em revisao, retida e recusada; negado em aprovada e suspensa.
+- **180 (Q10):** o profissional pode excluir arquivo ainda nao analisado.
+- **181 (Q11):** sem criptografia de aplicacao agora: bucket privado e acesso so pela API.
+- **182 (Q13):** a #50 depende tambem da #48 (H-035, perfil profissional), ja concluida; dependencia acrescentada ao registro.
+- **183 (Q14):** a #50 faz dominio, migracao e servico antes da #141 e so monta a rota depois dela; o envio ponta a ponta espera a #141.
+- **184 (Q15):** a leitura positiva pela Verificacao e' da #52; a #50 prova a negacao e define a porta interna de leitura.
+- **185 (Q16):** BK-1 considerada respondida pela decisao 35 com limites provisorios; remove-se o bloqueio BLQ-DEC de H-037 no registro.
+- **186 (Q17):** textos da interface (§6 do refino) aprovados como estao.
+- **187 (Q18):** documento de terceiro enviado pelo profissional: fora de escopo, decide a Verificacao.
+- **188 (Q19):** cotas de emissao com os valores de H-026.
+- **189 (Q20):** teto global de documentos vivos: valor fixo definido pelo Arquiteto.
+- **Fatos do refino a tratar no desenho:** o bucket identity-docs nao existe (a migracao o cria); identity_document e verification_case nao existem; o detector de tipo recusa PDF (precisa de validador de PDF); o redutor de fotos grava sempre em request-photos (nao reaproveitar sem parametrizar: risco R6 com teste obrigatorio).
