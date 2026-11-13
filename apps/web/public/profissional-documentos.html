@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>FastPro - Documento de identidade</title>
+    <link rel="stylesheet" href="/tokens.css" />
+    <link rel="stylesheet" href="/profissional-documentos.css" />
+  </head>
+  <body>
+    <main class="pagina" id="documentos">
+      <h1>Documento de identidade</h1>
+      <p id="estado" class="estado" role="status" aria-live="polite"></p>
+      <p id="alerta" class="alerta" role="alert" tabindex="-1"></p>
+
+      <section class="secao" aria-labelledby="titulo-envio">
+        <h2 id="titulo-envio">Enviar documento</h2>
+        <div class="campo">
+          <label for="arquivo">Escolher arquivo</label>
+          <p id="dica-arquivo" class="dica">Envie seu documento de identidade. Aceitos: foto JPG, PNG ou WebP de até 5 MB, ou PDF de até 2 MB.</p>
+          <input id="arquivo" name="documento" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" aria-describedby="dica-arquivo" />
+        </div>
+        <div class="acoes">
+          <button id="cancelar" type="button" hidden>Cancelar envio</button>
+          <button id="repetir" type="button" hidden>Repetir envio</button>
+        </div>
+      </section>
+
+      <section class="secao" aria-labelledby="titulo-lista">
+        <h2 id="titulo-lista" tabindex="-1">Seus documentos</h2>
+        <ul id="lista" class="lista"></ul>
+      </section>
+    </main>
+    <script type="module" src="/profissional-documentos.js"></script>
+  </body>
+</html>
