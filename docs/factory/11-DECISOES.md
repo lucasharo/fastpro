@@ -488,3 +488,9 @@ Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
 - **209 (Q-A110-12):** janela de idempotencia de 48 h (decisao 167), a confirmar com os provedores.
 - **210 (Q-A110-13):** rascunho `publicado` fica fora do expurgo ate existir service_request.
 - **Coordenacao de migracoes:** a #119 usa o prefixo 20261112210000; a #50 usara o seguinte (20261112220000 ou maior) e deve reconferir.
+
+## Rodada 48 (fechamento do ciclo de correcao 1 da #43)
+- **211 (integracao /acesso -> /pedido/revisao):** conforme o desenho 90 §0.4 e R11, o caminho previsto e' a aba original do pedido em polling indo para a revisao (coberto no E2E, 14 testes Playwright); link aberto em outro dispositivo ou navegador nao leva a revisao e e' limitacao aceita e registrada. O `acesso.js` nao ganha redirecionamento nesta Issue.
+- **212 (tokens de tamanho de fonte):** o pacote de tokens do EDS so tem familia e peso; nao ha token de tamanho. Aceitos os literais 16px, 1.5rem e 1.25rem em pedido.css por ora (check:typography nao acusa); a criacao de tokens de tamanho vira divida para a gestao do Design System (cartao a criar no fechamento).
+- **E2E:** Playwright e @axe-core/playwright instalados como devDependency de apps/web (Chromium em cache fora do repositorio); 14 testes passam (foco, aria, clique unico, estados, fluxo, axe sem violacoes serias). Pendentes: T-E01 completo (busca de servico e fotos), T-E07, T-E08, T-E10 a T-E12 e T-E13 (NVDA, humano).
+- **Arquivos compartilhados com a #141:** apps/web/package.json, .gitignore e pnpm-lock.yaml tem hunks da #43 (Playwright, axe, test:e2e) e da #141 (esbuild, build:fotos-envio). Quem commitar primeiro leva o arquivo inteiro; conferir `git diff` antes e registrar no commit.
