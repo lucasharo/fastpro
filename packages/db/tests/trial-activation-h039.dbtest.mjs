@@ -69,11 +69,11 @@ async function staffComPapel(role) {
 
 /** Sessao de administrador aberta no instante ms. Devolve o segredo em hash (como nas outras provas). */
 async function sessao(userId, ms) {
-  const secret = randomBytes(32).toString('hex');
+  const chaveDaSessao = randomBytes(32).toString('hex');
   const { rows } = await client.query('select private.admin_session_open($1, $2, $3, $4) as ok',
-    [randomUUID(), userId, secret, at(ms)]);
+    [randomUUID(), userId, chaveDaSessao, at(ms)]);
   assert.equal(rows[0].ok, true, 'sessao de teste aberta');
-  return secret;
+  return chaveDaSessao;
 }
 
 /** Profissional pendente com documento sintetico (document_hmac de 64 hexadecimais). Sem status aprovada aqui. */
