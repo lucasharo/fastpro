@@ -98,6 +98,7 @@ import {
 import { handleAddressSuggest, type GeoRouteOptions } from './geo/address-suggest-route.js';
 import { handleDraftRoute, isDraftRoute, type DraftRouteOptions } from './drafts/draft-route.js';
 import { handleMediaRoute, isMediaRoute, type MediaRouteOptions } from './media/media-route.js';
+import { handleIdentityDocRoute, isIdentityDocRoute, type IdentityDocRouteOptions } from './identity-docs/identity-doc-route.js';
 import { draftNotFound } from './drafts/draft-service.js';
 import {
   handleSessionConvert,
@@ -160,6 +161,8 @@ export interface AppOptions {
   readonly drafts?: DraftRouteOptions;
   /** Fotos em quarentena (H-026). Sem esta opcao as rotas /v1/media nao existem (404). Desligada em producao (88 §8). */
   readonly media?: MediaRouteOptions;
+  /** Documentos de identidade do profissional (H-037). Sem esta opcao as rotas /v1/professional/documents respondem 404 uniforme. */
+  readonly identityDocs?: IdentityDocRouteOptions;
   /** Cadastro, verificacao e login por senha do profissional (H-016). Sem esta opcao as rotas nao existem (404). */
   readonly professional?: ProfessionalRouteOptions;
   /** H-016: GET /v1/professional/me. Sem esta opcao a rota nao existe (404). */
@@ -308,6 +311,17 @@ export async function handleRequest(
   }
   if (opts.drafts && isDraftRoute(path)) {
     await handleDraftRoute(req, res, path, opts.drafts);
+    return;
+  }
+  // H-037 (#50): documentos de identidade. Sem a montagem completa (trava ou pendencia), o mesmo 404 uniforme do rascunho.
+  if (isIdentityDocRoute(path)) {
+    if (opts.identityDocs) {
+      await handleIdentityDocRoute(req, res, path, opts.identityDocs);
+      return;
+    }
+    const r = draftNotFound();
+    res.writeHead(r.status, r.headers);
+    res.end(r.body);
     return;
   }
   if (opts.media && isMediaRoute(path)) {

@@ -58,6 +58,8 @@ import { montarMidia, portasGaleriaMidia } from './media/media-composicao.js';
 import type { MediaRouteOptions } from './media/media-route.js';
 import type { ReduceCounters } from './media/media-reduce-service.js';
 import type { ReduceGate } from './media/reduce-gate.js';
+import { montarDocumentosDoAmbiente } from './identity-docs/identity-doc-montagem.js';
+import type { IdentityDocRouteOptions } from './identity-docs/identity-doc-route.js';
 
 /** Nomes da busca que faltam (so nomes; a chave curta aparece marcada, sem tamanho nem valor). */
 function faltantesCatalogo(env: CatalogEnv): readonly string[] {
@@ -88,6 +90,8 @@ export interface ComposicaoOpcoes {
   readonly clock?: ClockPort;
   /** Fabrica do cliente SQL do papel app_system (H-073). Sem ela, as rotas do caso nao ligam (404). */
   readonly abrirClienteSql?: (connectionString: string) => SqlClient;
+  /** Fabrica do cliente SQL do papel app_system para os documentos de identidade (H-037). Sem ela, as rotas nao ligam (404). */
+  readonly abrirClienteSistema?: (connectionString: string) => SqlClient;
   /** Portas da confirmacao recente (step-up, H-073): provedor de login e limites. Hoje sem adaptador. */
   readonly confirmacaoAdmin?: AdminConfirmacaoOpcoes;
   /** fetch do provedor de login admin (Supabase Auth). Padrao: o global. */
@@ -131,6 +135,10 @@ export interface Integracoes {
   readonly media: MediaRouteOptions | undefined;
   /** Nomes (nunca valores) e itens que impedem a midia ou a galeria de ligar. */
   readonly pendenciasMidia: readonly string[];
+  /** Opcoes das rotas dos documentos de identidade (H-037), ou undefined (404). */
+  readonly identityDocs: IdentityDocRouteOptions | undefined;
+  /** Nomes (nunca valores) que impedem os documentos de identidade de ligar (H-037). */
+  readonly pendenciasDocumentos: readonly string[];
 }
 
 const RELOGIO_PADRAO: ClockPort = {
@@ -225,6 +233,12 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   const oferta = montarOfertaProfissional(env, { abrirCliente: opcoes.abrirClienteSql, relogio: opcoes.clock });
 
   // E3: midia. Liga so com MEDIA_UPLOAD_ENABLED=1 e os itens completos (decisao 190); sem isso, 404.
+  // H-037 (#50): documentos de identidade; fechados por trava (sem pendencias) ou incompletos (com nomes).
+  const documentos = montarDocumentosDoAmbiente(env, {
+    abrirCliente: opcoes.abrirClienteSistema,
+    gate: opcoes.reducaoMidia?.gate,
+  });
+
   // A galeria (H-029) entra junto, pelas portas montadas na borda; sem a midia ligada, ela tambem fica 404.
   const galeriaMidia = portasGaleriaMidia(env, opcoes.abrirClienteApi);
   const midia = montarMidia(env, {
@@ -249,6 +263,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     pendenciasOferta: oferta.pendencias,
     media: midia.options,
     pendenciasMidia: midia.pendencias,
+    identityDocs: documentos.options,
+    pendenciasDocumentos: documentos.pendencias,
   };
 }
 

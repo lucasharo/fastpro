@@ -39,7 +39,7 @@ export default async function vercelHandler(
 ): Promise<void> {
   try {
     // H-073: o pool do papel app_system so e aberto quando DATABASE_URL_APP_SYSTEM e ADMIN_BASE_URL existem.
-    const integracoes = montarIntegracoes(process.env, { abrirClienteSql, abrirClienteApi, fabricaCatalogo, fabricaRascunho, reducaoMidia });
+    const integracoes = montarIntegracoes(process.env, { abrirClienteSql, abrirClienteApi, fabricaCatalogo, fabricaRascunho, reducaoMidia, abrirClienteSistema });
     // H-107: gestao do catalogo admin; so monta com DATABASE_URL_APP_SYSTEM e ADMIN_BASE_URL (sem eles, 404).
     const adminCatalog = montarCatalogoAdmin(process.env, { abrirCliente: abrirClienteSql });
     // H-105: dupla aprovacao de estorno e suspensao; so monta com DATABASE_URL_APP_SYSTEM e ADMIN_BASE_URL (sem eles, 404).
@@ -83,6 +83,7 @@ export default async function vercelHandler(
       ...(integracoes.professionalProfile !== undefined ? { professionalProfile: integracoes.professionalProfile } : {}),
       ...(integracoes.professionalOffering !== undefined ? { professionalOffering: integracoes.professionalOffering } : {}),
       ...(integracoes.media !== undefined ? { media: integracoes.media } : {}),
+      ...(integracoes.identityDocs !== undefined ? { identityDocs: integracoes.identityDocs } : {}),
     });
   } catch {
     // Sem detalhe de erro na resposta nem no log (ADR-013: sem dado sensivel).
