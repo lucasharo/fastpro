@@ -99,14 +99,17 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
 
-## Desenvolvimento (2)
+## Desenvolvimento (1)
+
+| Issue | Título |
+|---|---|
+| #43 | [E3] Revisão e confirmação expressa |
+
+## Code Review (1)
 
 | Issue | Título |
 |---|---|
 | #30 | [E1] Exclusividade de papéis |
-| #43 | [E3] Revisão e confirmação expressa |
-
-## Code Review (0)
 
 ## QA (2)
 
