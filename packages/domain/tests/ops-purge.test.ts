@@ -1,4 +1,4 @@
-// H-110 (Issue #119) | Orquestracao dos expurgos operacionais (docs/factory/105-DESENHO-H110.md §7, CA-H110-01, 11, 15, 16).
+// H-110 (Issue 119) | Orquestracao dos expurgos operacionais (docs/factory/105-DESENHO-H110.md §7, CA-H110-01, 11, 15, 16).
 // Sem banco e sem Storage: executores falsos registram a ordem e devolvem resultados programados.
 import { describe, expect, it } from 'vitest';
 import {

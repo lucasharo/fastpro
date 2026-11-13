@@ -1,4 +1,4 @@
-// H-110 (Issue #119) | Tipos da orquestracao dos expurgos operacionais (docs/factory/105-DESENHO-H110.md §2 e §6).
+// H-110 (Issue 119) | Tipos da orquestracao dos expurgos operacionais (docs/factory/105-DESENHO-H110.md §2 e §6).
 // Sem banco, sem Storage e sem dado pessoal: so contagens e codigos fixos.
 
 /** Blocos na ordem de execucao (E1 a E9). E6 soma a saida de eventos (E6a) e a de e-mail (E6b). */
