@@ -337,13 +337,15 @@ export interface ExpurgoOperacional {
   readonly pendencias: readonly string[];
 }
 
-const clientesExpurgo = new Map<string, SqlClient>();
+/** Rotulo fixo do cliente do expurgo: a chave do Map nunca e a connection string (achado 3 do Code Review). */
+const ROTULO_CLIENTE_EXPURGO = 'expurgo:app_system';
 
-function clienteDoExpurgo(url: string, abrir: (connectionString: string) => SqlClient): SqlClient {
-  let cliente = clientesExpurgo.get(url);
+/** Um cliente por montagem (mapa proprio), reaproveitado nos registros; o rotulo e fixo, a URL so abre a conexao. */
+function clienteDoExpurgo(clientes: Map<string, SqlClient>, abrir: (connectionString: string) => SqlClient, url: string): SqlClient {
+  let cliente = clientes.get(ROTULO_CLIENTE_EXPURGO);
   if (cliente === undefined) {
     cliente = abrir(url);
-    clientesExpurgo.set(url, cliente);
+    clientes.set(ROTULO_CLIENTE_EXPURGO, cliente);
   }
   return cliente;
 }
@@ -362,11 +364,12 @@ export function montarExpurgoOperacional(env: ComposicaoEnv, opcoes: ExpurgoOper
   const baseUrl = env.SUPABASE_URL ?? '';
   const relogio = opcoes.relogio ?? RELOGIO_PADRAO;
   const fetchImpl = opcoes.fetchImpl;
+  const clientes = new Map<string, SqlClient>();
   return {
     pendencias: [],
     registrar: (registry) => {
       registerOpsPurgeHandlers(registry, {
-        store: new PgOpsPurgeStore(clienteDoExpurgo(url, abrir)),
+        store: new PgOpsPurgeStore(clienteDoExpurgo(clientes, abrir, url)),
         arquivos: new SupabaseStorageQuarentena({ baseUrl, serviceKey: chave, ...(fetchImpl ? { fetchImpl } : {}) }),
         caminhoDoObjeto: caminho,
         now: () => relogio.nowMs(),

@@ -94,4 +94,46 @@ describe('montarExpurgoOperacional (H-110, Issue 119)', () => {
     expect(registro.get('ops.purge')).toBeDefined();
     expect(abertos).toEqual([URL_SINTETICA]);
   });
+
+  it('um cliente por montagem: dois registros reaproveitam a mesma conexao (chave e rotulo fixo, nao a URL)', () => {
+    const abertos: string[] = [];
+    const resultado = montarExpurgoOperacional(ENV_COMPLETO, {
+      abrirCliente: (url) => (abertos.push(url), clienteFalso()),
+      caminhoDoObjeto: caminho,
+      chaveDoStorage: CHAVE_SINTETICA,
+      relogio: { nowMs: () => 0 },
+    });
+    resultado.registrar?.(new JobRegistry());
+    resultado.registrar?.(new JobRegistry());
+    expect(abertos).toEqual([URL_SINTETICA]);
+  });
+
+  it('fetchImpl da montagem e repassado ao Storage da quarentena: o handler usa so o fetch injetado', async () => {
+    const chamadas: string[] = [];
+    const fetchInjetado = (async (entrada: string | URL | Request) => {
+      chamadas.push(String(entrada));
+      return new Response(null, { status: 200 });
+    }) as typeof fetch;
+    const cliente = {
+      query: async (sql: string) => {
+        if (sql.includes('ops_purge_media_orfaos')) {
+          return { rows: [{ out_estado: 'ok', out_nomes: ['orfa/original.jpg'], out_retidos: 0 }] };
+        }
+        if (sql.includes('ops_purge_audit')) return { rows: [{ id: 'audit-1' }] };
+        return { rows: [{ out_estado: 'desligado', out_removidos: 0, out_retidos: 0, out_falhos: 0, ids: [] }] };
+      },
+    } as unknown as SqlClient;
+    const resultado = montarExpurgoOperacional(ENV_COMPLETO, {
+      abrirCliente: () => cliente,
+      caminhoDoObjeto: caminho,
+      chaveDoStorage: CHAVE_SINTETICA,
+      relogio: { nowMs: () => 0 },
+      fetchImpl: fetchInjetado,
+    });
+    const registro = new JobRegistry();
+    resultado.registrar?.(registro);
+    await registro.get('ops.purge')!.run({ id: 'job-1' } as never);
+    expect(chamadas.length).toBeGreaterThan(0);
+    expect(chamadas[0]).toContain(BASE_SINTETICA);
+  });
 });
