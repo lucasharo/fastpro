@@ -16,7 +16,7 @@ import { MemGate } from './identity-docs-fakes.js';
 
 const COMPLETO: Record<string, string> = {
   IDENTITY_DOCS_ENABLED: '1',
-  DATABASE_URL_APP_SYSTEM: 'postgres://app_system:senha-de-teste@localhost:5432/banco',
+  DATABASE_URL_APP_SYSTEM: 'postgres://usuario:senha@host/db',
   SUPABASE_URL: 'https://projeto-de-teste.supabase.co',
   SUPABASE_SECRET_KEY: 'chave-de-servico-de-teste',
   DRAFT_IP_HMAC_KEY: 'k'.repeat(32),
@@ -74,15 +74,30 @@ describe('H-037 | T-23: trava e pendencias da montagem', () => {
     expect(abrir).not.toHaveBeenCalled();
   });
 
+  it('em producao com IDENTITY_DOCS_L1_PARECER=1 e completa, monta as opcoes (caso positivo)', () => {
+    const cliente = clienteFalso();
+    const abrir = vi.fn(() => cliente);
+    const r = montarDocumentosDoAmbiente(
+      { ...COMPLETO, VERCEL_ENV: 'production', IDENTITY_DOCS_L1_PARECER: '1' },
+      { abrirCliente: abrir, gate: new MemGate() },
+    );
+    expect(r.pendencias).toEqual([]);
+    expect(r.options).toBeDefined();
+    expect(r.options?.siteUrl).toBe(siteOriginOf('https://fastpro.example'));
+    expect(abrir).toHaveBeenCalledWith(COMPLETO.DATABASE_URL_APP_SYSTEM);
+    expect(cliente.query).not.toHaveBeenCalled();
+  });
+
   it('aberta e incompleta lista so nomes, nunca valores', () => {
     const env = { ...COMPLETO, SUPABASE_URL: '', SUPABASE_SECRET_KEY: '' };
     const pend = pendenciasDocumentos(env, {});
     expect(pend).toContain('SUPABASE_URL');
     expect(pend).toContain('SUPABASE_SECRET_KEY');
-    expect(pend.some((p) => p.includes('senha-de-teste') || p.includes('chave-de-servico'))).toBe(false);
+    expect(pend.some((p) => p.includes('postgres://') || p.includes('chave-de-servico'))).toBe(false);
     const r = montarDocumentosDoAmbiente(env, {});
     expect(r.options).toBeUndefined();
-    expect(JSON.stringify(r.pendencias)).not.toContain('senha-de-teste');
+    expect(JSON.stringify(r.pendencias)).not.toContain('postgres://');
+    expect(JSON.stringify(r.pendencias)).not.toContain('chave-de-servico');
   });
 
   it('chave do IP curta e SITE_URL invalida viram pendencias com nome', () => {
