@@ -4,7 +4,7 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (79)
+## Backlog (77)
 
 | Issue | Título |
 |---|---|
@@ -13,14 +13,12 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #45 | [E3] Visibilidade de localização |
 | #46 | [E3] Opt-in de telefone no pedido |
 | #47 | [E3] Painel do cliente na sessão do dono |
-| #51 | [E4] Certificações para atividades regulamentadas |
 | #52 | [E4] Fila de verificação |
 | #53 | [E4] Retenção por duplicidade |
 | #54 | [E4] Estado da verificação visível |
 | #55 | [E4] Guarda de elegibilidade na API e no banco |
 | #56 | [E4] Perfil público e selo verificado |
 | #57 | [E5] Trial de 14 dias |
-| #59 | [E5] Planos e preços em centavos |
 | #60 | [E5] Checkout Mercado Pago (Pix e cartão) |
 | #61 | [E5] Webhook MP idempotente |
 | #62 | [E5] Concessão paga e início de período |
@@ -88,7 +86,12 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 | #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 
-## Product Owner (0)
+## Product Owner (2)
+
+| Issue | Título |
+|---|---|
+| #59 | [E5] Planos e preços em centavos |
+| #51 | [E4] Certificações para atividades regulamentadas |
 
 ## Arquitetura (2)
 
@@ -97,14 +100,17 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
 
-## Desenvolvimento (2)
+## Desenvolvimento (1)
+
+| Issue | Título |
+|---|---|
+| #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
+
+## Code Review (1)
 
 | Issue | Título |
 |---|---|
 | #58 | [E5] Acesso comercial derivado |
-| #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
-
-## Code Review (0)
 
 ## QA (1)
 
