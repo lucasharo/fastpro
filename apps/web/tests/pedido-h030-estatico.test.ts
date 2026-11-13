@@ -127,3 +127,65 @@ describe('CSP e cabecalhos de /pedido/revisao (vercel.json, §7.3)', () => {
     expect(origens).toEqual(expect.arrayContaining(['/pedido', '/pedido/(.*)', '/fotos', '/codigo']));
   });
 });
+
+// Foco por script (WCAG 2.4.3 / §5.4): todo elemento que o script foca precisa ser focavel.
+// Elemento nativo (input, textarea, select, button, a[href]) dispensa atributo; qualquer outro
+// (h1, p, h2, section...) precisa de tabindex="-1", que o torna focavel por script sem entrar na ordem do Tab.
+// tabindex positivo e proibido (§5.4: a ordem do DOM e a ordem visual).
+const PARES_FOCO = [
+  { codigo: '../public/pedido.js', html: '../public/pedido.html' },
+  { codigo: '../public/pedido-revisao.js', html: '../public/pedido/revisao.html' },
+] as const;
+
+/** Ids dos elementos que o script foca: el('x').focus(), getElementById('x').focus() e variaveis atribuidas a eles. */
+function idsFocadosPorScript(codigo: string): string[] {
+  const variaveis = new Map<string, string>();
+  for (const m of codigo.matchAll(/(?:const|let)\s+(\w+)\s*=\s*(?:el|doc\.getElementById)\(\s*'([\w-]+)'\s*\)/g)) {
+    variaveis.set(m[1], m[2]);
+  }
+  const ids = new Set<string>();
+  for (const m of codigo.matchAll(/(?:\bel|doc\.getElementById)\(\s*'([\w-]+)'\s*\)\s*\.focus\(\s*\)/g)) ids.add(m[1]);
+  for (const m of codigo.matchAll(/\b(\w+)\.focus\(\s*\)/g)) {
+    const id = variaveis.get(m[1]);
+    if (id) ids.add(id);
+  }
+  return [...ids].sort();
+}
+
+const NATIVO_FOCAVEL = /^<(input|textarea|select|button)\b|^<a\b[^>]*\bhref=/i;
+
+/** Ids focados por script que nao sao nativos e nao tem tabindex="-1" (ou que nao existem no HTML). */
+function focadosSemTabindex(codigo: string, html: string): string[] {
+  const problemas: string[] = [];
+  for (const id of idsFocadosPorScript(codigo)) {
+    const tag = html.match(new RegExp(`<[a-z][a-z0-9]*\\b[^>]*\\bid="${id}"[^>]*>`, 'i'))?.[0];
+    if (!tag) {
+      problemas.push(`${id} (elemento inexistente)`);
+    } else if (!NATIVO_FOCAVEL.test(tag) && !/\stabindex="-1"/.test(tag)) {
+      problemas.push(`${id} (sem tabindex="-1": ${tag})`);
+    }
+  }
+  return problemas;
+}
+
+describe('CA-14 foco por script tem alvo focavel', () => {
+  it.each(PARES_FOCO)('$codigo: todo elemento focado por script tem tabindex="-1" ou e nativo', ({ codigo, html }) => {
+    expect(focadosSemTabindex(ler(codigo), ler(html))).toEqual([]);
+  });
+
+  it('pedido.js foca resumo-erro, titulo-email, descricao e email (lista conhecida, sem vazio)', () => {
+    expect(idsFocadosPorScript(ler('../public/pedido.js'))).toEqual(['descricao', 'email', 'resumo-erro', 'titulo-email']);
+  });
+
+  it('pedido-revisao.js foca titulo e confirmado', () => {
+    expect(idsFocadosPorScript(ler('../public/pedido-revisao.js'))).toEqual(['confirmado', 'titulo']);
+  });
+
+  it('o teste falha se um elemento focado por script perder o tabindex (demonstracao com HTML sintetico)', () => {
+    const codigo = "const doc = {}; const el = (id) => doc.getElementById(id); el('titulo').focus();";
+    const semTabindex = '<h1 id="titulo">Revise</h1>';
+    const comTabindex = '<h1 id="titulo" tabindex="-1">Revise</h1>';
+    expect(focadosSemTabindex(codigo, semTabindex)).toEqual(['titulo (sem tabindex="-1": <h1 id="titulo">)']);
+    expect(focadosSemTabindex(codigo, comTabindex)).toEqual([]);
+  });
+});

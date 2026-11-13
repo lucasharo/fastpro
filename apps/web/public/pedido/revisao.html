@@ -10,7 +10,7 @@
   </head>
   <body>
     <main id="pedido-raiz" class="pedido-pagina" aria-busy="false">
-      <h1 id="titulo">Revise seu pedido</h1>
+      <h1 id="titulo" tabindex="-1">Revise seu pedido</h1>
       <p id="estado" class="pedido-aviso" role="status" aria-live="polite"></p>
       <p>
         <button id="carregar-de-novo" class="pedido-botao pedido-botao-secundario" type="button" hidden>Tentar de novo</button>
@@ -43,7 +43,7 @@
           <p><a id="e-identificacao" class="pedido-link" href="/pedido#nome">Editar nome e e-mail</a></p>
         </section>
 
-        <p id="confirmado" role="status" hidden></p>
+        <p id="confirmado" tabindex="-1" role="status" hidden></p>
         <p id="confirmar-erro" class="pedido-erro"></p>
         <p>
           <button id="confirmar" class="pedido-botao" type="button">Confirmar pedido</button>
