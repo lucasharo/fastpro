@@ -471,3 +471,20 @@ Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
 - **195 (A-141-6):** sem segunda trava por VERCEL_ENV=production.
 - **196 (A-141-7):** conferir a duracao maxima da funcao da API na Vercel contra o prazo de 10 s da reducao; se menor, subir; nao bloqueia o desenvolvimento.
 - **197 (A-141-8):** o desenvolvimento da #141 comeca pelo web (esbuild, fotos-envio, portas do navegador, testes) e pelo teste de banco da galeria; `composicao.ts`, `vercel.ts` e `app.ts` (compartilhados com a #43) so sao editados depois que a #43 sair de Desenvolvimento. A #141 nao termina sozinha antes disso.
+
+## Rodada 47 (desenho dos expurgos operacionais, #119 / H-110 — 105-DESENHO-H110.md)
+Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
+- **198 (Q-A110-1):** valores de TTL ficam no runbook (docs/factory), sem valores na migracao.
+- **199 (Q-A110-2):** ajustar CA-H110-10 e RN-H110-04: legal_hold so alcanca dado com vinculo de sujeito (sessao, e-mail, evento de outbox); rascunho, desafio, midia e idempotencia nao tem vinculo.
+- **200 (Q-A110-3):** apagar tambem as fotos prontas de rascunho nao publicado (completa a decisao 161).
+- **201 (Q-A110-4):** linha de midia pendente expirada e' apagada, como a H-026 ja faz.
+- **202 (Q-A110-5):** TTL sem decisao anterior, como [PROPOSTA]: sessao vencida 7 d, provider_event 7 d, outbox_event 7 d, email_outbox 30 d.
+- **203 (Q-A110-6):** um evento de auditoria por execucao (nao por dia), so com contagens.
+- **204 (Q-A110-7):** pg_cron em producao; disparo manual em desenvolvimento quando a extensao nao existir.
+- **205 (Q-A110-8):** sem metrica em ops.ops_metric agora; so auditoria.
+- **206 (Q-A110-9):** acumulos fora do escopo (ops.job concluido, notification_item, cooldown, code_lock) viram um cartao E10 no Backlog, a criar no fechamento da #119.
+- **207 (Q-A110-10):** manter o auth_challenge_purge da H-011 em paralelo.
+- **208 (Q-A110-11):** entrega parcial: E1 (quarentena) e E9 (orfaos) ficam atras de portas, provados so com Storage fake ate a #141; cartao de continuacao a criar no fechamento.
+- **209 (Q-A110-12):** janela de idempotencia de 48 h (decisao 167), a confirmar com os provedores.
+- **210 (Q-A110-13):** rascunho `publicado` fica fora do expurgo ate existir service_request.
+- **Coordenacao de migracoes:** a #119 usa o prefixo 20261112210000; a #50 usara o seguinte (20261112220000 ou maior) e deve reconferir.
