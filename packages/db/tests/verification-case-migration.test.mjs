@@ -50,3 +50,40 @@ test('T-23 | toda funcao private de verificacao usa search_path vazio e security
     assert.match(cabecalho, /set search_path = ''/i, `search_path em ${bloco.slice(0, 60)}`);
   }
 });
+
+test('T-20 | unicos gatilhos da migracao sao os quatro previstos; nenhum e de tempo', () => {
+  const gatilhos = [...codigo.matchAll(/create\s+trigger\s+([a-z_]+)/gi)].map((m) => m[1].toLowerCase()).sort();
+  assert.deepEqual(gatilhos, [
+    'identity_document_verification_case',
+    'verification_case_event_no_mutation',
+    'verification_case_guard',
+    'verification_case_no_delete',
+  ]);
+  assert.equal(/\bcreate\s+event\s+trigger\b/i.test(codigo), false, 'gatilho de evento de banco');
+});
+
+test('T-23 | laco de privilegios cobre toda funcao verification_ e idoc_review_target (revoke dos papeis de API)', () => {
+  assert.ok(codigo.includes("p.proname like 'verification\\_%'"), 'filtro por prefixo verification_');
+  assert.ok(codigo.includes("p.proname = 'idoc_review_target'"), 'filtro de idoc_review_target');
+  assert.ok(codigo.includes('revoke all on function %s from public, anon, authenticated, ' + PAPEL_SERVICO + ', app_api'), 'revoke no laco');
+  assert.ok(
+    instrucoes.some((s) => s.startsWith('revoke all on function private.professional_profile_guard_update')
+      && new RegExp('from public, anon, authenticated, ' + PAPEL_SERVICO + ', app_api$').test(s)),
+    'revoke da guarda de perfil',
+  );
+});
+
+test('T-23 | nenhuma concessao de execucao ou de tabela a papeis de API, publico ou servico (so app_system)', () => {
+  const concessoes = instrucoes.filter((s) => s.startsWith('grant '));
+  assert.ok(concessoes.length >= 8, `concessoes: ${concessoes.length}`);
+  for (const s of concessoes) {
+    assert.match(s, /to app_system$/, s);
+    assert.equal(/\b(anon|authenticated|public|app_api)\b/.test(s), false, s);
+  }
+});
+
+test('T-23 | funcoes de gatilho e de manutencao nao recebem execucao de ninguem (so revoke)', () => {
+  for (const nome of ['verification_case_on_idoc_received', 'verification_event_refuse_mutation', 'verification_case_refuse_delete', 'verification_case_guard']) {
+    assert.equal(instrucoes.some((s) => s.startsWith(`grant execute on function private.${nome}(`)), false, nome);
+  }
+});
