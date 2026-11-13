@@ -105,27 +105,25 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
 
-## Desenvolvimento (1)
+## Desenvolvimento (0)
 
 | Issue | Título |
 |---|---|
-| #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
 
-## Code Review (3)
+## Code Review (1)
 
 | Issue | Título |
 |---|---|
 | #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
-| #44 | [E3] Publicação idempotente com 7 dias |
-| #50 | [E4] Documentos de identidade |
 
-## QA (1)
+## QA (2)
 
 | Issue | Título |
 |---|---|
-| #119 | [E13] Expurgos operacionais |
+| #44 | [E3] Publicação idempotente com 7 dias |
+| #50 | [E4] Documentos de identidade |
 
-## Concluído (55)
+## Concluído (56)
 
 | Issue | Título |
 |---|---|
@@ -182,6 +180,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #116 | [E12] Gestão de catálogo e promoções |
 | #117 | [E12] Painel operacional mínimo |
 | #118 | [E13] Mecanismo de retenção sem prazos |
+| #119 | [E13] Expurgos operacionais |
 | #125 | [E15] Testes de injeção e abuso |
 | #129 | [E15] Dados sintéticos de demonstração |
 
@@ -191,9 +190,10 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #110 | [E11] Teste de ausência de interruptor |
 
-## Aguardando aprovação (0)
+## Aguardando aprovação (1)
 
 | Issue | Título |
 |---|---|
+| #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
 
 ## Bloqueado (0)
