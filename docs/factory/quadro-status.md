@@ -4,11 +4,10 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (77)
+## Backlog (76)
 
 | Issue | Título |
 |---|---|
-| #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 | #1 | [SETUP] Validar integração GitHub Projects ↔ Laze ↔ Claude |
 | #14 | [Spike] Regras das lojas (login social, IAP, exclusão) |
 | #45 | [E3] Visibilidade de localização |
@@ -86,7 +85,11 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #136 | [E7] Mensagem automática do aceite |
 | #137 | [E11] Canal “no site” |
 
-## Product Owner (0)
+## Product Owner (1)
+
+| Issue | Título |
+|---|---|
+| #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 
 | Issue | Título |
 |---|---|
