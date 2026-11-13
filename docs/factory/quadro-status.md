@@ -95,17 +95,17 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #37 | [E2] Cobertura booleana sem contagem |
 
-## Desenvolvimento (2)
+## Desenvolvimento (1)
+
+| Issue | Título |
+|---|---|
+| #52 | [E4] Fila de verificação |
+
+## Code Review (2)
 
 | Issue | Título |
 |---|---|
 | #36 | [E2] Descoberta por raio e online nacional |
-| #52 | [E4] Fila de verificação |
-
-## Code Review (1)
-
-| Issue | Título |
-|---|---|
 | #151 | [E15] Remover backup, restauração e exportação de dados do escopo do projeto |
 
 ## QA (0)
