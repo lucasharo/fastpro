@@ -78,18 +78,18 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 | #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 
-## Product Owner (3)
+## Product Owner (1)
+
+| Issue | Título |
+|---|---|
+| #51 | [E4] Certificações para atividades regulamentadas |
+
+## Arquitetura (3)
 
 | Issue | Título |
 |---|---|
 | #53 | [E4] Retenção por duplicidade |
 | #57 | [E5] Trial de 14 dias |
-| #51 | [E4] Certificações para atividades regulamentadas |
-
-## Arquitetura (1)
-
-| Issue | Título |
-|---|---|
 | #47 | [E3] Painel do cliente na sessão do dono |
 
 ## Desenvolvimento (2)
@@ -105,13 +105,12 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #45 | [E3] Visibilidade de localização |
 
-## QA (1)
+## QA (0)
 
 | Issue | Título |
 |---|---|
-| #52 | [E4] Fila de verificação |
 
-## Concluído (65)
+## Concluído (66)
 
 | Issue | Título |
 |---|---|
@@ -157,6 +156,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #44 | [E3] Publicação idempotente com 7 dias |
 | #48 | [E4] Cadastro profissional com CPF/CNPJ cifrado |
 | #49 | [E4] Perfil: serviços, base e raio |
+| #52 | [E4] Fila de verificação |
 | #36 | [E2] Descoberta por raio e online nacional |
 | #151 | [E15] Remover backup, restauração e exportação de dados do escopo do projeto |
 | #59 | [E5] Planos e preços em centavos |
