@@ -28,6 +28,7 @@ class Elemento {
   disabled = false;
   hidden = false;
   foco = 0;
+  focoRecusado = 0;
   files: Array<{ type: string; size: number }> = [];
   children: Elemento[] = [];
   private readonly attrs = new Map<string, string>();
@@ -46,6 +47,11 @@ class Elemento {
     this.attrs.delete(nome);
   }
   focus() {
+    // Como no navegador: elemento escondido (hidden) ou desabilitado (disabled) nao recebe foco.
+    if (this.hidden || this.disabled) {
+      this.focoRecusado += 1;
+      return;
+    }
     this.foco += 1;
   }
   addEventListener(tipo: string, fn: () => void) {
@@ -343,6 +349,50 @@ describe('fluxo de envio (emitir, PUT ao Storage, finalizar)', () => {
     expect(doc.el('alerta').textContent).toBe('');
     expect(doc.el('cancelar').hidden).toBe(true);
     expect(doc.el('arquivo').foco).toBe(1);
+  });
+
+  it('CA-20 falha: o foco vai para repetir ja visivel e habilitado (foco recusado em elemento escondido seria regressao)', async () => {
+    const { doc, escolher } = montar(
+      async (metodo, url) => {
+        if (metodo === 'GET') return LISTA_VAZIA;
+        if (metodo === 'POST' && url === EMISSAO_ENDPOINT) {
+          return { status: 201, corpo: { id: 'd1', status: 'em_envio', upload_url: 'https://storage.test/u/1', upload_expires_at: 'x' } };
+        }
+        throw new Error('inesperado ' + url);
+      },
+      async () => ({ ok: false }),
+    );
+    await tick();
+    escolher(JPEG_4MB);
+    await tick();
+    expect(doc.el('repetir').hidden).toBe(false);
+    expect(doc.el('repetir').disabled).toBe(false);
+    expect(doc.el('repetir').foco).toBe(1);
+    expect(doc.el('repetir').focoRecusado).toBe(0);
+  });
+
+  it('CA-20 cancelado: o foco vai para o campo de arquivo ja habilitado (foco recusado seria regressao)', async () => {
+    const { doc, escolher } = montar(
+      async (metodo, url) => {
+        if (metodo === 'GET') return LISTA_VAZIA;
+        if (metodo === 'POST' && url === EMISSAO_ENDPOINT) {
+          return { status: 201, corpo: { id: 'd1', status: 'em_envio', upload_url: 'https://storage.test/u/1', upload_expires_at: 'x' } };
+        }
+        throw new Error('inesperado ' + url);
+      },
+      (_url, _arquivo, _tipo, sinal) =>
+        new Promise((_resolver, rejeitar) => {
+          sinal.addEventListener('abort', () => rejeitar(new Error('AbortError')));
+        }),
+    );
+    await tick();
+    escolher(JPEG_4MB);
+    await tick();
+    doc.el('cancelar').clicar();
+    await tick();
+    expect(doc.el('arquivo').disabled).toBe(false);
+    expect(doc.el('arquivo').foco).toBe(1);
+    expect(doc.el('arquivo').focoRecusado).toBe(0);
   });
 
   it('arquivo recusado no navegador nao gera nenhuma chamada e mostra o texto de PDF grande', async () => {

@@ -128,6 +128,13 @@ export function iniciarDocumentos(doc, buscar, enviarAoStorage, gerarId) {
     repetir.disabled = ocupado;
   }
 
+  /** Solta o envio e atualiza os botoes. Chamada ANTES de qualquer foco: foco so cai em elemento visivel e habilitado. */
+  function liberar() {
+    ocupado = false;
+    controle = null;
+    sincronizarBotoes();
+  }
+
   function renderizar(documentos) {
     lista.replaceChildren();
     for (const d of documentos) {
@@ -227,16 +234,16 @@ export function iniciarDocumentos(doc, buscar, enviarAoStorage, gerarId) {
     } catch (erro) {
       if (cancelado) {
         tentativa = null;
+        liberar();
         avisar(MENSAGENS.vazio);
         arquivo.focus();
         return;
       }
       alertar(erro && typeof erro.mensagem === 'string' ? erro.mensagem : MENSAGENS.falha);
+      liberar();
       focarRecuperacao();
     } finally {
-      ocupado = false;
-      controle = null;
-      sincronizarBotoes();
+      liberar();
     }
   }
 
