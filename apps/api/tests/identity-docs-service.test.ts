@@ -258,6 +258,28 @@ describe('H-037 | finalizacao: imagem (CA-01, CA-06 da entrega) e PDF (CA-02, CA
     expect(a.final.arquivos.size).toBe(0);
   });
 
+  it('corrida com a exclusao (linha some antes de confirmar): remove o final gravado e responde 404 uniforme', async () => {
+    const a = arranjo();
+    const id = await enviarArquivo(a, JPEG_FAKE(1000), 'image/jpeg');
+    a.store.confirmDone = async () => {
+      a.store.linhas.delete(id);
+      return 'gone';
+    };
+    expect(await finalizarDocumento({ userId: USUARIO, id }, a.deps)).toEqual(IDOC_NAO_ENCONTRADO);
+    expect(a.final.arquivos.has(id)).toBe(false);
+  });
+
+  it('corrida com a exclusao e falha ao remover o final: ainda 404 uniforme, sem lancar nem vazar o erro', async () => {
+    const a = arranjo();
+    const id = await enviarArquivo(a, JPEG_FAKE(1000), 'image/jpeg');
+    a.final.falhas.add('removeFinal');
+    a.store.confirmDone = async () => {
+      a.store.linhas.delete(id);
+      return 'gone';
+    };
+    expect(await finalizarDocumento({ userId: USUARIO, id }, a.deps)).toEqual(IDOC_NAO_ENCONTRADO);
+  });
+
   it('imagem que nao cabe no limite: 422 nao_cabe_no_limite, sem objeto final', async () => {
     const a = arranjo();
     const id = await enviarArquivo(a, JPEG_FAKE(1000), 'image/jpeg');

@@ -317,7 +317,12 @@ async function processarEntrada(
     deps.clock.nowMs(),
   );
   if (resultado === 'lost') return erro(409, 'em_processamento');
-  if (resultado === 'gone') return IDOC_NAO_ENCONTRADO;
+  if (resultado === 'gone') {
+    // Corrida com a exclusao: o final gravado acima ficou sem dono. Remove sem lancar; a resposta segue 404 uniforme.
+    // Nao se remove no ramo 'lost': a tentativa vencedora pode ter gravado o final valido nessa mesma chave.
+    await deps.final.remove(id).catch(() => undefined);
+    return IDOC_NAO_ENCONTRADO;
+  }
   await deps.staging.remove(chave).catch(() => undefined);
   return {
     status: 200,
