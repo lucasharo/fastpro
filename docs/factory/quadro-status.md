@@ -98,19 +98,16 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
 
-## Desenvolvimento (3)
-
-| Issue | Título |
-|---|---|
-| #44 | [E3] Publicação idempotente com 7 dias |
-| #119 | [E13] Expurgos operacionais |
-| #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
-
-## Code Review (1)
+## Desenvolvimento (4)
 
 | Issue | Título |
 |---|---|
 | #50 | [E4] Documentos de identidade |
+| #44 | [E3] Publicação idempotente com 7 dias |
+| #119 | [E13] Expurgos operacionais |
+| #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
+
+## Code Review (0)
 
 ## QA (0)
 
