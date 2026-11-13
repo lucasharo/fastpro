@@ -346,3 +346,15 @@ Nota: o número 56 aparece duplicado nas rodadas 19 (decisões de H-022 e H-026)
 - **134:** textos novos da tela aprovados como estao (titulo, contador, dialogo de exclusao, anuncios).
 - **135:** o aviso de fachada, interior e rostos fica sempre visivel, mesmo sem fotos.
 - **Portao:** o desenvolvimento da #42 comeca so quando a #41 sair de desenvolvimento (mesmos arquivos de midia).
+
+## Rodada 37 (refino da exclusividade de papeis, #30 / H-017)
+
+Perguntas do refino 100-REFINO-H017.md, numeradas de forma continua. Adotadas como RECOMENDADAS pelo lider para nao parar o fluxo; o usuario pode vetar ou trocar a qualquer momento (aguardando confirmacao).
+
+- **136 (Q1):** a mesma pessoa pode ter perfil de cliente e de profissional no mesmo app_user (recomendacao A).
+- **137 (Q2):** admin nao pode ter perfil de cliente nem de profissional, e o inverso tambem (recomendacao A; coerente com a linha H-017 do backlog).
+- **138 (Q3):** a mesma pessoa e' identificada pelo app_user; dois e-mails continuam sendo duas contas, limitacao ja aceita (recomendacao A).
+- **139 (Q4):** o papel admin e' atribuido so por ferramenta de linha de comando ou seed, com auditoria e sem autoatribuicao (recomendacao A).
+- **140 (Q5):** dados que ja violem a regra nao sao apagados; a migracao falha com lista para revisao manual (recomendacao A; hoje nao ha aceite construido).
+- **141 (Q6):** a recusa responde texto fixo generico e registra auditoria sem dado pessoal (recomendacao A).
+- **Escopo:** "profissional nao aceita o proprio pedido" so e' testavel no nivel do banco (aceite e publicacao ainda nao existem); teste por API e tela fica para as ondas seguintes.

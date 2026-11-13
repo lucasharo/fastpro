@@ -4,13 +4,12 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (80)
+## Backlog (79)
 
 | Issue | Título |
 |---|---|
 | #1 | [SETUP] Validar integração GitHub Projects ↔ Laze ↔ Claude |
 | #14 | [Spike] Regras das lojas (login social, IAP, exclusão) |
-| #30 | [E1] Exclusividade de papéis |
 | #44 | [E3] Publicação idempotente com 7 dias |
 | #45 | [E3] Visibilidade de localização |
 | #46 | [E3] Opt-in de telefone no pedido |
@@ -95,24 +94,23 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 | Issue | Título |
 |---|---|
+| #30 | [E1] Exclusividade de papéis |
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
-| #42 | [E3] Pré-visualização e reordenação de fotos |
 
-## Desenvolvimento (4)
+## Desenvolvimento (3)
 
 | Issue | Título |
 |---|---|
-| #41 | [E3] Remoção de EXIF e tipo por conteúdo |
+| #42 | [E3] Pré-visualização e reordenação de fotos |
 | #43 | [E3] Revisão e confirmação expressa |
 | #49 | [E4] Perfil: serviços, base e raio |
-| #129 | [E15] Dados sintéticos de demonstração |
 
 ## Code Review (0)
 
 ## QA (0)
 
-## Concluído (49)
+## Concluído (51)
 
 | Issue | Título |
 |---|---|
@@ -151,6 +149,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #38 | [E3] Rascunho de pedido sem conta |
 | #39 | [E3] Upload de fotos em quarentena |
 | #40 | [E3] Redução e reencode das fotos |
+| #41 | [E3] Remoção de EXIF e tipo por conteúdo |
 | #48 | [E4] Cadastro profissional com CPF/CNPJ cifrado |
 | #83 | [E7] Acesso excepcional a conversa |
 | #102 | [E11] Pipeline de notificações e cooldown |
@@ -165,6 +164,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #117 | [E12] Painel operacional mínimo |
 | #118 | [E13] Mecanismo de retenção sem prazos |
 | #125 | [E15] Testes de injeção e abuso |
+| #129 | [E15] Dados sintéticos de demonstração |
 
 ## Descartado (1)
 
