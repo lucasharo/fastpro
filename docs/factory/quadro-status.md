@@ -100,16 +100,16 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #45 | [E3] Visibilidade de localização |
 | #37 | [E2] Cobertura booleana sem contagem |
 
-## Code Review (1)
+## Code Review (0)
+
+| Issue | Título |
+|---|---|
+
+## QA (1)
 
 | Issue | Título |
 |---|---|
 | #52 | [E4] Fila de verificação |
-
-## QA (0)
-
-| Issue | Título |
-|---|---|
 
 ## Concluído (65)
 
