@@ -28,6 +28,15 @@ drop trigger if exists role_excl_admin on app.admin_staff;
 drop trigger if exists role_excl_chave_profissional on app.professional_profile;
 drop trigger if exists role_excl_profissional on app.professional_profile;
 
+-- O gatilho de app.customer_profile depende de funcao role_excl_guard_customer(): sai antes das funcoes.
+do $$
+begin
+  if to_regclass('app.customer_profile') is not null then
+    drop trigger if exists role_excl_cliente on app.customer_profile;
+  end if;
+end;
+$$;
+
 do $$
 begin
   if to_regclass('app.acceptance') is not null then
