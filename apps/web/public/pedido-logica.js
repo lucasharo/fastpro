@@ -362,3 +362,74 @@ export function criarControladorEspera({
     ativo: () => ativo,
   };
 }
+
+// ---------- publicacao do pedido (H-031, #44; 110 §8 e 109 §7) ----------
+// Textos separados de PEDIDO_TEXTOS: a frase de CA-13 ("Ainda nao foi publicado.") continua a unica do confirmado.
+const dataCurta = (iso) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+};
+export const PUBLICACAO_TEXTOS = Object.freeze({
+  publicando: 'Publicando seu pedido…',
+  publicar: 'Publicar pedido',
+  publicado: 'Pedido publicado.',
+  aceitesAte: (iso) => `Aceites até ${dataCurta(iso)}.`,
+  revisar: 'Revisar',
+  publicarMesmoAssim: 'Publicar mesmo assim',
+  duplicidade: 'Você já tem um pedido parecido publicado recentemente.',
+  conteudoAlterado: 'Seu pedido mudou. Confira de novo antes de publicar.',
+  sessao: 'Entre de novo para publicar.',
+  limite: 'Muitas tentativas. Tente de novo mais tarde.',
+  enderecoNaoEncontrado: 'Não encontramos esse endereço. Corrija e tente de novo.',
+  limiteEnderecos: 'Este pedido já usou o número máximo de endereços. Mantenha o endereço atual.',
+  processando: 'Ainda processando o endereço. Tente de novo em instantes.',
+  vencido: 'Seu pedido expirou. Refaça o pedido.',
+  indisponivel: 'Não foi possível publicar agora. Seus dados continuam salvos. Tente de novo.',
+  emailDivergente: 'Entre com o mesmo e-mail do pedido.',
+  fotos: 'Suas fotos ainda estão sendo preparadas. Tente de novo em instantes.',
+});
+
+const TEXTO_POR_ESTADO = Object.freeze({
+  conteudo_alterado: 'conteudoAlterado',
+  sessao: 'sessao',
+  limite: 'limite',
+  endereco: 'enderecoNaoEncontrado',
+  limite_enderecos: 'limiteEnderecos',
+  processando: 'processando',
+  vencido: 'vencido',
+  indisponivel: 'indisponivel',
+  email_divergente: 'emailDivergente',
+  fotos: 'fotos',
+});
+
+/** Texto visivel de um desfecho de erro da publicacao (campos usa resumoFaltando). */
+export function textoDaPublicacao(tipo) {
+  const chave = TEXTO_POR_ESTADO[tipo];
+  return chave === undefined ? '' : PUBLICACAO_TEXTOS[chave];
+}
+
+/** Resposta de POST /v1/requests (110 §3). Lista fechada de desfechos; nada de endereco ou coordenada. */
+export function interpretarPublicacao(status, corpo) {
+  const codigo = corpo?.code;
+  if ((status === 201 || status === 200) && corpo?.status === 'publicado') {
+    return { tipo: 'publicado', acceptanceDeadlineAt: corpo.acceptanceDeadlineAt };
+  }
+  if (status === 409 && codigo === 'duplicidade') {
+    return { tipo: 'duplicidade', ackToken: typeof corpo.ackToken === 'string' ? corpo.ackToken : null };
+  }
+  if (status === 409 && codigo === 'conteudo_alterado') return { tipo: 'conteudo_alterado' };
+  if (status === 409 && codigo === 'email_divergente') return { tipo: 'email_divergente' };
+  if (status === 409 && codigo === 'fotos_em_processamento') return { tipo: 'fotos' };
+  if (status === 202 || (status === 409 && (codigo === 'em_andamento' || codigo === 'geocodificacao_em_andamento'))) {
+    return { tipo: 'processando' };
+  }
+  if (status === 401) return { tipo: 'sessao' };
+  if (status === 404) return { tipo: 'vencido' };
+  if (status === 429) return { tipo: 'limite' };
+  if (status === 422 && codigo === 'endereco_nao_encontrado') return { tipo: 'endereco' };
+  if (status === 422 && codigo === 'geocode_limit') return { tipo: 'limite_enderecos' };
+  if (status === 422 && codigo === 'campos_faltando') {
+    return { tipo: 'campos', missing: Array.isArray(corpo?.missing) ? corpo.missing : [] };
+  }
+  return { tipo: 'indisponivel' };
+}

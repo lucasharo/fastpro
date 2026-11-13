@@ -68,13 +68,16 @@ describe('CA-11 sem coordenada, mapa ou ponto na tela', () => {
 });
 
 describe('CA-13 "publicado" so na frase aprovada', () => {
-  it('no codigo e no HTML, a unica ocorrencia de "publicad" e "Ainda não foi publicado."', () => {
+  it('no codigo e no HTML, todo texto visivel com "publicad" e uma frase aprovada (identificadores e codigos de uma palavra nao sao texto)', () => {
+    // H-031 (#44): "publicado" continua existindo como codigo de status e nome de chave (ex.: 'publicado', PUBLICACAO_TEXTOS.publicado).
+    // Esses trechos nao aparecem na tela; a regra vale para frases com espaco e para o HTML.
+    const aprovados = ['Ainda não foi publicado.', 'Pedido publicado.', 'parecido publicado recentemente.'];
     for (const caminho of TODOS) {
-      const ocorrencias = [...semComentario(ler(caminho)).matchAll(/[^'"`\n]*publicad[^'"`\n]*/gi)].map((m) =>
-        m[0].trim(),
-      );
+      const fonte = semComentario(ler(caminho)).replace(/\$\{[^}]*\}/g, ' ');
+      const ocorrencias = [...fonte.matchAll(/[^'"`\n]*publicad[^'"`\n]*/gi)].map((m) => m[0].trim());
       for (const trecho of ocorrencias) {
-        expect(trecho, `${caminho}: ${trecho}`).toContain('Ainda não foi publicado.');
+        if (/^[\w$]+(\.[\w$]+)*[)}\];,:]*$/.test(trecho)) continue;
+        expect(aprovados.some((a) => trecho.includes(a)), `${caminho}: ${trecho}`).toBe(true);
       }
     }
   });
@@ -177,8 +180,10 @@ describe('CA-14 foco por script tem alvo focavel', () => {
     expect(idsFocadosPorScript(ler('../public/pedido.js'))).toEqual(['descricao', 'email', 'resumo-erro', 'titulo-email']);
   });
 
-  it('pedido-revisao.js foca titulo e confirmado', () => {
-    expect(idsFocadosPorScript(ler('../public/pedido-revisao.js'))).toEqual(['confirmado', 'titulo']);
+  it('pedido-revisao.js foca titulo, confirmado e os alvos da publicacao (H-031)', () => {
+    expect(idsFocadosPorScript(ler('../public/pedido-revisao.js')).sort()).toEqual(
+      ['confirmado', 'duplicidade-revisar', 'e-endereco', 'publicar', 'titulo'],
+    );
   });
 
   it('o teste falha se um elemento focado por script perder o tabindex (demonstracao com HTML sintetico)', () => {

@@ -18,6 +18,19 @@ if (!existsSync(distDominio)) {
   process.exit(1);
 }
 
+// H-031 (#44): o dominio exporta a publicacao do pedido, que usa node:crypto (so no servidor). O bundle do navegador
+// usa so a reducao de foto e nunca chama essas funcoes: node:crypto vira um stub que falha se for usado.
+const semNodeCrypto = {
+  name: 'sem-node-crypto',
+  setup(construtor) {
+    construtor.onResolve({ filter: /^node:crypto$/ }, () => ({ path: 'node:crypto', namespace: 'stub-node-crypto' }));
+    construtor.onLoad({ filter: /.*/, namespace: 'stub-node-crypto' }, () => ({
+      contents: 'const falha = () => { throw new Error("node:crypto indisponivel no navegador"); };\nexport const createHash = falha;\nexport const createHmac = falha;\nexport const timingSafeEqual = falha;\n',
+      loader: 'js',
+    }));
+  },
+};
+
 try {
   await build({
     entryPoints: [entrada],
@@ -29,6 +42,7 @@ try {
     legalComments: 'none',
     outfile: destino,
     logLevel: 'error',
+    plugins: [semNodeCrypto],
   });
 } catch {
   console.error('fotos-envio.js: falha ao gerar o bundle do envio de foto.');

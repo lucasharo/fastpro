@@ -6,12 +6,16 @@ import {
   PEDIDO_URGENCIAS,
   criarControladorConfirmacao,
   interpretarRevisao,
+  PUBLICACAO_TEXTOS,
+  interpretarPublicacao,
   resumoFaltando,
+  textoDaPublicacao,
 } from '/pedido-logica.js';
 
 const CAMINHOS = Object.freeze({
   revisao: '/api/v1/drafts/current/review',
   confirma: '/api/v1/drafts/current/confirm',
+  publica: '/api/v1/requests',
 });
 
 const doc = globalThis.document;
@@ -26,10 +30,11 @@ async function chamar(caminho, opcoes = {}) {
     cache: 'no-store',
     redirect: 'error',
     referrerPolicy: 'no-referrer',
-    headers:
-      opcoes.body === undefined
-        ? { Accept: 'application/json' }
-        : { 'Content-Type': 'application/json', Accept: 'application/json' },
+    headers: {
+      ...(opcoes.body === undefined ? {} : { 'Content-Type': 'application/json' }),
+      Accept: 'application/json',
+      ...(opcoes.headers ?? {}),
+    },
     body: opcoes.body,
   });
   const corpo = await resposta.json().catch(() => null);
@@ -70,6 +75,7 @@ function mostrarRevisao(confirmadoEm) {
   el('confirmado').hidden = !confirmado;
   el('confirmado').textContent = confirmado ? PEDIDO_TEXTOS.confirmado : '';
   el('confirmar').hidden = confirmado;
+  el('publicar').hidden = !confirmado;
   el('editar-pedido').hidden = !confirmado;
   el('titulo').focus();
 }
@@ -95,6 +101,7 @@ function aoEstadoConfirmacao(estado) {
   el('pedido-raiz').setAttribute('aria-busy', 'false');
   if (estado.tipo === 'confirmado') {
     setEstado('');
+    if (rascunho !== null && estado.contentRev !== undefined) rascunho.contentRev = estado.contentRev;
     mostrarRevisao(estado.confirmedAt ?? new Date().toISOString());
     el('confirmado').focus();
     return;
@@ -123,6 +130,92 @@ function aoEstadoConfirmacao(estado) {
   el('confirmar-erro').textContent = PEDIDO_TEXTOS.falhaConfirmar;
 }
 
+// ---------- publicacao do pedido (H-031, #44; 110 §8) ----------
+// Uma tentativa logica tem uma Idempotency-Key: o novo envio do mesmo conteudo (retry de rede) reusa a chave;
+// qualquer resposta do servidor a libera e a proxima tentativa recebe outra.
+
+let rascunho = null;
+let tentativa = null;
+let ackDuplicidade = null;
+let publicando = false;
+
+function corpoPublicacao() {
+  const corpo = { draft_id: rascunho.id, content_rev: rascunho.contentRev };
+  if (ackDuplicidade !== null) corpo.duplicate_ack = ackDuplicidade;
+  return JSON.stringify(corpo);
+}
+
+function chaveDaTentativa(corpo) {
+  if (tentativa === null || tentativa.corpo !== corpo) {
+    tentativa = { chave: globalThis.crypto.randomUUID(), corpo };
+  }
+  return tentativa.chave;
+}
+
+function aoEstadoPublicacao(estado) {
+  const botao = el('publicar');
+  const emCurso = estado.tipo === 'publicando';
+  botao.disabled = emCurso;
+  botao.textContent = emCurso ? PUBLICACAO_TEXTOS.publicando : PUBLICACAO_TEXTOS.publicar;
+  el('pedido-raiz').setAttribute('aria-busy', String(emCurso));
+  el('publicar-erro').textContent = '';
+  el('publicar-acesso').hidden = true;
+  if (estado.tipo !== 'duplicidade') el('secao-duplicidade').hidden = true;
+  if (!emCurso && estado.tipo !== 'duplicidade') ackDuplicidade = null;
+  if (emCurso) return;
+  if (estado.tipo === 'publicado') {
+    el('resultado-publicacao').textContent = `${PUBLICACAO_TEXTOS.publicado} ${PUBLICACAO_TEXTOS.aceitesAte(estado.acceptanceDeadlineAt)}`;
+    el('resultado-publicacao').hidden = false;
+    botao.hidden = true;
+    el('confirmado').hidden = true;
+    el('editar-pedido').hidden = true;
+    el('titulo').focus();
+    return;
+  }
+  if (estado.tipo === 'duplicidade') {
+    ackDuplicidade = estado.ackToken;
+    el('secao-duplicidade').hidden = false;
+    el('duplicidade-revisar').focus();
+    return;
+  }
+  if (estado.tipo === 'conteudo_alterado') {
+    el('publicar-erro').textContent = PUBLICACAO_TEXTOS.conteudoAlterado;
+    carregar();
+    return;
+  }
+  el('publicar-erro').textContent = estado.tipo === 'campos' ? resumoFaltando(estado.missing) : textoDaPublicacao(estado.tipo);
+  if (estado.tipo === 'sessao') {
+    el('publicar-acesso').hidden = false;
+    el('titulo').focus();
+  } else if (estado.tipo === 'vencido') {
+    el('titulo').focus();
+  } else if (estado.tipo === 'endereco' || estado.tipo === 'limite_enderecos') {
+    el('e-endereco').focus();
+  } else {
+    botao.focus();
+  }
+}
+
+async function publicar() {
+  if (publicando || rascunho === null) return;
+  const corpo = corpoPublicacao();
+  const chave = chaveDaTentativa(corpo);
+  publicando = true;
+  aoEstadoPublicacao({ tipo: 'publicando' });
+  let resposta;
+  try {
+    resposta = await chamar(CAMINHOS.publica, { method: 'POST', body: corpo, headers: { 'Idempotency-Key': chave } });
+  } catch {
+    // Falha de rede: a tentativa fica guardada e o proximo clique reusa a mesma chave.
+    publicando = false;
+    aoEstadoPublicacao({ tipo: 'indisponivel' });
+    return;
+  }
+  publicando = false;
+  tentativa = null;
+  aoEstadoPublicacao(interpretarPublicacao(resposta.status, resposta.corpo));
+}
+
 // ---------- leitura da revisao ----------
 
 function falhaCarregar() {
@@ -139,6 +232,7 @@ async function carregar() {
     if (estado.tipo === 'pronto') {
       preencherBlocos(estado.view);
       contentRev = estado.view.content_rev;
+      rascunho = { id: estado.view.id, contentRev: estado.view.content_rev };
       bloquearPagina(false, '');
       mostrarRevisao(estado.view.confirmed_at);
       return;
@@ -162,6 +256,13 @@ async function carregar() {
 }
 
 function ligar() {
+  el('publicar').addEventListener('click', publicar);
+  el('duplicidade-publicar').addEventListener('click', publicar);
+  el('duplicidade-revisar').addEventListener('click', () => {
+    ackDuplicidade = null;
+    el('secao-duplicidade').hidden = true;
+    el('publicar').focus();
+  });
   el('confirmar').addEventListener('click', () => {
     if (contentRev === null) return;
     confirmacao.confirmar(contentRev);
