@@ -27,3 +27,5 @@ export * from './billing/index.js';
 export * from './discovery/index.js';
 // Issue 37 (H-024) | Cobertura booleana sem contagem: regras puras (99-DESENHO-H024).
 export * from './coverage/index.js';
+// Issue 46 (H-033) | Contato do pedido: telefone e consentimento (docs/factory/129-DESENHO-H033.md).
+export * from './contact/index.js';
