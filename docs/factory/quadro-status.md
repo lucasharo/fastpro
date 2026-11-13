@@ -4,7 +4,7 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (80)
+## Backlog (79)
 
 | Issue | Título |
 |---|---|
@@ -86,7 +86,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #145 | [E15] db:test: media_asset fora do backup sem decisão registrada |
 | #146 | [E15] db:test: T-H018-13 depende de semente ausente no DEV |
 | #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
-| #148 | [E15] db:test: URL fictícia com senha em identity-docs-montagem |
 | #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 
 ## Product Owner (1)
@@ -109,13 +108,13 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #50 | [E4] Documentos de identidade |
 | #44 | [E3] Publicação idempotente com 7 dias |
 
-## Code Review (1)
+## Code Review (0)
+
+## QA (1)
 
 | Issue | Título |
 |---|---|
 | #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
-
-## QA (0)
 
 ## Concluído (57)
 
