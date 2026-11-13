@@ -460,3 +460,14 @@ Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
 - **188 (Q19):** cotas de emissao com os valores de H-026.
 - **189 (Q20):** teto global de documentos vivos: valor fixo definido pelo Arquiteto.
 - **Fatos do refino a tratar no desenho:** o bucket identity-docs nao existe (a migracao o cria); identity_document e verification_case nao existem; o detector de tipo recusa PDF (precisa de validador de PDF); o redutor de fotos grava sempre em request-photos (nao reaproveitar sem parametrizar: risco R6 com teste obrigatorio).
+
+## Rodada 46 (desenho da composicao da midia, #141 — 104-DESENHO-MIDIA-COMPOSICAO.md)
+Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
+- **190 (A-141-1):** a midia so liga com `MEDIA_UPLOAD_ENABLED=1`; ausente = fechada em todos os ambientes (falha fechada). A producao da Vercel nao define a variavel.
+- **191 (A-141-2):** sem segunda variavel para a galeria (a separacao e' estrutural, pelas portas opcionais).
+- **192 (A-141-3):** no cliente so o `accept` do seletor; o servidor decide por conteudo (HEIC e GIF recebem 415).
+- **193 (A-141-4):** `"sideEffects": false` em packages/domain/package.json para o bundle nao arrastar o barril.
+- **194 (A-141-5):** aprovado esbuild como devDependency gratuita do apps/web (reserva: alternativa C com teste de paridade se o pnpm/check:deps recusar).
+- **195 (A-141-6):** sem segunda trava por VERCEL_ENV=production.
+- **196 (A-141-7):** conferir a duracao maxima da funcao da API na Vercel contra o prazo de 10 s da reducao; se menor, subir; nao bloqueia o desenvolvimento.
+- **197 (A-141-8):** o desenvolvimento da #141 comeca pelo web (esbuild, fotos-envio, portas do navegador, testes) e pelo teste de banco da galeria; `composicao.ts`, `vercel.ts` e `app.ts` (compartilhados com a #43) so sao editados depois que a #43 sair de Desenvolvimento. A #141 nao termina sozinha antes disso.
