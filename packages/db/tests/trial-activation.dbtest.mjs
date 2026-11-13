@@ -7,6 +7,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID, createHash } from 'node:crypto';
+import { Buffer } from 'node:buffer';
 import { connect } from '../scripts/lib/env.mjs';
 
 let client;
