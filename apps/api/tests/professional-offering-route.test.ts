@@ -180,7 +180,7 @@ function chamar(
       res.on('data', (c: Buffer) => partes.push(c));
       res.on('end', () => {
         const texto = Buffer.concat(partes).toString('utf8');
-        let json: unknown = undefined;
+        let json: unknown;
         try {
           json = JSON.parse(texto);
         } catch {
