@@ -84,17 +84,17 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 | #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 
-## Product Owner (2)
+## Product Owner (1)
+
+| Issue | Título |
+|---|---|
+| #51 | [E4] Certificações para atividades regulamentadas |
+
+## Arquitetura (3)
 
 | Issue | Título |
 |---|---|
 | #151 | [E15] Remover backup, restauração e exportação de dados do escopo do projeto |
-| #51 | [E4] Certificações para atividades regulamentadas |
-
-## Arquitetura (2)
-
-| Issue | Título |
-|---|---|
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
 
