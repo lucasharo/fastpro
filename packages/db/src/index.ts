@@ -75,3 +75,5 @@ export * from './ops-purge-storage.js';
 // H-037 (Issue #50) | Documentos de identidade: adaptador Pg (app_system) e Storage (identity-incoming e identity-docs).
 export * from './identity-docs.js';
 export * from './identity-docs-storage.js';
+// H-045 (Issue 58) | Adaptador Pg do acesso comercial derivado (private.commercial_access, somente leitura).
+export * from './commercial-access.js';

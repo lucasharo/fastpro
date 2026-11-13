@@ -20,3 +20,5 @@ export * from './ops-purge/index.js';
 export * from './identity-docs/index.js';
 // H-031 (#44) | Publicacao do pedido: regras puras, corpo, chave e token de duplicidade (110-DESENHO-H031).
 export * from './request/index.js';
+// H-045 (Issue 58) | Acesso comercial derivado: tipos, porta, relogio injetado e leitura (114-DESENHO-H045).
+export * from './billing/index.js';
