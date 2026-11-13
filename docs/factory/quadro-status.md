@@ -101,17 +101,17 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #52 | [E4] Fila de verificação |
 
-## Code Review (2)
+## Code Review (1)
 
 | Issue | Título |
 |---|---|
 | #36 | [E2] Descoberta por raio e online nacional |
-| #151 | [E15] Remover backup, restauração e exportação de dados do escopo do projeto |
 
-## QA (0)
+## QA (1)
 
 | Issue | Título |
 |---|---|
+| #151 | [E15] Remover backup, restauração e exportação de dados do escopo do projeto |
 
 ## Concluído (63)
 
