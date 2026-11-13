@@ -206,10 +206,10 @@ describe('mensagens por contexto, status e codigo (textos aprovados de 106 §6)'
     ['emissao', 422, 'campo_desconhecido', 'image/jpeg', MENSAGENS.falha],
     ['emissao', 429, 'muitas_tentativas', 'image/jpeg', MENSAGENS.muitas],
     ['lista', 401, 'nao_autenticado', null, MENSAGENS.sessao],
-    ['emissao', 403, 'email_nao_verificado', null, MENSAGENS.falha],
+    ['emissao', 403, 'email_nao_verificado', null, MENSAGENS.emailNaoVerificado],
     ['emissao', 403, 'estado_perfil', null, MENSAGENS.estadoPerfil],
-    ['exclusao', 409, 'ja_analisado', null, MENSAGENS.falha],
-    ['lista', 404, 'nao_encontrado', null, MENSAGENS.falha],
+    ['exclusao', 409, 'ja_analisado', null, MENSAGENS.jaAnalisado],
+    ['lista', 404, 'nao_encontrado', null, MENSAGENS.falhaLista],
     ['finalizacao', 409, 'upload_expirado', 'image/jpeg', MENSAGENS.falha],
     ['envio', 503, 'servico_indisponivel', 'image/jpeg', MENSAGENS.falha],
   ] as const)('%s %i %s', (contexto, status, codigo, tipo, esperado) => {
@@ -462,7 +462,7 @@ describe('lista e exclusao do dono', () => {
     expect(doc.el('titulo-lista').foco).toBe(1);
   });
 
-  it('exclusao de item ja analisado (409) mostra a falha generica (sem texto aprovado) e foca o alerta', async () => {
+  it('exclusao de item ja analisado (409) mostra o texto aprovado da decisao 260 e foca o alerta', async () => {
     const { doc } = montar(async (metodo) => {
       if (metodo === 'GET') return { status: 200, corpo: { documents: [RECEBIDO], slotsRemaining: 4 } };
       return { status: 409, corpo: { code: 'ja_analisado' } };
@@ -470,7 +470,7 @@ describe('lista e exclusao do dono', () => {
     await tick();
     doc.el('lista').children[0].children[0].clicar();
     await tick();
-    expect(doc.el('alerta').textContent).toBe(MENSAGENS.falha);
+    expect(doc.el('alerta').textContent).toBe('Este documento já foi analisado e não pode ser excluído.');
     expect(doc.el('alerta').foco).toBe(1);
   });
 });

@@ -20,8 +20,8 @@ const CODIGOS_DE_CONTEUDO = Object.freeze([
   'nao_cabe_no_limite'
 ]);
 
-// Textos vem de packages/domain/src/identity-docs/textos.ts (IDOC_TEXTOS); a tela nao inventa texto. Unica excecao:
-// 'enviando', aprovado em 107 §6 e ausente de textos.ts (lacuna a fechar no dominio; o teste estatico registra a excecao).
+// Textos vem de packages/domain/src/identity-docs/textos.ts (IDOC_TEXTOS, decisao 260); a tela nao inventa texto. O
+// teste estatico confere a paridade: cada texto daqui e do HTML consta de textos.ts.
 export const MENSAGENS = Object.freeze({
   vazio: 'Envie seu documento de identidade. Aceitos: foto JPG, PNG ou WebP de até 5 MB, ou PDF de até 2 MB.',
   enviando: 'Enviando documento...',
@@ -34,7 +34,15 @@ export const MENSAGENS = Object.freeze({
   muitas: 'Muitas tentativas. Tente mais tarde.',
   sessao: 'Entre de novo para enviar.',
   conteudo: 'Não foi possível aceitar este arquivo. Envie outra foto ou outro PDF do documento.',
-  estadoPerfil: 'Não é possível enviar documentos agora. Fale com a equipe de verificação.'
+  estadoPerfil: 'Não é possível enviar documentos agora. Fale com a equipe de verificação.',
+  emailNaoVerificado: 'Confirme seu e-mail para enviar documentos.',
+  jaAnalisado: 'Este documento já foi analisado e não pode ser excluído.',
+  falhaLista: 'Não foi possível carregar seus documentos. Tente de novo.',
+  recebidoEm: 'recebido em dd/mm/aaaa',
+  rotuloFoto: 'Foto',
+  rotuloPdf: 'PDF',
+  rotuloDocumento: 'Documento',
+  excluir: 'Excluir'
 });
 
 /** Tipo declarado pelo navegador, se for um dos quatro aceitos; senao null (sem envio). */
@@ -68,17 +76,19 @@ export function mensagemDeErro(contexto, status, codigo, tipo) {
   if (status === 401) return MENSAGENS.sessao;
   if (status === 429) return MENSAGENS.muitas;
   if (status === 403 && codigo === 'estado_perfil') return MENSAGENS.estadoPerfil;
+  if (status === 403 && codigo === 'email_nao_verificado') return MENSAGENS.emailNaoVerificado;
   if (status === 415) return MENSAGENS.tipo;
   if (status === 413) return tipo === 'application/pdf' ? MENSAGENS.tamanhoPdf : MENSAGENS.tamanhoImagem;
   if (status === 422 && codigo === 'limite_documentos') return MENSAGENS.limite;
   if (status === 422 && CODIGOS_DE_CONTEUDO.includes(codigo)) return MENSAGENS.conteudo;
-  return MENSAGENS.falha;
+  if (status === 409 && codigo === 'ja_analisado' && contexto === 'exclusao') return MENSAGENS.jaAnalisado;
+  return contexto === 'lista' ? MENSAGENS.falhaLista : MENSAGENS.falha;
 }
 
 export function rotuloDeTipo(kind) {
-  if (kind === 'imagem') return 'Foto';
-  if (kind === 'pdf') return 'PDF';
-  return 'Documento';
+  if (kind === 'imagem') return MENSAGENS.rotuloFoto;
+  if (kind === 'pdf') return MENSAGENS.rotuloPdf;
+  return MENSAGENS.rotuloDocumento;
 }
 
 function codigoDe(resposta) {
@@ -140,12 +150,14 @@ export function iniciarDocumentos(doc, buscar, enviarAoStorage, gerarId) {
     for (const d of documentos) {
       const item = doc.createElement('li');
       const partes = [rotuloDeTipo(d.kind)];
-      if (d.status !== 'em_envio' && dataCurta(d.receivedAt)) partes.push('recebido em ' + dataCurta(d.receivedAt));
+      if (d.status !== 'em_envio' && dataCurta(d.receivedAt)) {
+        partes.push(MENSAGENS.recebidoEm.replace('dd/mm/aaaa', dataCurta(d.receivedAt)));
+      }
       item.textContent = partes.join(' · ');
       if (d.deletable) {
         const excluir = doc.createElement('button');
         excluir.type = 'button';
-        excluir.textContent = 'Excluir';
+        excluir.textContent = MENSAGENS.excluir;
         excluir.addEventListener('click', () => excluirDocumento(d.id));
         item.appendChild(excluir);
       }
@@ -165,7 +177,7 @@ export function iniciarDocumentos(doc, buscar, enviarAoStorage, gerarId) {
       renderizar(resposta.corpo.documents);
       return resposta.corpo.documents;
     } catch {
-      alertar(MENSAGENS.falha);
+      alertar(MENSAGENS.falhaLista);
       renderizar([]);
       return null;
     }

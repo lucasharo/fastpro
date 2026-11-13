@@ -167,23 +167,26 @@ describe('CA-20 foco por script tem alvo focavel', () => {
   });
 });
 
-// Textos: a tela usa so os de packages/domain/src/identity-docs/textos.ts (IDOC_TEXTOS). Excecao unica e registrada:
-// 'Enviando documento...' e aprovado em 107 §6 mas ainda nao consta de textos.ts (lacuna a fechar no dominio).
+// Textos: a tela usa so os de packages/domain/src/identity-docs/textos.ts (IDOC_TEXTOS; decisoes 186, 226 e 260).
+// Sem excecao de texto de tela. A unica excecao e o titulo da aba do navegador (nome do produto + pagina), que nao e
+// texto de tela e nao consta de textos.ts.
 describe('textos da tela = textos aprovados do dominio (sem texto inventado)', () => {
   const textos = ler('../../../packages/domain/src/identity-docs/textos.ts');
   const aprovados = [...textos.slice(textos.indexOf('IDOC_TEXTOS')).matchAll(/^\s+\w+: '([^']+)',?$/gm)].map((m) => m[1]);
-  const EXCECOES = ['Enviando documento...'];
+  const EXCECOES = ['FastPro - Documento de identidade'];
+  const html = ler(HTML);
   const bloco = ler(JS);
   const mensagens = bloco.slice(bloco.indexOf('export const MENSAGENS'), bloco.indexOf('});', bloco.indexOf('export const MENSAGENS')));
-  const tela = ler(HTML) + bloco;
+  const tela = html + bloco;
 
-  it('o dominio tem os 11 textos aprovados (sanidade da leitura)', () => {
-    expect(aprovados).toHaveLength(11);
+  it('o dominio tem os 26 textos aprovados (sanidade da leitura)', () => {
+    expect(aprovados).toHaveLength(26);
   });
 
-  it('cada texto de MENSAGENS existe em textos.ts ou esta na lista de excecao', () => {
-    const textosDaTela = [...mensagens.matchAll(/'([^']*)'/g)].map((m) => m[1]);
-    const inventados = textosDaTela.filter((t) => !aprovados.includes(t) && !EXCECOES.includes(t));
+  it('cada texto de MENSAGENS e cada texto visivel do HTML existe em textos.ts ou esta na lista de excecao', () => {
+    const doMapa = [...mensagens.matchAll(/'([^']*)'/g)].map((m) => m[1]);
+    const doHtml = [...html.matchAll(/>([^<>]+)</g)].map((m) => m[1].trim()).filter((t) => t !== '');
+    const inventados = [...doMapa, ...doHtml].filter((t) => !aprovados.includes(t) && !EXCECOES.includes(t));
     expect(inventados).toEqual([]);
   });
 
