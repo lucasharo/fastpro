@@ -18,11 +18,18 @@ import { montarPedidoLogin } from './challenge-request-composicao.js';
 import { montarConsumoEVerificacao } from './modules/identity/consumo-link-composicao.js';
 // H-016 | Cadastro, login, conta, recuperacao e troca de senha do profissional (so monta com as variaveis).
 import { montarProfissional } from './professional-composicao.js';
+// E3 (#141) | Midia: limite de reducoes e contadores (singletons de modulo, decisao 197 e desenho §2.3).
+import { ReduceCounters } from './media/media-reduce-service.js';
+import { ReduceGate } from './media/reduce-gate.js';
 
 /** H-019: fabrica da busca de servico sobre o pool real (um pool por URL, reaproveitado entre chamadas). */
 const fabricaCatalogo = criarFabricaCatalogo(abrirPoolCatalogo);
+/** E3 (#141): um cliente do papel app_api por URL, compartilhado pelo rascunho e pela midia (um pool so). */
+const abrirClienteApi = memoizarCliente(abrirClienteSql);
 /** H-025: fabrica do rascunho sem conta sobre o papel app_api (um cliente SQL por URL, reaproveitado). */
-const fabricaRascunho = criarFabricaRascunho(abrirClienteSql);
+const fabricaRascunho = criarFabricaRascunho(abrirClienteApi);
+/** E3 (#141): limite de reducoes simultaneas e contadores da instancia, criados uma vez por modulo. */
+const reducaoMidia = { gate: new ReduceGate(), contadores: new ReduceCounters() };
 /** H-025 (D-11): cliente do papel app_system para a cota da sugestao (um por URL, reaproveitado). */
 const abrirClienteSistema = memoizarCliente(abrirClienteSql);
 
@@ -32,7 +39,7 @@ export default async function vercelHandler(
 ): Promise<void> {
   try {
     // H-073: o pool do papel app_system so e aberto quando DATABASE_URL_APP_SYSTEM e ADMIN_BASE_URL existem.
-    const integracoes = montarIntegracoes(process.env, { abrirClienteSql, fabricaCatalogo, fabricaRascunho });
+    const integracoes = montarIntegracoes(process.env, { abrirClienteSql, abrirClienteApi, fabricaCatalogo, fabricaRascunho, reducaoMidia });
     // H-107: gestao do catalogo admin; so monta com DATABASE_URL_APP_SYSTEM e ADMIN_BASE_URL (sem eles, 404).
     const adminCatalog = montarCatalogoAdmin(process.env, { abrirCliente: abrirClienteSql });
     // H-105: dupla aprovacao de estorno e suspensao; so monta com DATABASE_URL_APP_SYSTEM e ADMIN_BASE_URL (sem eles, 404).
@@ -75,6 +82,7 @@ export default async function vercelHandler(
       ...(integracoes.adminOps !== undefined ? { adminOps: integracoes.adminOps } : {}),
       ...(integracoes.professionalProfile !== undefined ? { professionalProfile: integracoes.professionalProfile } : {}),
       ...(integracoes.professionalOffering !== undefined ? { professionalOffering: integracoes.professionalOffering } : {}),
+      ...(integracoes.media !== undefined ? { media: integracoes.media } : {}),
     });
   } catch {
     // Sem detalhe de erro na resposta nem no log (ADR-013: sem dado sensivel).

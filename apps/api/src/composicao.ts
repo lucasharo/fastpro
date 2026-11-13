@@ -46,6 +46,11 @@ import type { ProfessionalProfileRouteOptions } from './professional-profile-rou
 // H-036 | Servicos, base e raio do perfil profissional (/v1/professional/profile/services e /area).
 import { montarOfertaProfissional } from './professional-offering-composicao.js';
 import type { ProfessionalOfferingRouteOptions } from './professional-offering-route.js';
+// E3 (#141) | Midia: upload, quarentena e galeria (so liga com MEDIA_UPLOAD_ENABLED=1 e todos os itens; decisao 190).
+import { montarMidia } from './media/media-composicao.js';
+import type { MediaRouteOptions } from './media/media-route.js';
+import type { ReduceCounters } from './media/media-reduce-service.js';
+import type { ReduceGate } from './media/reduce-gate.js';
 
 /** Nomes da busca que faltam (so nomes; a chave curta aparece marcada, sem tamanho nem valor). */
 function faltantesCatalogo(env: CatalogEnv): readonly string[] {
@@ -82,6 +87,10 @@ export interface ComposicaoOpcoes {
   readonly fetchAuth?: typeof fetch;
   /** Fabrica das portas do rascunho sem conta (H-025) sobre o papel app_api. Sem ela, as rotas nao ligam (404). */
   readonly fabricaRascunho?: DraftPortsFactory;
+  /** Fabrica do cliente SQL do papel app_api, memoizada por URL na borda (compartilhada com o rascunho). */
+  readonly abrirClienteApi?: (connectionString: string) => SqlClient;
+  /** Limite de reducoes e contadores da instancia da midia (singletons de modulo na borda). */
+  readonly reducaoMidia?: { readonly gate: ReduceGate; readonly contadores: ReduceCounters };
 }
 
 export interface Integracoes {
@@ -111,6 +120,10 @@ export interface Integracoes {
   readonly professionalOffering: ProfessionalOfferingRouteOptions | undefined;
   /** Nomes (nunca valores) que impedem as rotas de servicos, base e raio (H-036) de ligar. */
   readonly pendenciasOferta: readonly string[];
+  /** Opcoes das rotas de midia (E3: upload e galeria), ou undefined (404). */
+  readonly media: MediaRouteOptions | undefined;
+  /** Nomes (nunca valores) e itens que impedem a midia ou a galeria de ligar. */
+  readonly pendenciasMidia: readonly string[];
 }
 
 const RELOGIO_PADRAO: ClockPort = {
@@ -204,6 +217,9 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   // H-036: servicos, base e raio. Sem o provedor permanente (BLQ-EXEC, decisao 116) as rotas seguem 404.
   const oferta = montarOfertaProfissional(env, { abrirCliente: opcoes.abrirClienteSql, relogio: opcoes.clock });
 
+  // E3: midia. Liga so com MEDIA_UPLOAD_ENABLED=1 e os itens completos (decisao 190); sem isso, 404.
+  const midia = montarMidia(env, { abrirCliente: opcoes.abrirClienteApi, reducao: opcoes.reducaoMidia });
+
   return {
     catalog,
     email,
@@ -218,6 +234,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     pendenciasPerfil: perfil.pendencias,
     professionalOffering: oferta.options,
     pendenciasOferta: oferta.pendencias,
+    media: midia.options,
+    pendenciasMidia: midia.pendencias,
   };
 }
 

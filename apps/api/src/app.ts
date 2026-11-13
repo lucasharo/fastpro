@@ -98,6 +98,7 @@ import {
 import { handleAddressSuggest, type GeoRouteOptions } from './geo/address-suggest-route.js';
 import { handleDraftRoute, isDraftRoute, type DraftRouteOptions } from './drafts/draft-route.js';
 import { handleMediaRoute, isMediaRoute, type MediaRouteOptions } from './media/media-route.js';
+import { draftNotFound } from './drafts/draft-service.js';
 import {
   handleSessionConvert,
   handleSessionLogout,
@@ -311,6 +312,13 @@ export async function handleRequest(
   }
   if (opts.media && isMediaRoute(path)) {
     await handleMediaRoute(req, res, path, opts.media);
+    return;
+  }
+  // E3 (decisao 190, desenho §2.4): sem a midia montada, o mesmo 404 uniforme do rascunho (corpo e cabecalhos).
+  if (isMediaRoute(path)) {
+    const r = draftNotFound();
+    res.writeHead(r.status, r.headers);
+    res.end(r.body);
     return;
   }
   if (req.method === 'POST' && path === CATALOG_SEARCH_PATH && opts.catalog) {
