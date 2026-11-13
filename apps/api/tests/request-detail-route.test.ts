@@ -108,7 +108,7 @@ function opcoes(): RequestDetailRouteOptions {
         return userId === undefined ? null : { userId };
       },
     },
-    service: { store: loja, vault, clock: { nowMs: () => agora } },
+    service: { store: loja, addressVault: vault, clock: { nowMs: () => agora } },
   };
 }
 
@@ -323,7 +323,7 @@ describe('T-15: sentinelas de endereco, chave e e-mail fora de logs e de respost
 describe('T-16: a leitura nao depende de provedor de geocodificacao', () => {
   it('as portas da rota sao so loja, cofre e relogio; o profissional e o dono leem sem nenhuma chamada externa', async () => {
     const o = opcoes();
-    expect(Object.keys(o.service).sort()).toEqual(['clock', 'store', 'vault']);
+    expect(Object.keys(o.service).sort()).toEqual(['addressVault', 'clock', 'store']);
     expect((await pedir('GET', `/v1/professional/requests/${PEDIDO}`, SEG_PRO)).status).toBe(200);
     expect((await pedir('GET', `/v1/requests/${PEDIDO}`, SEG_DONO)).status).toBe(200);
   });

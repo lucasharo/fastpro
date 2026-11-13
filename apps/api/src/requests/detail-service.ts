@@ -29,7 +29,7 @@ export interface VisibilityStorePort {
 
 export interface DetailServiceDeps {
   readonly store: VisibilityStorePort;
-  readonly vault: AddressVault;
+  readonly addressVault: AddressVault;
   readonly clock: { nowMs(): number };
 }
 
@@ -62,7 +62,7 @@ export async function readRequestAsOwner(
   let addressText: string | null;
   if (linha.addressEnc !== null) {
     try {
-      addressText = deps.vault.open(linha.addressEnc, linha.id);
+      addressText = deps.addressVault.open(linha.addressEnc, linha.id);
     } catch {
       return { status: 503, body: ENDERECO_INDISPONIVEL_BODY };
     }

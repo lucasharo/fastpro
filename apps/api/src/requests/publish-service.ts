@@ -49,7 +49,7 @@ export interface PublishServiceDeps {
    * Cofre do endereco (Issue 45, §3). Sem ele o servico responde 503 publicacao_indisponivel antes de abrir o banco.
    * Opcional no tipo so para que os testes da Issue 44 montados sem cofre continuem compilando; a montagem real sempre passa.
    */
-  readonly vault?: AddressVault;
+  readonly addressVault?: AddressVault;
   /** Gerador do id do pedido (padrao: uuid v4). Injetavel para teste. */
   readonly novoId?: () => string;
   /**
@@ -120,8 +120,8 @@ function similarDoToken(token: string): string | null {
 
 export async function publishRequest(input: PublishRequestInput, deps: PublishServiceDeps): Promise<PublishOutcome> {
   const agora = deps.clock.nowMs();
-  const vault = deps.vault;
-  if (vault === undefined) return resposta(503, { code: 'publicacao_indisponivel' }, { 'Retry-After': '10' });
+  const addressVault = deps.addressVault;
+  if (addressVault === undefined) return resposta(503, { code: 'publicacao_indisponivel' }, { 'Retry-After': '10' });
   const { body, userId } = input;
   // Issue 46 (H-033): telefone opcional, validado antes de qualquer escrita. Sem cifra configurada, 503 antes do banco.
   const telefoneE164 = body.phone === undefined ? undefined : normalizePhoneBr(body.phone);
@@ -200,7 +200,7 @@ export async function publishRequest(input: PublishRequestInput, deps: PublishSe
   let telefoneEnc: Buffer | undefined;
   let publicLabel: string | null;
   try {
-    addressEnc = vault.seal(inicio.addressText, requestId);
+    addressEnc = addressVault.seal(inicio.addressText, requestId);
     publicLabel = derivePublicLabel(inicio.addressText);
     if (telefoneE164 && deps.telefone !== undefined) telefoneEnc = deps.telefone.cofre.seal(telefoneE164, requestId);
   } catch {

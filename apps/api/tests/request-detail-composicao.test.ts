@@ -43,6 +43,6 @@ describe('montarDetalhePedido', () => {
     expect(r.pendencias).toEqual([]);
     expect(r.options).toBeDefined();
     expect(Object.keys(r.options ?? {}).sort()).toEqual(['service', 'sessions']);
-    expect(Object.keys(r.options?.service ?? {}).sort()).toEqual(['clock', 'store', 'vault']);
+    expect(Object.keys(r.options?.service ?? {}).sort()).toEqual(['addressVault', 'clock', 'store']);
   });
 });

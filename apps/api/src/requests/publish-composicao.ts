@@ -150,7 +150,7 @@ export function montarPublicacaoPedido(env: Ambiente, opcoes: PublicacaoPedidoOp
             clock: () => relogio.nowMs(),
           },
           hasher: createDraftHasher(chave),
-          vault: cofre,
+          addressVault: cofre,
           telefone: telefoneDaPublicacao(env, cliente),
           chave,
           rateKey: (finalidade: string, identificador: string) =>

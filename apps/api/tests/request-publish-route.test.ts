@@ -138,7 +138,7 @@ function opcoes(): PublishRouteOptions {
           },
           hasher,
           // Issue 45: cofre com chave de teste montada em memoria (nunca de .env.local).
-          vault: createAddressVault(CHAVE_ENDERECO_TESTE),
+          addressVault: createAddressVault(CHAVE_ENDERECO_TESTE),
           chave: CHAVE,
           rateKey: (finalidade: string, identificador: string) => `${finalidade}:${identificador}`,
           clock: { nowMs: () => AGORA },

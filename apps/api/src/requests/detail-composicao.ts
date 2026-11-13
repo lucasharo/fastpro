@@ -65,7 +65,7 @@ export function montarDetalhePedido(env: Ambiente, opcoes: DetalhePedidoOpcoes =
       sessions: new PgSessionRepository(cliente),
       service: {
         store: new PgRequestVisibilityStore(cliente),
-        vault: cofre,
+        addressVault: cofre,
         clock: relogio,
       },
     },

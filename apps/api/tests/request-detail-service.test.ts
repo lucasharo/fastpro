@@ -63,7 +63,7 @@ function deps(store: Partial<VisibilityStorePort>, v = vault): DetailServiceDeps
     readProfessional: async () => null,
     ...store,
   };
-  return { store: porta, vault: v, clock: { nowMs: () => AGORA } };
+  return { store: porta, addressVault: v, clock: { nowMs: () => AGORA } };
 }
 
 describe('leitura do dono (T-05, T-12)', () => {
