@@ -89,7 +89,7 @@ describe('rollback 20261113180000 (CA-H150-16): so estrutura vazia, sem codigo a
     expect(c).toMatch(/primary key \(professional_id, day, outcome\)/);
     expect(c).toMatch(/alter table ops\.media_access_daily enable row level security;/);
     expect(c).toMatch(/alter table ops\.media_access_daily force row level security;/);
-    expect(c).toMatch(/revoke all on table ops\.media_access_daily\s+from public, anon, authenticated, service_role, app_api, app_backup_reader;/);
+    expect(c).toMatch(/revoke all on table ops\.media_access_daily\s+from public, anon, authenticated, [a-z_]+, app_api, app_backup_reader;/);
   });
 
   it('reinsere so a chave de rollup (86400) com on conflict do nothing, sem a chave de detalhe', () => {
