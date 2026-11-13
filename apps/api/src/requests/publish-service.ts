@@ -104,8 +104,13 @@ export async function publishRequest(input: PublishRequestInput, deps: PublishSe
   const { body, userId } = input;
   const bodyHash = publishBodyHash(body);
   const chaveBanco = { userId, idemKey: input.idemKey, bodyHash };
+  // Melhor esforco: a resposta ao cliente nao depende do abort. Se ele falhar, a chave em andamento libera pelo prazo (lease).
   const abortar = async (): Promise<void> => {
-    await deps.store.abort(chaveBanco);
+    try {
+      await deps.store.abort(chaveBanco);
+    } catch {
+      // Sem acao: ver comentario acima.
+    }
   };
   const base = {
     userId,

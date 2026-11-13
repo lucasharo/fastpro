@@ -245,6 +245,18 @@ describe('POST /v1/requests: ordem das recusas (110 §3.1)', () => {
 });
 
 describe('POST /v1/requests: publicacao e idempotencia (110 §5, T-API01, T-API02)', () => {
+  it('falha do abort nao muda a resposta ao cliente (melhor esforco, H-031 #44)', async () => {
+    loja.commit = async () => {
+      throw new Error('falha de banco');
+    };
+    loja.abort = async () => {
+      throw new Error('abort tambem falhou');
+    };
+    const r = await chamar(cabecalhosValidos(), CORPO_OK);
+    expect(r.status).toBe(503);
+    expect(JSON.parse(r.body)).toMatchObject({ code: 'indisponivel' });
+  });
+
   it('criacao responde 201 com lista fechada de chaves e nao chama o provedor mais de uma vez', async () => {
     const r = await chamar(cabecalhosValidos(), CORPO_OK);
     expect(r.status).toBe(201);
