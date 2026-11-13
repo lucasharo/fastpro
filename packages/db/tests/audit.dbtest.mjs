@@ -197,6 +197,7 @@ test('D-02b regressao: app_api executa apenas audit_append entre as funcoes de p
   // - rascunho (H-013, H-025, H-030): docs/factory/91-DESENHO-H013, 74-DESENHO-H025, 90-DESENHO-H030.
   // - midia (H-026, H-027, H-029): docs/factory/88-DESENHO-H026, 93-DESENHO-H027, 98-DESENHO-H029.
   // - acesso comercial (H-045, Issue 58): docs/factory/114-DESENHO-H045 §4 e §6; decisao 279 (app_api e app_system).
+  // - planos e precos (H-046, Issue 59): docs/factory/120-DESENHO-H046 §3; decisao 345 (app_api e app_system).
   // Lista atualizada na Issue 140 (triagem do db:test): a versao anterior so previa o catalogo do H-018.
   assert.deepEqual(
     res.rows.map((r) => r.proname).sort(),
@@ -234,6 +235,7 @@ test('D-02b regressao: app_api executa apenas audit_append entre as funcoes de p
       'media_reduce_release',
       'media_reorder',
       'media_sweep',
+      'plan_price_at',
     ].sort(),
   );
   const ex = await client.query(

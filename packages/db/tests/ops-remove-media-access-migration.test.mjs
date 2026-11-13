@@ -22,10 +22,12 @@ function codigo(texto) {
 }
 
 describe('migracao 20261113180000: remocao do historico de acesso (Issue 150)', () => {
-  it('e a mais recente do diretorio e vem depois da anterior (sem editar migracao antiga, CA-H150-17)', () => {
+  it('vem depois da anterior no diretorio (sem editar migracao antiga, CA-H150-17)', () => {
+    // Desde a Issue 59 (H-046) ha migracao posterior a esta; o teste prova so a ordem relativa a H-045.
     const nomes = readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort();
-    expect(nomes.at(-1)).toBe(FILE);
-    expect(nomes.at(-2)).toBe('20261113170000_billing_create_access_grant.sql');
+    const posicao = nomes.indexOf(FILE);
+    expect(posicao).toBeGreaterThan(0);
+    expect(nomes[posicao - 1]).toBe('20261113170000_billing_create_access_grant.sql');
   });
 
   it('tem rollback no mesmo prefixo, com a convencao .down.sql', () => {
