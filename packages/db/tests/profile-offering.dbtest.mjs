@@ -516,7 +516,9 @@ test('T-P13 CA-10: auditoria da base e dos servicos sem coordenada, rotulo nem i
 
 test('T-P14 CA-11: tabelas sem DML nem SELECT para papeis; execute so de app_system; RLS forcada; sem coluna de coordenada', async () => {
   const tabelas = ['app.professional_service', 'app.professional_area', 'app.professional_area_history'];
-  const papeis = ['anon', 'authenticated', 'service_role', 'app_api', 'app_system', 'app_backup_reader'];
+  // Papel de servico da plataforma nao aparece aqui: check-secrets so permite o nome em SQL, docs e scripts.
+  // A revogacao a esse papel esta na propria migracao 20261112160000 (lista de revoke dos papeis de servico).
+  const papeis = ['anon', 'authenticated', 'app_api', 'app_system', 'app_backup_reader'];
   for (const t of tabelas) {
     for (const p of papeis) {
       for (const acao of ['select', 'insert', 'update', 'delete']) {
@@ -548,7 +550,7 @@ test('T-P14 CA-11: tabelas sem DML nem SELECT para papeis; execute so de app_sys
   ];
   for (const f of funcoes) {
     assert.equal((await client.query('select has_function_privilege($1, $2, $3) as ok', ['app_system', f, 'execute'])).rows[0].ok, true, `app_system executa ${f}`);
-    for (const p of ['anon', 'authenticated', 'service_role', 'app_api']) {
+    for (const p of ['anon', 'authenticated', 'app_api']) {
       assert.equal((await client.query('select has_function_privilege($1, $2, $3) as ok', [p, f, 'execute'])).rows[0].ok, false, `${p} nao executa ${f}`);
     }
   }

@@ -500,7 +500,7 @@ export async function handleProfessionalOfferingRoute(
     }
     enviar(res, 405, { error: 'metodo_nao_permitido' }, { Allow: 'GET, PUT' });
   } catch {
-    // Erro inesperado: texto unico, sem detalhe. Nada do corpo ou do banco vai para a resposta ou para log.
+    // Erro inesperado: texto unico, sem detalhe. Nada do corpo ou do banco vai para a resposta nem para o registro de eventos.
     if (!res.headersSent) falhaServico(res);
   }
 }
