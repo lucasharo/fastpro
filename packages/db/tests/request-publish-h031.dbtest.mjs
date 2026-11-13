@@ -302,6 +302,13 @@ test('T-DB08 chave: corpo diferente conflita; em andamento bloqueia; abort liber
     const rep = await begin(client, u, d, { key: b.key, body: b.body });
     assert.equal(rep.row.out_status, 'repetida');
     assert.equal(rep.row.out_request_id, c.out_request_id, 'repeticao devolve o mesmo pedido');
+    // Rascunho ja publicado: chave nova recebe ja_publicado (200) e o replay dessa chave segue 200 (H-031 #44, decisao 256).
+    const outra = await begin(client, u, d);
+    assert.equal(outra.row.out_status, 'ja_publicado');
+    assert.equal(outra.row.out_request_id, c.out_request_id);
+    const repOutra = await begin(client, u, d, { key: outra.key, body: outra.body });
+    assert.equal(repOutra.row.out_status, 'ja_publicado', 'replay de ja_publicado responde 200, nao 201');
+    assert.equal(repOutra.row.out_request_id, c.out_request_id);
   });
   await tx(async () => {
     const { u, d } = await cenario(client);
