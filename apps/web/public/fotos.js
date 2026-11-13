@@ -9,6 +9,7 @@
 
   var CAMINHO_FOTOS = '/api/v1/media/photos';
   var CAMINHO_ORDEM = '/api/v1/media/photos/order';
+  var CAMINHO_EMISSAO = '/api/v1/media/uploads';
   function caminhoItem(id) { return '/api/v1/media/' + id; }
   var LIMITE_FOTOS = 5;
   var INTERVALO_CONSULTA_MS = 3000;
@@ -42,6 +43,9 @@
     erroOrdem: 'Não foi possível salvar a nova ordem. Ela voltou à anterior.',
     salvandoOrdem: 'Salvando ordem',
     limite: 'Você já tem 5 fotos. Para adicionar outra, exclua uma.',
+    arquivoGrande: 'Esta foto é grande demais. Escolha uma foto de até 10 MB.',
+    tipoNaoAceito: 'Este tipo de arquivo não é aceito. Use JPG, PNG ou WebP.',
+    falhaEnvio: 'Não foi possível enviar esta foto. Tente de novo.',
     adicionar: 'Adicionar foto',
     indisponivelNoNavegador: 'Envio de foto indisponível neste navegador.',
     tentarDeNovo: 'Tentar de novo',
@@ -160,6 +164,8 @@
       timer: null,
       parado: false,
       excluindo: null,
+      envios: {},
+      avisoEnvio: null,
       alvoDialogo: null,
       ocupadoDialogo: false,
       focoPendente: null,
@@ -368,7 +374,8 @@
 
     function finalizarAguardando() {
       estado.exibida.forEach(function (f) {
-        if (f.estado === 'aguardando' && !estado.finalizadas[f.id]) {
+        // Foto que esta aba ainda envia nao e finalizada pelo polling (o objeto pode nao ter chegado; E3, Issue 141).
+        if (f.estado === 'aguardando' && !estado.finalizadas[f.id] && !estado.envios[f.id]) {
           estado.finalizadas[f.id] = true;
           pedir('POST', '/api/v1/media/' + f.id + '/finalize').then(function () {
             agendarConsulta(INTERVALO_CONSULTA_MS);
@@ -455,10 +462,11 @@
       }
 
       var podeAdicionar = total < LIMITE_FOTOS && !estado.carregando && estado.erroLista === null;
-      adicionar.setAttribute('aria-disabled', podeAdicionar ? 'false' : 'true');
+      var envioOk = opcoes.adicionarFoto !== undefined || podeEnviar();
+      adicionar.setAttribute('aria-disabled', podeAdicionar && envioOk ? 'false' : 'true');
       adicionar.chaveFoco = 'adicionar';
-      avisoAdicionar.textContent = total >= LIMITE_FOTOS ? TEXTOS.limite : '';
-      if (opcoes.adicionarFoto === undefined) {
+      avisoAdicionar.textContent = total >= LIMITE_FOTOS ? TEXTOS.limite : (estado.avisoEnvio || '');
+      if (!envioOk) {
         adicionar.setAttribute('aria-disabled', 'true');
         avisoAdicionar.textContent = TEXTOS.indisponivelNoNavegador;
       }
@@ -637,7 +645,12 @@
       estado.ocupadoDialogo = true;
       estado.excluindo = alvo.id;
       dialogoConfirmar.setAttribute('aria-busy', 'true');
-      pedir('DELETE', caminhoItem(alvo.id)).then(function (r) {
+      // Envio em curso desta aba: cancela (AbortController) e espera o fim do envio antes do DELETE (CA-17, Issue 141).
+      var envioEmCurso = estado.envios[alvo.id];
+      var esperarEnvio = envioEmCurso ? cancelarEnvio(envioEmCurso) : Promise.resolve(null);
+      esperarEnvio.then(function () {
+        return pedir('DELETE', caminhoItem(alvo.id));
+      }).then(function (r) {
         estado.ocupadoDialogo = false;
         estado.excluindo = null;
         dialogoConfirmar.setAttribute('aria-busy', 'false');
@@ -682,8 +695,132 @@
         anunciar(TEXTOS.limite);
         return;
       }
-      if (typeof opcoes.adicionarFoto === 'function') opcoes.adicionarFoto();
+      if (typeof opcoes.adicionarFoto === 'function') {
+        opcoes.adicionarFoto();
+        return;
+      }
+      if (!podeEnviar() || estado.carregando || estado.erroLista !== null) return;
+      abrirSeletor();
     });
+
+    // ---- Envio de foto (E3, Issue 141; decisoes 190 a 197): reduz no navegador, emite, PUT sem cookie, finaliza ----
+    var gerarId = opcoes.sortear || (janela.crypto && typeof janela.crypto.randomUUID === 'function'
+      ? function () { return janela.crypto.randomUUID(); } : null);
+    var seletor = null;
+
+    function podeEnviar() {
+      return !!(opcoes.envio && typeof opcoes.envio.disponivel === 'function' && opcoes.envio.disponivel() &&
+        typeof opcoes.envio.enviar === 'function' && gerarId !== null && typeof janela.AbortController === 'function');
+    }
+
+    /** Texto aprovado (decisao 154) para cada falha do envio. Nenhum eco do servidor. */
+    function textoDeErroEnvio(codigo) {
+      if (codigo === 'arquivo_grande') return TEXTOS.arquivoGrande;
+      if (codigo === 'tipo') return TEXTOS.tipoNaoAceito;
+      if (codigo === 'muitas') return TEXTOS.muitasAcoes;
+      if (codigo === 'rascunho') return TEXTOS.rascunhoVencido;
+      if (codigo === 'limite') return TEXTOS.limite;
+      return TEXTOS.falhaEnvio;
+    }
+
+    function codigoDeFalhaEmissao(r) {
+      if (r.status === 404) return 'rascunho';
+      if (r.status === 429) return 'muitas';
+      if (r.status === 415) return 'tipo';
+      if (r.status === 413) return 'arquivo_grande';
+      if (r.status === 422 && r.dados && r.dados.code === 'photo_limit') return 'limite';
+      return 'falha';
+    }
+
+    function abrirSeletor() {
+      if (seletor === null) {
+        seletor = doc.createElement('input');
+        seletor.setAttribute('type', 'file');
+        seletor.setAttribute('accept', 'image/jpeg,image/png,image/webp');
+        seletor.setAttribute('hidden', '');
+        seletor.addEventListener('change', function () {
+          var arquivo = seletor.files && seletor.files.length > 0 ? seletor.files[0] : null;
+          seletor.value = '';
+          if (arquivo) iniciarEnvio(arquivo);
+        });
+        pagina.appendChild(seletor);
+      }
+      seletor.click();
+    }
+
+    function limparEnvio(entrada) {
+      if (entrada.id !== null && estado.envios[entrada.id] === entrada) delete estado.envios[entrada.id];
+    }
+
+    /** Cancela o envio em curso desta aba. A promessa devolvida sempre resolve (o PUT abortado tambem). */
+    function cancelarEnvio(entrada) {
+      entrada.cancelado = true;
+      entrada.controle.abort();
+      return entrada.fim;
+    }
+
+    function iniciarEnvio(arquivo) {
+      var entrada = { controle: new janela.AbortController(), cancelado: false, id: null, urlEnvio: null, tipo: null, fim: null };
+      estado.avisoEnvio = null;
+      entrada.fim = opcoes.envio.enviar(arquivo, arquivo.type, {
+        emitir: function (corpo) {
+          return pedir('POST', CAMINHO_EMISSAO, {
+            client_upload_id: gerarId(),
+            content_type: corpo.content_type,
+            size_bytes: corpo.size_bytes
+          }).then(function (r) {
+            if ((r.status === 200 || r.status === 201) && r.dados && typeof r.dados.id === 'string') {
+              entrada.id = r.dados.id;
+              entrada.tipo = corpo.content_type;
+              entrada.urlEnvio = typeof r.dados.upload_url === 'string' ? r.dados.upload_url : null;
+              // Repeticao de foto ja confirmada (200 sem URL): nada a enviar, so a lista (B9).
+              if (entrada.urlEnvio !== null) estado.envios[entrada.id] = entrada;
+              carregarLista(true);
+              return;
+            }
+            throw { codigoEnvio: codigoDeFalhaEmissao(r) };
+          });
+        },
+        enviar: function (blob) {
+          if (entrada.urlEnvio === null) return Promise.resolve();
+          // PUT ao Storage: fora de pedir(), sem cookie e sem referrer (E3, Issue 141).
+          return fetchImpl(entrada.urlEnvio, {
+            method: 'PUT',
+            body: blob,
+            headers: { 'Content-Type': entrada.tipo },
+            credentials: 'omit',
+            cache: 'no-store',
+            redirect: 'error',
+            referrerPolicy: 'no-referrer',
+            signal: entrada.controle.signal
+          }).then(function (res) {
+            if (!res.ok) throw { codigoEnvio: 'falha' };
+          }, function () {
+            throw { codigoEnvio: 'falha' };
+          });
+        }
+      }).then(function (r) {
+        if (r && 'code' in r) throw { codigoEnvio: r.code };
+        if (entrada.cancelado || entrada.id === null || entrada.urlEnvio === null) return null;
+        // Finaliza uma vez, logo apos o PUT; o polling nao repete esta foto (finalizadas).
+        estado.finalizadas[entrada.id] = true;
+        return pedir('POST', '/api/v1/media/' + entrada.id + '/finalize').then(function (fr) {
+          if (fr.status !== 200) throw { codigoEnvio: fr.status === 413 ? 'arquivo_grande' : 'falha' };
+          return null;
+        });
+      });
+      entrada.fim = entrada.fim.then(function () {
+        limparEnvio(entrada);
+        if (entrada.cancelado) return;
+        estado.avisoEnvio = null;
+        carregarLista(true);
+      }, function (erro) {
+        limparEnvio(entrada);
+        if (entrada.cancelado) return;
+        estado.avisoEnvio = textoDeErroEnvio(erro && erro.codigoEnvio ? erro.codigoEnvio : 'falha');
+        carregarLista(true);
+      });
+    }
 
     // ---- Ciclo de vida ----
     function pararTudo() {
@@ -733,7 +870,8 @@
   if (raizPagina) {
     montarFotos(raizPagina, {
       documento: docGlobal,
-      fetch: janela.fetch.bind(janela)
+      fetch: janela.fetch.bind(janela),
+      envio: janela.FastProFotosEnvio
     });
   }
 })(globalThis);
