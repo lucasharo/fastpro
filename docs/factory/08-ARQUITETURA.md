@@ -294,6 +294,13 @@ Eventos de domínio são inseridos em `outbox_event` na mesma transação da mud
 
 ---
 
+### 7.5 Fila de verificação de identidade (H-039, Issue 52; 124-DESENHO-H039 §7)
+- **Serialização do caso e do documento:** toda ação da Verificação trava `app.verification_case` com `for update` antes de decidir; a leitura do documento trava também a linha de `app.identity_document` no mesmo passo (`for update`). A exclusão do dono (`private.idoc_delete`, H-037) trava só a linha do documento e recebe `already_analyzed` (sem apagar) quando a leitura já confirmou; se a exclusão veio antes, a leitura recebe `documento_indisponivel` (VRF06).
+- **Versão otimista:** `verification_case.version` é enviado em atribuir, reatribuir e decidir; versão diferente ou estado mudado devolve `caso_conflito` (VRF01), inclusive na segunda de duas atribuições simultâneas.
+- **Transação de ponta a ponta na leitura:** a análise (`analyzed_at`), o registro sensível e o evento são gravados na mesma transação; falha no registro desfaz tudo. A leitura do armazenamento acontece dentro dessa transação, com tempo limite curto (cerca de 8 s, dec. 395, `[PROPOSTA]`).
+- **Ordem de bloqueio:** caso antes do documento e do perfil; a exclusão só toma o documento, sem ciclo.
+- **Relógio:** as funções recebem `p_now` do chamador (sem `now()` nas regras), exceto o gatilho de criação, que usa o instante do recebimento do documento.
+
 ## 8. Billing e Mercado Pago (ADR-007)
 Capacidades do Mercado Pago (doc 13, resumo a reconfirmar): assinatura recorrente por API (semanal, mensal, anual) com Pix como meio; **"Pix Automático" não encontrado** ⇒ **Pix é cobrança manual por ciclo** (coerente com o desenho); "período de testes" citado sem detalhes: **o teste grátis de 14 dias sem cartão é do nosso app (trial local, `access_grant`), não do MP**. **Tarifas e mensalidade: não obtidas** (página de custos retornou 403; 12-TODO #12). Ciclos de 3 e 6 meses por recorrência do MP `[NÃO VERIFICADO]`: fallback pagamento avulso por ciclo. Meios de pagamento: somente Pix e cartão; não existe boleto (H5). Demais capacidades dependem do spike S-03.
 
