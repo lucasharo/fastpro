@@ -45,6 +45,12 @@ function castsDoAdaptador(sql: string): string[] {
   return [...sql.matchAll(/\$(\d+)::([a-z]+(?:\[\])?)/g)].map((m) => m[2] as string);
 }
 
+/** Colunas que o adaptador le: a lista do select, entre "select" e "from", na ordem em que sai. */
+function colunasDoAdaptador(sql: string): string[] {
+  const m = sql.match(/^select\s+(.+?)\s+from\s/);
+  return (m?.[1] ?? '').split(',').map((c) => c.trim());
+}
+
 /** Nome da funcao chamada pelo SQL do adaptador. */
 function funcaoDoAdaptador(sql: string): string {
   const m = sql.match(/private\.(media_\w+)\(/);
@@ -76,11 +82,15 @@ describe('E3 galeria: contrato do adaptador PgMediaGallery com a migracao 202611
     expect(F.get('media_read_target')?.tipos).toEqual(['text', 'uuid', 'timestamptz']);
   });
 
-  it('as colunas devolvidas são as que o adaptador le (out_id, out_state, out_reject_code, out_pos, out_code, out_bytes)', () => {
-    expect(F.get('media_list')?.colunas).toEqual(['out_id', 'out_state', 'out_reject_code', 'out_pos']);
-    expect(F.get('media_delete')?.colunas).toEqual(['out_code']);
-    expect(F.get('media_reorder')?.colunas).toEqual(['out_code']);
-    expect(F.get('media_read_target')?.colunas).toEqual(['out_bytes']);
+  it.each([
+    ['SQL_MEDIA_LIST', SQL_MEDIA_LIST],
+    ['SQL_MEDIA_DELETE', SQL_MEDIA_DELETE],
+    ['SQL_MEDIA_REORDER', SQL_MEDIA_REORDER],
+    ['SQL_MEDIA_READ_TARGET', SQL_MEDIA_READ_TARGET],
+  ])('%s le exatamente as colunas que a funcao devolve (returns table)', (_rotulo, sql) => {
+    const funcao = F.get(funcaoDoAdaptador(sql));
+    expect(funcao).toBeDefined();
+    expect(colunasDoAdaptador(sql)).toEqual(funcao?.colunas);
   });
 
   it('os codigos de exclusao e de ordem sao exatamente os que o adaptador aceita', () => {

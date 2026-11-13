@@ -3,8 +3,8 @@
 // com TODOS os itens presentes: papel app_api (DATABASE_URL_APP_API), chave do IP do rascunho (DRAFT_IP_HMAC_KEY,
 // com tamanho minimo), SITE_URL, SUPABASE_URL e a chave secreta do Storage (nomes em MEDIA_ENV_STORAGE), e a fabrica do cliente SQL da borda.
 // Nunca le, grava nem registra valores: so os nomes aparecem nas pendencias (a chave curta vai marcada).
-// A galeria (decisao 191) so monta com as portas injetadas em opcoes; sem elas, a pendencia da galeria fica
-// visivel e as rotas da galeria seguem 404 uniforme. Nunca usa DATABASE_URL_APP_SYSTEM.
+// A galeria (decisao 191) so liga com as portas montadas na borda (portasGaleriaMidia, sobre o papel app_api) ou
+// injetadas em opcoes.galeria; sem elas, a pendencia da galeria fica visivel e as rotas da galeria seguem 404 uniforme. Nunca usa DATABASE_URL_APP_SYSTEM.
 import {
   PgDraftRate,
   PgMediaGallery,
@@ -50,7 +50,7 @@ export function faltantesMidia(env: Ambiente): string[] {
   return faltam;
 }
 
-/** Portas da galeria que a composicao ainda nao monta sozinha (adaptadores ficam na borda ou em teste). */
+/** Portas da galeria: a borda as monta com portasGaleriaMidia; testes podem injetar substitutas em opcoes.galeria. */
 export type MediaGaleriaPortas = Pick<GalleryDeps, 'gallery' | 'reader' | 'contador'>;
 
 /** Portas substitutas (somente testes): ausentes = adaptadores reais sobre o cliente do papel app_api. */
@@ -85,10 +85,6 @@ export interface MediaMontagem {
   readonly pendencias: readonly string[];
 }
 
-/**
- * Ponto de montagem da midia. Funcao sobre o ambiente recebido: nao abre conexao, nao faz I/O e nao registra
- * valores. Construir os adaptadores nao consulta o banco nem o Storage.
- */
 /** Pendencias (so nomes, nunca valores) que mantem a midia fechada: liberacao, itens e SITE_URL valida. */
 export function pendenciasDaMidia(env: Ambiente): string[] {
   const pendencias: string[] = [];
@@ -133,6 +129,10 @@ export function portasGaleriaMidia(
   };
 }
 
+/**
+ * Ponto de montagem da midia. Funcao sobre o ambiente recebido: nao abre conexao, nao faz I/O e nao registra
+ * valores. Construir os adaptadores nao consulta o banco nem o Storage.
+ */
 export function montarMidia(env: Ambiente, opcoes: MediaOpcoes = {}): MediaMontagem {
   const pendencias = pendenciasDaMidia(env);
   if (pendencias.length > 0) return { options: undefined, pendencias };

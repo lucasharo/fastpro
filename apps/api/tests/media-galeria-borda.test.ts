@@ -83,7 +83,10 @@ describe('E3 galeria na borda: portasGaleriaMidia (H-029)', () => {
   });
 
   it('a galeria e o leitor nao expõem chave, URL do Storage nem URL do banco em nenhuma serializacao', () => {
-    const portas = portasGaleriaMidia(ENV_COMPLETO, espiao([]));
+    const urls: string[] = [];
+    const portas = portasGaleriaMidia(ENV_COMPLETO, espiao(urls));
+    // a prova so vale se o cliente foi obtido com a URL sentinela (o espiao guarda a URL pedida)
+    expect(urls).toEqual([SENTINELA_APP_API]);
     const texto = visoes(portas);
     for (const segredo of SEGREDOS) {
       expect(texto).not.toContain(segredo);
