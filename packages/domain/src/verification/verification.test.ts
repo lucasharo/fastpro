@@ -64,7 +64,7 @@ describe('motivos e complemento (dec. 375 a 377; CA-H039-04)', () => {
     expect(motivoCombina('aprovada', 'documento_ilegivel')).toBe(false);
     expect(motivoCombina('retida_duplicidade', 'duplicidade_suspeita')).toBe(true);
     expect(motivoCombina('recusada', 'aprovado')).toBe(false);
-    expect(motivoCombina('recusada', 'duplicidade_suspeita')).toBe(false);
+    expect(motivoCombina('recusada', 'duplicidade_suspeita', false)).toBe(false);
     expect(motivoCombina('recusada', 'documento_ilegivel')).toBe(true);
   });
 
@@ -107,6 +107,7 @@ describe('servico (validacao de entrada e delegacao)', () => {
       detalhe: async () => {
         throw new Error('nao_usado_neste_teste');
       },
+      duplicateView: async () => ({ duplicada: false, originalId: null, originalStatus: 'nenhum', podeAprovar: true }),
       atribuir: async () => ({ status: 'em_revisao', versao: 2 }),
       reatribuir: async () => ({ status: 'em_revisao', versao: 3 }),
       decidir: async (_c, e) => {

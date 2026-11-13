@@ -71,5 +71,6 @@ export type CodigoErroVerificacao =
   | 'identidade_nao_analisada'
   | 'certificacao_pendente'
   | 'perfil_suspenso'
+  | 'original_vivo'
   | 'documento_indisponivel'
   | 'entrada_invalida';

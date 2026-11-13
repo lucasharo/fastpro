@@ -50,7 +50,13 @@ export class VerificationService {
   decidir(
     ctx: ContextoAtor,
     caseId: string,
-    entrada: { readonly decisao: string; readonly motivo: string; readonly complemento?: string | null; readonly versao: number },
+    entrada: {
+      readonly decisao: string;
+      readonly motivo: string;
+      readonly complemento?: string | null;
+      readonly retido?: boolean;
+      readonly versao: number;
+    },
   ) {
     const r = validarDecisao(entrada);
     if (!r.ok) throw new VerificacaoErro(r.codigo);
@@ -62,6 +68,11 @@ export class VerificationService {
       versao: entrada.versao,
       now: this.clock.now(),
     });
+  }
+
+  duplicateView(ctx: ContextoAtor, caseId: string) {
+    if (!caseId) throw new VerificacaoErro('entrada_invalida');
+    return this.port.duplicateView(ctx, { caseId, now: this.clock.now() });
   }
 
   receberRecurso(professionalId: string) {

@@ -9,6 +9,7 @@ import type {
   LinhaFila,
   MotivoDecisao,
 } from './types.js';
+import type { DuplicateView } from './duplicate-retention.js';
 
 export interface RelogioVerificacao {
   now(): Date;
@@ -49,6 +50,7 @@ export interface VerificationCasePort {
     },
   ): Promise<{ readonly status: string; readonly versao: number }>;
   detalhe(ctx: ContextoAtor, entrada: { readonly caseId: string; readonly now: Date }): Promise<DetalheCaso>;
+  duplicateView(ctx: ContextoAtor, entrada: { readonly caseId: string; readonly now: Date }): Promise<DuplicateView>;
   receberRecurso(
     professionalId: string,
     now: Date,

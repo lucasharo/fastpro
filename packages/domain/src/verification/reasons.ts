@@ -18,24 +18,31 @@ export function textoTemDadoPessoal(texto: string): boolean {
   return PADROES_DADO_PESSOAL.some((re) => re.test(texto));
 }
 
-/** Combinacao decisao x motivo (dec. 375, 378): aprovada so com aprovado; retida so com duplicidade. */
-export function motivoCombina(decisao: Decisao, motivo: MotivoDecisao): boolean {
+/**
+ * Combinacao decisao x motivo (dec. 375, 378): aprovada so com aprovado; retida so com duplicidade.
+ * Recusa com duplicidade_suspeita so em cadastro retido (dec. 526). Sem contexto (retido undefined) o
+ * dominio nao decide: o banco aplica a regra (VRF02). Com retido === false, a combinacao e recusada aqui.
+ */
+export function motivoCombina(decisao: Decisao, motivo: MotivoDecisao, retido?: boolean): boolean {
   if (decisao === 'aprovada') return motivo === 'aprovado';
   if (decisao === 'retida_duplicidade') return motivo === 'duplicidade_suspeita';
-  return motivo !== 'aprovado' && motivo !== 'duplicidade_suspeita';
+  if (motivo === 'aprovado') return false;
+  if (motivo === 'duplicidade_suspeita') return retido !== false;
+  return true;
 }
 
 export function validarDecisao(entrada: {
   readonly decisao: string;
   readonly motivo: string;
   readonly complemento?: string | null;
+  readonly retido?: boolean;
 }): ResultadoDecisao {
   const decisoesValidas = ['aprovada', 'recusada', 'retida_duplicidade'];
   if (!decisoesValidas.includes(entrada.decisao)) return { ok: false, codigo: 'motivo_invalido' };
   if (!(MOTIVOS_DECISAO as readonly string[]).includes(entrada.motivo)) {
     return { ok: false, codigo: 'motivo_invalido' };
   }
-  if (!motivoCombina(entrada.decisao as Decisao, entrada.motivo as MotivoDecisao)) {
+  if (!motivoCombina(entrada.decisao as Decisao, entrada.motivo as MotivoDecisao, entrada.retido)) {
     return { ok: false, codigo: 'motivo_invalido' };
   }
   const bruto = entrada.complemento ?? null;

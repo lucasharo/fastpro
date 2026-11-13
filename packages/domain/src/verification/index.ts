@@ -5,3 +5,5 @@ export * from './reasons.js';
 export * from './sla.js';
 export * from './ports.js';
 export * from './service.js';
+export * from './duplicate-retention.js';
+export * from './professional-status-message.js';
