@@ -4,11 +4,10 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (81)
+## Backlog (80)
 
 | Issue | Título |
 |---|---|
-| #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
 | #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 | #1 | [SETUP] Validar integração GitHub Projects ↔ Laze ↔ Claude |
 | #14 | [Spike] Regras das lojas (login social, IAP, exclusão) |
@@ -90,28 +89,31 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #136 | [E7] Mensagem automática do aceite |
 | #137 | [E11] Canal “no site” |
 
-## Product Owner (0)
+## Product Owner (1)
 
-## Arquitetura (2)
+| Issue | Título |
+|---|---|
+| #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
+
+## Arquitetura (1)
+
+| Issue | Título |
+|---|---|
+| #37 | [E2] Cobertura booleana sem contagem |
+
+## Desenvolvimento (2)
 
 | Issue | Título |
 |---|---|
 | #36 | [E2] Descoberta por raio e online nacional |
-| #37 | [E2] Cobertura booleana sem contagem |
-
-## Desenvolvimento (1)
-
-| Issue | Título |
-|---|---|
 | #43 | [E3] Revisão e confirmação expressa |
 
 ## Code Review (0)
 
-## QA (2)
+## QA (1)
 
 | Issue | Título |
 |---|---|
-| #42 | [E3] Pré-visualização e reordenação de fotos |
 | #30 | [E1] Exclusividade de papéis |
 
 ## Concluído (52)
