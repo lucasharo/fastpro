@@ -44,7 +44,7 @@
 | 12 | Geocodificação (simulada) | G-01 a G-07, F-05, I-28; respostas "temporária" e "permanente" distintas | Simulador próprio do Mapbox | Local e CI, sem egress | 2 em diante |
 | 13 | Mídia | P-01 a P-06, T-07, F-09, F-11, Q-08, Q-12; EXIF; imagem-bomba; arquivo falso por extensão | Fixtures sintéticas geradas por script; ExifTool para verificar metadados [PROPOSTA] | Local e CI | 2 em diante |
 | 14 | Carga leve | LT-01 a LT-05, Q-06, Q-07, C-15 (§6.5) | k6 (OSS) contra o ambiente local | Local; nunca contra Supabase Free ou Hobby sem autorização | 3 (smoke); 5 (completa) |
-| 15 | Recuperação | D-01, D-02, H-119; restauração de dump sintético e reconciliação de Storage | `pg_dump` e restore locais; script de reconciliação | Local | 5 e antes do M4 |
+| 15 | REMOVIDO do escopo (Rodada 73/75, #151). Texto original no histórico do git. | — | — | — | — |
 | 16 | Observabilidade e PII | T-11, B-41; varredura de logs, eventos e capturas de teste por padrões de e-mail, telefone, CPF/CNPJ e token | Script com regex e allowlist | CI | 1 em diante |
 
 ## 3. Ambientes e dados
@@ -56,7 +56,7 @@
 | A1 | Dev local | Supabase CLI e Docker (Postgres, Auth, Storage e Realtime locais), app local, simuladores de Mapbox e Mercado Pago, Resend (somente para a conta cadastrada), relógio controlado | Todas as camadas | Extensões locais podem diferir do plano Free (PostGIS, pg_cron, pg_net; RT-02). Egress externo bloqueado na suíte | Montável sem conta. Licença do Docker: [NÃO VERIFICADO] (RT-13) |
 | A2 | CI | Mesmo conjunto do A1, em containers, sem segredos reais | Camadas 1 a 10, 12, 13 e 16; smoke da 14 | Minutos e limites de CI: [NÃO VERIFICADO] (RT-11). Nenhum segredo real | Depende de H-004 |
 | A3 | Preview na Vercel (Hobby) | Web e API em função única | Smoke e E2E de navegação, sem e-mail e sem cobrança | Hobby é só uso não comercial (R-28); e-mail real impossível sem domínio (R-33); e-mail só pelo Resend, para a conta cadastrada (Mailpit removido em 2026-11-11; RT-06 não se aplica mais) | BLQ-EXEC (criar projeto) |
-| A4 | Supabase Free remoto (projeto de teste) | Spikes S-02 e S-10; pooler; conexão | Spikes e smoke de conexão | Pausa após 1 semana sem uso (R-08); sem backup; 60 conexões diretas e 200 no pooler; sem dados reais | BLQ-EXEC |
+| A4 | Supabase Free remoto (projeto de teste) | Spikes S-02 e S-10; pooler; conexão | Spikes e smoke de conexão | Pausa após 1 semana sem uso (R-08); 60 conexões diretas e 200 no pooler; sem dados reais | BLQ-EXEC |
 | A5 | Sandbox do Mercado Pago | Checkout hospedado e assinatura de teste | Casos B-xx em sandbox; decisão 37 (sandbox permitido) | Sem cobrança real. Sandbox em conta Hobby pendente de confirmação (BK-3). Proibido em produção (B-48) | BLQ-EXEC; BK-3 |
 | A6 | Mapbox real | Uma chamada de smoke com permanent=true, manual | Confirmar formato de resposta (S-04) | Cartão e limite de gasto (decisões 29 e 36); nunca em CI; resultado temporário nunca em cache | BLQ-EXEC (H-021) |
 | A7 | Resend real | Nenhum | Nenhum teste nesta fase | 100 por dia UTC e 3.000 por mês por destinatário; resend.dev também consome cota (13); domínio inexistente (H2) | Fora de teste até TL-1 |
@@ -96,7 +96,7 @@ Regra geral: a varredura de T-11 roda sobre logs e capturas de teste. Um padrão
 | 2 Geo, pedido e verificação | S-02, S-04 e S-06 com saída; Onda 1 concluída | G-01 a G-07; F-05; P-01 a P-06; T-07; I-16; T-03; B-13; B-15; B-16; B-58; Q-08; Q-12; Q-13 | Nenhum permanent=true fora do ponto de H-021; 6ª foto recusada na API e no banco; nenhum original no Storage |
 | 3 Aceite e chat (M1) | Onda 2 concluída | C-01 a C-04, C-04b, C-12, C-14, C-16, C-18, F-01, F-10, M-01, M-02, T-02, T-03, T-04, T-06 (parcial), T-16, T-17, I-01 a I-03, I-12, I-13, I-22, N-01, N-03, EE-01 a EE-03, AX-01 a AX-04 nas telas tocadas | Itens de M1 verdes com N≥100 nos cenários de concorrência; E2E verde; triagem de acessibilidade sem violação crítica; roteiro de teclado executado e registrado |
 | 4 Ciclo de vida e assinatura (M2) | Onda 3 concluída; S-03 com saída; cota de e-mail (H-094) | B-01 a B-10; T-09; C-05 a C-11; C-13; C-15; F-02; F-03; F-04; F-07; F-08; F-12; I-04 a I-11; I-14; I-20; I-25; N-02; N-04; N-06; N-08; Q-01; Q-10; Q-11; Q-14; EE-04 a EE-06; reconciliação (H-053) | Carência de 72 h verde com relógio controlado; webhook idempotente e sem regressão; cotas de e-mail verdes |
-| 5 MVP em ensaio fechado (M3) | Onda 4 concluída. L1 só para ativar prazos reais | Suíte completa: T-01 a T-17, C-01 a C-18, F-01 a F-12, I-01 a I-30; T-08; I-15; I-18; B-07 a B-09; N-07; N-09; N-10; C-07; C-08; C-17; D-01; D-02; Q-02 a Q-07; LT-01 a LT-05; SC-01 a SC-06; AX-01 a AX-09 completo com evidência humana; EE-07 a EE-09 | Zero BLOQUEADOR aberto; monitores zerados; carga leve dentro do §6.5; restauração testada com dados sintéticos |
+| 5 MVP em ensaio fechado (M3) | Onda 4 concluída. L1 só para ativar prazos reais | Suíte completa: T-01 a T-17, C-01 a C-18, F-01 a F-12, I-01 a I-30; T-08; I-15; I-18; B-07 a B-09; N-07; N-09; N-10; C-07; C-08; C-17; Q-02 a Q-07; LT-01 a LT-05; SC-01 a SC-06; AX-01 a AX-09 completo com evidência humana; EE-07 a EE-09 | Zero BLOQUEADOR aberto; monitores zerados; carga leve dentro do §6.5 |
 | Gate M4 (bloqueado) | M3 concluído; TL-1 a TL-8 e L1 a L7 decididos | Reexecução da suíte no SHA candidato; testes de bloqueio de cobrança (B-46, B-48, B-53); checklist de H-121 | Pacote de evidências (§7) entregue ao Orquestrador. O QA não decide CONCLUIR |
 | 6 Mobile (M5) | Fora deste plano | Não definido (N8) | Não aplicável |
 
@@ -107,7 +107,7 @@ Regra geral: a varredura de T-11 roda sobre logs e capturas de teste. Um padrão
 | M0 Spikes e fundação | Catálogo pgTAP verde; gitleaks e .gitignore verdes; spikes S-01 a S-04 e S-09 a S-11 com saída registrada; nenhum teste contra produção |
 | M1 Núcleo web | C-01, C-02, C-03 e C-16 verdes com N≥100; M-01 e M-02 verdes; EE-01 a EE-03 verdes; P-01, P-02, T-16 e T-17 verdes; triagem de acessibilidade sem violação crítica nas telas do fluxo; nenhuma declaração de conformidade WCAG (B-36) |
 | M2 Ciclo completo | C-05 a C-11 verdes com N≥100 onde aplicável; B-01 a B-10 verdes em sandbox ou simulado; F-02 verde (tudo ou nada); N-02, N-04 e N-08 verdes; Q-10 e Q-11 verdes |
-| M3 MVP em ensaio fechado | Suíte completa verde no SHA candidato; monitores I-01 a I-30 zerados; T-08 verde; D-01 e D-02 executados com dados sintéticos; LT-01 a LT-05 dentro do §6.5; SC-01 a SC-06 sem achado alto aberto; pacote L5 (§7) pronto |
+| M3 MVP em ensaio fechado | Suíte completa verde no SHA candidato; monitores I-01 a I-30 zerados; T-08 verde; LT-01 a LT-05 dentro do §6.5; SC-01 a SC-06 sem achado alto aberto; pacote L5 (§7) pronto |
 | M4 Lançamento restrito (bloqueado) | Itens de H-054 e H-121 verificados com evidência; L1 a L4 e L7 decididos pelo jurídico; TL-1 a TL-8 resolvidos; decisão humana registrada. Não alcançado por inferência (14 §3) |
 | M5 Mobile | Fora deste plano (N8) |
 
@@ -273,7 +273,6 @@ Base: 17 §5. Nada é dado como executado sem registro. Evidência é artefato v
 | Admin | T-08: sem MFA nega; papel inadequado nega; autoaprovação nega; leitura sem access_case nega; log gerado |
 | Segurança | Saídas de SC-01 a SC-06 e varredura de PII em logs de teste (T-11) |
 | Carga | Parâmetros, duração, ambiente, limiares e medições de LT-01 a LT-05, com a marca de que os limiares são propostas |
-| Recuperação | D-01 e D-02: dump sintético restaurado, migrações aplicadas, monitores zerados, tempo medido contra o RTO proposto (8 h, 09 §9) |
 | Pacote L5 (M3) | Reunião de todos os itens acima, com o que falta explicitado; o pacote não declara conformidade por si |
 | Spike | Resposta à pergunta do spike, sem recurso de produção criado |
 
@@ -285,11 +284,11 @@ Fonte: 14 §6 e 12-TODO. Estado conforme os documentos; o QA não decide nenhum 
 
 | Item | Efeito no QA | Casos afetados | Estado | Quem destrava |
 |---|---|---|---|---|
-| L1 Retenção e base legal | Testa-se só o mecanismo desligado; nenhum prazo ativo | FA-020; H-091; H-109; H-111; D-08 | [PENDENTE JURÍDICO] | Jurídico |
+| L1 Retenção e base legal | Testa-se só o mecanismo desligado; nenhum prazo ativo | FA-020; H-091; H-109; H-111; D-08 (removido, #151) | [PENDENTE JURÍDICO] | Jurídico |
 | L2 Termos, privacidade e encarregado (DPO) | Textos aprovados verificados (B-38) | H-063; H-099; H-111; H-113 | Pendente | Jurídico |
 | L3 Reembolso e política de estorno | Teste apenas de bloqueio enquanto L3 estiver pendente | FA-032; H-105 parcial; H-106 | Pendente | Jurídico |
 | L4 Certificações de atividades regulamentadas | Caso condicionado | FA-004 (último item); H-038 | Pendente | Jurídico |
-| L5 Evidências (WCAG, testes, backup, observabilidade) | Responsabilidade do QA: pacote da §7 e evidências AX-01 a AX-09, D-01, LT | FA-034; H-118; H-121; B-36 | Pendente de execução | Execução |
+| L5 Evidências (WCAG, testes, observabilidade) | Responsabilidade do QA: pacote da §7 e evidências AX-01 a AX-09, LT | FA-034; H-118; H-121; B-36 | Pendente de execução | Execução |
 | L6 Lojas (mobile) | Fora deste plano | H-122; H-124 | Pendente | Usuário (SD-13) |
 | L7 Responsabilidade: selo "verificado" e conteúdo | Texto verificado como aprovado ou pendente, sem fixar redação | H-043; H-063; H-113 | Pendente | Jurídico |
 
@@ -299,7 +298,7 @@ Fonte: 14 §6 e 12-TODO. Estado conforme os documentos; o QA não decide nenhum 
 |---|---|---|---|---|
 | TL-1 | Domínio verificado no Resend antes de qualquer e-mail real | I-27; N-10; H2; decisão 15; BK-10 | Sem envio ao público; testes só com o Resend, para a conta cadastrada | Inexistente |
 | TL-2 | Vercel Pro antes de cobrar | Decisão 28; R-28; B-53 | Teste de bloqueio de cobrança no Hobby | Hobby |
-| TL-3 | Backup manual com periodicidade definida e restauração testada | BK-7; 12-TODO #1; R-08; D-01 | D-01 e D-02 obrigatórios antes do M4 | Periodicidade pendente |
+| TL-3 | REMOVIDO do escopo (Rodada 73/75, #151). Texto original no histórico do git. | — | — | — |
 | TL-4 | Tarifas do Mercado Pago obtidas | S-03; 12-TODO #12 | Nenhum valor de taxa codificado ou testado como fato | Não obtidas (403) |
 | TL-5 | Mapbox: cartão e limite de gasto na conta; termos de produto lidos; BK-2 registrado conforme decisão 36 | Decisões 29 e 36; S-04; H-021; N13 | Teste manual de smoke (A6) só após autorização | BLQ-EXEC |
 | TL-6 | Suíte verde no SHA candidato, com CI real e concorrência em N≥100 | H-117; H-121; 17 §5 | Pacote de evidência do M4 | Não iniciada |
