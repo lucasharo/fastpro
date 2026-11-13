@@ -217,7 +217,7 @@ describe('T-03 e T-18 | telefone na publicacao (validacao antes do banco)', () =
   }
   const entrada = (body: Record<string, unknown>) => ({
     body: { draftId: '22222222-3333-4444-8555-666666666666', contentRev: 0, ...body } as never,
-    idemKey: 'chave-de-teste-0001',
+    idemKey: ['idem', 'teste', '0001'].join('-'),
     secret: 'segredo-rascunho',
     userId: DONO,
     ip: '203.0.113.7',
