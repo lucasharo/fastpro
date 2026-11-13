@@ -541,3 +541,22 @@ Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
 - **244 (Q16):** published_at tambem imutavel.
 - **245 (Q17):** mecanismo de distancia da duplicidade (PostGIS ou formula) decidido pelo Arquiteto a partir do spike S-02 (#4, concluido).
 - **Dependencia:** a #44 depende da #43 (codigo no HEAD, em Aguardando aprovacao); o Desenvolvimento da #44 comeca quando a #43 estiver concluida ou o usuario a aceitar; PO e Arquitetura avancam.
+
+## Rodada 52 (desenho da publicacao idempotente, #44 / H-031 — 110-DESENHO-H031.md)
+Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
+- **246 (A1):** rota `POST /v1/requests`.
+- **247 (A2):** `draft_id` obrigatorio no corpo (alem de `content_rev`).
+- **248 (A3):** sem provedor de geocodificacao a rota responde 503 `publicacao_indisponivel` antes de tocar o banco.
+- **249 (A4):** `address_text` em texto puro agora; cifrar na #45.
+- **250 (A5):** `origin_draft_id` com `on delete set null`.
+- **251 (A6):** assunto do teto de geocodificacao = id do rascunho; a H-082 decide o da cadeia.
+- **252 (A7):** coluna `media_asset.request_id` para ligar as fotos ao pedido.
+- **253 (A8):** a cota de taxa e' consumida no `begin` (falha de provedor gasta 1 das 5 por hora).
+- **254 (A9):** nova variavel `REQUEST_PUBLISH_HMAC_KEY` (minimo 32 caracteres), uma chave com separacao de dominio. O nome entra em `.env.example` sem valor; o valor so no `.env.local` (o DEV pode gerar um valor aleatorio local sem imprimir); em producao a chave e' do dono (TODO 6).
+- **255 (A10):** token de duplicidade por HMAC, sem tabela.
+- **256 (A11):** repeticao com a mesma chave devolve 201; outra chave no mesmo rascunho devolve 200 com o pedido ja criado.
+- **257 (A12):** o cookie do rascunho nao e' limpo apos publicar; a #47 decide.
+- **258 (A13):** o DEV verifica se #39/#42 incrementam `content_rev` nas fotos; se faltar, cria `draft_content_touch`.
+- **259 (A14):** o DEV confirma o CHECK de `actor_role` da auditoria e usa o papel do cliente conforme o catalogo.
+- **Migracao:** `20261113010000_requests_create_service_request.sql` (a #36 precisa de prefixo maior). Decisao 239 mantida: tudo com porta simulada, sem Mapbox real.
+- **Coordenacao:** a #44 cria so arquivos novos primeiro (migracao, dominio request/, db request-publish, apps/api/src/requests/*, testes); as edicoes em composicao.ts, app.ts, vercel.ts, barris index.ts e na tela de revisao da #43 ficam por ultimo, em commit proprio, depois da fase 2 da #141 e do registro de handlers da #119.
