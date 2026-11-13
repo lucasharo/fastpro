@@ -4,7 +4,7 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (75)
+## Backlog (74)
 
 | Issue | Título |
 |---|---|
@@ -13,7 +13,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #45 | [E3] Visibilidade de localização |
 | #46 | [E3] Opt-in de telefone no pedido |
 | #47 | [E3] Painel do cliente na sessão do dono |
-| #52 | [E4] Fila de verificação |
 | #53 | [E4] Retenção por duplicidade |
 | #54 | [E4] Estado da verificação visível |
 | #55 | [E4] Guarda de elegibilidade na API e no banco |
@@ -84,10 +83,11 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 | #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 
-## Product Owner (1)
+## Product Owner (2)
 
 | Issue | Título |
 |---|---|
+| #52 | [E4] Fila de verificação |
 | #51 | [E4] Certificações para atividades regulamentadas |
 
 ## Arquitetura (3)
