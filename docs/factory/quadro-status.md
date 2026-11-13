@@ -105,16 +105,13 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #44 | [E3] Publicação idempotente com 7 dias |
 | #119 | [E13] Expurgos operacionais |
 
-## Code Review (1)
+## Code Review (0)
+
+## QA (2)
 
 | Issue | Título |
 |---|---|
 | #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
-
-## QA (1)
-
-| Issue | Título |
-|---|---|
 | #50 | [E4] Documentos de identidade |
 
 ## Concluído (54)
