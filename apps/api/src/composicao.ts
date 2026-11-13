@@ -60,6 +60,9 @@ import type { ReduceCounters } from './media/media-reduce-service.js';
 import type { ReduceGate } from './media/reduce-gate.js';
 import { montarDocumentosDoAmbiente } from './identity-docs/identity-doc-montagem.js';
 import type { IdentityDocRouteOptions } from './identity-docs/identity-doc-route.js';
+// H-031 (#44) | Publicacao do pedido (POST /v1/requests): so monta com as variaveis completas; sem provedor responde 503.
+import { montarPublicacaoPedido } from './requests/publish-composicao.js';
+import type { PublishRouteOptions } from './requests/publish-route.js';
 
 /** Nomes da busca que faltam (so nomes; a chave curta aparece marcada, sem tamanho nem valor). */
 function faltantesCatalogo(env: CatalogEnv): readonly string[] {
@@ -139,6 +142,10 @@ export interface Integracoes {
   readonly identityDocs: IdentityDocRouteOptions | undefined;
   /** Nomes (nunca valores) que impedem os documentos de identidade de ligar (H-037). */
   readonly pendenciasDocumentos: readonly string[];
+  /** Opcoes da rota de publicacao do pedido (H-031), ou undefined (404). */
+  readonly requestPublish: PublishRouteOptions | undefined;
+  /** Nomes (nunca valores) que impedem a publicacao do pedido de ligar (H-031). */
+  readonly pendenciasPublicacao: readonly string[];
 }
 
 const RELOGIO_PADRAO: ClockPort = {
@@ -239,6 +246,9 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     gate: opcoes.reducaoMidia?.gate,
   });
 
+  // H-031 (#44): publicacao do pedido sobre o papel app_system; sem chave, banco ou provedor, a rota nao liga (404; 503 sem provedor).
+  const publicacao = montarPublicacaoPedido(env, { abrirCliente: opcoes.abrirClienteSistema });
+
   // A galeria (H-029) entra junto, pelas portas montadas na borda; sem a midia ligada, ela tambem fica 404.
   const galeriaMidia = portasGaleriaMidia(env, opcoes.abrirClienteApi);
   const midia = montarMidia(env, {
@@ -265,6 +275,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     pendenciasMidia: midia.pendencias,
     identityDocs: documentos.options,
     pendenciasDocumentos: documentos.pendencias,
+    requestPublish: publicacao.options,
+    pendenciasPublicacao: publicacao.pendencias,
   };
 }
 

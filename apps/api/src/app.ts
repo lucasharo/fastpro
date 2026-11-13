@@ -99,6 +99,8 @@ import { handleAddressSuggest, type GeoRouteOptions } from './geo/address-sugges
 import { handleDraftRoute, isDraftRoute, type DraftRouteOptions } from './drafts/draft-route.js';
 import { handleMediaRoute, isMediaRoute, type MediaRouteOptions } from './media/media-route.js';
 import { handleIdentityDocRoute, isIdentityDocRoute, type IdentityDocRouteOptions } from './identity-docs/identity-doc-route.js';
+// H-031 (#44) | Publicacao idempotente do pedido (POST /v1/requests).
+import { handleRequestPublishRoute, REQUEST_PUBLISH_PATH, type PublishRouteOptions } from './requests/publish-route.js';
 import { draftNotFound } from './drafts/draft-service.js';
 import {
   handleSessionConvert,
@@ -175,6 +177,8 @@ export interface AppOptions {
   readonly professionalProfile?: ProfessionalProfileRouteOptions;
   /** H-036: servicos, base e raio do perfil. Sem esta opcao as rotas nao existem (404). */
   readonly professionalOffering?: ProfessionalOfferingRouteOptions;
+  /** H-031 (#44): publicacao do pedido. Sem esta opcao a rota POST /v1/requests responde 404 uniforme (decisao 254). */
+  readonly requestPublish?: PublishRouteOptions;
 }
 
 export interface BodyReadResult {
@@ -330,6 +334,14 @@ export async function handleRequest(
   }
   // E3 (decisao 190, desenho §2.4): sem a midia montada, o mesmo 404 uniforme do rascunho (corpo e cabecalhos).
   if (isMediaRoute(path)) {
+    const r = draftNotFound();
+    res.writeHead(r.status, r.headers);
+    res.end(r.body);
+    return;
+  }
+  // H-031 (#44): publicacao do pedido. Sem a montagem completa, o mesmo 404 uniforme do rascunho.
+  if (path === REQUEST_PUBLISH_PATH) {
+    if (opts.requestPublish) return handleRequestPublishRoute(req, res, path, opts.requestPublish);
     const r = draftNotFound();
     res.writeHead(r.status, r.headers);
     res.end(r.body);
