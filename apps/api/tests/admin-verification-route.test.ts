@@ -32,6 +32,10 @@ const SEG_VERIFICACAO = 'example-admin-secret-verificacao-h039-0000';
 const SEG_SUPERADMIN = 'example-admin-secret-superadmin-h039-000000';
 const BYTES_JPEG = Buffer.from('JPEG-SINTETICO-H039');
 const CASO_VALIDO = '12121212-3434-4565-8787-909090909090';
+// Caso de perfil retido por duplicidade: a Verificacao ve o original vivo e a aprovacao e recusada (Issue 53, H-040).
+const CASO_RETIDO = 'abcdef01-2345-4678-8901-234567890abc';
+const MENSAGEM_ORIGINAL_VIVO =
+  'Este cadastro não pode ser aprovado enquanto o documento estiver em uso por outro perfil ativo. Recuse ou aguarde.';
 
 function linha(userId: string, roles: string[], permissions: string[]): AdminGuardRecord {
   return { userId, roles, permissions, aal2: true, active: true, expiresAtMs: T0 + 8 * 60 * MIN, totpAtMs: T0 };
@@ -56,6 +60,7 @@ const casos: VerificationCasePort = {
   },
   async decidir(_ctx, entrada) {
     if (NEGADOS.has(entrada.caseId)) throw new VerificacaoErro('permissao_negada');
+    if (entrada.caseId === CASO_RETIDO && entrada.decisao === 'aprovada') throw new VerificacaoErro('original_vivo');
     return { status: entrada.decisao, versao: entrada.versao + 1 };
   },
   async detalhe() {
@@ -63,6 +68,10 @@ const casos: VerificationCasePort = {
   },
   async receberRecurso() {
     return 'ok';
+  },
+  async duplicateView(_ctx, entrada) {
+    if (NEGADOS.has(entrada.caseId)) throw new VerificacaoErro('permissao_negada');
+    return { duplicada: true, originalId: '12345678', originalStatus: 'vivo', podeAprovar: false };
   },
 };
 
@@ -234,5 +243,37 @@ describe('T-22 falha do armazenamento', () => {
     } finally {
       falhaDeArmazenamento = false;
     }
+  });
+});
+
+describe('H-040 retencao por duplicidade (Issue 53): visao da Verificacao e recusa de original vivo', () => {
+  it('visao da duplicidade: 200 sem cache e so os quatro campos permitidos', async () => {
+    const r = await chamar('GET', `${PREFIXO}/${CASO_RETIDO}/duplicidade`, { segredo: SEG_VERIFICACAO });
+    expect(r.status).toBe(200);
+    expect(r.headers['cache-control']).toBe('no-store');
+    expect(JSON.parse(r.corpo.toString('utf8'))).toEqual({
+      duplicada: true,
+      originalId: '12345678',
+      originalStatus: 'vivo',
+      podeAprovar: false,
+    });
+  });
+
+  it('visao de caso negado ou inexistente responde como rota inexistente (404 vazio)', async () => {
+    const referencia = await chamar('GET', `${PREFIXO}/${INEXISTENTE}/rota-que-nao-existe`, { segredo: SEG_VERIFICACAO });
+    const negado = await chamar('GET', `${PREFIXO}/${INEXISTENTE}/duplicidade`, { segredo: SEG_VERIFICACAO });
+    expect(negado.status).toBe(referencia.status);
+    expect(negado.corpo.length).toBe(referencia.corpo.length);
+  });
+
+  it('aprovar com original vivo: 422 original_vivo com o texto fixo, sem identificador nem UUID', async () => {
+    const r = await chamar('POST', `${PREFIXO}/${CASO_RETIDO}/decisao`, {
+      segredo: SEG_VERIFICACAO,
+      corpo: { decisao: 'aprovada', motivo: 'aprovado', versao: 2 },
+    });
+    expect(r.status).toBe(422);
+    const texto = r.corpo.toString('utf8');
+    expect(JSON.parse(texto)).toEqual({ code: 'original_vivo', message: MENSAGEM_ORIGINAL_VIVO });
+    expect(/[0-9a-f]{8}-[0-9a-f]{4}-/i.test(texto)).toBe(false);
   });
 });
