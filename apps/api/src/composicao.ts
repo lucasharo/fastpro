@@ -65,6 +65,9 @@ import type { IdentityDocRouteOptions } from './identity-docs/identity-doc-route
 // H-031 (#44) | Publicacao do pedido (POST /v1/requests): so monta com as variaveis completas; sem provedor responde 503.
 import { montarPublicacaoPedido } from './requests/publish-composicao.js';
 import type { PublishRouteOptions } from './requests/publish-route.js';
+// Issue 45 (H-032) | Leitura do pedido por papel: liga so com ADDRESS_ENC_KEY e a fabrica do papel app_system.
+import { montarDetalhePedido } from './requests/detail-composicao.js';
+import type { RequestDetailRouteOptions } from './requests/detail-route.js';
 
 /** Nomes da busca que faltam (so nomes; a chave curta aparece marcada, sem tamanho nem valor). */
 function faltantesCatalogo(env: CatalogEnv): readonly string[] {
@@ -150,6 +153,10 @@ export interface Integracoes {
   readonly requestPublish: PublishRouteOptions | undefined;
   /** Nomes (nunca valores) que impedem a publicacao do pedido de ligar (H-031). */
   readonly pendenciasPublicacao: readonly string[];
+  /** Opcoes das rotas de leitura do pedido (H-032: dono e profissional), ou undefined (404). */
+  readonly requestDetail: RequestDetailRouteOptions | undefined;
+  /** Nomes (nunca valores) que impedem as rotas de leitura do pedido de ligar (H-032). */
+  readonly pendenciasDetalhe: readonly string[];
 }
 
 const RELOGIO_PADRAO: ClockPort = {
@@ -251,6 +258,9 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   // H-031 (#44): publicacao do pedido sobre o papel app_system; sem chave, banco ou provedor, a rota nao liga (404; 503 sem provedor).
   const publicacao = montarPublicacaoPedido(env, { abrirCliente: opcoes.abrirClienteSistema });
 
+  // Issue 45 (H-032): leitura do pedido (dono e profissional). Sem ADDRESS_ENC_KEY ou banco, as rotas nao ligam (404).
+  const detalhe = montarDetalhePedido(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
+
   // E3: midia. Liga so com MEDIA_UPLOAD_ENABLED=1 e os itens completos (decisao 190); sem isso, 404.
   // A galeria (H-029) entra junto, pelas portas montadas na borda; sem a midia ligada, ela tambem fica 404.
   const galeriaMidia = portasGaleriaMidia(env, opcoes.abrirClienteApi);
@@ -287,6 +297,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     pendenciasDocumentos: documentos.pendencias,
     requestPublish: publicacao.options,
     pendenciasPublicacao: publicacao.pendencias,
+    requestDetail: detalhe.options,
+    pendenciasDetalhe: detalhe.pendencias,
   };
 }
 

@@ -14,7 +14,7 @@ export const LEITURA_INDISPONIVEL_BODY = { code: 'visibilidade_indisponivel' } a
 /** Erro fixo da decifragem: falha fechada, nunca devolve o pedido parcial (§3, §10.2). */
 export const ENDERECO_INDISPONIVEL_BODY = { code: 'endereco_indisponivel' } as const;
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type DetailOutcome =
   | { readonly status: 200; readonly body: Readonly<Record<string, unknown>> }

@@ -106,6 +106,8 @@ import { handleMediaRoute, isMediaRoute, type MediaRouteOptions } from './media/
 import { handleIdentityDocRoute, isIdentityDocRoute, type IdentityDocRouteOptions } from './identity-docs/identity-doc-route.js';
 // H-031 (#44) | Publicacao idempotente do pedido (POST /v1/requests).
 import { handleRequestPublishRoute, REQUEST_PUBLISH_PATH, type PublishRouteOptions } from './requests/publish-route.js';
+// Issue 45 (H-032) | Leitura do pedido: dono (GET /v1/requests/:id) e profissional elegivel (GET /v1/professional/requests/:id).
+import { handleRequestDetailRoute, isRequestDetailRoute, type RequestDetailRouteOptions } from './requests/detail-route.js';
 import { draftNotFound } from './drafts/draft-service.js';
 import {
   handleSessionConvert,
@@ -186,6 +188,8 @@ export interface AppOptions {
   readonly professionalOffering?: ProfessionalOfferingRouteOptions;
   /** H-031 (#44): publicacao do pedido. Sem esta opcao a rota POST /v1/requests responde 404 uniforme (decisao 254). */
   readonly requestPublish?: PublishRouteOptions;
+  /** Issue 45 (H-032): leitura do pedido pelo dono e pelo profissional. Sem esta opcao as rotas respondem 404 uniforme. */
+  readonly requestDetail?: RequestDetailRouteOptions;
 }
 
 export interface BodyReadResult {
@@ -353,6 +357,14 @@ export async function handleRequest(
   // H-031 (#44): publicacao do pedido. Sem a montagem completa, o mesmo 404 uniforme do rascunho.
   if (path === REQUEST_PUBLISH_PATH) {
     if (opts.requestPublish) return handleRequestPublishRoute(req, res, path, opts.requestPublish);
+    const r = draftNotFound();
+    res.writeHead(r.status, r.headers);
+    res.end(r.body);
+    return;
+  }
+  // Issue 45 (H-032): leitura do pedido. Sem a montagem completa (chave ou banco), o mesmo 404 uniforme do rascunho.
+  if (isRequestDetailRoute(path)) {
+    if (opts.requestDetail) return handleRequestDetailRoute(req, res, path, opts.requestDetail);
     const r = draftNotFound();
     res.writeHead(r.status, r.headers);
     res.end(r.body);
