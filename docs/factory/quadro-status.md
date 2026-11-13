@@ -89,17 +89,17 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #51 | [E4] Certificações para atividades regulamentadas |
 
-## Arquitetura (2)
+## Arquitetura (1)
+
+| Issue | Título |
+|---|---|
+| #37 | [E2] Cobertura booleana sem contagem |
+
+## Desenvolvimento (2)
 
 | Issue | Título |
 |---|---|
 | #36 | [E2] Descoberta por raio e online nacional |
-| #37 | [E2] Cobertura booleana sem contagem |
-
-## Desenvolvimento (1)
-
-| Issue | Título |
-|---|---|
 | #52 | [E4] Fila de verificação |
 
 ## Code Review (1)
