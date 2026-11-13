@@ -1,4 +1,4 @@
-// E3 (Issue #141) | Gera apps/web/public/fotos-envio.js: bundle IIFE minificado da entrada do envio de foto
+// E3 (Issue 141) | Gera apps/web/public/fotos-envio.js: bundle IIFE minificado da entrada do envio de foto
 // (apps/web/src/media/fotos-entrada.ts), que reusa reduzir-foto.ts e as regras de packages/domain (uma so fonte).
 // Decisao 194 (esbuild como devDependency gratuita). O arquivo gerado e ignorado pelo git (como tokens.css).
 // Pre-requisito: o build de @fastpro/domain (dist), garantido por turbo (dependsOn ^build).

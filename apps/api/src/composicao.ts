@@ -53,7 +53,7 @@ import type { ProfessionalProfileRouteOptions } from './professional-profile-rou
 // H-036 | Servicos, base e raio do perfil profissional (/v1/professional/profile/services e /area).
 import { montarOfertaProfissional } from './professional-offering-composicao.js';
 import type { ProfessionalOfferingRouteOptions } from './professional-offering-route.js';
-// E3 (#141) | Midia: upload, quarentena e galeria (so liga com MEDIA_UPLOAD_ENABLED=1 e todos os itens; decisao 190).
+// E3 (Issue 141) | Midia: upload, quarentena e galeria (so liga com MEDIA_UPLOAD_ENABLED=1 e todos os itens; decisao 190).
 import { montarMidia, portasGaleriaMidia } from './media/media-composicao.js';
 import type { MediaRouteOptions } from './media/media-route.js';
 import type { ReduceCounters } from './media/media-reduce-service.js';

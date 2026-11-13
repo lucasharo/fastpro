@@ -1,4 +1,4 @@
-// E3 (#141) | Montagem da midia a partir do ambiente (docs/factory/104-DESENHO-MIDIA-COMPOSICAO.md, §8; CA-01 a CA-06).
+// E3 (Issue 141) | Montagem da midia a partir do ambiente (docs/factory/104-DESENHO-MIDIA-COMPOSICAO.md, §8; CA-01 a CA-06).
 // Sem banco e sem Storage reais: a fabrica do cliente SQL e um espiao que falha se for usado, e as portas de banco
 // e Storage sao substitutas. Valores sentinela sinteticos (nunca chaves reais). Rede bloqueada.
 globalThis.fetch = () => {
@@ -256,9 +256,9 @@ function visoes(valor: unknown): string {
   return saidas.join('\n');
 }
 
-// RISCO #141 (104 §2.3 e §3.2): a chave de servico do Storage e os segredos do ambiente nao podem aparecer em
+// RISCO Issue 141 (104 §2.3 e §3.2): a chave de servico do Storage e os segredos do ambiente nao podem aparecer em
 // nenhuma serializacao de options nem de nenhuma porta, mesmo com os adaptadores reais (Storage de quarentena e reducao).
-describe('E3 montarMidia: segredos fora de qualquer serializacao de options e das portas (CA-05, RISCO #141)', () => {
+describe('E3 montarMidia: segredos fora de qualquer serializacao de options e das portas (CA-05, RISCO Issue 141)', () => {
   const SEGREDOS = [SENTINELA_STORAGE, SENTINELA_CHAVE_IP, SENTINELA_APP_API, SENTINELA_APP_SYSTEM];
 
   it('options, cada porta e o resultado completo nao revelam nenhum segredo sentinela em nenhuma forma', () => {

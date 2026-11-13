@@ -1,4 +1,4 @@
-// E3 (#141, CA-09 sem banco) | Contrato estatico entre o adaptador PgMediaGallery e a migracao 20261112190000.
+// E3 (Issue 141, CA-09 sem banco) | Contrato estatico entre o adaptador PgMediaGallery e a migracao 20261112190000.
 // Le o SQL da migracao e confere: nomes das funcoes, ordem e tipos dos parametros (os casts $n::tipo do adaptador),
 // colunas devolvidas (as que o adaptador le) e codigos de retorno. A prova em banco real fica no dbtest
 // (packages/db/tests/media-gallery.dbtest.mjs), que nao roda sem o banco de desenvolvimento.

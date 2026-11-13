@@ -1,4 +1,4 @@
-// E3 (#141) | Chave de servico do leitor da versao reduzida (request-photos) fora de qualquer serializacao.
+// E3 (Issue 141) | Chave de servico do leitor da versao reduzida (request-photos) fora de qualquer serializacao.
 // Sem rede: fetch falso. A chave sentinela e sintetica (nunca a real). A chave continua indo no cabecalho.
 import { inspect } from 'node:util';
 import { describe, expect, it } from 'vitest';
@@ -35,7 +35,7 @@ function fetchGravador(cabecalhos: Record<string, string>[], urls: string[]): ty
   }) as unknown as typeof fetch;
 }
 
-describe('E3 galeria: chave de servico do leitor reduzido fora de qualquer serializacao (RISCO #141)', () => {
+describe('E3 galeria: chave de servico do leitor reduzido fora de qualquer serializacao (RISCO Issue 141)', () => {
   it('SupabaseReducedPhotoReader nao expoe a chave em JSON, inspect, String, structuredClone nem chaves', () => {
     const leitor = new SupabaseReducedPhotoReader({ baseUrl: URL_BASE, serviceKey: SENTINELA, fetchImpl: fetchGravador([], []) });
     expect(visoes(leitor)).not.toContain(SENTINELA);

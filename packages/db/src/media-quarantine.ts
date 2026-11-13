@@ -215,7 +215,7 @@ export class SupabaseQuarantineStorage implements QuarantineStoragePort {
   private readonly baseUrl: string;
   /**
    * Chave de servico em campo privado (#): nao e propriedade enumeravel nem visivel. JSON.stringify,
-   * util.inspect (inclusive showHidden), structuredClone e Reflect.ownKeys nao a revelam (#141, RISCO de serializacao).
+   * util.inspect (inclusive showHidden), structuredClone e Reflect.ownKeys nao a revelam (Issue 141, RISCO de serializacao).
    */
   readonly #serviceKey: string;
 
@@ -319,7 +319,7 @@ export class SupabaseMediaReduceStorage implements MediaReduceStoragePort {
   private readonly baseUrl: string;
   /**
    * Chave de servico em campo privado (#): nao e propriedade enumeravel nem visivel. JSON.stringify,
-   * util.inspect (inclusive showHidden), structuredClone e Reflect.ownKeys nao a revelam (#141, RISCO de serializacao).
+   * util.inspect (inclusive showHidden), structuredClone e Reflect.ownKeys nao a revelam (Issue 141, RISCO de serializacao).
    */
   readonly #serviceKey: string;
 

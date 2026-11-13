@@ -1,4 +1,4 @@
-// E3 (#141) | Ponta a ponta da midia montada (docs/factory/104-DESENHO-MIDIA-COMPOSICAO.md, §8, CA-08 e CA-10).
+// E3 (Issue 141) | Ponta a ponta da midia montada (docs/factory/104-DESENHO-MIDIA-COMPOSICAO.md, §8, CA-08 e CA-10).
 // montarMidia com MEDIA_UPLOAD_ENABLED=1 e ambiente completo; o banco e o banco em memoria (MemMedia) e o Storage
 // e um fetch falso que implementa o contrato REST que os adaptadores reais usam (bucket quarantine e request-photos).
 // Servidor de loopback real (porta 0), sem rede: fetch global bloqueado. Valores sentinela sinteticos.

@@ -1,4 +1,4 @@
-// E3 (#141) | Galeria ligada na borda (H-029): portas montadas a partir do ambiente, sem consultar banco nem Storage.
+// E3 (Issue 141) | Galeria ligada na borda (H-029): portas montadas a partir do ambiente, sem consultar banco nem Storage.
 // Sem banco e sem rede reais: o cliente SQL e um espiao que falha se for usado e o fetch global e bloqueado.
 globalThis.fetch = () => {
   throw new Error('rede bloqueada nos testes de E3');

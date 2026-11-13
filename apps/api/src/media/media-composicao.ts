@@ -1,4 +1,4 @@
-// E3 (#141) | Montagem das rotas de midia (upload, quarentena, reducao e galeria) a partir do ambiente.
+// E3 (Issue 141) | Montagem das rotas de midia (upload, quarentena, reducao e galeria) a partir do ambiente.
 // So liga com MEDIA_UPLOAD_ENABLED com o valor exato 1 (decisao 190; ausente = fechada em todos os ambientes) e
 // com TODOS os itens presentes: papel app_api (DATABASE_URL_APP_API), chave do IP do rascunho (DRAFT_IP_HMAC_KEY,
 // com tamanho minimo), SITE_URL, SUPABASE_URL e SUPABASE_SECRET_KEY, e a fabrica do cliente SQL da borda.

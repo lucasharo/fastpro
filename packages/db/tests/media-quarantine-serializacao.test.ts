@@ -1,4 +1,4 @@
-// E3 (#141) | Chave de servico dos adaptadores de Storage da midia nao aparece em nenhuma serializacao.
+// E3 (Issue 141) | Chave de servico dos adaptadores de Storage da midia nao aparece em nenhuma serializacao.
 // Sem rede: fetch falso. A chave sentinela e sintetica (nunca a real). A chave continua sendo enviada no cabecalho.
 import { inspect } from 'node:util';
 import { describe, expect, it } from 'vitest';
@@ -33,7 +33,7 @@ function fetchGravador(cabecalhos: Record<string, string>[]): typeof fetch {
   }) as unknown as typeof fetch;
 }
 
-describe('E3 Storage da midia: chave de servico fora de qualquer serializacao (RISCO #141)', () => {
+describe('E3 Storage da midia: chave de servico fora de qualquer serializacao (RISCO Issue 141)', () => {
   it('SupabaseQuarantineStorage nao expoe a chave em JSON, inspect, String, structuredClone nem chaves', () => {
     const adaptador = new SupabaseQuarantineStorage({ baseUrl: URL_BASE, serviceKey: SENTINELA, fetchImpl: fetchGravador([]) });
     expect(visoes(adaptador)).not.toContain(SENTINELA);

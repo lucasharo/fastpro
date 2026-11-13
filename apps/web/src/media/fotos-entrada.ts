@@ -1,4 +1,4 @@
-// E3 (Issue #141) | Entrada do bundle publico apps/web/public/fotos-envio.js (docs/factory/104-DESENHO-MIDIA-COMPOSICAO.md,
+// E3 (Issue 141) | Entrada do bundle publico apps/web/public/fotos-envio.js (docs/factory/104-DESENHO-MIDIA-COMPOSICAO.md,
 // §4.2). Expoe globalThis.FastProFotosEnvio para fotos.js. Sem efeito colateral na carga alem de atribuir o global.
 // A pagina fornece emitir e enviar (POST com cookie na mesma origem e PUT sem cookie); aqui so ha reducao e a ordem
 // reduz -> emite (tamanho reduzido) -> envia (reduzir-foto.ts, decisao 192: o servidor decide por conteudo).

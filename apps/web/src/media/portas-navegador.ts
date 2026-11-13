@@ -1,4 +1,4 @@
-// E3 (Issue #141) | Portas reais do navegador para reduzir-foto.ts (docs/factory/104-DESENHO-MIDIA-COMPOSICAO.md,
+// E3 (Issue 141) | Portas reais do navegador para reduzir-foto.ts (docs/factory/104-DESENHO-MIDIA-COMPOSICAO.md,
 // §4.2; CA-15, CA-16). Decodifica com createImageBitmap (orientacao EXIF aplicada) e codifica JPEG com
 // OffscreenCanvas ou canvas do documento. Qualquer falha devolve null: o fluxo envia o original e o servidor decide
 // (fallback de 93 §4.4). Sem import de DOM: os tipos sao estruturais, para nao exigir a lib DOM no tsconfig do web.
