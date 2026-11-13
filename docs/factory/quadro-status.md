@@ -84,18 +84,18 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #51 | [E4] Certificações para atividades regulamentadas |
 
-## Arquitetura (3)
+## Arquitetura (2)
 
 | Issue | Título |
 |---|---|
 | #53 | [E4] Retenção por duplicidade |
-| #57 | [E5] Trial de 14 dias |
 | #47 | [E3] Painel do cliente na sessão do dono |
 
-## Desenvolvimento (2)
+## Desenvolvimento (3)
 
 | Issue | Título |
 |---|---|
+| #57 | [E5] Trial de 14 dias |
 | #46 | [E3] Opt-in de telefone no pedido |
 | #37 | [E2] Cobertura booleana sem contagem |
 
