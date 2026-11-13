@@ -4,7 +4,7 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (76)
+## Backlog (75)
 
 | Issue | Título |
 |---|---|
@@ -80,7 +80,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #135 | [E6] Aviso “apenas conecta” nos termos |
 | #136 | [E7] Mensagem automática do aceite |
 | #137 | [E11] Canal “no site” |
-| #145 | [E15] db:test: media_asset fora do backup sem decisão registrada |
 | #146 | [E15] db:test: T-H018-13 depende de semente ausente no DEV |
 | #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 | #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
@@ -89,7 +88,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 | Issue | Título |
 |---|---|
-| #128 | [E15] Teste de restauração de backup |
+| #151 | [E15] Remover backup, restauração e exportação de dados do escopo do projeto |
 | #51 | [E4] Certificações para atividades regulamentadas |
 
 ## Arquitetura (2)
@@ -100,9 +99,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #37 | [E2] Cobertura booleana sem contagem |
 
 ## Desenvolvimento (0)
-
-| Issue | Título |
-|---|---|
 
 ## Code Review (1)
 
@@ -116,7 +112,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 
-## Concluído (60)
+## Concluído (61)
 
 | Issue | Título |
 |---|---|
@@ -159,11 +155,11 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #41 | [E3] Remoção de EXIF e tipo por conteúdo |
 | #42 | [E3] Pré-visualização e reordenação de fotos |
 | #43 | [E3] Revisão e confirmação expressa |
+| #44 | [E3] Publicação idempotente com 7 dias |
 | #48 | [E4] Cadastro profissional com CPF/CNPJ cifrado |
 | #49 | [E4] Perfil: serviços, base e raio |
-| #150 | [E6] Remover o histórico de acesso às fotos (media_access_log e resumo diário) |
-| #58 | [E5] Acesso comercial derivado |
 | #50 | [E4] Documentos de identidade |
+| #58 | [E5] Acesso comercial derivado |
 | #83 | [E7] Acesso excepcional a conversa |
 | #102 | [E11] Pipeline de notificações e cooldown |
 | #103 | [E11] EmailProviderPort: Mailpit e Resend |
@@ -180,17 +176,16 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #125 | [E15] Testes de injeção e abuso |
 | #129 | [E15] Dados sintéticos de demonstração |
 | #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
+| #150 | [E6] Remover o histórico de acesso às fotos (media_access_log e resumo diário) |
 
-## Descartado (1)
+## Descartado (3)
 
 | Issue | Título |
 |---|---|
 | #110 | [E11] Teste de ausência de interruptor |
+| #128 | [E15] Teste de restauração de backup |
+| #145 | [E15] db:test: media_asset fora do backup sem decisão registrada |
 
-## Aguardando aprovação (1)
-
-| Issue | Título |
-|---|---|
-| #44 | [E3] Publicação idempotente com 7 dias |
+## Aguardando aprovação (0)
 
 ## Bloqueado (0)
