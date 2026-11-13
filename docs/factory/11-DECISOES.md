@@ -494,3 +494,24 @@ Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
 - **212 (tokens de tamanho de fonte):** o pacote de tokens do EDS so tem familia e peso; nao ha token de tamanho. Aceitos os literais 16px, 1.5rem e 1.25rem em pedido.css por ora (check:typography nao acusa); a criacao de tokens de tamanho vira divida para a gestao do Design System (cartao a criar no fechamento).
 - **E2E:** Playwright e @axe-core/playwright instalados como devDependency de apps/web (Chromium em cache fora do repositorio); 14 testes passam (foco, aria, clique unico, estados, fluxo, axe sem violacoes serias). Pendentes: T-E01 completo (busca de servico e fotos), T-E07, T-E08, T-E10 a T-E12 e T-E13 (NVDA, humano).
 - **Arquivos compartilhados com a #141:** apps/web/package.json, .gitignore e pnpm-lock.yaml tem hunks da #43 (Playwright, axe, test:e2e) e da #141 (esbuild, build:fotos-envio). Quem commitar primeiro leva o arquivo inteiro; conferir `git diff` antes e registrar no commit.
+
+## Rodada 49 (desenho dos documentos de identidade, #50 / H-037 — 107-DESENHO-H037.md)
+Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
+- **213 (D-H037-1):** bucket de entrada proprio `identity-incoming` (5 MiB), alem do final `identity-docs` (2 MiB, JPEG e PDF); a quarentena de fotos NAO e' usada para documentos (a varredura de orfaos da H-026 apagaria o documento).
+- **214 (D-H037-2):** CA-03 e CA-04 ("sem linha") passam a valer como "sem linha viva e sem objeto no final".
+- **215 (D-H037-3):** enviar documento exige e-mail verificado.
+- **216 (D-H037-4):** nao exigir o CPF/CNPJ da H-035 cadastrado antes do arquivo.
+- **217 (D-H037-5):** com perfil `recusada`, os documentos ja analisados viram `substituido` no primeiro novo recebido e liberam vaga.
+- **218 (D-H037-6):** auditar so as recusas por conteudo, limite ou estado do perfil.
+- **219 (D-H037-7):** trava dupla em producao: `IDENTITY_DOCS_ENABLED=1` e, com VERCEL_ENV=production, tambem `IDENTITY_DOCS_L1_PARECER=1` (consistente com a recomendacao da pergunta 171).
+- **220 (D-H037-8):** teto global em bytes (250.000.000), nao em contagem (confirma a 189).
+- **221 (D-H037-9):** conta sem perfil profissional recebe 404 uniforme.
+- **222 (D-H037-10):** guardar `content_sha256`, nunca exposto.
+- **223 (D-H037-11):** a reducao no navegador so depois do bundle da #141; antes disso o servidor reduz.
+- **224 (D-H037-12):** lista de nomes ativos do PDF sem `/OpenAction` e `/AA`.
+- **225 (D-H037-13):** MiB como unidade.
+- **226 (D-H037-14):** aprovados o texto novo de recusa por conteudo e o do estado do perfil que nao aceita envio.
+- **227 (D-H037-15):** o refino da #52 deve incluir `analyzed_at` na primeira leitura, `attachment` com `nosniff` e `sensitive_access_log`.
+- **228 (D-H037-16):** a #50 pode corrigir 08 §5, 09 §3.3/§7/§8 e 14-BACKLOG.
+- **Coordenacao de migracoes:** a #119 usa 20261112210000; a #50 usa 20261112220000 (reconferir antes de gravar).
+- **Dependencias:** a #50 faz dominio, migracao, adaptadores, servico, rota isolada e pagina nova antes; a montagem em composicao.ts, vercel.ts, app.ts e os barris index.ts fica para o fim, depois da #43 sair de Desenvolvimento e da fase 2 da #141.

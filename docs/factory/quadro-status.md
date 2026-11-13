@@ -89,18 +89,18 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 ## Product Owner (0)
 
-## Arquitetura (3)
+## Arquitetura (2)
+
+| Issue | Título |
+|---|---|
+| #36 | [E2] Descoberta por raio e online nacional |
+| #37 | [E2] Cobertura booleana sem contagem |
+
+## Desenvolvimento (4)
 
 | Issue | Título |
 |---|---|
 | #50 | [E4] Documentos de identidade |
-| #36 | [E2] Descoberta por raio e online nacional |
-| #37 | [E2] Cobertura booleana sem contagem |
-
-## Desenvolvimento (3)
-
-| Issue | Título |
-|---|---|
 | #119 | [E13] Expurgos operacionais |
 | #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
 | #43 | [E3] Revisão e confirmação expressa |
