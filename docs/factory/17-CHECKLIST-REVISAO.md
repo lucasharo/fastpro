@@ -128,7 +128,7 @@ A coluna **Origem** liga cada critério à regra de projeto. Os critérios opera
 | B-50 | E-mail para destino que não é a conta cadastrada, em dev ou teste (deve ser recusado antes da API; o envio em dev e teste é pelo Resend, somente para a conta cadastrada); adapter Resend enviando sem domínio verificado ou sem segredo (deve recusar e manter `pendente`); interruptor, tabela de flags, rota ou rotina de reenvio/backfill de e-mails (proibidos: e-mails nascem ativos e não retroativos) | I-23, I-27; decisões 23, 27; N-07, N-09, N-10 |
 | B-51 | **Mapbox permanente fora do ponto permitido**: `permanent=true` em autocomplete/digitação; mais de uma chamada por revisão; 4ª chamada por rascunho (teto 3); coordenada gravada sem `geocode_mode` igual a `permanent`; resultado temporário em cache, rascunho ou log; sem breaker de gasto; chamada permanente para visitante anônimo ou antes de e-mail verificado | I-28; decisões 29, 36; G-01 a G-07; R-36 |
 | B-52 | **Limites do plano gratuito** ignorados em solução nova: dependência de PostGIS/pg_cron/pg_net sem fallback `[NÃO VERIFICADO no Free; S-02]`; cron da Vercel Hobby (1x/dia) usado para algo mais frequente; tarefa acima de 300 s ou da memória do plano; consumo de egress/Storage/banco sem métrica e alerta; serviço ou conta paga introduzidos sem decisão do usuário | Restrição de orçamento; ADR-020; R-28, R-30, R-37, R-38 |
-| B-53 | Cobrança real ou página de pagamento em produção servida no Vercel Hobby (uso comercial proibido); gate de lançamento ignorado (domínio no Resend, Vercel Pro, backup, tarifas MP, L1 a L4 e L7) | R-28; H-054; H-121 |
+| B-53 | Cobrança real ou página de pagamento em produção servida no Vercel Hobby (uso comercial proibido); gate de lançamento ignorado (domínio no Resend, Vercel Pro, tarifas MP, L1 a L4 e L7) | R-28; H-054; H-121 |
 
 ### 2.7 Fotos, Storage e chat sem anexos
 
@@ -380,7 +380,7 @@ Nenhuma foi implementada ou executada. Planejar em H-004 (CI), H-002 (tokens), H
 | 3 (M1) | **Núcleo:** vagas (B-22 a B-25), chat (B-19, B-57), mensagem de sistema, fotos a elegíveis (B-18) |
 | 4 (M2) | Billing (B-45 a B-48), seleção/cancelamento/republicação (B-26, B-28, B-29), cotas de e-mail (B-49, B-50) |
 | 5 (M3) | Admin (B-07 a B-09), avaliação, retenção, a11y com evidência (B-36), suíte completa de concorrência |
-| Gate M4 | Itens de H-054 e H-121: domínio no Resend, Vercel Pro, backup, tarifas MP, L1 a L4 e L7. **Aprovação técnica não substitui o CONCLUIR humano** |
+| Gate M4 | Itens de H-054 e H-121: domínio no Resend, Vercel Pro, tarifas MP, L1 a L4 e L7. **Aprovação técnica não substitui o CONCLUIR humano** |
 
 ---
 
