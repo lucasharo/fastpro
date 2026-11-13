@@ -88,17 +88,17 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #51 | [E4] Certificações para atividades regulamentadas |
 
-## Arquitetura (2)
+## Arquitetura (1)
 
 | Issue | Título |
 |---|---|
 | #45 | [E3] Visibilidade de localização |
-| #37 | [E2] Cobertura booleana sem contagem |
 
-## Desenvolvimento (1)
+## Desenvolvimento (2)
 
 | Issue | Título |
 |---|---|
+| #37 | [E2] Cobertura booleana sem contagem |
 | #52 | [E4] Fila de verificação |
 
 ## Code Review (0)
@@ -106,13 +106,12 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | Issue | Título |
 |---|---|
 
-## QA (1)
+## QA (0)
 
 | Issue | Título |
 |---|---|
-| #36 | [E2] Descoberta por raio e online nacional |
 
-## Concluído (64)
+## Concluído (65)
 
 | Issue | Título |
 |---|---|
@@ -158,6 +157,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #44 | [E3] Publicação idempotente com 7 dias |
 | #48 | [E4] Cadastro profissional com CPF/CNPJ cifrado |
 | #49 | [E4] Perfil: serviços, base e raio |
+| #36 | [E2] Descoberta por raio e online nacional |
 | #151 | [E15] Remover backup, restauração e exportação de dados do escopo do projeto |
 | #59 | [E5] Planos e preços em centavos |
 | #50 | [E4] Documentos de identidade |
