@@ -473,17 +473,23 @@ test('T-H018-11 semente na transacao: 25 grupos e contagens do arquivo; reaplica
     await client.query('reset role');
     // Verificacao imediata das invariantes adiadas (CA-02) com os dados da semente.
     await client.query('set constraints all immediate');
+    // Contagens so da semente (seed_key): o DEV compartilhado tem grupos e servicos sinteticos com
+    // marcador H031 deixados pelos testes da Issue 44, que nao pertencem a semente. Sinonimos nao tem
+    // seed_key; contam os que pertencem a servicos da semente.
     const count = async () =>
       (
         await client.query(
-          `select (select count(*)::int from app.service_group) g,
-                  (select count(*)::int from app.service) s,
-                  (select count(*)::int from app.service_synonym) y`,
+          `select (select count(*)::int from app.service_group where seed_key is not null) g,
+                  (select count(*)::int from app.service where seed_key is not null) s,
+                  (select count(*)::int from app.service_synonym y
+                     join app.service v on v.id = y.service_id where v.seed_key is not null) y`,
         )
       ).rows[0];
     const after1 = await count();
     assert.deepEqual(after1, { g: 25, s: SEED.services.length, y: SEED_SYNONYMS });
-    const names = (await client.query('select name from app.service_group order by position')).rows.map((r) => r.name);
+    const names = (
+      await client.query('select name from app.service_group where seed_key is not null order by position')
+    ).rows.map((r) => r.name);
     assert.deepEqual(names, SEED.groups.map((g) => g.name));
 
     const r2 = await aplicarSemente(SEED);
@@ -543,8 +549,10 @@ test('T-H018-12 preservacao: alteracoes do administrador sobrevivem a reaplicaca
     assert.equal((await idOf('select position from app.service_group where id = $1', [g02])).position, 99);
     assert.equal((await idOf('select active from app.service where id = $1', [g03svc.id])).active, false);
     assert.equal((await idOf('select group_id from app.service where id = $1', [g04svc.id])).group_id, g05);
+    // So a semente (seed_key): grupos e servicos sinteticos com marcador H031 nao entram na contagem.
     const c = await idOf(
-      `select (select count(*)::int from app.service_group) g, (select count(*)::int from app.service) s`,
+      `select (select count(*)::int from app.service_group where seed_key is not null) g,
+              (select count(*)::int from app.service where seed_key is not null) s`,
     );
     assert.deepEqual(c, { g: 25, s: SEED.services.length }, 'sem duplicatas');
   }));
