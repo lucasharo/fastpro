@@ -23,6 +23,11 @@ import {
   handleAdminAccessCaseRoute,
   type AdminAccessCaseRouteOptions,
 } from './admin-access-case-route.js';
+import {
+  VERIFICACAO_CASOS_PATH,
+  handleAdminVerificationRoute,
+  type AdminVerificationRouteOptions,
+} from './admin-verification-route.js';
 import { handleAdminStepUpRoute, type AdminStepUpRouteOptions } from './admin-step-up-route.js';
 import { handleAdminAuditQuery, type AdminAuditRouteOptions } from './admin-audit-route.js';
 import { handleAdminConsoleMenu, type AdminConsoleRouteOptions } from './admin-console-route.js';
@@ -151,6 +156,8 @@ export interface AppOptions {
   readonly adminAuthSession?: AdminAuthSessionRouteOptions;
   /** Acesso excepcional a conversa (H-073). Sem esta opcao as rotas /v1/admin/access-cases nao existem (404). */
   readonly accessCase?: AdminAccessCaseRouteOptions;
+  /** Fila de verificacao de identidade (H-039). Sem esta opcao as rotas /v1/admin/verificacao/casos nao existem (404). */
+  readonly verification?: AdminVerificationRouteOptions;
   /** Dupla aprovacao de estorno e suspensao (H-105). Sem esta opcao as rotas /v1/admin/{refund|suspension}-approvals nao existem (404). */
   readonly dualApproval?: AdminDualApprovalRouteOptions;
   /** Cadastro de politica de retencao e hold (H-109). Sem esta opcao as rotas /v1/admin/retention/* nao existem (404). */
@@ -276,6 +283,10 @@ export async function handleRequest(
     (path === ADMIN_ACCESS_CASES_PATH || path.startsWith(`${ADMIN_ACCESS_CASES_PATH}/`))
   ) {
     await handleAdminAccessCaseRoute(req, res, opts.accessCase, path);
+    return;
+  }
+  if (opts.verification && (path === VERIFICACAO_CASOS_PATH || path.startsWith(`${VERIFICACAO_CASOS_PATH}/`))) {
+    await handleAdminVerificationRoute(req, res, opts.verification, path);
     return;
   }
   if (

@@ -52,6 +52,16 @@ export interface LinhaFila {
   readonly version: number;
 }
 
+/** Detalhe do caso: a linha da fila mais o resultado da decisao e o identificador opaco do documento (124 §4.6). */
+export interface DetalheCaso extends LinhaFila {
+  readonly reasonCode: MotivoDecisao | null;
+  readonly explanation: string | null;
+  readonly decidedAt: Date | null;
+  readonly documentAvailable: boolean;
+  readonly documentId: string | null;
+  readonly documentReceivedAt: Date | null;
+}
+
 /** Codigos de erro do dominio. A API traduz cada um para HTTP (124 §5.3). */
 export type CodigoErroVerificacao =
   | 'permissao_negada'

@@ -1,7 +1,7 @@
 // Issue 52 (H-039) | Servico da fila de verificacao: valida a entrada e delega a porta (124 §5.1).
 // A autorizacao e feita no banco (dentro de cada funcao); o servico nao decide permissao.
 import { validarDecisao } from './reasons.js';
-import { type Clock, type ContextoAtor, VerificacaoErro, type VerificationCasePort } from './ports.js';
+import { type RelogioVerificacao, type ContextoAtor, VerificacaoErro, type VerificationCasePort } from './ports.js';
 import {
   ESCOPOS_FILA,
   LIMITE_FILA_MAX,
@@ -14,7 +14,7 @@ import {
 export class VerificationService {
   constructor(
     private readonly port: VerificationCasePort,
-    private readonly clock: Clock,
+    private readonly clock: RelogioVerificacao,
   ) {}
 
   listar(
@@ -31,6 +31,11 @@ export class VerificationService {
       apos: entrada.apos ?? null,
       now: this.clock.now(),
     });
+  }
+
+  detalhe(ctx: ContextoAtor, caseId: string) {
+    if (!caseId) throw new VerificacaoErro('entrada_invalida');
+    return this.port.detalhe(ctx, { caseId, now: this.clock.now() });
   }
 
   atribuir(ctx: ContextoAtor, caseId: string, versao: number) {

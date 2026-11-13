@@ -32,6 +32,8 @@ import {
   type AdminConfirmacaoOpcoes,
 } from './admin-composicao.js';
 import type { AdminAccessCaseRouteOptions } from './admin-access-case-route.js';
+import { abrirTransacaoSql, montarVerificacao } from './verification/index.js';
+import type { AdminVerificationRouteOptions } from './admin-verification-route.js';
 import type { AdminStepUpRouteOptions } from './admin-step-up-route.js';
 import type { AdminOpsRouteOptions } from './admin-ops-route.js';
 import type { AdminRetentionRouteOptions } from './admin-retention-route.js';
@@ -114,6 +116,8 @@ export interface Integracoes {
   readonly email: EmailProviderPort | undefined;
   /** Rotas do caso de acesso a conversa (H-073), ou undefined (404). */
   readonly accessCase: AdminAccessCaseRouteOptions | undefined;
+  /** Rotas da fila de verificacao (H-039), ou undefined (404). */
+  readonly verification: AdminVerificationRouteOptions | undefined;
   /** Confirmacao recente do segundo fator (POST /v1/admin/session/step-up), ou undefined (404). */
   readonly adminStepUp: AdminStepUpRouteOptions | undefined;
   /** Painel operacional (H-108, GET /v1/admin/ops/panel), ou undefined (404). */
@@ -202,6 +206,11 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     pendenciasCaso.push('fabrica do cliente SQL do caso de acesso (ainda nao montada na funcao)');
   }
   const accessCase = montarAdministracaoCaso(env, { abrirCliente: opcoes.abrirClienteSql });
+  // H-039: so com as variaveis de VERIFICACAO_ENV_OBRIGATORIAS e a fabrica da borda (sem elas, 404).
+  const verification = montarVerificacao(env, {
+    abrirCliente: opcoes.abrirClienteSql,
+    abrirTransacao: abrirTransacaoSql,
+  });
   // H-108: so com DATABASE_URL_APP_SYSTEM e a fabrica da borda (sem eles, o painel segue 404).
   const adminOps = montarPainelOperacional(env, { abrirCliente: opcoes.abrirClienteSql });
 
@@ -261,6 +270,7 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     catalog,
     email,
     accessCase,
+    verification,
     adminStepUp,
     adminOps,
     drafts,

@@ -92,6 +92,9 @@ describe('servico (validacao de entrada e delegacao)', () => {
         chamadas.push(e);
         return [];
       },
+      detalhe: async () => {
+        throw new Error('nao_usado_neste_teste');
+      },
       atribuir: async () => ({ status: 'em_revisao', versao: 2 }),
       reatribuir: async () => ({ status: 'em_revisao', versao: 3 }),
       decidir: async (_c, e) => {

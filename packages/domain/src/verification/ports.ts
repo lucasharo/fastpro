@@ -1,8 +1,16 @@
 // Issue 52 (H-039) | Portas da fila de verificacao (124 §5.1). O dominio nao conhece banco. A leitura do
 // documento usa IdentityDocReaderPort, declarada em packages/domain/src/identity-docs/ports.ts (sem mudanca).
-import type { CodigoErroVerificacao, Decisao, EscopoFila, EstadoRecurso, LinhaFila, MotivoDecisao } from './types.js';
+import type {
+  CodigoErroVerificacao,
+  Decisao,
+  DetalheCaso,
+  EscopoFila,
+  EstadoRecurso,
+  LinhaFila,
+  MotivoDecisao,
+} from './types.js';
 
-export interface Clock {
+export interface RelogioVerificacao {
   now(): Date;
 }
 
@@ -40,6 +48,7 @@ export interface VerificationCasePort {
       readonly now: Date;
     },
   ): Promise<{ readonly status: string; readonly versao: number }>;
+  detalhe(ctx: ContextoAtor, entrada: { readonly caseId: string; readonly now: Date }): Promise<DetalheCaso>;
   receberRecurso(
     professionalId: string,
     now: Date,
