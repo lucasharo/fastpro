@@ -79,3 +79,4 @@ export * from './identity-docs-storage.js';
 export * from './commercial-access.js';
 // H-046 (Issue 59) | Adaptador Pg de planos e precos (private.plan_price_at, somente leitura).
 export * from './plan-pricing.js';
+export * from './discovery-requests.js';
