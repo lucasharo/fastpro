@@ -106,15 +106,15 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #42 | [E3] Pré-visualização e reordenação de fotos |
 | #43 | [E3] Revisão e confirmação expressa |
 
-## Code Review (1)
+## Code Review (0)
+
+## QA (1)
 
 | Issue | Título |
 |---|---|
 | #30 | [E1] Exclusividade de papéis |
 
-## QA (0)
-
-## Concluído (51)
+## Concluído (52)
 
 | Issue | Título |
 |---|---|
@@ -155,6 +155,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #40 | [E3] Redução e reencode das fotos |
 | #41 | [E3] Remoção de EXIF e tipo por conteúdo |
 | #48 | [E4] Cadastro profissional com CPF/CNPJ cifrado |
+| #49 | [E4] Perfil: serviços, base e raio |
 | #83 | [E7] Acesso excepcional a conversa |
 | #102 | [E11] Pipeline de notificações e cooldown |
 | #103 | [E11] EmailProviderPort: Mailpit e Resend |
@@ -176,10 +177,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #110 | [E11] Teste de ausência de interruptor |
 
-## Aguardando aprovação (1)
-
-| Issue | Título |
-|---|---|
-| #49 | [E4] Perfil: serviços, base e raio |
+## Aguardando aprovação (0)
 
 ## Bloqueado (0)
