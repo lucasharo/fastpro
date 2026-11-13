@@ -519,3 +519,25 @@ Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
 ## Rodada 50 (conclusoes pelo usuario e fechamento da #43)
 - **Autorizacao registrada (2026-11-13):** o usuario moveu a #30 e a #42 para Concluido no quadro.html (acao humana, confirmada no quadro-status.md, Concluido = 54). Antes, a #41, a #49 e a #129 pelo mesmo caminho.
 - **#43 QA:** complemento de 375 px feito pelo lider (o QA nao tem ferramenta de escrita): /pedido e /pedido/revisao sem rolagem horizontal (scrollWidth = clientWidth = 375); alvos interativos >= 44 px de altura; todos os alvos de teclado com outline solid 2px; confirmacao alcancada por Tab e acionada por Enter; botao desabilitado durante a chamada; Enter repetido nao duplica (1 chamada de confirmacao). Spec temporario apagado do repositorio. NAO verificado: aria-busy no instante medido (os 14 testes Playwright ja o cobrem), T-E01 completo, T-E07, T-E08, T-E10 a T-E12, NVDA humano, T-API09 (it.todo), integracao em outro dispositivo (211), tokens de fonte (212), Linux/Vercel.
+
+## Rodada 51 (refino da publicacao idempotente, #44 / H-031 — 109-REFINO-H031.md)
+Pergunta ao usuario (numeracao continua):
+- **239 (Q11, chamada real ao provedor de mapa):** a publicacao exige a coordenada permanente do pedido (uma chamada paga ao Mapbox). Enquanto o dono nao liberar a chamada real (BLQ-EXEC, decisao 116), tudo roda com porta simulada e a publicacao real em desenvolvimento fica fechada. Recomendacao: manter assim ate voce autorizar o uso real do Mapbox (custo e credenciais).
+Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
+- **229 (Q1):** a confirmacao apos aviso de duplicidade usa token de reconhecimento de 5 min devolvido no 409.
+- **230 (Q2):** sessao comum de 7 dias na publicacao, sem step-up.
+- **231 (Q3):** o e-mail do rascunho deve ser o e-mail verificado da conta da sessao.
+- **232 (Q4):** a modalidade nao e' gravada no pedido; a regra usa o servico e a declaracao do profissional (conferir no desenho).
+- **233 (Q5):** a localizacao do pedido e' geocode_point_id (como implementado); atualizar 09 §3.4.
+- **234 (Q6):** geocodificacao pendente (202) nao cria estado novo no rascunho.
+- **235 (Q7):** o botao "Publicar pedido" fica na tela de revisao, na #44.
+- **236 (Q8):** um pedido por rascunho, por coluna origin_draft_id unica no pedido.
+- **237 (Q9):** segunda aba com chave diferente recebe o pedido ja criado (200 idempotente).
+- **238 (Q10):** colunas de cadeia (is_republication, chain_id, republished_from_id) nulas agora, sem indice.
+- **240 (Q12):** limites [PROPOSTA]: 5 publicacoes por hora por cliente e 20 por dia por IP-HMAC; duplicidade 100 m e 24 h (ADR-015); o Arquiteto valida contra 08 §10.2.
+- **241 (Q13):** geocodificacao so na publicacao, nao na revisao.
+- **242 (Q14):** fotos em processamento bloqueiam a publicacao com 409.
+- **243 (Q15):** prazo de 168 h absolutas.
+- **244 (Q16):** published_at tambem imutavel.
+- **245 (Q17):** mecanismo de distancia da duplicidade (PostGIS ou formula) decidido pelo Arquiteto a partir do spike S-02 (#4, concluido).
+- **Dependencia:** a #44 depende da #43 (codigo no HEAD, em Aguardando aprovacao); o Desenvolvimento da #44 comeca quando a #43 estiver concluida ou o usuario a aceitar; PO e Arquitetura avancam.
