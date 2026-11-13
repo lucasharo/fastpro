@@ -343,12 +343,14 @@ describe('H-027 | R-11 (estatica): so reduceMedia le o original; sem download ou
     }
   });
 
-  it('a rota de midia so tem as tres rotas da #39 (GET apenas no item)', () => {
+  it('a rota de midia tem as rotas da #39 e as da galeria (H-029: GET item, GET photos, GET image); nunca o original', () => {
     const rota = readFileSync(join(raiz, 'apps', 'api', 'src', 'media', 'media-route.ts'), 'utf8');
     expect(rota).toMatch(/path === MEDIA_PATH && metodo === 'POST'/);
     expect(rota).toMatch(/finaliza && metodo === 'POST'/);
     expect(rota).toMatch(/!finaliza && metodo === 'GET'/);
-    expect(rota.match(/metodo === 'GET'/g)?.length ?? 0).toBe(1);
+    // H-029 (#42): listagem e leitura da versao reduzida são GET; o unico caminho de leitura de bytes e a reduzida.
+    expect(rota.match(/metodo === 'GET'/g)?.length ?? 0).toBe(3);
+    expect(rota).not.toMatch(/readOriginal|mediaObjectKey|QuarantineStoragePort/);
   });
 });
 

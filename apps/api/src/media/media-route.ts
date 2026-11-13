@@ -1,24 +1,38 @@
 // H-026 (Issue #39) | Rotas da quarentena (docs/factory/88-DESENHO-H026.md, §1; CA-06, CA-10, CA-13).
 // POST /v1/media/uploads; POST /v1/media/{id}/finalize; GET /v1/media/{id}. O dono e sempre o rascunho do
 // cookie __Host-fp_draft; o id da foto nunca decide posse. Sem CORS, sem log de corpo, URL ou cabecalho.
-// Ordem: Origin/Sec-Fetch-Site -> Content-Type (so POST de emissao) -> cookie (formato; sem cookie = 404,
-// sem banco) -> id (uuid; senao 404, sem banco) -> corpo (2 KB) -> servico (cotas e banco). Qualquer outra
-// rota ou metodo cai no mesmo 404 uniforme.
+// H-029 (Issue #42) | Galeria (98-DESENHO-H029 §1): GET /v1/media/photos; GET /v1/media/{id}/image;
+// DELETE /v1/media/{id}; PUT /v1/media/photos/order. So ativas quando a opcao `galeria` e informada.
+// Ordem: Origin/Sec-Fetch-Site -> Content-Type (so POST de emissao e PUT de ordem) -> cookie (formato; sem cookie
+// = 404, sem banco) -> id (uuid; senao 404, sem banco) -> corpo (2 KB ou 1 KB) -> servico (cotas e banco).
+// Qualquer outra rota ou metodo cai no mesmo 404 uniforme.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import {
   DRAFT_HEADERS,
   MEDIA_BODY_LIMIT_BYTES,
   MEDIA_ITEM_PREFIX,
+  MEDIA_ORDER_BODY_LIMIT_BYTES,
+  MEDIA_ORDER_PATH,
   MEDIA_PATH,
+  MEDIA_PHOTOS_PATH,
   checkDraftJson,
   checkDraftOrigin,
   draftSecretFromCookie,
   isMediaId,
   normalizeClientIp,
   parseMediaEmissaoBody,
+  parseMediaOrderBody,
   siteOriginOf,
 } from '@fastpro/domain';
 import { draftNotFound, type DraftOutcome } from '../drafts/draft-service.js';
+import {
+  deletePhoto,
+  listPhotos,
+  readPhotoImage,
+  reorderPhotos,
+  type GalleryDeps,
+  type GalleryOutcome,
+} from './media-gallery-service.js';
 import { finalizeMedia, getMedia, issueMedia, type MediaDeps } from './media-service.js';
 
 export interface MediaRouteOptions {
@@ -26,9 +40,12 @@ export interface MediaRouteOptions {
   readonly deps: MediaDeps;
   /** SITE_URL: a origem dela e a unica aceita em Origin. */
   readonly siteUrl: string;
+  /** Galeria do dono (H-029). Sem esta opcao, as rotas da galeria recebem o 404 uniforme. */
+  readonly galeria?: GalleryDeps;
 }
 
 const ITEM_RE = /^\/v1\/media\/([^/]+)(\/finalize)?$/;
+const IMAGEM_RE = /^\/v1\/media\/([^/]+)\/image$/;
 
 /**
  * Prefixo inteiro de midia: qualquer metodo ou caminho sob /v1/media/ passa por aqui e recebe o mesmo 404
@@ -63,7 +80,7 @@ function lerCorpo(
   });
 }
 
-function enviar(res: ServerResponse, r: DraftOutcome): void {
+function enviar(res: ServerResponse, r: DraftOutcome | GalleryOutcome): void {
   res.writeHead(r.status, r.headers);
   res.end(r.body);
 }
@@ -89,6 +106,7 @@ export async function handleMediaRoute(
 
     const ip = normalizeClientIp(req.socket.remoteAddress).value;
     const segredo = draftSecretFromCookie(cabecalho(req.headers.cookie));
+    const galeria = opts.galeria;
 
     if (path === MEDIA_PATH && metodo === 'POST') {
       const tipo = checkDraftJson(cabecalho(req.headers['content-type']));
@@ -99,6 +117,31 @@ export async function handleMediaRoute(
       const corpo = parseMediaEmissaoBody(text, bytes);
       if (!corpo.ok) return enviar(res, erro(corpo.status, corpo.code));
       return enviar(res, await issueMedia({ corpo: corpo.corpo, secret: segredo, ip }, opts.deps));
+    }
+
+    if (galeria !== undefined) {
+      if (path === MEDIA_PHOTOS_PATH && metodo === 'GET') {
+        if (segredo === null) return enviar(res, draftNotFound());
+        return enviar(res, await listPhotos({ secret: segredo, ip }, galeria));
+      }
+      if (path === MEDIA_ORDER_PATH && metodo === 'PUT') {
+        const tipo = checkDraftJson(cabecalho(req.headers['content-type']));
+        if (!tipo.ok) return enviar(res, erro(415, 'tipo_invalido'));
+        if (segredo === null) return enviar(res, draftNotFound());
+        const { text, bytes } = await lerCorpo(req, MEDIA_ORDER_BODY_LIMIT_BYTES);
+        const corpo = parseMediaOrderBody(text, bytes);
+        if (!corpo.ok) return enviar(res, erro(corpo.status, corpo.code));
+        return enviar(
+          res,
+          await reorderPhotos({ atual: corpo.atual, nova: corpo.nova, secret: segredo, ip }, galeria),
+        );
+      }
+      const imagem = IMAGEM_RE.exec(path);
+      if (imagem !== null && metodo === 'GET') {
+        const id = imagem[1] ?? '';
+        if (segredo === null || !isMediaId(id)) return enviar(res, draftNotFound());
+        return enviar(res, await readPhotoImage({ id, secret: segredo, ip }, galeria));
+      }
     }
 
     const item = ITEM_RE.exec(path);
@@ -112,6 +155,9 @@ export async function handleMediaRoute(
       }
       if (!finaliza && metodo === 'GET') {
         return enviar(res, await getMedia({ id, secret: segredo, ip }, opts.deps));
+      }
+      if (!finaliza && metodo === 'DELETE' && galeria !== undefined) {
+        return enviar(res, await deletePhoto({ id, secret: segredo, ip }, galeria));
       }
     }
 
