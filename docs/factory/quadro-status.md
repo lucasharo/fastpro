@@ -78,19 +78,19 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 | #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 
-## Product Owner (4)
+## Product Owner (3)
 
 | Issue | Título |
 |---|---|
-| #47 | [E3] Painel do cliente na sessão do dono |
 | #53 | [E4] Retenção por duplicidade |
 | #57 | [E5] Trial de 14 dias |
 | #51 | [E4] Certificações para atividades regulamentadas |
 
-## Arquitetura (0)
+## Arquitetura (1)
 
 | Issue | Título |
 |---|---|
+| #47 | [E3] Painel do cliente na sessão do dono |
 
 ## Desenvolvimento (2)
 
