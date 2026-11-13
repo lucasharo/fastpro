@@ -93,18 +93,18 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | Issue | Título |
 |---|---|
 
-## Desenvolvimento (3)
+## Desenvolvimento (2)
 
 | Issue | Título |
 |---|---|
 | #45 | [E3] Visibilidade de localização |
 | #37 | [E2] Cobertura booleana sem contagem |
-| #52 | [E4] Fila de verificação |
 
-## Code Review (0)
+## Code Review (1)
 
 | Issue | Título |
 |---|---|
+| #52 | [E4] Fila de verificação |
 
 ## QA (0)
 

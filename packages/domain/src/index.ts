@@ -25,3 +25,5 @@ export * from './request/index.js';
 // H-045 (Issue 58) | Acesso comercial derivado: tipos, porta, relogio injetado e leitura (114-DESENHO-H045).
 export * from './billing/index.js';
 export * from './discovery/index.js';
+// Issue 37 (H-024) | Cobertura booleana sem contagem: regras puras (99-DESENHO-H024).
+export * from './coverage/index.js';

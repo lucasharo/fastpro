@@ -458,7 +458,8 @@ test('T-DB15 seguranca: funcoes so para app_system; I-19 com a fixture de aceite
     assert.ok(execs.length >= 8);
     for (const r of execs) assert.equal(r.api, false, `${r.proname} sem execute para app_api`);
     const sys = execs.filter((r) => r.sys).map((r) => r.proname).sort();
-    assert.deepEqual(sys, ['request_publish_abort', 'request_publish_begin', 'request_publish_commit']);
+    // Issue 45 (M1): a funcao de commit com endereco cifrado tambem e executavel por app_system.
+    assert.deepEqual(sys, ['request_publish_abort', 'request_publish_begin', 'request_publish_commit', 'request_publish_commit_enc']);
 
     await client.query(`create temp table fixture_aceite_h031 (
         id uuid primary key default gen_random_uuid(), request_id uuid not null, professional_id uuid not null)`);
