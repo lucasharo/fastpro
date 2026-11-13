@@ -1,0 +1,578 @@
+// H-029 (Issue #42) | G-11 (controlador /fotos com DOM simulado, fetch e relogio falsos) e G-12 (estatico da
+// pagina, cabecalhos e entrada do vercel.json) (docs/factory/98-DESENHO-H029.md, §4 e §7; CA-01 a CA-15).
+// O navegador real (teclado, leitor de tela, zoom, contraste) NAO roda aqui: fica NAO VERIFICADO (G-14).
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+
+const lerArquivo = (caminho: string) => readFileSync(new URL(caminho, import.meta.url), 'utf8');
+const FOTOS_JS = lerArquivo('../public/fotos.js');
+const FOTOS_HTML = lerArquivo('../public/fotos.html');
+const FOTOS_CSS = lerArquivo('../public/fotos.css');
+const VERCEL = JSON.parse(lerArquivo('../vercel.json')) as {
+  headers: Array<{ source: string; headers: Array<{ key: string; value: string }> }>;
+};
+
+// ---------- DOM simulado minimo (o controlador so usa este subconjunto) ----------
+class El {
+  attrs: Record<string, string> = {};
+  children: El[] = [];
+  textContent = '';
+  open = false;
+  chaveFoco?: string;
+  listeners: Record<string, Array<(ev?: unknown) => unknown>> = {};
+  constructor(
+    public tag: string,
+    public doc: Doc,
+  ) {}
+  get firstChild(): El | null {
+    return this.children[0] ?? null;
+  }
+  appendChild(c: El) {
+    this.children.push(c);
+    return c;
+  }
+  removeChild(c: El) {
+    this.children = this.children.filter((x) => x !== c);
+    return c;
+  }
+  setAttribute(k: string, v: string) {
+    this.attrs[k] = String(v);
+    if (k === 'open') this.open = true;
+  }
+  removeAttribute(k: string) {
+    delete this.attrs[k];
+    if (k === 'open') this.open = false;
+  }
+  addEventListener(t: string, fn: (ev?: unknown) => unknown) {
+    (this.listeners[t] ??= []).push(fn);
+  }
+  dispatch(t: string, ev: unknown = {}) {
+    for (const fn of this.listeners[t] ?? []) fn(ev);
+  }
+  focus() {
+    this.doc.activeElement = this;
+  }
+  click() {
+    this.dispatch('click');
+  }
+  showModal() {
+    this.open = true;
+  }
+  close() {
+    this.open = false;
+    this.dispatch('close');
+  }
+}
+
+class Doc {
+  activeElement: El | null = null;
+  hidden = false;
+  listeners: Record<string, Array<() => unknown>> = {};
+  createElement(tag: string) {
+    return new El(tag, this);
+  }
+  getElementById() {
+    return null;
+  }
+  addEventListener(t: string, fn: () => unknown) {
+    (this.listeners[t] ??= []).push(fn);
+  }
+}
+
+function todos(raiz: El): El[] {
+  const saida: El[] = [];
+  const percorre = (e: El) => {
+    saida.push(e);
+    e.children.forEach(percorre);
+  };
+  percorre(raiz);
+  return saida;
+}
+const achar = (raiz: El, texto: string) => todos(raiz).find((e) => e.textContent === texto);
+const acharTodos = (raiz: El, texto: string) => todos(raiz).filter((e) => e.textContent === texto);
+const cartao = (raiz: El, id: string) => todos(raiz).find((e) => e.attrs['data-foto'] === id);
+const ordemNaTela = (raiz: El) => todos(raiz).filter((e) => e.attrs['data-foto']).map((e) => e.attrs['data-foto']);
+
+// ---------- Fetch, relogio e Blob falsos ----------
+interface Chamada {
+  metodo: string;
+  url: string;
+  corpo?: unknown;
+}
+interface Resp {
+  status: number;
+  dados?: unknown;
+  retryAfter?: string;
+  blob?: boolean;
+}
+
+function resposta(r: Resp) {
+  return {
+    ok: r.status >= 200 && r.status < 300,
+    status: r.status,
+    headers: { get: (k: string) => (k.toLowerCase() === 'retry-after' ? (r.retryAfter ?? null) : null) },
+    text: async () => (r.dados === undefined ? '' : JSON.stringify(r.dados)),
+    blob: async () => new Blob(['jpeg-sintetico']),
+  };
+}
+
+const flush = async () => {
+  for (let i = 0; i < 6; i++) await new Promise((res) => setTimeout(res, 0));
+};
+
+function criarAmbiente(handler: (c: Chamada) => Resp | Promise<Resp>) {
+  const doc = new Doc();
+  const chamadas: Chamada[] = [];
+  const timers: Array<{ id: number; fn: () => unknown; ms: number }> = [];
+  let proximoId = 1;
+  const urlsCriadas: string[] = [];
+  const urlsRevogadas: string[] = [];
+  const sandbox: Record<string, unknown> = {
+    document: doc,
+    addEventListener: () => undefined,
+    URL: {
+      createObjectURL: () => {
+        const u = `blob:sintetico/${urlsCriadas.length + 1}`;
+        urlsCriadas.push(u);
+        return u;
+      },
+      revokeObjectURL: (u: string) => urlsRevogadas.push(u),
+    },
+    fetch: undefined,
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(FOTOS_JS, sandbox);
+  const api = (sandbox as { FastProFotos: { montarFotos: (r: El, o: object) => Ctrl } }).FastProFotos;
+  const fetch = async (url: string, opcoes: { method: string; body?: string }) => {
+    const c: Chamada = {
+      metodo: opcoes.method,
+      url,
+      corpo: opcoes.body !== undefined ? JSON.parse(opcoes.body) : undefined,
+    };
+    chamadas.push(c);
+    return resposta(await handler(c));
+  };
+  const montar = (opcoes: { adicionarFoto?: () => void } = {}) => {
+    const raiz = doc.createElement('main');
+    const ctrl = api.montarFotos(raiz, {
+      documento: doc,
+      fetch,
+      agendar: (fn: () => unknown, ms: number) => {
+        const id = proximoId++;
+        timers.push({ id, fn, ms });
+        return id;
+      },
+      cancelarAgendamento: (id: number) => {
+        const i = timers.findIndex((t) => t.id === id);
+        if (i >= 0) timers.splice(i, 1);
+      },
+      criarUrlObjeto: () => sandbox.URL && (sandbox.URL as { createObjectURL: () => string }).createObjectURL(),
+      revogarUrlObjeto: (u: string) => urlsRevogadas.push(u),
+      ...opcoes,
+    });
+    return { raiz, ctrl };
+  };
+  const dispararTimer = async () => {
+    const t = timers.shift();
+    if (!t) throw new Error('sem timer agendado');
+    await t.fn();
+    await flush();
+  };
+  return { doc, chamadas, timers, montar, dispararTimer, urlsCriadas, urlsRevogadas, api };
+}
+
+interface Ctrl {
+  estado: Record<string, unknown>;
+  elementos: { dialogo: El; adicionar: El; status: El; contador: El; lista: El; pagina: El };
+}
+
+const fotoLista = (id: string, estado: string, posicao: number | null, motivo?: string) => ({
+  id,
+  estado,
+  posicao,
+  ...(motivo ? { motivo } : {}),
+});
+const ID_A = '00000000-0000-4000-8000-00000000000a';
+const ID_B = '00000000-0000-4000-8000-00000000000b';
+const ID_C = '00000000-0000-4000-8000-00000000000c';
+
+/** Resposta padrao da listagem a partir de fotos. */
+const lista200 = (fotos: unknown[]): Resp => ({ status: 200, dados: { fotos } });
+
+describe('G-11 controlador /fotos (CA-01 a CA-12)', () => {
+  it('CA-01: mostra carregando, depois a lista na ordem, com contagem so das vivas e recusada com motivo fixo', async () => {
+    const amb = criarAmbiente((c) => {
+      if (c.url === '/api/v1/media/photos') {
+        return lista200([
+          fotoLista(ID_A, 'pronta', 1),
+          fotoLista(ID_B, 'processando', 2),
+          fotoLista(ID_C, 'recusada', null, 'imagem_invalida'),
+        ]);
+      }
+      return { status: 200, blob: true };
+    });
+    const { raiz } = amb.montar({ adicionarFoto: () => undefined });
+    expect(amb.doc.activeElement).toBeNull();
+    await flush();
+    expect(achar(raiz, 'Carregando fotos')).toBeDefined();
+    expect(todos(raiz).some((e) => e.textContent === '2 de 5 fotos')).toBe(true);
+    expect(ordemNaTela(raiz)).toEqual([ID_A, ID_B, ID_C]);
+    expect(achar(raiz, 'Foto 1 de 2')).toBeDefined();
+    expect(achar(raiz, 'Foto 2 de 2')).toBeDefined();
+    expect(achar(raiz, 'Não foi possível usar esta foto: o arquivo não é JPG, PNG ou WebP.')).toBeDefined();
+  });
+
+  it('CA-01: lista vazia e um estado vazio, nunca erro', async () => {
+    const amb = criarAmbiente(() => lista200([]));
+    const { raiz } = amb.montar({ adicionarFoto: () => undefined });
+    await flush();
+    expect(achar(raiz, 'Nenhuma foto adicionada. Fotos são opcionais.')).toBeDefined();
+    expect(achar(raiz, 'Não foi possível carregar as fotos.')).toBeUndefined();
+  });
+
+  it('CA-09: 503 mostra erro e Tentar de novo; 429 sem numero de limite; 404 com rascunho vencido sem botao', async () => {
+    let resp: Resp = { status: 503 };
+    const amb = criarAmbiente(() => resp);
+    const { raiz } = amb.montar({ adicionarFoto: () => undefined });
+    await flush();
+    expect(achar(raiz, 'Não foi possível carregar as fotos.')).toBeDefined();
+    expect(achar(raiz, 'Tentar de novo')).toBeDefined();
+
+    resp = { status: 429, retryAfter: '30' };
+    const r429 = amb.montar({ adicionarFoto: () => undefined }).raiz;
+    await flush();
+    expect(acharTodos(r429,'Aguarde alguns instantes e tente de novo.').length).toBeGreaterThan(0);
+
+    resp = { status: 404, dados: { code: 'nao_encontrado' } };
+    const rv = amb.montar({ adicionarFoto: () => undefined }).raiz;
+    await flush();
+    expect(achar(rv, 'Este pedido não está mais disponível. Comece um novo pedido.')).toBeDefined();
+    expect(achar(rv, 'Tentar de novo')).toBeUndefined();
+  });
+
+  it('CA-03: consulta a cada 3 s, no maximo 20 vezes, depois mostra Ainda preparando a foto com Tentar de novo', async () => {
+    const amb = criarAmbiente((c) => {
+      if (c.url === '/api/v1/media/photos') return lista200([fotoLista(ID_A, 'processando', 1)]);
+      return { status: 200 };
+    });
+    const { raiz } = amb.montar({ adicionarFoto: () => undefined });
+    await flush();
+    expect(amb.timers).toHaveLength(1);
+    expect(amb.timers[0]?.ms).toBe(3000);
+    for (let i = 0; i < 20; i++) await amb.dispararTimer();
+    expect(amb.timers).toHaveLength(0);
+    expect(achar(raiz, 'Ainda preparando a foto.')).toBeDefined();
+    expect(achar(raiz, 'Tentar de novo')).toBeDefined();
+    const consultas = amb.chamadas.filter((c) => c.metodo === 'GET' && c.url === '/api/v1/media/photos');
+    expect(consultas).toHaveLength(21);
+  });
+
+  it('CA-03: com a aba oculta nao agenda consulta', async () => {
+    const amb = criarAmbiente(() => lista200([fotoLista(ID_A, 'processando', 1)]));
+    amb.doc.hidden = true;
+    amb.montar({ adicionarFoto: () => undefined });
+    await flush();
+    expect(amb.timers).toHaveLength(0);
+  });
+
+  it('CA-03: foto aguardando recebe finalize uma so vez por episodio', async () => {
+    const amb = criarAmbiente((c) => {
+      if (c.url === '/api/v1/media/photos') return lista200([fotoLista(ID_A, 'aguardando', 1)]);
+      if (c.url.endsWith('/finalize')) return { status: 409, dados: { code: 'processando' } };
+      return { status: 200 };
+    });
+    amb.montar({ adicionarFoto: () => undefined });
+    await flush();
+    await amb.dispararTimer();
+    const finais = amb.chamadas.filter((c) => c.url.endsWith('/finalize'));
+    expect(finais).toHaveLength(1);
+    expect(finais[0]?.metodo).toBe('POST');
+  });
+
+  it('CA-05: Excluir abre o dialogo com foco em Cancelar; Cancelar fecha e devolve o foco; nada sai antes da resposta', async () => {
+    const amb = criarAmbiente((c) => {
+      if (c.url === '/api/v1/media/photos') return lista200([fotoLista(ID_A, 'pronta', 1), fotoLista(ID_B, 'pronta', 2)]);
+      if (c.metodo === 'GET') return { status: 200, blob: true };
+      return { status: 200, dados: { excluida: true } };
+    });
+    const { raiz, ctrl } = amb.montar({ adicionarFoto: () => undefined });
+    await flush();
+    const gatilho = achar(raiz, 'Excluir foto 1')!;
+    gatilho.click();
+    const dialogo = (ctrl as unknown as Ctrl).elementos.dialogo;
+    expect(dialogo.open).toBe(true);
+    expect(amb.doc.activeElement?.textContent).toBe('Cancelar');
+    achar(dialogo, 'Cancelar')!.click();
+    expect(dialogo.open).toBe(false);
+    expect(amb.doc.activeElement?.textContent).toBe('Excluir foto 1');
+    expect(gatilho.textContent).toBe('Excluir foto 1');
+    expect(amb.chamadas.some((c) => c.metodo === 'DELETE')).toBe(false);
+    expect(cartao(raiz, ID_A)).toBeDefined();
+  });
+
+  it('CA-06: confirmar duas vezes gera uma so exclusao; 200 remove, anuncia e atualiza a contagem', async () => {
+    let liberar: (() => void) | null = null;
+    const amb = criarAmbiente((c) => {
+      if (c.url === '/api/v1/media/photos') return lista200([fotoLista(ID_A, 'pronta', 1), fotoLista(ID_B, 'pronta', 2)]);
+      if (c.metodo === 'DELETE') {
+        return new Promise<Resp>((res) => {
+          liberar = () => res({ status: 200, dados: { excluida: true } });
+        });
+      }
+      return { status: 200, blob: true };
+    });
+    const { raiz, ctrl } = amb.montar({ adicionarFoto: () => undefined });
+    await flush();
+    achar(raiz, 'Excluir foto 1')!.click();
+    const dialogo = (ctrl as unknown as Ctrl).elementos.dialogo;
+    const confirmar = achar(dialogo, 'Excluir')!;
+    confirmar.click();
+    confirmar.click();
+    await flush();
+    expect(amb.chamadas.filter((c) => c.metodo === 'DELETE')).toHaveLength(1);
+    expect(cartao(raiz, ID_A)).toBeDefined();
+    liberar!();
+    await flush();
+    expect(cartao(raiz, ID_A)).toBeUndefined();
+    expect(achar(raiz, '1 de 5 fotos')).toBeDefined();
+    expect((ctrl as unknown as Ctrl).elementos.status.textContent).toBe('Foto 1 excluída');
+  });
+
+  it('CA-06: falha na exclusao mantem a foto com o erro e Tentar de novo', async () => {
+    const amb = criarAmbiente((c) => {
+      if (c.url === '/api/v1/media/photos') return lista200([fotoLista(ID_A, 'pronta', 1)]);
+      if (c.metodo === 'DELETE') return { status: 503, dados: { code: 'indisponivel' } };
+      return { status: 200, blob: true };
+    });
+    const { raiz, ctrl } = amb.montar({ adicionarFoto: () => undefined });
+    await flush();
+    achar(raiz, 'Excluir foto 1')!.click();
+    achar((ctrl as unknown as Ctrl).elementos.dialogo, 'Excluir')!.click();
+    await flush();
+    expect(cartao(raiz, ID_A)).toBeDefined();
+    expect(achar(raiz, 'Não foi possível excluir a foto. Tente de novo.')).toBeDefined();
+  });
+
+  it('CA-04: com 5 vivas, Adicionar foto fica aria-disabled e explica o limite', async () => {
+    const fotos = [1, 2, 3, 4, 5].map((n) => fotoLista(`00000000-0000-4000-8000-00000000000${n}`, 'pronta', n));
+    const amb = criarAmbiente((c) => (c.url === '/api/v1/media/photos' ? lista200(fotos) : { status: 200, blob: true }));
+    const { ctrl } = amb.montar({ adicionarFoto: () => undefined });
+    await flush();
+    const el = (ctrl as unknown as Ctrl).elementos;
+    expect(el.adicionar.attrs['aria-disabled']).toBe('true');
+    expect(achar(el.pagina, 'Você já tem 5 fotos. Para adicionar outra, exclua uma.')).toBeDefined();
+  });
+
+  it('CA-04: sem a porta de envio o botao fica indisponivel neste navegador (nada de outro canal)', async () => {
+    const amb = criarAmbiente(() => lista200([]));
+    const { ctrl } = amb.montar();
+    await flush();
+    const el = (ctrl as unknown as Ctrl).elementos;
+    expect(el.adicionar.attrs['aria-disabled']).toBe('true');
+    expect(achar(el.pagina, 'Envio de foto indisponível neste navegador.')).toBeDefined();
+  });
+
+  it('CA-07: mover para antes envia a permutacao, mostra Salvando ordem e anuncia a nova posicao', async () => {
+    let liberar: (() => void) | null = null;
+    const amb = criarAmbiente((c) => {
+      if (c.url === '/api/v1/media/photos') return lista200([fotoLista(ID_A, 'pronta', 1), fotoLista(ID_B, 'pronta', 2)]);
+      if (c.metodo === 'PUT') {
+        return new Promise<Resp>((res) => {
+          liberar = () =>
+            res({ status: 200, dados: { fotos: [fotoLista(ID_B, 'pronta', 1), fotoLista(ID_A, 'pronta', 2)] } });
+        });
+      }
+      return { status: 200, blob: true };
+    });
+    const { raiz, ctrl } = amb.montar({ adicionarFoto: () => undefined });
+    await flush();
+    achar(raiz, 'Mover foto 2 para antes')!.click();
+    await flush();
+    const put = amb.chamadas.find((c) => c.metodo === 'PUT');
+    expect(put?.corpo).toEqual({ ordem_atual: [ID_A, ID_B], ordem_nova: [ID_B, ID_A] });
+    expect(ordemNaTela(raiz)).toEqual([ID_B, ID_A]);
+    expect(achar(raiz, 'Salvando ordem')).toBeDefined();
+    expect(achar(raiz, 'Mover foto 1 para antes')!.attrs['aria-disabled']).toBe('true');
+    liberar!();
+    await flush();
+    expect((ctrl as unknown as Ctrl).elementos.status.textContent).toBe('Foto 2 movida para a posição 1 de 2');
+    expect(achar(raiz, 'Salvando ordem')).toBeUndefined();
+  });
+
+  it('CA-08: falha na gravacao volta a ordem gravada e mostra o erro', async () => {
+    const amb = criarAmbiente((c) => {
+      if (c.url === '/api/v1/media/photos') return lista200([fotoLista(ID_A, 'pronta', 1), fotoLista(ID_B, 'pronta', 2)]);
+      if (c.metodo === 'PUT') return { status: 503, dados: { code: 'indisponivel' } };
+      return { status: 200, blob: true };
+    });
+    const { raiz } = amb.montar({ adicionarFoto: () => undefined });
+    await flush();
+    achar(raiz, 'Mover foto 2 para antes')!.click();
+    await flush();
+    expect(ordemNaTela(raiz)).toEqual([ID_A, ID_B]);
+    expect(achar(raiz, 'Não foi possível salvar a nova ordem. Ela voltou à anterior.')).toBeDefined();
+  });
+
+  it('CA-08: 409 com lista diferente substitui a lista e anuncia que a ordem mudou', async () => {
+    const amb = criarAmbiente((c) => {
+      if (c.url === '/api/v1/media/photos') return lista200([fotoLista(ID_A, 'pronta', 1), fotoLista(ID_B, 'pronta', 2)]);
+      if (c.metodo === 'PUT')
+        return { status: 409, dados: { code: 'ordem_mudou', fotos: [fotoLista(ID_C, 'pronta', 1), fotoLista(ID_A, 'pronta', 2)] } };
+      return { status: 200, blob: true };
+    });
+    const { raiz, ctrl } = amb.montar({ adicionarFoto: () => undefined });
+    await flush();
+    achar(raiz, 'Mover foto 2 para antes')!.click();
+    await flush();
+    expect(ordemNaTela(raiz)).toEqual([ID_C, ID_A]);
+    expect((ctrl as unknown as Ctrl).elementos.status.textContent).toBe('A ordem das fotos mudou; a lista foi atualizada.');
+  });
+
+  it('CA-08: 409 cuja lista ja e a desejada e sucesso silencioso', async () => {
+    const amb = criarAmbiente((c) => {
+      if (c.url === '/api/v1/media/photos') return lista200([fotoLista(ID_A, 'pronta', 1), fotoLista(ID_B, 'pronta', 2)]);
+      if (c.metodo === 'PUT')
+        return { status: 409, dados: { code: 'ordem_mudou', fotos: [fotoLista(ID_B, 'pronta', 1), fotoLista(ID_A, 'pronta', 2)] } };
+      return { status: 200, blob: true };
+    });
+    const { raiz, ctrl } = amb.montar({ adicionarFoto: () => undefined });
+    await flush();
+    achar(raiz, 'Mover foto 2 para antes')!.click();
+    await flush();
+    expect(ordemNaTela(raiz)).toEqual([ID_B, ID_A]);
+    expect((ctrl as unknown as Ctrl).elementos.status.textContent).toBe('Foto 2 movida para a posição 1 de 2');
+  });
+
+  it('CA-07: as pontas ficam aria-disabled e nao enviam nada', async () => {
+    const amb = criarAmbiente((c) => {
+      if (c.url === '/api/v1/media/photos') return lista200([fotoLista(ID_A, 'pronta', 1), fotoLista(ID_B, 'pronta', 2)]);
+      return { status: 200, blob: true };
+    });
+    const { raiz } = amb.montar({ adicionarFoto: () => undefined });
+    await flush();
+    const antes = achar(raiz, 'Mover foto 1 para antes')!;
+    const depois = achar(raiz, 'Mover foto 2 para depois')!;
+    expect(antes.attrs['aria-disabled']).toBe('true');
+    expect(depois.attrs['aria-disabled']).toBe('true');
+    antes.click();
+    depois.click();
+    await flush();
+    expect(amb.chamadas.some((c) => c.metodo === 'PUT')).toBe(false);
+  });
+
+  it('CA-02: a miniatura usa o Blob da versao reduzida e o texto alternativo Foto N de M', async () => {
+    const amb = criarAmbiente((c) => {
+      if (c.url === '/api/v1/media/photos') return lista200([fotoLista(ID_A, 'pronta', 1)]);
+      if (c.url === `/api/v1/media/${ID_A}/image`) return { status: 200, blob: true };
+      return { status: 404 };
+    });
+    const { raiz } = amb.montar({ adicionarFoto: () => undefined });
+    await flush();
+    const img = todos(raiz).find((e) => e.tag === 'img');
+    expect(img?.attrs['alt']).toBe('Foto 1 de 1');
+    expect(img?.attrs['src']).toMatch(/^blob:/);
+    expect(amb.chamadas.find((c) => c.url.endsWith('/image'))?.metodo).toBe('GET');
+  });
+
+  it('CA-02: falha na miniatura mostra o erro e Tentar de novo', async () => {
+    const amb = criarAmbiente((c) => {
+      if (c.url === '/api/v1/media/photos') return lista200([fotoLista(ID_A, 'pronta', 1)]);
+      return { status: 404 };
+    });
+    const { raiz } = amb.montar({ adicionarFoto: () => undefined });
+    await flush();
+    expect(achar(raiz, 'Não foi possível mostrar esta foto.')).toBeDefined();
+    expect(achar(raiz, 'Tentar de novo')).toBeDefined();
+  });
+
+  it('CA-12: os textos de estado e os nomes dos botoes dizem a qual foto se referem', async () => {
+    const amb = criarAmbiente((c) => {
+      if (c.url === '/api/v1/media/photos') return lista200([fotoLista(ID_A, 'pronta', 1), fotoLista(ID_B, 'enviando', 2)]);
+      return { status: 200, blob: true };
+    });
+    const { raiz } = amb.montar({ adicionarFoto: () => undefined });
+    await flush();
+    expect(achar(raiz, 'Excluir foto 1')).toBeDefined();
+    expect(achar(raiz, 'Excluir foto 2')).toBeDefined();
+    expect(achar(raiz, 'Mover foto 1 para depois')).toBeDefined();
+    expect(achar(raiz, 'O envio desta foto não foi concluído.')).toBeDefined();
+  });
+
+  it('CA-10/CA-16: o controlador so chama rotas da galeria, sem URL de original ou de Storage', async () => {
+    const amb = criarAmbiente((c) => (c.url === '/api/v1/media/photos' ? lista200([fotoLista(ID_A, 'pronta', 1)]) : { status: 200, blob: true }));
+    amb.montar({ adicionarFoto: () => undefined });
+    await flush();
+    for (const c of amb.chamadas) {
+      expect(c.url.startsWith('/api/v1/media/')).toBe(true);
+      expect(c.url).not.toMatch(/quarantine|storage|\/d\//);
+    }
+  });
+});
+
+describe('G-12 estatico da pagina /fotos (CA-13, CA-15, CA-16)', () => {
+  it('sem cor hexadecimal nem funcao de cor em CSS, HTML e JS (so tokens)', () => {
+    for (const arquivo of [FOTOS_CSS, FOTOS_HTML, FOTOS_JS]) {
+      expect(arquivo).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+      expect(arquivo).not.toMatch(/\b(rgb|rgba|hsl|hsla|oklch)\s*\(/i);
+    }
+  });
+
+  it('CSS: cores e fundos so por var(--...), sem valor literal', () => {
+    const declaracoesDeCor = FOTOS_CSS.match(/^\s*(color|background|border(?:-[a-z]+)?|outline)\s*:[^;]+;/gim) ?? [];
+    expect(declaracoesDeCor.length).toBeGreaterThan(5);
+    for (const d of declaracoesDeCor) {
+      const valor = d.split(':').slice(1).join(':');
+      const literal = valor.replace(/var\(--[a-z0-9-]+\)/g, '').replace(/\b(none|transparent|solid|inherit|0|1px|3px|2px|currentColor)\b/g, '');
+      expect(literal.replace(/[\s;]/g, '')).not.toMatch(/[a-zA-Z]/);
+    }
+  });
+
+  it('HTML: idioma pt-BR, noindex, tokens e a folha da pagina; o titulo e o h1 ficam no controlador', () => {
+    expect(FOTOS_HTML).toContain('lang="pt-BR"');
+    expect(FOTOS_HTML).toContain('name="robots" content="noindex"');
+    expect(FOTOS_HTML).toContain('href="/tokens.css"');
+    expect(FOTOS_HTML).toContain('href="/fotos.css"');
+    expect(FOTOS_HTML).toContain('src="/fotos.js"');
+    expect(FOTOS_JS).toContain("h1.textContent = TEXTOS.titulo");
+  });
+
+  it('regioes de status e alerta, dialogo nativo e nada de innerHTML', () => {
+    expect(FOTOS_JS).toContain("setAttribute('role', 'status')");
+    expect(FOTOS_JS).toContain("setAttribute('aria-live', 'polite')");
+    expect(FOTOS_JS).toContain("createElement('dialog')");
+    expect(FOTOS_JS).toContain("setAttribute('role', 'alert')");
+    expect(FOTOS_JS).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write/);
+  });
+
+  it('textos aprovados: aviso de fachada, interior e rostos sempre visivel, e os textos da 98 §5', () => {
+    expect(FOTOS_JS).toContain("aviso: 'Evite fotos que mostrem fachada, interior ou rostos.'");
+    expect(FOTOS_JS).toContain("vazio: 'Nenhuma foto adicionada. Fotos são opcionais.'");
+    expect(FOTOS_JS).toContain("processando: 'Preparando a foto. Isso leva alguns segundos.'");
+    expect(FOTOS_JS).toContain("erroOrdem: 'Não foi possível salvar a nova ordem. Ela voltou à anterior.'");
+    expect(FOTOS_JS).toContain("limite: 'Você já tem 5 fotos. Para adicionar outra, exclua uma.'");
+    expect(FOTOS_JS).toContain("ainda: 'Ainda preparando a foto.'");
+  });
+
+  it('a pagina chama somente rotas da galeria (sem pedido, revisao ou publicacao)', () => {
+    const rotas = FOTOS_JS.match(/'\/api\/[^']*'/g) ?? [];
+    expect(rotas.length).toBeGreaterThan(0);
+    for (const r of rotas) expect(r).toMatch(/^'\/api\/v1\/media\//);
+    expect(FOTOS_JS).not.toMatch(/publica|revisa|\/v1\/orders|\/v1\/pedido/i);
+  });
+
+  it('vercel.json: /fotos com no-store, noindex, CSP sem origem externa exceto o Storage e img-src blob:', () => {
+    const entrada = VERCEL.headers.find((h) => h.source === '/fotos');
+    expect(entrada).toBeDefined();
+    const valor = (k: string) => entrada!.headers.find((h) => h.key === k)?.value ?? '';
+    expect(valor('Cache-Control')).toBe('no-store');
+    expect(valor('X-Robots-Tag')).toBe('noindex');
+    expect(valor('Referrer-Policy')).toBe('no-referrer');
+    const csp = valor('Content-Security-Policy');
+    expect(csp).toContain("default-src 'none'");
+    expect(csp).toContain("script-src 'self'");
+    expect(csp).toContain('img-src blob:');
+    expect(csp).toMatch(/connect-src 'self' https:\/\/[a-z0-9.-]+\.supabase\.co(?=;)/);
+    expect(csp).toContain("frame-ancestors 'none'");
+  });
+});

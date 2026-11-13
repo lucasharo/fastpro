@@ -1,0 +1,186 @@
+/* H-029 (Issue #42) | Tela de fotos do pedido (98-DESENHO-H029 §4.4). Cores so por tokens EDS (tokens.css); sem hexadecimal. */
+body {
+  margin: 0;
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-size: 16px;
+  font-family: 'Roboto', sans-serif;
+}
+
+.fotos-main {
+  box-sizing: border-box;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+  overflow-wrap: anywhere;
+}
+
+.fotos-main h1 {
+  margin: 0 0 var(--space-3);
+  font-size: 1.5rem;
+}
+
+.fotos-aviso {
+  margin: 0 0 var(--space-3);
+  color: var(--color-text-secondary);
+}
+
+.fotos-contador {
+  margin: 0 0 var(--space-3);
+  font-weight: 500;
+}
+
+.fotos-status {
+  min-height: 1.5rem;
+  margin-bottom: var(--space-3);
+}
+
+.fotos-lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fotos-cartao {
+  box-sizing: border-box;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+}
+
+.fotos-cartao h2 {
+  margin: 0 0 var(--space-2);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.fotos-miniatura {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--radius-button);
+  background: var(--color-field);
+}
+
+.fotos-estado,
+.fotos-carregando,
+.fotos-vazio {
+  margin: var(--space-2) 0;
+  color: var(--color-text-secondary);
+}
+
+.fotos-erro {
+  margin: var(--space-2) 0;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-error-text);
+  background: var(--color-error-background);
+  border-radius: var(--radius-button);
+}
+
+.fotos-bloco-erro:empty {
+  display: none;
+}
+
+.fotos-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.fotos-botao,
+.fotos-adicionar,
+.fotos-botao-secundario,
+.fotos-botao-perigo {
+  box-sizing: border-box;
+  min-height: 44px;
+  min-width: 44px;
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  font-weight: 500;
+  border-radius: var(--radius-button);
+  cursor: pointer;
+}
+
+.fotos-botao,
+.fotos-adicionar {
+  color: var(--color-button-primary-text);
+  background: var(--color-button-primary-background);
+  border: 1px solid var(--color-button-primary-background);
+}
+
+.fotos-botao-secundario {
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.fotos-botao-perigo {
+  color: var(--color-error-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-error-text);
+}
+
+.fotos-botao[aria-disabled="true"],
+.fotos-adicionar[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.fotos-botao:focus-visible,
+.fotos-adicionar:focus-visible,
+.fotos-botao-secundario:focus-visible,
+.fotos-botao-perigo:focus-visible {
+  outline: 3px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+.fotos-aviso-adicionar {
+  margin: var(--space-3) 0 var(--space-2);
+  color: var(--color-warning-text);
+}
+
+.fotos-adicionar {
+  margin-top: var(--space-4);
+}
+
+.fotos-dialogo {
+  max-width: 28rem;
+  padding: var(--space-6);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+}
+
+.fotos-dialogo h2 {
+  margin: 0 0 var(--space-4);
+  font-size: 1.25rem;
+}
+
+.fotos-dialogo button {
+  margin-right: var(--space-2);
+}
+
+@media (max-width: 30rem) {
+  .fotos-acoes {
+    flex-direction: column;
+  }
+  .fotos-acoes button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fotos-main * {
+    transition: none;
+    animation: none;
+  }
+}
