@@ -4,6 +4,8 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { MEDIA_MAX_BYTES } from '@fastpro/domain';
+import { enviarFoto, type PortasNavegador } from '../src/media/reduzir-foto.js';
 
 const lerArquivo = (caminho: string) => readFileSync(new URL(caminho, import.meta.url), 'utf8');
 const FOTOS_JS = lerArquivo('../public/fotos.js');
@@ -179,12 +181,13 @@ function criarAmbiente(handler: (c: Chamada) => Resp | Promise<Resp>) {
     await t.fn();
     await flush();
   };
-  return { doc, chamadas, timers, montar, dispararTimer, urlsCriadas, urlsRevogadas, api };
+  return { doc, chamadas, timers, montar, dispararTimer, urlsCriadas, urlsRevogadas, api, fetch };
 }
 
 interface Ctrl {
   estado: Record<string, unknown>;
   elementos: { dialogo: El; adicionar: El; status: El; contador: El; lista: El; pagina: El };
+  carregarLista: (silencioso: boolean) => Promise<void>;
 }
 
 const fotoLista = (id: string, estado: string, posicao: number | null, motivo?: string) => ({
@@ -507,6 +510,235 @@ describe('G-11 controlador /fotos (CA-01 a CA-12)', () => {
       expect(c.url.startsWith('/api/v1/media/')).toBe(true);
       expect(c.url).not.toMatch(/quarantine|storage|\/d\//);
     }
+  });
+});
+
+// ---------- CA-04: fluxo completo "adicionar foto" (reduzir no navegador, emitir, PUT ao Storage, finalize, lista) ----------
+// O fluxo usa enviarFoto (src/media/reduzir-foto.ts) com a API e o Storage falsos. O teste nao faz rede real:
+// a URL de envio e sintetica e o PUT vai para um fake. A ordem das chamadas fica registrada em um unico diario.
+class ErroFluxo extends Error {
+  constructor(readonly code: string) {
+    super(code);
+  }
+}
+
+const URL_ENVIO_SINTETICA = 'https://storage-sintetico.test/upload/sintetico';
+const ID_NOVA = '00000000-0000-4000-8000-0000000000ff';
+
+const arquivoSintetico = (tamanho: number, tipo: string): Blob => new Blob([new Uint8Array(tamanho)], { type: tipo });
+
+/** Portas de navegador falsas: a decodificacao funciona e a codificacao devolve um JPEG de `tamanho` bytes. */
+function portasReducao(tamanho: number): PortasNavegador {
+  return {
+    decodificar: async () => ({ width: 4000, height: 3000, recurso: {} }),
+    codificar: async () => new Blob([new Uint8Array(tamanho)], { type: 'image/jpeg' }),
+  };
+}
+
+/** Portas sem decodificacao (navegador sem suporte ou formato sem reducao): o original segue. */
+const portasSemReducao: PortasNavegador = {
+  decodificar: async () => null,
+  codificar: async () => null,
+};
+
+async function lerJson(res: { text: () => Promise<string> }): Promise<unknown> {
+  const texto = await res.text();
+  return texto ? JSON.parse(texto) : null;
+}
+
+function codigoDe(status: number, dados: unknown): string {
+  const code = (dados as { code?: unknown } | null)?.code;
+  if (typeof code === 'string') return code;
+  return status === 429 ? 'muitas' : 'falha';
+}
+
+interface CenarioAdicionar {
+  arquivo: Blob;
+  portas: PortasNavegador;
+  emissao?: Resp;
+  storage?: number;
+  finalizacao?: Resp;
+  atualizacao?: Resp;
+}
+
+/** Pagina montada com fakes; clicarAdicionar() usa o botao real e espera o fluxo terminar. */
+async function cenarioAdicionar(cfg: CenarioAdicionar) {
+  const ordem: string[] = [];
+  const emitidos: Array<{ content_type: string; size_bytes: number }> = [];
+  const blobsEnviados: Blob[] = [];
+  let fotos: unknown[] = [];
+  let finalizada = false;
+  let resultado: { ok: true; reduzida: boolean } | { erro: string } | null = null;
+
+  const amb = criarAmbiente((c) => {
+    if (c.url === '/api/v1/media/photos' && c.metodo === 'GET') {
+      ordem.push('lista');
+      if (finalizada && cfg.atualizacao) return cfg.atualizacao;
+      return lista200(fotos);
+    }
+    if (c.url === '/api/v1/media/uploads' && c.metodo === 'POST') {
+      ordem.push('emitir');
+      emitidos.push(c.corpo as { content_type: string; size_bytes: number });
+      return (
+        cfg.emissao ?? {
+          status: 201,
+          dados: { id: ID_NOVA, status: 'pendente', upload_url: URL_ENVIO_SINTETICA, upload_expires_at: '2026-11-12T12:00:00.000Z' },
+        }
+      );
+    }
+    if (c.url === `/api/v1/media/${ID_NOVA}/finalize` && c.metodo === 'POST') {
+      ordem.push('finalizar');
+      const resp = cfg.finalizacao ?? { status: 200, dados: { id: ID_NOVA, status: 'processando' } };
+      if (resp.status === 200) {
+        fotos = [...fotos, fotoLista(ID_NOVA, 'processando', fotos.length + 1)];
+        finalizada = true;
+      }
+      return resp;
+    }
+    return { status: 404 };
+  });
+
+  const put = async (_url: string, blob: Blob): Promise<number> => {
+    ordem.push('put');
+    blobsEnviados.push(blob);
+    return cfg.storage ?? 200;
+  };
+
+  const { raiz, ctrl } = amb.montar({
+    adicionarFoto: () => {
+      void adicionar();
+    },
+  });
+  await flush();
+
+  async function adicionar(): Promise<void> {
+    let urlEnvio = '';
+    let id = '';
+    try {
+      const r = await enviarFoto({
+        arquivo: cfg.arquivo,
+        tipoDeclarado: cfg.arquivo.type,
+        portas: cfg.portas,
+        emitir: async (corpo) => {
+          const res = await amb.fetch('/api/v1/media/uploads', { method: 'POST', body: JSON.stringify(corpo) });
+          const dados = (await lerJson(res)) as { upload_url?: string; id?: string } | null;
+          if (!res.ok) throw new ErroFluxo(codigoDe(res.status, dados));
+          urlEnvio = dados?.upload_url ?? '';
+          id = dados?.id ?? '';
+        },
+        enviar: async (blob) => {
+          const status = await put(urlEnvio, blob);
+          if (status < 200 || status > 299) throw new ErroFluxo('envio');
+        },
+      });
+      if ('code' in r) throw new ErroFluxo(r.code);
+      const fin = await amb.fetch(`/api/v1/media/${id}/finalize`, { method: 'POST' });
+      if (!fin.ok) throw new ErroFluxo(codigoDe(fin.status, await lerJson(fin)));
+      await ctrl.carregarLista(true);
+      resultado = { ok: true, reduzida: r.reduzida };
+    } catch (e) {
+      if (!(e instanceof ErroFluxo)) throw e;
+      resultado = { erro: e.code };
+    }
+  }
+
+  return {
+    raiz,
+    ctrl,
+    ordem,
+    emitidos,
+    blobsEnviados,
+    resultado: () => resultado,
+    clicarAdicionar: async () => {
+      ctrl.elementos.adicionar.click();
+      await flush();
+    },
+  };
+}
+
+describe('CA-04 fluxo completo adicionar foto (reduzir, emitir, PUT ao Storage, finalize, atualizar lista, erros)', () => {
+  it('CA-04 sucesso: reduz, emite com o tamanho do blob reduzido, envia ao Storage, finaliza e atualiza a lista', async () => {
+    const c = await cenarioAdicionar({ arquivo: arquivoSintetico(4_000_000, 'image/jpeg'), portas: portasReducao(420_000) });
+    await c.clicarAdicionar();
+    expect(c.ordem).toEqual(['lista', 'emitir', 'put', 'finalizar', 'lista']);
+    expect(c.emitidos).toEqual([{ content_type: 'image/jpeg', size_bytes: 420_000 }]);
+    expect(c.blobsEnviados.map((b) => b.size)).toEqual([420_000]);
+    expect(c.resultado()).toEqual({ ok: true, reduzida: true });
+    expect(c.ctrl.elementos.contador.textContent).toBe('1 de 5 fotos');
+    expect(cartao(c.raiz, ID_NOVA)).toBeDefined();
+  });
+
+  it('CA-04 sem reducao possivel: emite e envia o original com o tipo declarado e o tamanho dele', async () => {
+    const c = await cenarioAdicionar({ arquivo: arquivoSintetico(2_000_000, 'image/png'), portas: portasSemReducao });
+    await c.clicarAdicionar();
+    expect(c.emitidos).toEqual([{ content_type: 'image/png', size_bytes: 2_000_000 }]);
+    expect(c.blobsEnviados.map((b) => b.size)).toEqual([2_000_000]);
+    expect(c.resultado()).toEqual({ ok: true, reduzida: false });
+    expect(c.ordem).toEqual(['lista', 'emitir', 'put', 'finalizar', 'lista']);
+  });
+
+  it('CA-04 erro: arquivo acima de 10 MB sem reducao e recusado localmente, sem emitir nem enviar', async () => {
+    const c = await cenarioAdicionar({ arquivo: arquivoSintetico(MEDIA_MAX_BYTES + 1, 'image/jpeg'), portas: portasSemReducao });
+    await c.clicarAdicionar();
+    expect(c.resultado()).toEqual({ erro: 'arquivo_grande' });
+    expect(c.ordem).toEqual(['lista']);
+    expect(c.emitidos).toEqual([]);
+  });
+
+  it('CA-04 erro: 422 photo_limit na emissao nao envia, nao finaliza e nao mostra a foto', async () => {
+    const c = await cenarioAdicionar({
+      arquivo: arquivoSintetico(4_000_000, 'image/jpeg'),
+      portas: portasReducao(420_000),
+      emissao: { status: 422, dados: { code: 'photo_limit' } },
+    });
+    await c.clicarAdicionar();
+    expect(c.resultado()).toEqual({ erro: 'photo_limit' });
+    expect(c.ordem).toEqual(['lista', 'emitir']);
+    expect(cartao(c.raiz, ID_NOVA)).toBeUndefined();
+  });
+
+  it('CA-04 erro: 429 na emissao devolve o codigo muitas e nao envia ao Storage', async () => {
+    const c = await cenarioAdicionar({
+      arquivo: arquivoSintetico(4_000_000, 'image/jpeg'),
+      portas: portasReducao(420_000),
+      emissao: { status: 429, retryAfter: '60' },
+    });
+    await c.clicarAdicionar();
+    expect(c.resultado()).toEqual({ erro: 'muitas' });
+    expect(c.ordem).toEqual(['lista', 'emitir']);
+  });
+
+  it('CA-04 erro: PUT ao Storage recusado para antes do finalize e nao muda a lista', async () => {
+    const c = await cenarioAdicionar({ arquivo: arquivoSintetico(4_000_000, 'image/jpeg'), portas: portasReducao(420_000), storage: 403 });
+    await c.clicarAdicionar();
+    expect(c.resultado()).toEqual({ erro: 'envio' });
+    expect(c.ordem).toEqual(['lista', 'emitir', 'put']);
+    expect(cartao(c.raiz, ID_NOVA)).toBeUndefined();
+  });
+
+  it('CA-04 erro: finalize 409 upload_expirado devolve o codigo e a lista continua sem a foto', async () => {
+    const c = await cenarioAdicionar({
+      arquivo: arquivoSintetico(4_000_000, 'image/jpeg'),
+      portas: portasReducao(420_000),
+      finalizacao: { status: 409, dados: { code: 'upload_expirado' } },
+    });
+    await c.clicarAdicionar();
+    expect(c.resultado()).toEqual({ erro: 'upload_expirado' });
+    expect(c.ordem).toEqual(['lista', 'emitir', 'put', 'finalizar']);
+    expect(cartao(c.raiz, ID_NOVA)).toBeUndefined();
+  });
+
+  it('CA-04 erro: foto aceita, mas a atualizacao da lista falha: a pagina mostra o erro e Tentar de novo', async () => {
+    const c = await cenarioAdicionar({
+      arquivo: arquivoSintetico(4_000_000, 'image/jpeg'),
+      portas: portasReducao(420_000),
+      atualizacao: { status: 503 },
+    });
+    await c.clicarAdicionar();
+    expect(c.resultado()).toEqual({ ok: true, reduzida: true });
+    expect(c.ordem).toEqual(['lista', 'emitir', 'put', 'finalizar', 'lista']);
+    expect(achar(c.raiz, 'Não foi possível carregar as fotos.')).toBeDefined();
+    expect(achar(c.raiz, 'Tentar de novo')).toBeDefined();
   });
 });
 
