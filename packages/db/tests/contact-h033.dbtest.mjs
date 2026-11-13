@@ -1,5 +1,7 @@
-// Issue 46 (H-033) | Testes de banco do opt-in de telefone (docs/factory/129-DESENHO-H033.md, §8). Parcial nesta entrega:
-// T-02, T-04, T-05, T-06, T-08, T-09 (sem prova real), T-10, T-14 e a imutabilidade do registro.
+// Issue 46 (H-033) | Testes de banco do opt-in de telefone (docs/factory/129-DESENHO-H033.md, §8). Nesta entrega:
+// T-02, T-04, T-05, T-06, T-08, T-09 (sem prova real: a regra real fica com a E6), T-10, T-11, T-12, T-13, T-14, T-16,
+// T-20, T-21 (reaplicacao e catalogo) e a imutabilidade do registro. T-22 (concorrencia) esta em
+// contact-h033-concorrencia.dbtest.mjs, porque exige conexoes reais e commit.
 // Banco de desenvolvimento COMPARTILHADO: uma transacao aberta no before, que reaplica a migracao (idempotente). Cada
 // teste roda num savepoint desfeito; rollback no after. Dados 100 % sinteticos, sem rede, sem envio. Telefone sintetico
 // montado por concatenacao. Executar sozinho: node --test --test-concurrency=1 packages/db/tests/contact-h033.dbtest.mjs
@@ -12,6 +14,7 @@ import { connect } from '../scripts/lib/env.mjs';
 
 const MIG = new URL('../../../supabase/migrations/20261113250000_contact_create_phone_consent.sql', import.meta.url);
 const MIG_CORRECAO = new URL('../../../supabase/migrations/20261113250100_contact_fix_available_volatile.sql', import.meta.url);
+const MIG_REVOGA = new URL('../../../supabase/migrations/20261113290000_contact_revoke_trigger_execute.sql', import.meta.url);
 
 const AGORA = '2099-08-15T12:00:00.000Z';
 const MARCA = `h033-${randomUUID().slice(0, 8)}`;
@@ -33,6 +36,7 @@ before(async () => {
   await client.query('begin');
   await client.query(semControle(readFileSync(MIG, 'utf8')));
   await client.query(semControle(readFileSync(MIG_CORRECAO, 'utf8')));
+  await client.query(semControle(readFileSync(MIG_REVOGA, 'utf8')));
 });
 
 after(async () => {
@@ -122,9 +126,9 @@ async function rascunho(svc) {
   return id;
 }
 
-/** Pedido sintetico publicado, sem telefone. prazo: deslocamento do fim da admissao. */
-async function pedido({ prazo = '168 hours' } = {}) {
-  const cliente = await usuario();
+/** Pedido sintetico publicado, sem telefone. prazo: deslocamento do fim da admissao. dono: reutiliza o cliente. */
+async function pedido({ prazo = '168 hours', cliente: dono } = {}) {
+  const cliente = dono ?? (await usuario());
   const svc = await servico();
   const draft = await rascunho(svc);
   const g = await ponto('request', draft);
@@ -140,10 +144,25 @@ async function pedido({ prazo = '168 hours' } = {}) {
   return { id: r.rows[0].id, cliente };
 }
 
+/** Pedido com telefone e liberacao geral (consentimento v1), para revelacao e revogacao. */
+async function pedidoComTelefoneGeral() {
+  const p = await pedido();
+  await client.query('select out_state from private.request_phone_attach($1, $2, $3, true, $4, $5)', [
+    p.cliente, p.id, blob(), 'v1', AGORA,
+  ]);
+  return p;
+}
+
 /** Liberacao da guarda de aceite so dentro do savepoint do teste (a funcao real permanece fechada). */
 async function aceiteAtivoNoTeste() {
   await client.query(`create or replace function private.request_acceptance_active(p_request_id uuid, p_professional_id uuid)
     returns boolean language sql stable security definer set search_path = '' as $$ select true $$`);
+}
+
+/** Guarda devolvendo falso dentro do savepoint do teste (mesmo efeito da funcao real ate a E6). */
+async function aceiteFechadoNoTeste() {
+  await client.query(`create or replace function private.request_acceptance_active(p_request_id uuid, p_professional_id uuid)
+    returns boolean language sql stable security definer set search_path = '' as $$ select false $$`);
 }
 
 test('T-02 | publicacao com telefone e sem marcar: phone_enc gravado e zero linhas em contact_consent', () =>
@@ -234,6 +253,20 @@ test('T-08 | app_api, anon e authenticated sem select nas tabelas e sem execute 
   }
 });
 
+test('T-09 | retirada: com a guarda devolvendo falso depois de revelar, a proxima revelacao e negada e o log permanece', () =>
+  isolado(async () => {
+    const p = await pedidoComTelefoneGeral();
+    const prof = await profissional();
+    await aceiteAtivoNoTeste();
+    const primeira = await client.query('select * from private.contact_reveal_phone($1, $2, $3)', [prof, p.id, AGORA]);
+    assert.equal(primeira.rows.length, 1);
+    await aceiteFechadoNoTeste();
+    const depois = await client.query('select * from private.contact_reveal_phone($1, $2, $3)', [prof, p.id, AGORA]);
+    assert.equal(depois.rows.length, 0);
+    const log = await client.query('select count(*)::int as n from app.contact_reveal_log where request_id = $1', [p.id]);
+    assert.equal(log.rows[0].n, 1);
+  }));
+
 test('T-10 | revogacao geral: revoga todas as liberacoes; segunda revogacao devolve 0; consentimento so ganha revogacao uma vez', () =>
   isolado(async () => {
     const p = await pedido();
@@ -254,6 +287,92 @@ test('T-10 | revogacao geral: revoga todas as liberacoes; segunda revogacao devo
     assert.match(String(err.message), /consentimento_imutavel/);
     const apaga = await erroEm('delete from app.contact_consent where request_id = $1', [p.id]);
     assert.match(String(apaga.message), /registro_somente_insercao/);
+  }));
+
+test('T-11 | duas liberacoes individuais: revogar uma mantem a outra revelando; quem so esta coberto pelo geral recebe exige_revogar_geral', () =>
+  isolado(async () => {
+    const p = await pedido();
+    await client.query('select out_state from private.request_phone_attach($1, $2, $3, false, $4, $5)', [
+      p.cliente, p.id, blob(), 'v1', AGORA,
+    ]);
+    const a = await profissional();
+    const b = await profissional();
+    await aceiteAtivoNoTeste();
+    const lib = (prof) =>
+      client.query('select out_state from private.contact_consent_grant_professional($1, $2, $3, $4, $5)', [
+        p.cliente, p.id, prof, 'v1', AGORA,
+      ]);
+    assert.equal((await lib(a)).rows[0].out_state, 'liberado');
+    assert.equal((await lib(b)).rows[0].out_state, 'liberado');
+    const rev = await client.query('select out_revoked, out_state from private.contact_consent_revoke($1, $2, $3, $4)', [
+      p.cliente, p.id, a, AGORA,
+    ]);
+    assert.deepEqual(rev.rows[0], { out_revoked: 1, out_state: 'revogado' });
+    const seguiu = await client.query('select * from private.contact_reveal_phone($1, $2, $3)', [b, p.id, AGORA]);
+    assert.equal(seguiu.rows.length, 1);
+    const parou = await client.query('select * from private.contact_reveal_phone($1, $2, $3)', [a, p.id, AGORA]);
+    assert.equal(parou.rows.length, 0);
+
+    const g = await pedidoComTelefoneGeral();
+    const c = await profissional();
+    const exige = await client.query('select out_revoked, out_state from private.contact_consent_revoke($1, $2, $3, $4)', [
+      g.cliente, g.id, c, AGORA,
+    ]);
+    assert.deepEqual(exige.rows[0], { out_revoked: 0, out_state: 'exige_revogar_geral' });
+  }));
+
+test('T-12 | liberacao individual no chat: sem telefone 409, sem aceite recusada, com aceite cria scope profissional via chat, repetir e idempotente', () =>
+  isolado(async () => {
+    const prof = await profissional();
+    const semTel = await pedido();
+    await aceiteAtivoNoTeste();
+    const r0 = await client.query('select out_state from private.contact_consent_grant_professional($1, $2, $3, $4, $5)', [
+      semTel.cliente, semTel.id, prof, 'v1', AGORA,
+    ]);
+    assert.equal(r0.rows[0].out_state, 'sem_telefone');
+
+    const p = await pedido();
+    await client.query('select out_state from private.request_phone_attach($1, $2, $3, false, $4, $5)', [
+      p.cliente, p.id, blob(), 'v1', AGORA,
+    ]);
+    await aceiteFechadoNoTeste();
+    const r1 = await client.query('select out_state from private.contact_consent_grant_professional($1, $2, $3, $4, $5)', [
+      p.cliente, p.id, prof, 'v1', AGORA,
+    ]);
+    assert.equal(r1.rows[0].out_state, 'sem_aceite');
+    await aceiteAtivoNoTeste();
+    const r2 = await client.query('select out_state from private.contact_consent_grant_professional($1, $2, $3, $4, $5)', [
+      p.cliente, p.id, prof, 'v1', AGORA,
+    ]);
+    assert.equal(r2.rows[0].out_state, 'liberado');
+    const linha = await client.query(
+      'select scope, granted_via, professional_id from app.contact_consent where request_id = $1',
+      [p.id],
+    );
+    assert.deepEqual(linha.rows, [{ scope: 'profissional', granted_via: 'chat', professional_id: prof }]);
+    const r3 = await client.query('select out_state from private.contact_consent_grant_professional($1, $2, $3, $4, $5)', [
+      p.cliente, p.id, prof, 'v1', AGORA,
+    ]);
+    assert.equal(r3.rows[0].out_state, 'ja_liberado');
+    const total = await client.query('select count(*)::int as n from app.contact_consent where request_id = $1', [p.id]);
+    assert.equal(total.rows[0].n, 1);
+  }));
+
+test('T-13 | republicacao: pedido novo nasce sem consentimento, mesmo com telefone pre-preenchido; nenhuma copia de contact_consent', () =>
+  isolado(async () => {
+    const antigo = await pedidoComTelefoneGeral();
+    const antes = await client.query('select count(*)::int as n from app.contact_consent where request_id = $1', [antigo.id]);
+    const tel = await client.query('select private.request_phone_owner_get($1, $2) as t', [antigo.cliente, antigo.id]);
+    assert.notEqual(tel.rows[0].t, null);
+    const novo = await pedido({ cliente: antigo.cliente });
+    const at = await client.query('select out_state from private.request_phone_attach($1, $2, $3, false, $4, $5)', [
+      antigo.cliente, novo.id, tel.rows[0].t, 'v1', AGORA,
+    ]);
+    assert.equal(at.rows[0].out_state, 'sem_consentimento');
+    const novoCount = await client.query('select count(*)::int as n from app.contact_consent where request_id = $1', [novo.id]);
+    assert.equal(novoCount.rows[0].n, 0);
+    const depois = await client.query('select count(*)::int as n from app.contact_consent where request_id = $1', [antigo.id]);
+    assert.equal(depois.rows[0].n, antes.rows[0].n);
   }));
 
 test('T-14 | trocar e apagar o telefone revoga as liberacoes ativas (gatilho), inclusive por update direto', () =>
@@ -292,4 +411,66 @@ test('T-16 | prazo vencido nega o pedido aberto no mesmo instante, sem carencia'
     assert.equal(antes.rows[0].ok, true);
     const depois = await client.query('select private.request_open_for_contact($1, $2) as ok', [p.id, '2099-08-30T00:00:00.000Z']);
     assert.equal(depois.rows[0].ok, false);
+  }));
+
+test('T-20 | limite: 11 revelacoes em 10 min = limitado na 11a, sem linha nova; sem direito devolve zero linhas, nunca limite', () =>
+  isolado(async () => {
+    const p = await pedidoComTelefoneGeral();
+    const prof = await profissional();
+    await aceiteAtivoNoTeste();
+    for (let i = 1; i <= 10; i++) {
+      const r = await client.query('select * from private.contact_reveal_phone($1, $2, $3)', [prof, p.id, AGORA]);
+      assert.equal(r.rows[0].out_limited, false, `revelacao ${i} dentro do limite`);
+    }
+    const onze = await client.query('select * from private.contact_reveal_phone($1, $2, $3)', [prof, p.id, AGORA]);
+    assert.equal(onze.rows.length, 1);
+    assert.equal(onze.rows[0].out_limited, true);
+    assert.equal(onze.rows[0].out_phone_enc, null);
+    const log = await client.query('select count(*)::int as n from app.contact_reveal_log where request_id = $1', [p.id]);
+    assert.equal(log.rows[0].n, 10);
+    await aceiteFechadoNoTeste();
+    const semDireito = await client.query('select * from private.contact_reveal_phone($1, $2, $3)', [prof, p.id, AGORA]);
+    assert.equal(semDireito.rows.length, 0);
+    const logDepois = await client.query('select count(*)::int as n from app.contact_reveal_log where request_id = $1', [p.id]);
+    assert.equal(logDepois.rows[0].n, 10);
+  }));
+
+test('T-21 | migracao reaplicada sem erro; catalogo: nenhuma funcao devolve coluna phone ou email; saidas de status e disponibilidade sem blob', () =>
+  isolado(async () => {
+    for (const arq of [MIG, MIG_CORRECAO, MIG_REVOGA]) {
+      await client.query(semControle(readFileSync(arq, 'utf8')));
+    }
+    const nomes = [
+      'request_acceptance_active', 'request_open_for_contact', 'request_phone_attach', 'request_phone_replace',
+      'contact_consent_grant_professional', 'contact_consent_revoke', 'contact_reveal_phone',
+      'contact_available_professional', 'contact_owner_status', 'request_phone_owner_get',
+    ];
+    const r = await client.query(
+      `select p.proname, pg_get_function_result(p.oid) as res
+         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'private' and p.proname = any($1::text[])`,
+      [nomes],
+    );
+    assert.equal(r.rows.length, nomes.length);
+    for (const linha of r.rows) {
+      assert.doesNotMatch(linha.res, /(^|[\s(,])(phone|email)\s/, linha.proname);
+    }
+    for (const nome of ['contact_owner_status', 'contact_available_professional']) {
+      const linha = r.rows.find((x) => x.proname === nome);
+      assert.doesNotMatch(linha.res, /bytea/, nome);
+    }
+  }));
+
+test('registro de revelacao: a prova de texto nao contem o sentinela (T-06 e T-15 parcial)', () =>
+  isolado(async () => {
+    const p = await pedidoComTelefoneGeral();
+    const prof = await profissional();
+    await aceiteAtivoNoTeste();
+    await client.query('select * from private.contact_reveal_phone($1, $2, $3)', [prof, p.id, AGORA]);
+    const texto = await client.query(
+      `select (select count(*) from app.contact_reveal_log x where x::text like $1) as log,
+              (select count(*) from app.contact_consent y where y::text like $1) as consent`,
+      [`%${SENTINELA}%`],
+    );
+    assert.deepEqual(texto.rows[0], { log: '0', consent: '0' });
   }));
