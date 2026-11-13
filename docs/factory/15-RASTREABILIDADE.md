@@ -88,7 +88,7 @@ Todos os RF aprovados ou delegados têm história, exceto RF-121 (fora de escopo
 | | RF-027 | H-028 |
 | | RF-028 | H-026, H-056 |
 | | RF-029 | H-056 |
-| | RF-030 | H-056, H-057 |
+| | RF-030 (sem log de acesso: Rodada 67, Issue 150) | H-056, H-057 |
 | | RF-031 | H-057, H-072 |
 | M4 Identidade | RF-035, RF-036 | H-011 |
 | | RF-037 | H-012, H-013 |

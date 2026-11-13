@@ -150,7 +150,7 @@ Matriz de visibilidade: doc 05 §6 (aprovada). Reproduzida nos RF-136..139.
 | RF-027 | Metadados de localização (EXIF) removidos das cópias compartilhadas. **Aplica-se às fotos do pedido** (única fonte de imagem na plataforma, decisão 32). | [APROVADO] / D10 | FA-007 |
 | RF-028 | Arquivos privados; autorização verificada no servidor; miniaturas e originais com a mesma política; URLs expiram; sem link público permanente. | [APROVADO] | FA-008 |
 | RF-029 | Profissional com identidade aprovada + acesso comercial vigente (assinatura ou trial legítimo) + serviço/raio elegíveis vê fotos **antes de aceitar o trabalho**; não vê dado pessoal restrito junto delas. | [APROVADO] | FA-007 |
-| RF-030 | **Mitigações D10:** URL assinada curta, sem download do original, marca d'água com identificador do profissional, rate limit e log de acesso por profissional, detecção de raspagem, nenhum dado pessoal junto das fotos. | [DELEGADO] D10 | FA-007, FA-008 |
+| RF-030 | **Mitigações D10:** URL assinada curta, sem download do original, marca d'água com identificador do profissional, limite de visualizações por profissional (contador por janela; excesso gera 429 e sinal de raspagem), **nenhum registro de acesso por foto** (Rodada 67 e Issue 150: sem log de acesso), nenhum dado pessoal junto das fotos. | [DELEGADO] D10 | FA-007, FA-008 |
 | RF-031 | Após expiração, elegível não participante perde acesso às fotos pela descoberta; participante mantém histórico autorizado; restrição de segurança prevalece. | [APROVADO] | FA-008, FA-025 |
 
 ### M4. Identidade do cliente e sessão

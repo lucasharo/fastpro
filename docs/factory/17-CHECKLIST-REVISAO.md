@@ -245,7 +245,7 @@ Marcar cada item no relatório. Falha em item da §2 = BLOQUEADOR.
 - [ ] Redução no envio e reencode no servidor: lado ≤ 1.280 px, ≈ 0,5 MB, só a versão reduzida persistida; EXIF removido após aplicar a rotação; tipo pelo conteúdo (B-54, B-56).
 - [ ] Máximo de 5 fotos, 6ª recusada na API e no banco (B-55); sem canal de foto extra; sem anexo no chat (B-57).
 - [ ] Foto a elegível: URL assinada ≈ 60 s, marca d’água com identificador do profissional, `no-store`, prévia ≈ 320 px na listagem (B-18).
-- [ ] Rate limit de visualização por profissional, log de acesso e sinal de raspagem; suspensão cautelar só do acesso a fotos.
+- [ ] Rate limit de visualização por profissional e sinal de raspagem (sem log de acesso; Issue 150); suspensão cautelar só do acesso a fotos.
 - [ ] Documentos de identidade: imagem (reduzida no envio) ou PDF de até 2 MB, até 5 arquivos (provisório); bucket privado; validação por conteúdo; leitura só pela Verificação (B-58). Retenção `[PENDENTE JURÍDICO L1]`.
 - [ ] Consumo registrado em `external_quota(storage)`; alertas em 70/85/95% do 1 GB; egress estimado contra 5 GB.
 - [ ] Teste de memória e tempo do reencode de 10 MB de entrada (S-06, Q-08); imagem-bomba e arquivo falso recusados.

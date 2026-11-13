@@ -1,5 +1,7 @@
 # Refino H-110 — Expurgos operacionais (Issue #119, WF-03, Product Owner)
 
+> Nota (Issue 150, 2026-11-13): E8 (media_access_log), RN-H110-09, CA-H110-09 e a parte E8 de CA-H110-16 foram substituidos pela Rodada 67 e removidos pela Issue 150; Q-H110-1 (decisao 158) e obsoleta. Texto original preservado.
+
 - **Issue:** #119 · **História:** H-110 ("[E13] Expurgos operacionais") · **Workflow:** WF-03 · **Data:** 2026-11-12 · **Papel:** Product Owner
 - **Estado no quadro (verificado em `docs/factory/quadro-status.md`):** #119 está na coluna **Product Owner**. Dependências #18 (H-005), #21 (H-008) e #118 (H-109) estão em **Concluído**.
 - **Decisão:** REFINADO_PO com ressalvas. Pronto para Arquitetura nas partes independentes. A parte de **quarentena de fotos** depende de #141 (ver seção 8), por isso não deve ser tratada como concluível sozinha. Nenhuma pergunta abaixo bloqueia o desenvolvimento das demais partes.

@@ -26,8 +26,6 @@
 | E6a outbox de evento despachado | `purge.outbox_dispatched_seconds` | `604800` (7 dias) | decisão 202 `[PROPOSTA]` |
 | E6b saída de e-mail | `purge.email_outbox_seconds` | `2592000` (30 dias) | decisão 202 `[PROPOSTA]`; decisão 166 inclui a tabela |
 | E7 chave de idempotência | `purge.idempotency_seconds` | `172800` (48 h) | decisão 167 (Q10) e decisão 209 (Q-A110-12): **a confirmar com os prazos de reentrega dos provedores** |
-| E8 registro de acesso a fotos (rollup) | `purge.media_access_rollup_after_seconds` | `86400` (rollup ligado) | decisão 158 (a) `[PROPOSTA]` |
-| E8 registro de acesso a fotos (detalhe) | `purge.media_access_detail_seconds` | **não definir** (nulo) | decisão 158 (a): o detalhe só sai quando L1 (jurídico) definir o prazo |
 | Limite por lote | `purge.batch_limit` | `500` (contagem) | `[PROPOSTA]`, não é prazo |
 | Orçamento de tempo por execução | `purge.time_budget_ms` | `15000` (milissegundos) | `[PROPOSTA]`, sempre menor que o tempo máximo do tick |
 | Teto de execuções por dia | `purge.max_runs_per_day` | `1` (contagem) | `[PROPOSTA]` |
@@ -41,7 +39,7 @@ Itens sem valor de TTL (não se define chave):
 
 | Decisão | Assunto | Situação para o runbook |
 |---|---|---|
-| 158 (Q-H110-1) | Detalhe do registro de acesso a fotos | Só rollup agora. Detalhe fica nulo até L1 definir prazo. Alternativas registradas: remover em 90 dias, ou tirar do escopo. |
+| 158 (Q-H110-1) | Registro de acesso a fotos | **Removido pela Issue 150 (Rodada 67, decisão do usuário, opção A).** |
 | 159 a 161 | Rascunho 30 dias; upload 24 h; foto de rascunho expirado junto | Valores acima. |
 | 162 | RC-08 (logs do provedor) | Só documentado como configuração do provedor, sem código. |
 | 163 | Hold suspende TTL técnico de todo dado do sujeito | Coberto pelo princípio do hold (ver seção 2). |
@@ -91,7 +89,7 @@ A aplicação deve ser feita com a ferramenta de migração e de dados do projet
 ## 6. Verificação antes de ligar em produção
 
 1. Conferir que cada chave aprovada aparece em `ops.app_config` com valor numérico positivo.
-2. Conferir que `purge.media_access_detail_seconds` continua sem linha enquanto L1 não definir o prazo.
+2. Conferir que não há linha `purge.media_access%` em `ops.app_config` (zero linhas; Issue 150).
 3. Conferir a agenda `ops-purge-daily` (`pg_cron` presente) ou o disparo manual documentado.
 4. Rodar uma execução manual em ambiente de desenvolvimento e conferir o evento de auditoria (contagens, sem dado de sujeito).
 5. Registrar valor, data e autor de cada alteração em `docs/factory/` do produto.

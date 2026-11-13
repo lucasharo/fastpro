@@ -106,7 +106,7 @@ Checks: `status<>'publicado' OR selecionado inexistente` (via trigger); `wave2_o
 **conversation_member_state** (preferência individual): `conversation_id`, `user_id`, `archived_at?`, `last_read_message_id?`, `muted?`.
 **message**: `id`, `conversation_id`, `kind` {`humana|sistema`}, `sender_user_id` (**nulo** se `kind='sistema'`), `client_message_id` (**único** com `(conversation_id, sender_user_id)`, só `humana`), `system_event` {`aceite|aceite_retirado`} (obrigatório se `sistema`), `params` (jsonb: apenas IDs; sem texto livre/PII), `template_version`, `dedupe_key` (**único parcial** `(conversation_id, dedupe_key) WHERE kind='sistema'`; ex.: `acceptance:{id}:accepted`), `body_text?` (só `humana`), `created_at`, `state` {`enviada|restrita`}. CHECKs: `kind='sistema' ⇒ sender_user_id IS NULL AND system_event IS NOT NULL AND body_text IS NULL`; `kind='humana' ⇒ sender_user_id IS NOT NULL`. Triggers: `UPDATE`/`DELETE` negados ao papel de aplicação (RF-103, vale para a de sistema); `INSERT humana` exige conversa `ativa`, sem `security_restricted_at` e remetente membro; `INSERT sistema` só pela função interna do domínio (papel `app_api` sem `INSERT` direto na tabela), com conversa `ativa` no instante (a de `aceite_retirado` é inserida antes de a conversa virar `somente_leitura`). O texto exibido é renderizado do modelo versionado + `params` (RF-075); para `aceite` o texto é fixo: "Estou disponível para trabalhar".
 **media_asset**: `id`, `owner_kind` {`draft|request|identity|certification`}, `owner_id`, `uploader_user_id`, `bucket`, `object_key` (aleatório), `declared_mime`, `detected_mime`, `bytes` (≤10 MB), `status` {`pending|scanning|ready|rejected`}, `reject_reason`, `exif_stripped` bool, `width`, `height`, `created_at`, `purge_after?`. CHECK exatamente um dono. CHECKs: `owner_kind in ('draft','request') ⇒ GREATEST(width,height) <= 1280` e `bytes` ≤ teto técnico (alvo ≈ 0,5 MB, teto `[PROPOSTA]` 0,75 MB em `app_config`); só a **versão reduzida** é persistida (sem coluna nem objeto de original/*master*); `exif_stripped` aplica-se só às fotos do pedido. Trigger: no máximo **5** `media_asset` não rejeitados com `owner_kind in ('draft','request')` por rascunho/pedido (decisão 30); o 6º é recusado (`photo_limit`). Fotos adicionais só por WhatsApp, fora da plataforma.
-**media_access_log** (D10): `at`, `professional_id`, `request_id`, `asset_id`, `outcome` {`ok|negado|limitado`}, `ip_hmac?`. **Compacta**; *rollup* diário e expurgo operacional (§9, §10).
+**Removida pela Issue 150 (Rodada 67):** ~~media_access_log~~ (D10): `at`, `professional_id`, `request_id`, `asset_id`, `outcome` {`ok|negado|limitado`}, `ip_hmac?`. **Compacta**; *rollup* diário e expurgo operacional (§9, §10).
 **chat_report** / **user_block**: denúncia de mensagem e bloqueio por usuário.
 
 ### 3.8 privacidade
@@ -208,14 +208,14 @@ Todos os papéis `anon`/`authenticated`: sem grant nas tabelas; exceção `realt
 Classes: **C0** público · **C1** interno · **C2** pessoal comum · **C3** pessoal de alto risco/sensível (documento, endereço exato, conteúdo privado, imagem de residência) · **C4** segredo/credencial.
 Controles: **Enc** = criptografia de aplicação em coluna/objeto com chave versionada (chave via gestor de segredos; origem do KMS em SD-11); em repouso do provedor `[NÃO VERIFICADO]` além disso.
 
-| Dado | Tabela/local | Classe | Quem lê | Proteções | Log de acesso | Retenção (classe §8) |
+| Dado | Tabela/local | Classe | Quem lê | Proteções | — | Retenção (classe §8) |
 |---|---|---|---|---|---|---|
 | E-mail do cliente | app_user.email | C2 | dono; sistema (envio); admin com caso | nunca em views de profissional; mascarar em logs | consulta admin | RC-02 |
 | Primeiro nome do cliente | service_request.first_name | C2 | dono; participantes | só após aceite `ativo` | — | RC-03 |
 | Telefone/WhatsApp | service_request.phone_enc, draft | C3 | dono; participante com consentimento | Enc; endpoint de revelação separado | `contact_reveal_log` | RC-03 / RC-10 |
 | Endereço completo | service_request.address_text_enc, exact_point | C3 | dono; participante com `address_share`; admin com caso | Enc do texto; `exact_point` nunca em views de profissional | sim | RC-03 |
 | Ponto generalizado / rótulo | match_point, public_label | C2 | elegíveis e participantes | célula 500 m `[PROPOSTA]` | — | RC-03 |
-| Fotos do pedido | bucket request-photos | C3 | dono; participantes; elegíveis (marca d'água) | EXIF removido; URL ~60 s; sem original a profissionais | `media_access_log` | RC-03 |
+| Fotos do pedido | bucket request-photos | C3 | dono; participantes; elegíveis (marca d'água) | EXIF removido; URL ~60 s; sem original a profissionais | — (Issue 150) | RC-03 |
 | Mensagens | message | C3 | membros; admin com caso | sem edição/exclusão; trigger | `sensitive_access_log` | RC-04 | Conversas (somente texto) | idem; moderação | excluir/anonimizar; *legal hold* | `[PENDENTE JURÍDICO]` L1 |
 | CPF/CNPJ | professional_profile.document_enc / document_hmac | C3 | profissional; Verificação (tarefa) | Enc + HMAC para unicidade; nunca em log | sim | RC-01 |
 | Documentos de identidade/certificação | bucket identity-docs | C3 | Verificação (tarefa atribuída, #52); admin com caso; o dono não lê (decisão 170) | Enc de objeto `[PROPOSTA]`; URL ~60 s | `sensitive_access_log` | RC-01 |
@@ -262,12 +262,12 @@ Os números substituem os da revisão 5 (alvo 1–2 MB ⇒ 70–140 pedidos). **
 | **Egress de fotos** | a derivada servida (versão reduzida + marca d'água) pesa ≈ 0,25–0,5 MB; 5 fotos × ~20 profissionais ⇒ **≈ 25–50 MB por pedido**; prévias ≈ 320 px (≈ 30 KB) na listagem reduzem o total | 5 GB/mês comportam **≈ 100–200 pedidos por mês** só em fotos: **é o limite mais apertado** (antes do Storage) |
 | Documentos de identidade | ≈ 1–3 MB por profissional (reencodar) | ≈ 100–300 profissionais em ≈ 300 MB; único consumidor de Storage além das fotos |
 | Banco por pedido | ≈ 50–150 KB incluindo 8 conversas, mensagens e índices | ≈ 3.000–10.000 pedidos em 500 MB (antes de auditoria) |
-| `media_access_log` | ≈ 100 B/linha ⇒ 1 M linhas ≈ 100 MB | *rollup* e expurgo obrigatórios |
+| ~~`media_access_log`~~ (removida pela Issue 150) | ≈ 100 B/linha ⇒ 1 M linhas ≈ 100 MB | *rollup* e expurgo obrigatórios |
 | Auditoria | ≈ 0,5–1 KB/evento | cresce sempre; arquivar comprimido |
 | Inbox de webhooks / idempotência / outbox entregue | expurgo curto | evita inchaço |
 Gatilhos: 70% ⇒ alerta; 85% ⇒ endurece cotas e expurgos; 95% ⇒ bloqueia novos uploads de baixo valor; egress ≥ 70% do mês ⇒ reduzir derivadas/prévias ou avaliar upgrade. Estas contas são **hipóteses de dimensionamento**, não medições.
 
 ## 10. Expurgos operacionais obrigatórios
-Rascunhos e uploads em `quarantine` por TTL; desafios e sessões vencidos; `provider_event` processado; `outbox_event` despachado; `idempotency_key` vencido; `media_access_log` com *rollup* diário (preserva contagem por profissional/dia para detecção) e remoção do detalhe depois de janela técnica; anexos órfãos. Todos jobs idempotentes, com *lease* e métricas (§14 de `08`).
+Rascunhos e uploads em `quarantine` por TTL; desafios e sessões vencidos; `provider_event` processado; `outbox_event` despachado; `idempotency_key` vencido; *(Issue 150, Rodada 67: `media_access_log` e o rollup foram removidos; o trecho a seguir é histórico)* `media_access_log` com *rollup* diário (preserva contagem por profissional/dia para detecção) e remoção do detalhe depois de janela técnica; anexos órfãos. Todos jobs idempotentes, com *lease* e métricas (§14 de `08`).
 
 **Nota de implementação (H-110, Issue #119):** o expurgo está em `supabase/migrations/20261112230000_ops_create_operational_purge.sql`, com rollback em `supabase/rollbacks/`. A migração não semeia TTL: sem chave em `ops.app_config` o bloco fica desligado. Os valores propostos (`[PROPOSTA]`) e as pendências (decisões 158, 209 e 208) estão em `docs/factory/108-RUNBOOK-TTL-EXPURGOS.md`. Métrica em `ops.ops_metric` fica fora (decisão 205); só auditoria. A remoção de arquivo da quarentena e dos órfãos no Storage (E1 e E9) é provada só com Storage fake até a #141.

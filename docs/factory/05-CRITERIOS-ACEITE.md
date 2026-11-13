@@ -124,7 +124,7 @@
 - **Dado** profissional aprovado, com acesso vigente (assinatura ou trial), serviço e raio elegíveis, **quando** abre o pedido em descoberta **antes de aceitar**, **então** vê as fotos e a localização generalizada.
 - **Dado** o mesmo profissional, **quando** inspeciona a resposta, **então** não há primeiro nome, e-mail, telefone nem endereço completo no conteúdo.
 - **Dado (D10; só fotos do pedido, o chat não tem imagens)** uma foto exibida, **quando** inspecionada, **então** não contém EXIF de localização, vem de URL assinada de curta duração, o original não é oferecido para download e há marca d'água com identificador do profissional.
-- **Dado (D10)** o profissional que solicita fotos em volume anômalo, **quando** excede o rate limit, **então** é limitado, o acesso é registrado em log por profissional e o padrão sinaliza raspagem.
+- **Dado (D10)** o profissional que solicita fotos em volume anômalo, **quando** excede o rate limit, **então** é limitado, o acesso é limitado e o excesso gera sinal de raspagem, sem registro de cada acesso (Rodada 67; Issue 150).
 - **Dado** profissional em trial legítimo, **quando** acessa, **então** a regra é a mesma de assinante.
 
 ## FA-008 Sem acesso, sem imagem (RF-028, 030, 031)

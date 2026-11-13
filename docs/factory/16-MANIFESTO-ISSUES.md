@@ -137,7 +137,7 @@ Bloqueio: <se houver>
 |---|---|---|---|---|---|
 | 66 | H-055 | [E6] Descoberta de pedidos elegíveis | `epic:E6`, `wave:3`, `size:M`, `type:feature` | H-023, H-042, H-045 | Objetivo: lista sem dado pessoal. Refs: RF-065, RF-137, FA-025. Testes: FA-007, T-03 |
 | 67 | H-056 | [E6] Fotos a elegíveis com marca d'água | `epic:E6`, `wave:3`, `size:G`, `type:feature`, `block:spike` | H-027, H-055, S-06 | Objetivo: URL de 60 s e marca do profissional. Refs: RF-029, RF-030, D10. Testes: P-05, Q-13 |
-| 68 | H-057 | [E6] Limite de visualização e sinal de raspagem | `epic:E6`, `wave:3`, `size:M`, `type:feature` | H-056, H-005 | Objetivo: 429 e log por profissional. Refs: RF-030, RF-031. Testes: T-12 |
+| 68 | H-057 | [E6] Limite de visualização e sinal de raspagem | `epic:E6`, `wave:3`, `size:M`, `type:feature` | H-056, H-005 | Objetivo: 429 e sinal de raspagem (sem log por acesso; Issue 150). Refs: RF-030, RF-031. Testes: T-12 |
 | 69 | H-058 | [E6] Aceitar trabalho idempotente | `epic:E6`, `wave:3`, `size:G`, `type:feature` | H-055, H-064, H-005, H-017, H-044 | Objetivo: aceite com conversa e mensagem no mesmo COMMIT. Refs: RF-069, RF-070, RF-075, I-02, I-03. Testes: C-03, C-16, F-01, F-10 |
 | 70 | H-059 | [E6] Vagas 4+4 e teto de 8 | `epic:E6`, `wave:3`, `size:M`, `type:feature`, `block:decisao` | H-058 | Objetivo: slots 1 a 8, sem contadores. Refs: RF-066, RF-071, I-01. Testes: C-01, C-02. Decisão: BK-5 |
 | 71 | H-060 | [E6] Botão "Chamar mais profissionais" | `epic:E6`, `wave:3`, `size:M`, `type:feature` | H-059 | Objetivo: segunda onda uma vez. Refs: RF-067, RF-068, RF-076, I-06. Testes: C-04, C-04b |

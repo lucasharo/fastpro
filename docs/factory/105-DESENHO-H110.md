@@ -1,5 +1,7 @@
 # Desenho H-110 — Expurgos operacionais (Issue #119, WF-03, Arquitetura)
 
+> Nota (Issue 150, 2026-11-13): E8 (media_access_log), RN-H110-09, CA-H110-09 e a parte E8 de CA-H110-16 foram substituidos pela Rodada 67 e removidos pela Issue 150; Q-H110-1 (decisao 158) e obsoleta. Texto original preservado.
+
 - **Issue:** #119 · **História:** H-110 ("[E13] Expurgos operacionais") · **Workflow:** WF-03 · **Data:** 2026-11-12 · **Papel:** Software Architect
 - **Entrada:** 103-REFINO-H110 (CA-H110-01 a 16, RN-H110-01 a 13); decisões 158 a 168 de 11-DECISOES (158 segue a opção conservadora (a): rollup agora e remoção do detalhe só com L1; 159 a 168 adotadas como recomendadas); 79-REFINO-H109 e 82-DESENHO-H109 (padrão de job, fases A/B/C, `legal_hold`, `sem_alvo`); 09-MODELO-DADOS §3, §7, §8 (RC-08, RC-09) e §10; formato de 99-DESENHO-H036.
 - **Natureza:** somente documento. Nenhum código, migração ou teste foi criado ou executado.

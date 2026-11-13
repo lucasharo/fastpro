@@ -115,7 +115,7 @@ Cada invariante tem (a) onde é imposta, (b) como é verificada continuamente. "
 | Conversas/mensagens | GET/POST `/conversations/{id}/messages` | membro | **sim** (mensagem) | conversa ativa | `MessageSent` | 409 `read_only` |
 | Arquivar | PUT `/conversations/{id}/archive` | membro | sim | — | preferência | — |
 | Denunciar/bloquear | POST `/reports`, `/blocks` | autenticado | sim | — | caso de moderação | — |
-| Foto (visualizar) | GET `/requests/{id}/photos/{pid}/view` | dono/participante/elegível | — | política de mídia; rate limit | log de acesso; URL curta | 404/429 |
+| Foto (visualizar) | GET `/requests/{id}/photos/{pid}/view` | dono/participante/elegível | — | política de mídia; rate limit | contador de limite; URL curta | 404/429 |
 | Avaliar | POST `/requests/{id}/review` | cliente | **sim** | conclusão válida | `ReviewSubmitted` → `ReviewPublished|Rejected|Held` | 409, 422 |
 | Resposta/contestação | POST `/reviews/{id}/reply`, `/dispute` | profissional | sim | — | caso | — |
 | Cadastro profissional | Supabase Auth + POST `/professionals` | profissional | sim | e-mail verificado | `ProfessionalRegistered` | — |
@@ -190,7 +190,7 @@ Severidade: A (alta), M (média), B (baixa). Probabilidade: A/M/B.
 |---|---|---|---|---|
 | R-01 | Divergência NestJS × RLS gera vazamento ou bloqueio indevido | A/M | Matriz única + testes de paridade; RLS default-deny | Falha em T-05/T-06 ⇒ bloquear release |
 | R-02 | Concorrência: 9º participante, seleção dupla, republicação dupla | A/M | ADR-003, I-01..I-11, testes C-xx | Qualquer falha ⇒ P1 |
-| R-03 | Fotos revelam fachada/interior sem EXIF; raspagem por elegíveis (inclui trial) | A/M | D10, marca d'água, rate limit, aviso ao cliente | Sinal de raspagem ⇒ suspensão cautelar do acesso a fotos |
+| R-03 | Fotos revelam fachada/interior sem EXIF; raspagem por elegíveis (inclui trial) | A/M | D10, marca d'água, rate limit, aviso ao cliente | Sinal de raspagem ⇒ suspensão cautelar do acesso a fotos. Risco aceito (Issue 150): sem registro por acesso, perde-se prova por foto e dia e detecção além da janela |
 | R-04 | Mapbox: coordenadas só podem ser guardadas via geocodificação **permanente** (US$ 5/1.000, sem faixa gratuita, cartão); termos de produto (PDF) não lidos | M/A **VERIFICADO (doc 13)** | Decisão 29: 1 chamada permanente por rascunho revisto; limite de gasto na conta; contador e breaker (R-36); G-xx | Antes de implementar Geo |
 | R-05 | Complexidade/desempenho de RLS com `set_config` por transação e views | M/M | pgTAP, `EXPLAIN` com dados sintéticos | Latência p95 > meta |
 | R-06 | Mercado Pago não cobre o modelo (recorrência por plano, Pix recorrente, webhooks) | A/M `[NÃO VERIFICADO]` | S-03; porta de gateway; fallback avulso | Resultado do S-03 |

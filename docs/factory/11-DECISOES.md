@@ -418,7 +418,7 @@ Perguntas ao usuario (numeracao continua):
 
 ## Rodada 43 (refino dos expurgos operacionais, #119 / H-110 — 103-REFINO-H110.md)
 Pergunta ao usuario (numeracao continua):
-- **158 (Q-H110-1, juridico/produto):** o detalhe do registro de acesso a fotos (media_access_log) pode ser removido por janela tecnica? Conflito: 09 §7 o classifica como RC-03 (prazo legal, H-109) e 09 §10 manda a remocao no H-110. Recomendacao: (a) rollup agora e remocao do detalhe so quando L1 definir o prazo. Alternativas: (b) remover em 90 dias ja; (c) tirar do escopo. Enquanto nao houver resposta, o desenho segue (a), que e' a opcao conservadora.
+- **158 (Q-H110-1, juridico/produto):** o detalhe do registro de acesso a fotos (media_access_log) pode ser removido por janela tecnica? Conflito: 09 §7 o classifica como RC-03 (prazo legal, H-109) e 09 §10 manda a remocao no H-110. Recomendacao: (a) rollup agora e remocao do detalhe so quando L1 definir o prazo. Alternativas: (b) remover em 90 dias ja; (c) tirar do escopo. Enquanto nao houver resposta, o desenho segue (a), que e' a opcao conservadora. **Nota (Issue 150, 2026-11-13): substituido pela Rodada 67 (opcao A, autorizada pelo usuario); a tabela e a funcao foram removidas pela migracao 20261113180000.**
 Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar), todas em app_config, [PROPOSTA]:
 - **159 (Q2):** rascunho expira por 30 dias de inatividade.
 - **160 (Q3):** upload em quarentena sem conclusao expira em 24 h.
