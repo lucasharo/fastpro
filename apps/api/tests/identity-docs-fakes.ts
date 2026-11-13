@@ -1,19 +1,7 @@
 // H-037 (Issue #50) | Fakes dos documentos de identidade (sem banco e sem rede). A semantica segue 107 §4.2 e §6;
 // a prova do banco real e do dbtest (packages/db/tests/identity-docs-h037.dbtest.mjs). Nenhum fake faz I/O.
 import { randomUUID } from 'node:crypto';
-import type { ReduceOutcome } from '@fastpro/domain';
-import type { IdentityDocRatePolicy } from '../src/identity-docs/espelho/constants.js';
-import type {
-  IdentityDocConfirmBeginResult,
-  IdentityDocFinalPort,
-  IdentityDocIssueInput,
-  IdentityDocIssueResult,
-  IdentityDocListItem,
-  IdentityDocRateLimiterPort,
-  IdentityDocStagingPort,
-  IdentityDocStorePort,
-  IdentityDocSweepItem,
-} from '../src/identity-docs/espelho/ports.js';
+import { type IdentityDocConfirmBeginResult, type IdentityDocFinalPort, type IdentityDocIssueInput, type IdentityDocIssueResult, type IdentityDocListItem, type IdentityDocRateLimiterPort, type IdentityDocRatePolicy, type IdentityDocStagingPort, type IdentityDocStorePort, type IdentityDocSweepItem, type ReduceOutcome } from '@fastpro/domain';
 import type { IdentityDocReduceGate } from '../src/identity-docs/identity-doc-service.js';
 
 export const T0 = Date.UTC(2026, 10, 13, 12, 0, 0);

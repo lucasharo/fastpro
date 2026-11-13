@@ -107,16 +107,13 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 | #44 | [E3] Publicação idempotente com 7 dias |
 
-## Code Review (1)
+## Code Review (0)
+
+## QA (3)
 
 | Issue | Título |
 |---|---|
 | #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
-
-## QA (2)
-
-| Issue | Título |
-|---|---|
 | #119 | [E13] Expurgos operacionais |
 | #50 | [E4] Documentos de identidade |
 

@@ -12,8 +12,7 @@ import {
   type IdentityDocServiceDeps,
 } from '../src/identity-docs/identity-doc-service.js';
 import { sweepIdentityDocs } from '../src/identity-docs/identity-doc-sweep.js';
-import { identityDocFinalKey, identityDocIncomingKey } from '../src/identity-docs/espelho/keys.js';
-import { IDOC_RATE_EMISSAO_PROFISSIONAL_HORA, IDOC_IMAGE_MAX_BYTES, IDOC_PDF_MAX_BYTES } from '../src/identity-docs/espelho/constants.js';
+import { identityDocFinalKey, identityDocIncomingKey, IDOC_IMAGE_MAX_BYTES, IDOC_PDF_MAX_BYTES, IDOC_RATE_EMISSAO_PROFISSIONAL_HORA } from '@fastpro/domain';
 import {
   FakeReducer,
   JPEG_FAKE,

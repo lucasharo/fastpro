@@ -70,3 +70,6 @@ export * from './role-exclusivity.js';
 export * from './ops-purge-store.js';
 export * from './ops-purge-jobs.js';
 export * from './ops-purge-storage.js';
+// H-037 (Issue #50) | Documentos de identidade: adaptador Pg (app_system) e Storage (identity-incoming e identity-docs).
+export * from './identity-docs.js';
+export * from './identity-docs-storage.js';

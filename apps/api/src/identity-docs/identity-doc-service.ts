@@ -4,31 +4,7 @@
 // grava so a versao final em identity-docs. Recusado nunca chega ao bucket final. Erro interno vira 503 fixo.
 // Nenhum nome de arquivo, caminho, EXIF ou mensagem de biblioteca sai daqui (CA-10).
 import { createHash } from 'node:crypto';
-import { MEDIA_REDUCE_DEADLINE_MS, type ImageReducerPort, type ReduceBudgetPort } from '@fastpro/domain';
-import {
-  IDOC_GLOBAL_BYTES_CAP,
-  IDOC_IMAGE_MAX_BYTES,
-  IDOC_LEASE_S,
-  IDOC_PDF_MAX_BYTES,
-  IDOC_RATE_EMISSAO_IP_DIA,
-  IDOC_RATE_EMISSAO_IP_HORA,
-  IDOC_RATE_EMISSAO_PROFISSIONAL_DIA,
-  IDOC_RATE_EMISSAO_PROFISSIONAL_HORA,
-  IDOC_RATE_FINALIZA_PROFISSIONAL,
-  IDOC_RATE_LEITURA_IP,
-  IDOC_UPLOAD_URL_TTL_S,
-  type IdentityDocRatePolicy,
-} from './espelho/constants.js';
-import type { IdentityDocEmissaoCorpo } from './espelho/body.js';
-import { identityDocIncomingKey } from './espelho/keys.js';
-import { validarPdf } from './espelho/pdf.js';
-import { detectarTipoDocumento } from './espelho/tipo.js';
-import type {
-  IdentityDocFinalPort,
-  IdentityDocRateLimiterPort,
-  IdentityDocStagingPort,
-  IdentityDocStorePort,
-} from './espelho/ports.js';
+import { detectarTipoDocumento, type IdentityDocEmissaoCorpo, type IdentityDocFinalPort, identityDocIncomingKey, type IdentityDocRateLimiterPort, type IdentityDocRatePolicy, type IdentityDocStagingPort, type IdentityDocStorePort, IDOC_GLOBAL_BYTES_CAP, IDOC_IMAGE_MAX_BYTES, IDOC_LEASE_S, IDOC_PDF_MAX_BYTES, IDOC_RATE_EMISSAO_IP_DIA, IDOC_RATE_EMISSAO_IP_HORA, IDOC_RATE_EMISSAO_PROFISSIONAL_DIA, IDOC_RATE_EMISSAO_PROFISSIONAL_HORA, IDOC_RATE_FINALIZA_PROFISSIONAL, IDOC_RATE_LEITURA_IP, IDOC_UPLOAD_URL_TTL_S, type ImageReducerPort, MEDIA_REDUCE_DEADLINE_MS, type ReduceBudgetPort, validarPdf } from '@fastpro/domain';
 
 /** Reserva de reducao da instancia (ReduceGate da #40): entrar() da null quando nao ha vaga em 2 s. */
 export interface IdentityDocReduceGate extends ReduceBudgetPort {

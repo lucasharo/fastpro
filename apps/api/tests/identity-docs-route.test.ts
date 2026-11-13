@@ -4,9 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { hashSessionSecret } from '@fastpro/db';
-import { SESSION_COOKIE_NAME, type SessionRepositoryPort } from '@fastpro/domain';
-import { IDOC_PATH } from '../src/identity-docs/espelho/constants.js';
-import { identityDocIncomingKey } from '../src/identity-docs/espelho/keys.js';
+import { identityDocIncomingKey, IDOC_PATH, SESSION_COOKIE_NAME, type SessionRepositoryPort } from '@fastpro/domain';
 import { IDOC_NAO_ENCONTRADO, type IdentityDocServiceDeps } from '../src/identity-docs/identity-doc-service.js';
 import {
   handleIdentityDocRoute,

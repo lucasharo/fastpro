@@ -2,9 +2,7 @@
 // (a) o banco marca pendentes vencidos e recusados; (b) o Storage remove a entrada e o final; (c) so as linhas com
 // objeto removido saem do banco; (d) objeto de entrada sem linha conhecida e mais velho que 3 h e orfao.
 // O agendamento e de H-110 (ou manual, documentado): esta funcao nao agenda nada.
-import { identityDocIncomingKey } from './espelho/keys.js';
-import { IDOC_ORPHAN_AGE_MS } from './espelho/constants.js';
-import type { IdentityDocFinalPort, IdentityDocStagingPort, IdentityDocStorePort } from './espelho/ports.js';
+import { type IdentityDocFinalPort, identityDocIncomingKey, type IdentityDocStagingPort, type IdentityDocStorePort, IDOC_ORPHAN_AGE_MS } from '@fastpro/domain';
 
 export interface IdentityDocSweepDeps {
   readonly store: IdentityDocStorePort;

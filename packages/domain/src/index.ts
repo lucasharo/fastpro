@@ -16,3 +16,5 @@ export * from './retention/index.js';
 export * from './media/index.js';
 // H-110 (Issue 119) | Expurgos operacionais: orquestracao pura (docs/factory/105-DESENHO-H110.md).
 export * from './ops-purge/index.js';
+// H-037 (Issue #50) | Documentos de identidade do profissional (barril do modulo; 107-DESENHO-H037 §11).
+export * from './identity-docs/index.js';

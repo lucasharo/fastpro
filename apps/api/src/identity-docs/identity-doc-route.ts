@@ -9,18 +9,7 @@
 // Esta funcao NAO e montada em app.ts nesta fase (fase 2, depois da Issue 141). Os testes chamam o despacho direto.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { hashSessionSecret } from '@fastpro/db';
-import {
-  SESSION_COOKIE_NAME,
-  checkDraftJson,
-  checkDraftOrigin,
-  cookieValue,
-  normalizeClientIp,
-  siteOriginOf,
-  type SessionRecord,
-  type SessionRepositoryPort,
-} from '@fastpro/domain';
-import { IDOC_BODY_LIMIT_BYTES, IDOC_PATH } from './espelho/constants.js';
-import { ehIdentityDocUuid, parseIdentityDocEmissaoBody } from './espelho/body.js';
+import { checkDraftJson, checkDraftOrigin, cookieValue, ehIdentityDocUuid, IDOC_BODY_LIMIT_BYTES, IDOC_PATH, normalizeClientIp, parseIdentityDocEmissaoBody, SESSION_COOKIE_NAME, type SessionRecord, type SessionRepositoryPort, siteOriginOf } from '@fastpro/domain';
 import {
   IDOC_NAO_ENCONTRADO,
   emitirDocumento,
