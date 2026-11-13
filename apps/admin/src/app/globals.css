@@ -145,3 +145,56 @@ body {
   margin: 0;
   padding: var(--space-2) var(--space-3);
 }
+
+/* Issue 52 (H-039) | Fila e detalhe da verificacao de identidade: so variaveis de token (sem cor literal). */
+.verificacao-dados {
+  display: grid;
+  gap: var(--space-1);
+  grid-template-columns: max-content 1fr;
+}
+
+.verificacao-dados dt {
+  color: var(--color-text-secondary);
+}
+
+.verificacao-dados dd {
+  margin: 0 0 var(--space-2);
+}
+
+.verificacao-decisao {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 32rem;
+}
+
+.verificacao-campo {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.verificacao-campo textarea,
+.verificacao-campo select {
+  font: inherit;
+}
+
+.verificacao-ajuda {
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.verificacao-contador {
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.verificacao-contador-excedido {
+  color: var(--color-error-text);
+}
+
+.verificacao-aviso {
+  background: var(--color-error-background);
+  border-radius: var(--radius-button);
+  color: var(--color-error-text);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+}
