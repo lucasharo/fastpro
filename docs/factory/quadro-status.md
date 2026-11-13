@@ -4,7 +4,7 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (79)
+## Backlog (78)
 
 | Issue | Título |
 |---|---|
@@ -15,7 +15,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #45 | [E3] Visibilidade de localização |
 | #46 | [E3] Opt-in de telefone no pedido |
 | #47 | [E3] Painel do cliente na sessão do dono |
-| #50 | [E4] Documentos de identidade |
 | #51 | [E4] Certificações para atividades regulamentadas |
 | #52 | [E4] Fila de verificação |
 | #53 | [E4] Retenção por duplicidade |
@@ -88,7 +87,11 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #136 | [E7] Mensagem automática do aceite |
 | #137 | [E11] Canal “no site” |
 
-## Product Owner (0)
+## Product Owner (1)
+
+| Issue | Título |
+|---|---|
+| #50 | [E4] Documentos de identidade |
 
 | Issue | Título |
 |---|---|
@@ -110,11 +113,10 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #43 | [E3] Revisão e confirmação expressa |
 
-## QA (1)
+## QA (0)
 
 | Issue | Título |
 |---|---|
-| #30 | [E1] Exclusividade de papéis |
 
 ## Concluído (52)
 
@@ -179,10 +181,11 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #110 | [E11] Teste de ausência de interruptor |
 
-## Aguardando aprovação (1)
+## Aguardando aprovação (2)
 
 | Issue | Título |
 |---|---|
+| #30 | [E1] Exclusividade de papéis |
 | #42 | [E3] Pré-visualização e reordenação de fotos |
 
 ## Bloqueado (0)
