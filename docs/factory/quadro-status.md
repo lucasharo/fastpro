@@ -100,22 +100,22 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #37 | [E2] Cobertura booleana sem contagem |
 | #59 | [E5] Planos e preços em centavos |
 
-## Desenvolvimento (1)
+## Desenvolvimento (2)
 
 | Issue | Título |
 |---|---|
+| #44 | [E3] Publicação idempotente com 7 dias |
 | #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 
 ## Code Review (0)
 
-## QA (2)
+## QA (1)
 
 | Issue | Título |
 |---|---|
 | #58 | [E5] Acesso comercial derivado |
-| #44 | [E3] Publicação idempotente com 7 dias |
 
-## Concluído (57)
+## Concluído (58)
 
 | Issue | Título |
 |---|---|
@@ -160,6 +160,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #43 | [E3] Revisão e confirmação expressa |
 | #48 | [E4] Cadastro profissional com CPF/CNPJ cifrado |
 | #49 | [E4] Perfil: serviços, base e raio |
+| #50 | [E4] Documentos de identidade |
 | #83 | [E7] Acesso excepcional a conversa |
 | #102 | [E11] Pipeline de notificações e cooldown |
 | #103 | [E11] EmailProviderPort: Mailpit e Resend |
@@ -183,10 +184,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #110 | [E11] Teste de ausência de interruptor |
 
-## Aguardando aprovação (1)
-
-| Issue | Título |
-|---|---|
-| #50 | [E4] Documentos de identidade |
+## Aguardando aprovação (0)
 
 ## Bloqueado (0)
