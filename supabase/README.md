@@ -58,13 +58,9 @@ Reativar exige decisao do dono; a agenda da 160000 nao e recriada sozinha (a mig
 
 ## Estado (H-010, parcial)
 
-Migracao `20261110180000_platform_create_backup_keepalive_roles` (aplicada no desenvolvimento): papeis
-`app_backup_reader` (leitura das tabelas e sequencias do produto, BYPASSRLS) e `app_keepalive` (sem
-privilegio em tabela, sem BYPASSRLS), ambos `NOLOGIN` e sem senha. Rollback manual em
-`supabase/rollbacks/`. Pendencia manual: login e senha dos dois papeis, definidos pelo dono fora do
-codigo (variaveis `DATABASE_URL_BACKUP_READ` e `DATABASE_URL_KEEPALIVE`, so nomes no `.env.example`).
-Sem login, o backup real e o keep-alive real nao podem rodar; o teste de catalogo
-(`packages/db/tests/backup-roles.dbtest.mjs`) cobre os privilegios.
+Migracao `20261110180000_platform_create_backup_keepalive_roles` (aplicada no desenvolvimento; #151): papeis `app_keepalive` (sem privilegio em tabela, sem BYPASSRLS), `NOLOGIN` e sem senha. O papel `app_backup_reader` ainda existe no codigo e no banco: nao use (backup e restauracao saem do escopo, Rodada 73/75, #151).
+Rollback manual em `supabase/rollbacks/`. Pendencia manual: login e senha do papel `app_keepalive`, definidos pelo dono fora do codigo (variavel `DATABASE_URL_KEEPALIVE`, so o nome no `.env.example`).
+Sem login, o keep-alive real nao pode rodar.
 
 ## Ordem de desfazer (H-030 e H-029)
 
