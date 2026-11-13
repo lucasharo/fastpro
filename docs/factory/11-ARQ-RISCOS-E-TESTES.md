@@ -26,7 +26,7 @@
 ### Revisão 2 — 2026-11-09 (Rodadas 5, 6 e 7; T6, T8)
 - **Invariantes:** I-01..I-06 reescritas para aceite (sem oferta); I-03 vira "um aceite ⇒ uma conversa ⇒ uma mensagem de sistema"; novas **I-22..I-27** (retirada mantém a vaga, interruptores de e-mail, sem boleto/carência 72 h, sem campos de preço, `auth_*` travados, e-mail de teste redirecionado).
 - **Contratos:** `POST /requests/{id}/acceptances`, `POST /requests/{id}/acceptances/me/withdraw`, `POST /requests/{id}/second-wave` (rótulo "Chamar mais profissionais"), (revogado na revisão 3) `PUT /admin/notification-flags/{type}`. Removido `PUT …/offer`. Eventos `WorkAccepted`/`AcceptanceWithdrawn` no lugar de `ParticipationCreated`/`Offer*`.
-- **Riscos:** R-12 extinto (H4); R-08/R-10/R-11 revistos para Vercel e H3; novos **R-26..R-33** (aceite abusivo, cliente sem aviso, termos da Vercel, NestJS serverless, cron, mídia em serverless, backup manual, domínio/Resend).
+- [SUPERADO — Rodada 73/75, #151] **Riscos:** R-12 extinto (H4); R-08/R-10/R-11 revistos para Vercel e H3; novos **R-26..R-33** (aceite abusivo, cliente sem aviso, termos da Vercel, NestJS serverless, cron, mídia em serverless, backup manual, domínio/Resend).
 - **Spikes:** S-03 sem boleto; novos **S-09** (NestJS na Vercel), **S-10** (agendador do tick), **S-11** (Resend: domínio, cota, SMTP do Supabase Auth, modo de teste). Leitura de documentação só quando autorizada (Rodada 7, nº 12): tudo `[NÃO VERIFICADO]`.
 - **Testes:** corrida de aceites (nunca 9) C-01/C-02/C-04b/C-17; idempotência da mensagem de sistema C-16/F-10; e-mail desativado não enfileira/não envia N-01..N-10; carência 72 h com Pix B-01..B-10; e-mail local em dev e **redirecionamento único do Resend em modo de teste (T8)** N-09/N-10; Q-08..Q-10.
 - **Segredos:** este documento cita apenas **nomes** de variáveis (ex.: `RESEND_API_KEY`, `EMAIL_TEST_REDIRECT_TO`, `EMAIL_PROVIDER`, `TICK_SECRET`), nunca valores.
@@ -195,7 +195,7 @@ Severidade: A (alta), M (média), B (baixa). Probabilidade: A/M/B.
 | R-05 | Complexidade/desempenho de RLS com `set_config` por transação e views | M/M | pgTAP, `EXPLAIN` com dados sintéticos | Latência p95 > meta |
 | R-06 | Mercado Pago não cobre o modelo (recorrência por plano, Pix recorrente, webhooks) | A/M `[NÃO VERIFICADO]` | S-03; porta de gateway; fallback avulso | Resultado do S-03 |
 | R-07 | **Reduzido (decisão 33):** sem anexos no chat; resta documento de verificação malicioso enviado por profissional (visto só pela Verificação) | B/B | Bucket privado, validação por conteúdo, reencode de imagens, sem renderização no servidor; SD-12 (a) | Incidente ⇒ SD-12 |
-| R-08 | Supabase gratuito: pausa de projeto, sem backup gerenciado (H3 aceito pelo usuário) | A/A `[NÃO VERIFICADO]` | ADR-020; *keep-alive*; **backup manual periódico (`12-TODO.md`)**; reavaliar antes de cobrar | **Bloqueia cobrança real e dados reais** |
+| R-08 | Supabase gratuito: pausa de projeto e perda de dados. **Risco aceito pelo usuário** (Rodada 73; decisão 350; #151). Sem mitigação de cópia. | A/A `[NÃO VERIFICADO]` | ADR-020; *keep-alive* (D-04); migrações compensatórias; reavaliar antes de cobrar | Risco aceito pelo usuário (Rodada 73; decisão 350; #151). Bloqueia cobrança real e dados reais |
 | R-09 | Cota de e-mail esgota ⇒ links de login não chegam | A/M | Prioridade de classes; digest elástico; teto por pedido | 70% da cota |
 | R-10 | Cold start da função serverless derruba UX e webhooks | M/A `[NÃO VERIFICADO]` | Webhook só grava; login síncrono; S-09 mede | p95 de resposta |
 | R-11 | Reencode de imagem estoura memória/duração da função (ver R-31) | M/M | Um ativo por invocação; limites de resolução; reprocesso; S-06 | OOM/timeouts |
@@ -204,7 +204,7 @@ Severidade: A (alta), M (média), B (baixa). Probabilidade: A/M/B.
 | R-14 | Sessão de 7 dias em dispositivo compartilhado | M/M | Step-up; sair de todos | — |
 | R-15 | Login CSRF/link aberto por terceiro (cenário do e-mail alheio) | M/M | Nonce de navegador; sessão nasce onde ocorre o POST; rascunho só anexa se e-mail igual | Teste |
 | R-16 | Acúmulo de dados sem política de retenção | A/M | ADR-016; não lançar com dados reais antes de L1/L2 | Jurídico |
-| R-17 | Backup contém dados "excluídos" | M/M | Política de rotação `[PENDENTE JURÍDICO]` | L1 |
+| R-17 | [SUPERADO — Rodada 73/75, #151] Backup contém dados "excluídos" | M/M | Política de rotação `[PENDENTE JURÍDICO]` | L1 |
 | R-18 | Provedores como suboperadores sem contrato | M/A `[PENDENTE JURÍDICO]` | SD-11 | L2 |
 | R-19 | Mobile: IAP/contas pagas/exclusão de conta | M/M `[NÃO VERIFICADO]` | ADR-019; SD-13 | Início do mobile |
 | R-20 | Falha parcial entre cancelar republicação e selecionar | A/B | Transação única; teste F-02 | — |
@@ -219,7 +219,7 @@ Severidade: A (alta), M (média), B (baixa). Probabilidade: A/M/B.
 | R-29 | NestJS inviável/lento em serverless (cold start, pacote, bibliotecas nativas) | M/M `[NÃO VERIFICADO]` | S-09; alternativas B/C/D (ADR-018) | Resultado do S-09 |
 | R-30 | Cron do Hobby roda 1x/dia (±59 min): digest/lembretes atrasariam | M/A **VERIFICADO (doc 13)** | Sem depender do cron da Vercel: `pg_cron`/`pg_net` (R-38), plano B chamada externa, plano C tick oportunista; login e mensagem automática independem do tick | Resultado do S-10 |
 | R-31 | Limites de corpo/resposta/memória de função inviabilizam foto servida com marca d'água | M/M `[NÃO VERIFICADO]` | Derivada pequena; upload direto ao Storage; S-06/S-09 | Teste Q-08 |
-| R-32 | Backup manual atrasado ou perdido | A/M | Rotina e periodicidade em `12-TODO.md` (adiada); teste D-01 | Antes de dados reais |
+| R-32 | [SUPERADO — Rodada 73/75, #151] Backup manual atrasado ou perdido | A/M | Rotina e periodicidade em `12-TODO.md` (adiada); teste D-01 | Antes de dados reais |
 | R-33 | **Resend exige domínio verificado para enviar** (doc 13); sem domínio não há envio real nem login de usuários reais | A/A (VERIFICADO) | em dev e teste, envio pelo Resend somente para a conta cadastrada; homologação só com endereços `resend.dev` (consomem cota); lançamento bloqueado até o domínio (decisão 15) | **Bloqueia login de usuários reais** |
 | R-34 | Cota gratuita do Resend (100/dia UTC, 3.000/mês, por destinatário, 10 req/s) esgota com todos os e-mails habilitados | A/M | Contador e alertas (≥ 90/dia, ≥ 2.700/mês); reserva de 10/dia e 300/mês para `auth`; agrupamento 15 min; degradação (chat/site seguem); remetente ≤ 5/s | ≥ 70% em 3 dias ⇒ decisão de upgrade |
 | R-35 | Storage de 1 GB: 5 fotos × ≈ 0,5 MB ≈ 2,5 MB/pedido ⇒ ≈ 280 pedidos em ≈ 700 MB; documentos de verificação consomem o restante (chat sem anexos) | M/A (hipótese sobre limite VERIFICADO) | Redução no envio e só versão reduzida (decisão 31); chat sem imagens (decisão 32); gatilho de upgrade | ≥ 70% do Storage |
@@ -315,21 +315,17 @@ Todos exercitam **chamada direta de API e acesso direto ao banco com papéis**, 
 ---
 
 ## 9. Plano de recuperação
-Metas provisórias para o plano gratuito com **backup manual periódico (H3)**: **RPO = intervalo entre exports** (proposta semanal, `12-TODO.md`) e **RTO ≤ 8 h** `[PROPOSTA]`; metas melhores só após o gatilho SD-04. Nenhum desses números foi medido.
-
 | ID | Cenário | Procedimento a validar | Critério de sucesso |
 |---|---|---|---|
-| D-01 | Restauração do banco a partir do backup lógico em ambiente limpo | restaurar dump criptografado, aplicar migrações, rodar monitores I-xx | invariantes sem violações; tempo ≤ RTO |
-| D-02 | Restauração de objetos (Storage) e conferência de integridade | reconciliar `media_asset` × objetos | órfãos e ausentes reportados |
-| D-03 | Pós-restauração: webhooks e e-mails | reconciliação com MP; reenfileirar `email_outbox` sem duplicar | acesso e cobranças corretos |
+| D-01 | REMOVIDA do escopo (Rodada 73/75, #151). Texto original no histórico do git. | — | — |
+| D-02 | REMOVIDA do escopo (Rodada 73/75, #151). Texto original no histórico do git. | — | — |
+| D-03 | REMOVIDA do escopo (Rodada 73/75, #151). Texto original no histórico do git. | — | — |
 | D-04 | Projeto pausado/indisponível | retomar, verificar jobs, *keep-alive* | sem perda; alertas |
 | D-05 | Migração malsucedida | rollback via compensação (expand/contract) em staging | sem perda |
 | D-06 | Rotação de segredos (MP, Mapbox, pepper, chave de criptografia) | rotacionar com chave versionada | sem indisponibilidade; dados antigos legíveis |
 | D-07 | Comprometimento de conta admin | revogar sessão, redefinir MFA com dupla aprovação, revisar auditoria | tempo de resposta documentado |
-| D-08 | Exclusão do titular × backups | procedimento definido com jurídico | `[PENDENTE JURÍDICO]` |
+| D-08 | REMOVIDA do escopo (Rodada 73/75, #151). Texto original no histórico do git. | — | — |
 | D-09 | Incidente de dados | runbook: detecção por métricas, contenção, avaliação, comunicação | `[PENDENTE JURÍDICO]` para notificações |
-Teste de restauração: antes do lançamento e periodicamente `[PROPOSTA]`; backups com dados sintéticos em ambientes de teste.
-
 ---
 
 ## 9b. Testes de billing (B-xx): Pix, cartão e carência de 72 h [H5]
@@ -416,7 +412,7 @@ Checklist (sem execução):
 - [ ] Matriz de acesso (`access-matrix`) escrita e revisada pelo PO/Reviewer.
 - [ ] Política de retenção (L1/L2) antes de dados reais.
 - [ ] Gatilho SD-04 aceito antes de cobrança real.
-- [ ] SD-09 respondida; SD-15 e backup (`12-TODO.md`) tratados antes da primeira cobrança/dados reais (SD-16, 18, 19, 20 respondidas).
+- [ ] SD-09 respondida; SD-15 tratado antes da primeira cobrança/dados reais (SD-16, 18, 19, 20 respondidas).
 - [ ] S-09..S-11 concluídos quando a leitura de documentação for autorizada.
 - [ ] Domínio verificado antes de qualquer e-mail real (SD-03).
 - [ ] RF-146 (telas/permissões de admin) detalhado.
