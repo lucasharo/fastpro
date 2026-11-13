@@ -101,6 +101,10 @@ interface Chamada {
   metodo: string;
   url: string;
   corpo?: unknown;
+  /** Corpo binario (PUT ao Storage). */
+  blob?: Blob;
+  signal?: AbortSignal;
+  credentials?: string;
 }
 interface Resp {
   status: number;
@@ -142,20 +146,27 @@ function criarAmbiente(handler: (c: Chamada) => Resp | Promise<Resp>) {
       revokeObjectURL: (u: string) => urlsRevogadas.push(u),
     },
     fetch: undefined,
+    AbortController,
   };
   vm.createContext(sandbox);
   vm.runInContext(FOTOS_JS, sandbox);
   const api = (sandbox as { FastProFotos: { montarFotos: (r: El, o: object) => Ctrl } }).FastProFotos;
-  const fetch = async (url: string, opcoes: { method: string; body?: string }) => {
+  const fetch = async (
+    url: string,
+    opcoes: { method: string; body?: string | Blob; signal?: AbortSignal; credentials?: string },
+  ) => {
     const c: Chamada = {
       metodo: opcoes.method,
       url,
-      corpo: opcoes.body !== undefined ? JSON.parse(opcoes.body) : undefined,
+      corpo: typeof opcoes.body === 'string' ? JSON.parse(opcoes.body) : undefined,
+      blob: opcoes.body instanceof Blob ? opcoes.body : undefined,
+      signal: opcoes.signal,
+      credentials: opcoes.credentials,
     };
     chamadas.push(c);
     return resposta(await handler(c));
   };
-  const montar = (opcoes: { adicionarFoto?: () => void } = {}) => {
+  const montar = (opcoes: { adicionarFoto?: () => void; envio?: unknown; sortear?: () => string } = {}) => {
     const raiz = doc.createElement('main');
     const ctrl = api.montarFotos(raiz, {
       documento: doc,
@@ -806,5 +817,226 @@ describe('G-12 estatico da pagina /fotos (CA-13, CA-15, CA-16)', () => {
     expect(csp).toContain('img-src blob:');
     expect(csp).toMatch(/connect-src 'self' https:\/\/[a-z0-9.-]+\.supabase\.co(?=;)/);
     expect(csp).toContain("frame-ancestors 'none'");
+  });
+});
+
+// ---------- E3 (Issue 141): envio ligado na pagina (fotos-envio.js), PUT sem cookie, polling e exclusao com cancelamento ----------
+const ID_CLIENTE = '00000000-0000-4000-8000-0000000000c1';
+
+async function esperarTudo(n = 60): Promise<void> {
+  for (let i = 0; i < n; i++) await new Promise((res) => setTimeout(res, 0));
+}
+
+/** Porta de envio com a reducao real (reduzir-foto.ts), com portas de navegador falsas. */
+function envioReal(portas: PortasNavegador) {
+  return {
+    disponivel: () => true,
+    enviar: (
+      arquivo: Blob,
+      tipo: string,
+      g: { emitir: (c: { content_type: string; size_bytes: number }) => Promise<void>; enviar: (b: Blob) => Promise<void> },
+    ) => enviarFoto({ arquivo, tipoDeclarado: tipo, portas, emitir: g.emitir, enviar: g.enviar }),
+  };
+}
+
+function escolherArquivo(ctrl: Ctrl, arquivo: Blob): void {
+  const seletor = todos(ctrl.elementos.pagina).find((e) => e.tag === 'input');
+  if (!seletor) throw new Error('seletor de arquivo ausente');
+  (seletor as unknown as { files: Blob[] }).files = [arquivo];
+  seletor.dispatch('change');
+}
+
+const abortErro = () => Object.assign(new Error('abortado'), { name: 'AbortError' });
+
+describe('E3 (Issue 141) envio ligado na pagina', () => {
+  it('Adicionar foto abre o seletor (JPG, PNG, WebP); a escolha segue emitir com o tamanho reduzido, PUT sem cookie, finalize e lista', async () => {
+    const ordem: string[] = [];
+    let lista: ReturnType<typeof fotoLista>[] = [];
+    const amb = criarAmbiente((c) => {
+      if (c.metodo === 'GET' && c.url === '/api/v1/media/photos') return lista200(lista);
+      if (c.metodo === 'POST' && c.url === '/api/v1/media/uploads') {
+        ordem.push('emitir');
+        lista = [fotoLista(ID_NOVA, 'enviando', 1)];
+        return { status: 201, dados: { id: ID_NOVA, status: 'pendente', upload_url: URL_ENVIO_SINTETICA } };
+      }
+      if (c.metodo === 'PUT') {
+        ordem.push('put');
+        return { status: 200 };
+      }
+      if (c.metodo === 'POST' && c.url === `/api/v1/media/${ID_NOVA}/finalize`) {
+        ordem.push('finalize');
+        lista = [fotoLista(ID_NOVA, 'processando', 1)];
+        return { status: 200, dados: { id: ID_NOVA, status: 'processando' } };
+      }
+      return { status: 404 };
+    });
+    const { ctrl, raiz } = amb.montar({ envio: envioReal(portasReducao(2000)), sortear: () => ID_CLIENTE });
+    await esperarTudo();
+    ctrl.elementos.adicionar.click();
+    await esperarTudo();
+    const seletor = todos(ctrl.elementos.pagina).find((e) => e.tag === 'input')!;
+    expect(seletor.attrs['type']).toBe('file');
+    expect(seletor.attrs['accept']).toBe('image/jpeg,image/png,image/webp');
+    escolherArquivo(ctrl, arquivoSintetico(5000, 'image/png'));
+    await esperarTudo();
+
+    expect(ordem).toEqual(['emitir', 'put', 'finalize']);
+    const emissao = amb.chamadas.find((c) => c.metodo === 'POST' && c.url === '/api/v1/media/uploads');
+    expect(emissao?.corpo).toEqual({ client_upload_id: ID_CLIENTE, content_type: 'image/jpeg', size_bytes: 2000 });
+    const put = amb.chamadas.find((c) => c.metodo === 'PUT');
+    expect(put?.url).toBe(URL_ENVIO_SINTETICA);
+    expect(put?.credentials).toBe('omit');
+    expect(put?.signal).toBeDefined();
+    expect(put?.blob?.size).toBe(2000);
+    expect(cartao(raiz, ID_NOVA)).toBeDefined();
+    expect(Object.keys(ctrl.estado.envios as object)).toHaveLength(0);
+  });
+
+  it('o polling nao finaliza a foto que esta aba ainda envia; finaliza uma so vez depois do PUT', async () => {
+    const ordem: string[] = [];
+    let lista: ReturnType<typeof fotoLista>[] = [];
+    let liberarPut: () => void = () => undefined;
+    const amb = criarAmbiente((c) => {
+      if (c.metodo === 'GET' && c.url === '/api/v1/media/photos') return lista200(lista);
+      if (c.metodo === 'POST' && c.url === '/api/v1/media/uploads') {
+        ordem.push('emitir');
+        lista = [fotoLista(ID_NOVA, 'aguardando', 1)];
+        return { status: 201, dados: { id: ID_NOVA, status: 'aguardando', upload_url: URL_ENVIO_SINTETICA } };
+      }
+      if (c.metodo === 'PUT') {
+        ordem.push('put');
+        return new Promise<Resp>((res) => {
+          liberarPut = () => res({ status: 200 });
+        });
+      }
+      if (c.metodo === 'POST' && c.url === `/api/v1/media/${ID_NOVA}/finalize`) {
+        ordem.push('finalize');
+        return { status: 200, dados: { id: ID_NOVA, status: 'processando' } };
+      }
+      return { status: 404 };
+    });
+    const { ctrl } = amb.montar({ envio: envioReal(portasReducao(2000)), sortear: () => ID_CLIENTE });
+    await esperarTudo();
+    ctrl.elementos.adicionar.click();
+    await esperarTudo();
+    escolherArquivo(ctrl, arquivoSintetico(5000, 'image/jpeg'));
+    await esperarTudo();
+    expect(ordem).toEqual(['emitir', 'put']);
+
+    await amb.dispararTimer();
+    await esperarTudo();
+    expect(ordem).not.toContain('finalize');
+
+    liberarPut();
+    await esperarTudo();
+    expect(ordem.filter((o) => o === 'finalize')).toHaveLength(1);
+  });
+
+  it('excluir uma foto em envio cancela o PUT (AbortController) antes do DELETE e so depois remove a foto da lista', async () => {
+    const ordem: string[] = [];
+    let lista: ReturnType<typeof fotoLista>[] = [];
+    const amb = criarAmbiente((c) => {
+      if (c.metodo === 'GET' && c.url === '/api/v1/media/photos') return lista200(lista);
+      if (c.metodo === 'POST' && c.url === '/api/v1/media/uploads') {
+        ordem.push('emitir');
+        lista = [fotoLista(ID_NOVA, 'enviando', 1)];
+        return { status: 201, dados: { id: ID_NOVA, status: 'pendente', upload_url: URL_ENVIO_SINTETICA } };
+      }
+      if (c.metodo === 'PUT') {
+        return new Promise<Resp>((_, rejeitar) => {
+          (c.signal as AbortSignal).addEventListener('abort', () => {
+            ordem.push('abort');
+            rejeitar(abortErro());
+          });
+        });
+      }
+      if (c.metodo === 'DELETE') {
+        ordem.push('delete');
+        lista = [];
+        return { status: 200, dados: { excluida: true } };
+      }
+      return { status: 404 };
+    });
+    const { ctrl, raiz } = amb.montar({ envio: envioReal(portasReducao(2000)), sortear: () => ID_CLIENTE });
+    await esperarTudo();
+    ctrl.elementos.adicionar.click();
+    await esperarTudo();
+    escolherArquivo(ctrl, arquivoSintetico(5000, 'image/jpeg'));
+    await esperarTudo();
+    expect(cartao(raiz, ID_NOVA)).toBeDefined();
+
+    achar(raiz, 'Excluir foto 1')!.click();
+    achar(ctrl.elementos.dialogo, 'Excluir')!.click();
+    await esperarTudo();
+
+    expect(ordem).toEqual(['emitir', 'abort', 'delete']);
+    expect(cartao(raiz, ID_NOVA)).toBeUndefined();
+    expect(Object.keys(ctrl.estado.envios as object)).toHaveLength(0);
+    expect(achar(raiz, 'Não foi possível enviar esta foto. Tente de novo.')).toBeUndefined();
+  });
+
+  it('falha no PUT mostra o texto aprovado, nao finaliza e deixa a foto para excluir', async () => {
+    const ordem: string[] = [];
+    let lista: ReturnType<typeof fotoLista>[] = [];
+    const amb = criarAmbiente((c) => {
+      if (c.metodo === 'GET' && c.url === '/api/v1/media/photos') return lista200(lista);
+      if (c.metodo === 'POST' && c.url === '/api/v1/media/uploads') {
+        ordem.push('emitir');
+        lista = [fotoLista(ID_NOVA, 'enviando', 1)];
+        return { status: 201, dados: { id: ID_NOVA, status: 'pendente', upload_url: URL_ENVIO_SINTETICA } };
+      }
+      if (c.metodo === 'PUT') {
+        ordem.push('put');
+        return { status: 503 };
+      }
+      if (c.metodo === 'POST' && c.url.endsWith('/finalize')) ordem.push('finalize');
+      return { status: 404 };
+    });
+    const { ctrl, raiz } = amb.montar({ envio: envioReal(portasReducao(2000)), sortear: () => ID_CLIENTE });
+    await esperarTudo();
+    ctrl.elementos.adicionar.click();
+    await esperarTudo();
+    escolherArquivo(ctrl, arquivoSintetico(5000, 'image/jpeg'));
+    await esperarTudo();
+    expect(ordem).toEqual(['emitir', 'put']);
+    expect(achar(ctrl.elementos.pagina, 'Não foi possível enviar esta foto. Tente de novo.')).toBeDefined();
+    expect(cartao(raiz, ID_NOVA)).toBeDefined();
+  });
+
+  it('arquivo acima de 10 MB sem reducao: recusa no navegador com o texto aprovado, sem chamar a API', async () => {
+    const amb = criarAmbiente(() => ({ status: 200, dados: { fotos: [] } }));
+    const { ctrl } = amb.montar({ envio: envioReal(portasSemReducao), sortear: () => ID_CLIENTE });
+    await esperarTudo();
+    ctrl.elementos.adicionar.click();
+    await esperarTudo();
+    escolherArquivo(ctrl, arquivoSintetico(MEDIA_MAX_BYTES + 1, 'image/jpeg'));
+    await esperarTudo();
+    expect(amb.chamadas.some((c) => c.url === '/api/v1/media/uploads')).toBe(false);
+    expect(achar(ctrl.elementos.pagina, 'Esta foto é grande demais. Escolha uma foto de até 10 MB.')).toBeDefined();
+  });
+
+  it('tipo que o servidor nao aceita (415): mostra o texto de tipo nao aceito e nao envia ao Storage', async () => {
+    const amb = criarAmbiente((c) => {
+      if (c.metodo === 'GET') return lista200([]);
+      if (c.metodo === 'POST' && c.url === '/api/v1/media/uploads') return { status: 415, dados: { code: 'tipo_invalido' } };
+      return { status: 404 };
+    });
+    const { ctrl } = amb.montar({ envio: envioReal(portasSemReducao), sortear: () => ID_CLIENTE });
+    await esperarTudo();
+    ctrl.elementos.adicionar.click();
+    await esperarTudo();
+    escolherArquivo(ctrl, arquivoSintetico(3000, 'image/gif'));
+    await esperarTudo();
+    expect(amb.chamadas.some((c) => c.metodo === 'PUT')).toBe(false);
+    expect(achar(ctrl.elementos.pagina, 'Este tipo de arquivo não é aceito. Use JPG, PNG ou WebP.')).toBeDefined();
+  });
+
+  it('sem a porta de envio o botao segue indisponivel e nenhum seletor de arquivo e criado', async () => {
+    const amb = criarAmbiente(() => ({ status: 200, dados: { fotos: [] } }));
+    const { ctrl } = amb.montar();
+    await esperarTudo();
+    ctrl.elementos.adicionar.click();
+    expect(ctrl.elementos.adicionar.attrs['aria-disabled']).toBe('true');
+    expect(todos(ctrl.elementos.pagina).some((e) => e.tag === 'input')).toBe(false);
   });
 });
