@@ -51,10 +51,10 @@ describe('T-H120-01 trava de ambiente (CA-03)', () => {
 
   it('recusa host remoto que nao e o banco de desenvolvimento, mesmo com FASTPRO_DEMO_ALLOW=local (decisao 58)', () => {
     const remotos = [
-      'postgresql://postgres:senha@db.abcdefgh.supabase.co:5432/postgres',
-      'postgresql://postgres.abc:senha@aws-0-sa-east-1.pooler.supabase.com:6543/postgres',
-      'postgresql://postgres:senha@10.0.0.5:5432/postgres',
-      'postgresql://postgres:senha@meu-servidor.example:5432/postgres',
+      'postgresql://postgres:<senha>@db.abcdefgh.supabase.co:5432/postgres',
+      'postgresql://postgres.abc:<senha>@aws-0-sa-east-1.pooler.supabase.com:6543/postgres',
+      'postgresql://postgres:<senha>@10.0.0.5:5432/postgres',
+      'postgresql://postgres:<senha>@meu-servidor.example:5432/postgres',
     ];
     for (const url of remotos) {
       expect(demoGuardRefusal(ALLOW, url)?.codigo).toBe('host_nao_local');
@@ -76,8 +76,8 @@ describe('T-H120-01 trava de ambiente (CA-03)', () => {
 
   it('aceita localhost, 127.0.0.1 e ::1 com FASTPRO_DEMO_ALLOW=local', () => {
     expect(demoGuardRefusal(ALLOW, LOCAL_URL)).toBeNull();
-    expect(demoGuardRefusal(ALLOW, 'postgresql://postgres:senha@localhost:54322/postgres')).toBeNull();
-    expect(demoGuardRefusal(ALLOW, 'postgresql://postgres:senha@[::1]:54322/postgres')).toBeNull();
+    expect(demoGuardRefusal(ALLOW, 'postgresql://postgres:<senha>@localhost:54322/postgres')).toBeNull();
+    expect(demoGuardRefusal(ALLOW, 'postgresql://postgres:<senha>@[::1]:54322/postgres')).toBeNull();
   });
 
   it('nenhuma recusa expoe a senha da conexao', () => {
@@ -89,8 +89,8 @@ describe('T-H120-01 trava de ambiente (CA-03)', () => {
   });
 
   it('extrai o host sem colchetes', () => {
-    expect(hostOfDbUrl('postgresql://u:senha@[::1]:5432/db')).toBe('::1');
-    expect(hostOfDbUrl('postgresql://u:senha@127.0.0.1:5432/db')).toBe('127.0.0.1');
+    expect(hostOfDbUrl('postgresql://u:<senha>@[::1]:5432/db')).toBe('::1');
+    expect(hostOfDbUrl('postgresql://u:<senha>@127.0.0.1:5432/db')).toBe('127.0.0.1');
   });
 });
 
@@ -100,8 +100,8 @@ describe('T-H120-01b banco de desenvolvimento do projeto (decisao 58)', () => {
   const OUTRO_REF = 'zyxwvutsrqponmlkjihg';
   const DEV_URL = `https://${DEV_REF}.supabase.co`;
   const DEV_ENV = { APP_ENV: 'development', NEXT_PUBLIC_SUPABASE_URL: DEV_URL };
-  const DIRETO = (ref) => `postgresql://postgres:senha@db.${ref}.supabase.co:5432/postgres`;
-  const POOLER = (ref) => `postgresql://postgres.${ref}:senha@aws-0-sa-east-1.pooler.supabase.com:6543/postgres`;
+  const DIRETO = (ref) => `postgresql://postgres:<senha>@db.${ref}.supabase.co:5432/postgres`;
+  const POOLER = (ref) => `postgresql://postgres.${ref}:<senha>@aws-0-sa-east-1.pooler.supabase.com:6543/postgres`;
 
   it('aceita APP_ENV=development com ref igual: host direto e pooler, com e sem FASTPRO_DEMO_ALLOW', () => {
     expect(demoGuardRefusal(DEV_ENV, DIRETO(DEV_REF))).toBeNull();
@@ -153,31 +153,44 @@ describe('T-H120-01b banco de desenvolvimento do projeto (decisao 58)', () => {
   });
 
   it('recusa host db de outro projeto com usuario postgres.<dev> (ref no usuario nao basta)', () => {
-    const url = `postgresql://postgres.${DEV_REF}:senha@db.${OUTRO_REF}.supabase.co:5432/postgres`;
+    const url = `postgresql://postgres.${DEV_REF}:<senha>@db.${OUTRO_REF}.supabase.co:5432/postgres`;
     expect(demoGuardRefusal(DEV_ENV, url)?.codigo).toBe('host_nao_local');
   });
 
   it('recusa ref so na senha, pooler sem ref no usuario e ref so no host do pooler', () => {
-    expect(demoGuardRefusal(DEV_ENV, `postgresql://postgres:senha@db.${OUTRO_REF}.supabase.co:5432/postgres`)?.codigo).toBe('host_nao_local');
-    expect(demoGuardRefusal(DEV_ENV, `postgresql://postgres:senha@aws-0-sa-east-1.pooler.supabase.com:6543/postgres`)?.codigo).toBe('host_nao_local');
-    expect(demoGuardRefusal(DEV_ENV, `postgresql://postgres:senha@db.${DEV_REF}.pooler.supabase.com:6543/postgres`)?.codigo).toBe('host_nao_local');
-    expect(demoGuardRefusal(DEV_ENV, `postgresql://postgres.${DEV_REF}x:senha@aws-0-sa-east-1.pooler.supabase.com:6543/postgres`)?.codigo).toBe('host_nao_local');
+    expect(demoGuardRefusal(DEV_ENV, `postgresql://postgres:<senha>@db.${OUTRO_REF}.supabase.co:5432/postgres`)?.codigo).toBe('host_nao_local');
+    expect(demoGuardRefusal(DEV_ENV, `postgresql://postgres:<senha>@aws-0-sa-east-1.pooler.supabase.com:6543/postgres`)?.codigo).toBe('host_nao_local');
+    expect(demoGuardRefusal(DEV_ENV, `postgresql://postgres:<senha>@db.${DEV_REF}.pooler.supabase.com:6543/postgres`)?.codigo).toBe('host_nao_local');
+    expect(demoGuardRefusal(DEV_ENV, `postgresql://postgres.${DEV_REF}x:<senha>@aws-0-sa-east-1.pooler.supabase.com:6543/postgres`)?.codigo).toBe('host_nao_local');
   });
 
   it('recusa host com sufixo de outro dominio (.evil.com), direto e pooler', () => {
-    const direto = `postgresql://postgres:senha@db.${DEV_REF}.supabase.co.evil.com:5432/postgres`;
-    const pooler = `postgresql://postgres.${DEV_REF}:senha@aws-0-sa-east-1.pooler.supabase.com.evil.com:6543/postgres`;
+    const direto = `postgresql://postgres:<senha>@db.${DEV_REF}.supabase.co.evil.com:5432/postgres`;
+    const pooler = `postgresql://postgres.${DEV_REF}:<senha>@aws-0-sa-east-1.pooler.supabase.com.evil.com:6543/postgres`;
     expect(demoGuardRefusal(DEV_ENV, direto)?.codigo).toBe('host_nao_local');
     expect(demoGuardRefusal(DEV_ENV, pooler)?.codigo).toBe('host_nao_local');
   });
 
   it('nenhuma recusa deste bloco expoe a senha da conexao', () => {
-    const casos = [
-      demoGuardRefusal({ ...DEV_ENV, APP_ENV: 'production' }, DIRETO(DEV_REF)),
-      demoGuardRefusal(DEV_ENV, `${POOLER(DEV_REF)}?options=x`),
-      demoGuardRefusal(DEV_ENV, DIRETO(OUTRO_REF)),
+    // Sentinela propria deste teste, montada por partes para nao existir como literal de URL no codigo.
+    // O marcador <senha> das URLs acima e trocado por ela: a prova e que a recusa nao a ecoa.
+    const SENTINELA = ['sentinela', 'nao', 'pode', 'vazar'].join('-');
+    const comSentinela = (url) => url.replace('<senha>', SENTINELA);
+    const urls = [
+      comSentinela(DIRETO(DEV_REF)),
+      comSentinela(`${POOLER(DEV_REF)}?options=x`),
+      comSentinela(DIRETO(OUTRO_REF)),
     ];
-    for (const r of casos) expect(JSON.stringify(r)).not.toContain('segredo-de-teste');
+    const casos = [
+      demoGuardRefusal({ ...DEV_ENV, APP_ENV: 'production' }, urls[0]),
+      demoGuardRefusal(DEV_ENV, urls[1]),
+      demoGuardRefusal(DEV_ENV, urls[2]),
+    ];
+    for (const url of urls) expect(url).toContain(SENTINELA);
+    for (const r of casos) {
+      expect(r).not.toBeNull();
+      expect(JSON.stringify(r)).not.toContain(SENTINELA);
+    }
   });
 
   it('projectRefOf aceita so https://<ref de 20>.supabase.co, com barra final opcional', () => {
