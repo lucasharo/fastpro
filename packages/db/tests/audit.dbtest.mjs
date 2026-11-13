@@ -186,10 +186,14 @@ test('D-02b regressao: app_api executa apenas audit_append entre as funcoes de p
        join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'private' and has_function_privilege('app_api', p.oid, 'EXECUTE')`,
   );
-  // Excecoes EXPLICITAS do catalogo (H-018, decisao do Orquestrador no #31): as funcoes de escrita e
-  // listagem administrativa (catalog_*_save, catalog_admin_list) e a leitura publica
-  // (catalog_public_list) executam como app_api. Qualquer outra funcao de private segue proibida.
-  // Desenho: docs/factory/53-DESENHO-H018 §2 e §3.1.
+  // Excecoes EXPLICITAS, por desenho, de funcoes de private executaveis por app_api. Qualquer outra
+  // funcao de private segue proibida. Cada familia tem o desenho que a autoriza:
+  // - catalogo (H-018, decisao do Orquestrador no #31): docs/factory/53-DESENHO-H018 §2 e §3.1;
+  //   leitura e busca (H-019: docs/factory/64-DESENHO-H019, catalog_search) e revisoes (H-107:
+  //   docs/factory/81-DESENHO-H107, catalog_revision_list).
+  // - rascunho (H-013, H-025, H-030): docs/factory/91-DESENHO-H013, 74-DESENHO-H025, 90-DESENHO-H030.
+  // - midia (H-026, H-027, H-029): docs/factory/88-DESENHO-H026, 93-DESENHO-H027, 98-DESENHO-H029.
+  // Lista atualizada na #140 (triagem do db:test): a versao anterior so previa o catalogo do H-018.
   assert.deepEqual(
     res.rows.map((r) => r.proname).sort(),
     [
@@ -197,8 +201,34 @@ test('D-02b regressao: app_api executa apenas audit_append entre as funcoes de p
       'catalog_admin_list',
       'catalog_group_save',
       'catalog_public_list',
+      'catalog_revision_list',
+      'catalog_search',
       'catalog_service_save',
       'catalog_synonym_save',
+      'draft_confirm',
+      'draft_create',
+      'draft_discard',
+      'draft_get',
+      'draft_identity_get',
+      'draft_identity_set',
+      'draft_patch',
+      'draft_review_get',
+      'media_delete',
+      'media_finalize',
+      'media_get',
+      'media_issue',
+      'media_known',
+      'media_list',
+      'media_original_cleanup_list',
+      'media_original_removed',
+      'media_purge_done',
+      'media_read_target',
+      'media_reduce_begin',
+      'media_reduce_done',
+      'media_reduce_reject',
+      'media_reduce_release',
+      'media_reorder',
+      'media_sweep',
     ].sort(),
   );
   const ex = await client.query(
