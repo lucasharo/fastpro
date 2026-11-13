@@ -62,6 +62,10 @@ const commitInput: PublishCommitInput = {
   pointId: PONTO,
   ack: false,
   nowMs: AGORA,
+  // Issue 45: id gerado pela API, blob cifrado (so bytes de teste) e rotulo publico.
+  requestId: PEDIDO,
+  addressEnc: Buffer.from([1, 2, 3, 4]),
+  publicLabel: 'Sao Paulo - SP',
 };
 
 const linhaVazia = {
@@ -162,7 +166,14 @@ describe('PgRequestPublishStore.commit', () => {
     const out = await new PgRequestPublishStore(client).commit({ ...commitInput, ack: true });
     expect(out.status).toBe('criado');
     expect(chamadas[0]?.sql).toBe(SQL_PUBLISH_COMMIT);
-    expect(chamadas[0]?.params.slice(6)).toEqual([PONTO, true, new Date(AGORA).toISOString()]);
+    expect(chamadas[0]?.params.slice(6)).toEqual([
+      PONTO,
+      true,
+      new Date(AGORA).toISOString(),
+      PEDIDO,
+      Buffer.from([1, 2, 3, 4]),
+      'Sao Paulo - SP',
+    ]);
   });
 
   it('duplicidade devolve so o pedido semelhante do proprio cliente (id, data, nome do servico)', async () => {

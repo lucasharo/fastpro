@@ -9,6 +9,7 @@ import { PgGeoPointStore, PgRequestPublishStore, PgSessionRepository, type SqlCl
 import { parseBreakerCaps } from '@fastpro/domain';
 import { createDraftHasher } from '../drafts/draft-hash.js';
 import { createAddressHasher } from '../geo/address-hash.js';
+import { createAddressVault, type AddressVault } from './address-crypto.js';
 import { MAPBOX_TOKEN_ENV } from '../geo/composicao-sugestao.js';
 import { createMapboxPermanentAdapter } from '../geo/mapbox-permanent-adapter.js';
 import type { GeocodingPermanentPort } from '../geo/permanent-ports.js';
@@ -25,8 +26,12 @@ export const PUBLICACAO_PEDIDO_ENV_OBRIGATORIAS = [
   'DATABASE_URL_APP_SYSTEM',
   'SITE_URL',
   'ADDRESS_HASH_KEY',
+  'ADDRESS_ENC_KEY',
   'REQUEST_PUBLISH_HMAC_KEY',
 ] as const;
+
+/** Nome da chave de cifra do endereco (Issue 45, decisao 406). Pendencia so leva o nome; o valor nunca. */
+const ADDRESS_ENC_KEY_NOME = 'ADDRESS_ENC_KEY';
 
 /** Tamanho minimo da chave HMAC da publicacao (decisao 254). */
 export const REQUEST_PUBLISH_HMAC_KEY_MIN_LENGTH = 32;
@@ -94,9 +99,24 @@ export function montarPublicacaoPedido(env: Ambiente, opcoes: PublicacaoPedidoOp
       pendencias.push('ADDRESS_HASH_KEY (tamanho minimo)');
     }
   }
+  let cofre: AddressVault | undefined;
+  if (preenchida(env, ADDRESS_ENC_KEY_NOME)) {
+    try {
+      cofre = createAddressVault(env.ADDRESS_ENC_KEY ?? '');
+    } catch {
+      pendencias.push(`${ADDRESS_ENC_KEY_NOME} (tamanho minimo)`);
+    }
+  }
   const url = env.DATABASE_URL_APP_SYSTEM;
   const siteUrl = env.SITE_URL;
-  if (pendencias.length > 0 || !url || !siteUrl || hashEndereco === undefined || opcoes.abrirCliente === undefined) {
+  if (
+    pendencias.length > 0 ||
+    !url ||
+    !siteUrl ||
+    hashEndereco === undefined ||
+    cofre === undefined ||
+    opcoes.abrirCliente === undefined
+  ) {
     return { options: undefined, pendencias };
   }
   const provedor = opcoes.provedor ?? provedorMapboxDesenvolvimento(env);
@@ -121,6 +141,7 @@ export function montarPublicacaoPedido(env: Ambiente, opcoes: PublicacaoPedidoOp
             clock: () => relogio.nowMs(),
           },
           hasher: createDraftHasher(chave),
+          vault: cofre,
           chave,
           rateKey: (finalidade: string, identificador: string) =>
             createHmac('sha256', chave).update(`${finalidade}:${identificador}`, 'utf8').digest('hex'),

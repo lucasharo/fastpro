@@ -11,11 +11,14 @@ const CHAVE_HMAC_SENTINELA = ['hmac', 'sentinela', 'nao-registrar', 'abcdefghij'
 const CHAVE_ENDERECO_SENTINELA = ['endereco', 'sentinela', 'nao-registrar', 'klmnopqrst'].join('-');
 // Abaixo do minimo de 32 caracteres: a pendencia de tamanho nao pode ecoar o valor.
 const CHAVE_CURTA_SENTINELA = ['curta', 'sentinela', 'nao-registrar'].join('-');
+// Issue 45: chave de cifra do endereco, so em memoria e so como sentinela (nunca .env.local).
+const CHAVE_CIFRA_SENTINELA = ['cifra', 'sentinela', 'nao-registrar', 'uvwxyzabcdefghijkl'].join('-');
 
 const AMBIENTE_BASE: Readonly<Record<string, string>> = {
   DATABASE_URL_APP_SYSTEM: 'postgres://app-system-fake/teste',
   SITE_URL: 'https://site-teste.invalid',
   ADDRESS_HASH_KEY: CHAVE_ENDERECO_SENTINELA,
+  ADDRESS_ENC_KEY: CHAVE_CIFRA_SENTINELA,
   REQUEST_PUBLISH_HMAC_KEY: CHAVE_HMAC_SENTINELA,
   MAPBOX_PERMANENT_SOFT_LIMIT: '10',
   MAPBOX_PERMANENT_HARD_LIMIT: '20',
@@ -39,6 +42,29 @@ function opcoesComFabrica(consultas: string[] = []): PublicacaoPedidoOpcoes {
 function ambiente(extra: Record<string, string | undefined>): Record<string, string | undefined> {
   return { ...AMBIENTE_BASE, ...extra };
 }
+
+// Issue 45 (T-13): sem chave de cifra do endereco, a rota nao liga; a pendencia so leva o nome da variavel.
+describe('montarPublicacaoPedido: chave de cifra do endereco (Issue 45, T-13)', () => {
+  it('ADDRESS_ENC_KEY ausente ou curta: nao monta a rota e lista so o nome', () => {
+    const sem = { ...AMBIENTE_BASE, APP_ENV: 'development', [NOME_TOKEN]: TOKEN_SENTINELA };
+    delete (sem as Record<string, string | undefined>).ADDRESS_ENC_KEY;
+    const curta = { ...sem, ADDRESS_ENC_KEY: CHAVE_CURTA_SENTINELA };
+    for (const cenario of [sem, curta]) {
+      const r = montarPublicacaoPedido(cenario, opcoesComFabrica());
+      expect(r.options).toBeUndefined();
+      expect(r.pendencias.some((p) => p.startsWith('ADDRESS_ENC_KEY'))).toBe(true);
+      expect(r.pendencias.join('|')).not.toContain(CHAVE_CURTA_SENTINELA);
+    }
+  });
+
+  it('com chave de cifra de tamanho minimo, a montagem nao acusa pendencia de cifra', () => {
+    const r = montarPublicacaoPedido(
+      ambiente({ APP_ENV: 'development', [NOME_TOKEN]: TOKEN_SENTINELA }),
+      opcoesComFabrica(),
+    );
+    expect(r.pendencias.some((p) => p.includes('ADDRESS_ENC_KEY'))).toBe(false);
+  });
+});
 
 describe('montarPublicacaoPedido: provedor real da Mapbox', () => {
   describe('liga com chave e APP_ENV de desenvolvimento', () => {

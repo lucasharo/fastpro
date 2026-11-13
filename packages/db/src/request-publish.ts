@@ -11,8 +11,9 @@ import type { SqlClient } from './jobs-tick.js';
 
 export const SQL_PUBLISH_BEGIN =
   'select * from private.request_publish_begin($1::uuid, $2::uuid, $3::text, $4::text, $5::text, $6::integer, $7::text, $8::text, $9::timestamptz)';
+// Issue 45 (M1): o commit grava o endereco cifrado e o rotulo; a API gera o id do pedido (decisao 405, D-03).
 export const SQL_PUBLISH_COMMIT =
-  'select * from private.request_publish_commit($1::uuid, $2::uuid, $3::text, $4::text, $5::text, $6::integer, $7::uuid, $8::boolean, $9::timestamptz)';
+  'select * from private.request_publish_commit_enc($1::uuid, $2::uuid, $3::text, $4::text, $5::text, $6::integer, $7::uuid, $8::boolean, $9::timestamptz, $10::uuid, $11::bytea, $12::text)';
 export const SQL_PUBLISH_ABORT = 'select private.request_publish_abort($1::uuid, $2::text, $3::text) as ok';
 
 /** Erro fixo: a chave deixou de ser nossa antes do commit (o banco faz rollback; a API responde 503). */
@@ -85,6 +86,12 @@ export interface PublishCommitInput {
   /** true quando o cliente reenviou com token de duplicidade valido (decisao 229). */
   readonly ack: boolean;
   readonly nowMs: number;
+  /** Id do pedido gerado pela API (Issue 45, D-03): e o dado associado (AAD) da cifra. */
+  readonly requestId: string;
+  /** Endereco cifrado pela API (formato da Issue 45, §3). Nunca texto em claro. */
+  readonly addressEnc: Uint8Array;
+  /** Rotulo publico "Cidade - UF" ou nulo (estado seguro). */
+  readonly publicLabel: string | null;
 }
 
 export interface PublishAbortInput {
@@ -180,6 +187,9 @@ export class PgRequestPublishStore {
       input.pointId,
       input.ack,
       new Date(input.nowMs).toISOString(),
+      input.requestId,
+      Buffer.from(input.addressEnc),
+      input.publicLabel,
     ]);
     const status = texto(r.out_status);
     if (status === 'criado' || status === 'ja_publicado') return { status, pedido: pedido(r) };

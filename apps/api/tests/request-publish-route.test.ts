@@ -14,6 +14,7 @@ import { hashSessionSecret } from '@fastpro/db';
 import { handleRequestPublishRoute, REQUEST_PUBLISH_PATH, type PublishRouteOptions } from '../src/requests/publish-route.js';
 import type { PublishStorePort } from '../src/requests/publish-service.js';
 import { createDraftHasher, newDraftSecret } from '../src/drafts/draft-hash.js';
+import { createAddressVault } from '../src/requests/address-crypto.js';
 import type {
   GeocodingPermanentPort,
   GeoPointStorePort,
@@ -37,6 +38,7 @@ const PEDIDO = '33333333-3333-4333-8333-333333333333';
 const SIMILAR = '55555555-5555-4555-8555-555555555555';
 const AGORA = Date.UTC(2026, 10, 13, 12, 0, 0);
 const CHAVE = 'k'.repeat(32);
+const CHAVE_ENDERECO_TESTE = 'chave-de-teste-issue45-em-memoria-0123456789';
 const SESSAO_OK = 'sessao-valida-de-teste-000000000000000000';
 const CHAVE_IDEM = 'idem-chave-de-teste-01';
 const PEDIDO_CRIADO = {
@@ -135,6 +137,8 @@ function opcoes(): PublishRouteOptions {
             clock: () => AGORA,
           },
           hasher,
+          // Issue 45: cofre com chave de teste montada em memoria (nunca de .env.local).
+          vault: createAddressVault(CHAVE_ENDERECO_TESTE),
           chave: CHAVE,
           rateKey: (finalidade: string, identificador: string) => `${finalidade}:${identificador}`,
           clock: { nowMs: () => AGORA },

@@ -7,6 +7,7 @@ import {
   DRAFT_NOT_FOUND_BODY,
   PUBLISH_ERROR_RESPONSES,
   issueDuplicateAck,
+  derivePublicLabel,
   publishBodyHash,
   verifyDuplicateAck,
   type PublishBody,
@@ -19,7 +20,9 @@ import type {
   PublishCommitOutcome,
 } from '@fastpro/db';
 import type { DraftHasher } from '../drafts/draft-hash.js';
+import type { AddressVault } from './address-crypto.js';
 import { ensurePermanentPoint, type EnsurePermanentDeps } from '../geo/permanent-geocode-service.js';
+import { randomUUID } from 'node:crypto';
 
 /** Porta do banco da publicacao (implementada por PgRequestPublishStore). */
 export interface PublishStorePort {
@@ -38,6 +41,13 @@ export interface PublishServiceDeps {
   /** rateKey(finalidade, identificador): HMAC com separacao de dominio. Ex.: 'publish:user', userId. */
   readonly rateKey: (finalidade: string, identificador: string) => string;
   readonly clock: { nowMs(): number };
+  /**
+   * Cofre do endereco (Issue 45, §3). Sem ele o servico responde 503 publicacao_indisponivel antes de abrir o banco.
+   * Opcional no tipo so para que os testes da Issue 44 montados sem cofre continuem compilando; a montagem real sempre passa.
+   */
+  readonly vault?: AddressVault;
+  /** Gerador do id do pedido (padrao: uuid v4). Injetavel para teste. */
+  readonly novoId?: () => string;
 }
 
 export interface PublishRequestInput {
@@ -101,6 +111,8 @@ function similarDoToken(token: string): string | null {
 
 export async function publishRequest(input: PublishRequestInput, deps: PublishServiceDeps): Promise<PublishOutcome> {
   const agora = deps.clock.nowMs();
+  const vault = deps.vault;
+  if (vault === undefined) return resposta(503, { code: 'publicacao_indisponivel' }, { 'Retry-After': '10' });
   const { body, userId } = input;
   const bodyHash = publishBodyHash(body);
   const chaveBanco = { userId, idemKey: input.idemKey, bodyHash };
@@ -166,9 +178,21 @@ export async function publishRequest(input: PublishRequestInput, deps: PublishSe
       agora,
     );
 
+  // Issue 45: a API gera o id do pedido, cifra o endereco (AAD = id) e deriva o rotulo. Falha vira 503 fixo.
+  const requestId = (deps.novoId ?? randomUUID)();
+  let addressEnc: Buffer;
+  let publicLabel: string | null;
+  try {
+    addressEnc = vault.seal(inicio.addressText, requestId);
+    publicLabel = derivePublicLabel(inicio.addressText);
+  } catch {
+    await abortar();
+    return porCodigo('indisponivel');
+  }
+
   let saida: PublishCommitOutcome;
   try {
-    saida = await deps.store.commit({ ...base, pointId: pontoId, ack, nowMs: agora });
+    saida = await deps.store.commit({ ...base, pointId: pontoId, ack, nowMs: agora, requestId, addressEnc, publicLabel });
   } catch (erro) {
     await abortar();
     const perdida = erro instanceof Error && erro.message === 'publicacao_chave_perdida';
