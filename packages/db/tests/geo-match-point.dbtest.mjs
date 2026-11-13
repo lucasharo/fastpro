@@ -588,6 +588,8 @@ test('T-CA10: linhas antigas recebem match_* so se ok; idempotente; desfazer e r
     assert.equal(lin.rows[0].n, 0, 'o desfazer deveria remover as colunas');
 
     const subjOk = randomUUID();
+    const subjAg = randomUUID();
+    const subjSr = randomUUID();
     await client.query(
       `insert into app.geocode_point (subject_kind, subject_id, address_hash, state, exact_point, geocode_mode, precision, geocoded_at)
        values ('request', $1, $2, 'ok', extensions.st_setsrid(extensions.st_makepoint($3, $4), 4326)::extensions.geography,
@@ -596,11 +598,11 @@ test('T-CA10: linhas antigas recebem match_* so se ok; idempotente; desfazer e r
     );
     await client.query(
       "insert into app.geocode_point (subject_kind, subject_id, address_hash, state) values ('request', $1, $2, 'aguardando')",
-      [randomUUID(), hash('t10-ag')],
+      [subjAg, hash('t10-ag')],
     );
     await client.query(
       "insert into app.geocode_point (subject_kind, subject_id, address_hash, state) values ('request', $1, $2, 'sem_resultado')",
-      [randomUUID(), hash('t10-sr')],
+      [subjSr, hash('t10-sr')],
     );
     const contagem = async () => (await client.query('select count(*)::int as n from app.geocode_point')).rows[0].n;
     const antes = await contagem();
@@ -608,12 +610,15 @@ test('T-CA10: linhas antigas recebem match_* so se ok; idempotente; desfazer e r
     await client.query(semControle(readFileSync(MIG_MATCH, 'utf8')));
     assert.equal(await contagem(), antes);
     const { rows } = await client.query(
-      `select state, match_cell, match_lon, match_lat from app.geocode_point order by state`,
+      `select subject_id, state, match_cell, match_lon, match_lat from app.geocode_point order by state`,
     );
-    const ok = rows.find((r) => r.state === 'ok');
+    // So as linhas gravadas por este teste. O DEV pode ter outras linhas 'ok' (dados de demonstracao):
+    // a primeira 'ok' da tabela inteira nao e a linha de Sao Paulo (triagem #140, T-CA10).
+    const proprias = rows.filter((r) => [subjOk, subjAg, subjSr].includes(r.subject_id));
+    const ok = proprias.find((r) => r.state === 'ok');
     const esperado = await grade(SP.lon, SP.lat);
     assert.equal(ok.match_cell, esperado.out_cell);
-    for (const r of rows.filter((x) => x.state !== 'ok')) assert.equal(r.match_cell, null);
+    for (const r of proprias.filter((x) => x.state !== 'ok')) assert.equal(r.match_cell, null);
 
     await client.query(semControle(readFileSync(MIG_MATCH, 'utf8')));
     assert.equal(await contagem(), antes, 'segunda aplicacao mudou a contagem');
