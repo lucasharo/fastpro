@@ -1,50 +1,23 @@
 // H-037 (Issue #50) | Adaptador Pg dos documentos de identidade (107-DESENHO-H037.md, §4.2 e §6). Cada metodo e uma
 // chamada a uma funcao private.idoc_* (security definer, executada como app_system). Parametros posicionais; nenhum
 // SQL e montado com entrada de fora. Erro de banco vira IdentityDocStoreError com codigo fixo (sem eco de SQL).
+import { createHash } from 'node:crypto';
 import type { SqlClient } from './jobs-tick.js';
-// O db nao importa @fastpro/domain ate o barril receber o modulo (fase 2, depois da Issue 141): os tipos abaixo espelham
-// packages/domain/src/identity-docs. A paridade com o dominio e provada em tests/identity-docs-adaptadores.test.ts.
 
-/** Limite de documentos vivos por profissional (espelha IDOC_MAX_VIVOS do dominio). */
-export const IDOC_MAX_VIVOS = 5;
 
-export type IdentityDocDeclaredType = 'image/jpeg' | 'image/png' | 'image/webp' | 'application/pdf';
-export type IdentityDocDeleteCode = 'deleted' | 'not_found' | 'already_analyzed';
 
-export interface IdentityDocIssueInput {
-  readonly userId: string;
-  readonly clientUploadId: string;
-  readonly declaredType: IdentityDocDeclaredType;
-  readonly declaredBytes: number;
-  readonly nowMs: number;
-  readonly globalBytesCap: number;
-}
-
-export interface IdentityDocIssueResult {
-  readonly code: string;
-  readonly id: string | null;
-  readonly status: 'em_envio' | 'recebido' | null;
-}
-
-export interface IdentityDocListItem {
-  readonly id: string;
-  readonly kind: 'imagem' | 'pdf';
-  readonly status: 'em_envio' | 'recebido';
-  readonly receivedAt: string | null;
-  readonly deletable: boolean;
-}
-
-export interface IdentityDocConfirmBeginResult {
-  readonly code: string;
-  readonly attempt: number | null;
-  readonly declaredType: IdentityDocDeclaredType | null;
-}
-
-export interface IdentityDocSweepItem {
-  readonly id: string;
-  readonly stagingKey: boolean;
-  readonly finalKey: boolean;
-}
+// Tipos do contrato vem do dominio (107 §4.2): o adaptador so traduz o retorno das funcoes private.idoc_*.
+import type {
+  IdentityDocConfirmBeginResult,
+  IdentityDocDeclaredType,
+  IdentityDocDeleteCode,
+  IdentityDocIssueInput,
+  IdentityDocIssueResult,
+  IdentityDocListItem,
+  IdentityDocSweepItem,
+} from '@fastpro/domain';
+import { IDOC_MAX_VIVOS } from '@fastpro/domain';
+export { IDOC_MAX_VIVOS };
 
 export class IdentityDocStoreError extends Error {
   readonly code = 'store_falha' as const;
@@ -218,5 +191,56 @@ export class PgIdentityDocStore {
     if (ids.length === 0) return [];
     const linhas = await this.consulta('select out_id from private.idoc_known_pending($1::uuid[])', [[...ids]]);
     return linhas.map((l) => texto(l['out_id']));
+  }
+}
+
+// H-037 (#50, 107 §5): cota por politica sobre private.rl_check e private.rl_hit (mesmas funcoes da busca e do cadastro).
+// A chave do balde e o SHA-256 de `idoc:<politica>:<valor>`; o valor ja vem como HMAC do IP (ou o id da conta). Sem eco.
+export const SQL_IDOC_RL_CHECK = 'select out_ok, out_retry_after from private.rl_check($1, $2, $3, $4, $5::timestamptz)';
+export const SQL_IDOC_RL_HIT = 'select private.rl_hit($1, $2, $3::timestamptz)';
+
+export class PgIdentityDocRateLimit {
+  constructor(
+    private readonly client: SqlClient,
+    private readonly relogio: { nowMs(): number } = { nowMs: () => Date.now() },
+  ) {}
+
+  private chave(politica: { readonly id: string }, valor: string): string {
+    return createHash('sha256').update(`idoc:${politica.id}:${valor}`, 'utf8').digest('hex');
+  }
+
+  async check(
+    politica: { readonly id: string; readonly spanS: number; readonly bucketS: number; readonly limit: number },
+    valor: string,
+  ): Promise<{ readonly ok: boolean; readonly retryAfterS: number }> {
+    const res = await this.client.query(SQL_IDOC_RL_CHECK, [
+      this.chave(politica, valor),
+      politica.spanS,
+      politica.bucketS,
+      politica.limit,
+      new Date(this.relogio.nowMs()).toISOString(),
+    ]);
+    const linha = res.rows[0] as { out_ok?: unknown; out_retry_after?: unknown } | undefined;
+    if (!linha || typeof linha.out_ok !== 'boolean') throw new IdentityDocStoreError();
+    const retry = Number(linha.out_retry_after ?? 0);
+    return { ok: linha.out_ok, retryAfterS: Number.isFinite(retry) && retry > 0 ? Math.ceil(retry) : 0 };
+  }
+
+  async hit(politica: { readonly id: string; readonly bucketS: number }, valor: string): Promise<void> {
+    await this.client.query(SQL_IDOC_RL_HIT, [
+      this.chave(politica, valor),
+      politica.bucketS,
+      new Date(this.relogio.nowMs()).toISOString(),
+    ]);
+  }
+}
+
+// H-037 (#50) | Porta de perfil do profissional: a conta da sessao tem professional_profile? (app_system ja tem select).
+export class PgIdentityDocProfile {
+  constructor(private readonly client: SqlClient) {}
+
+  async existe(userId: string): Promise<boolean> {
+    const res = await this.client.query('select 1 from app.professional_profile where user_id = $1 limit 1', [userId]);
+    return res.rows.length > 0;
   }
 }
