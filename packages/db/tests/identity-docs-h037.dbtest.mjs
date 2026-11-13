@@ -7,6 +7,7 @@
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { Buffer } from 'node:buffer';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -355,6 +356,65 @@ describe('confirmacao, recusa, exclusao e auditoria (T-11, T-14, T-24)', () => {
       assert.equal(feito.rows[0].n, 1);
       const sumiu = await client.query('select * from private.idoc_known_pending($1)', [[id]]);
       assert.equal(sumiu.rows.length, 0);
+    }));
+});
+
+describe('listagem e varredura: o que o adaptador espera (107 §4.2; pendencia da fase 1)', () => {
+  test('idoc_list devolve so os vivos e nao expirados; a vaga do adaptador (5 - lista) bate com o limite', () =>
+    tx(async () => {
+      const u = await profissional();
+      const primeiro = await emitirOk(u);
+      let lista = await client.query('select * from private.idoc_list($1, $2)', [u, AGORA]);
+      assert.equal(lista.rows.length, 1);
+      assert.equal(lista.rows[0].out_id, primeiro);
+      assert.equal(lista.rows[0].out_status, 'em_envio');
+      assert.equal(lista.rows[0].out_file_kind, 'imagem');
+      assert.equal(lista.rows[0].out_deletable, true);
+      // Pendente vencido sai da lista; a contagem do limite tambem o ignora (liberacao preguicosa na emissao).
+      lista = await client.query('select * from private.idoc_list($1, $2)', [u, MAIS_31_MIN]);
+      assert.equal(lista.rows.length, 0);
+      // Cinco vivos: a lista mostra cinco, a vaga do adaptador zera e a sexta emissao e barrada.
+      for (let i = 0; i < 4; i++) await emitirOk(u);
+      lista = await client.query('select * from private.idoc_list($1, $2)', [u, AGORA]);
+      assert.equal(lista.rows.length, 5);
+      assert.equal(Math.max(0, 5 - lista.rows.length), 0);
+      const sexto = await emitir(u, randomUUID(), JPEG, 100);
+      assert.equal(sexto.rows[0].out_code, 'doc_limit');
+      // Excluir um pendente tira da lista, libera a vaga e a proxima emissao passa.
+      const del = await client.query('select private.idoc_delete($1, $2, $3) as out', [u, lista.rows[0].out_id, AGORA]);
+      assert.equal(del.rows[0].out, 'deleted');
+      lista = await client.query('select * from private.idoc_list($1, $2)', [u, AGORA]);
+      assert.equal(lista.rows.length, 4);
+      assert.equal(Math.max(0, 5 - lista.rows.length), 1);
+      const nova = await emitir(u, randomUUID(), JPEG, 100);
+      assert.equal(nova.rows[0].out_code, 'new');
+    }));
+
+  test('idoc_sweep: recebido excluido traz objeto final e nao de entrada; recusado traz so a entrada', () =>
+    tx(async () => {
+      const u = await profissional();
+      const recebido = await emitirOk(u, PDF, 1000);
+      const b = await iniciar(u, recebido);
+      const done = await client.query(
+        'select private.idoc_confirm_done($1, $2, $3, $4, $5, $6, $7) as r',
+        [u, recebido, b.rows[0].out_attempt, PDF, 1000, Buffer.alloc(32, 7), AGORA],
+      );
+      assert.equal(done.rows[0].r, 'received');
+      const del = await client.query('select private.idoc_delete($1, $2, $3) as out', [u, recebido, AGORA]);
+      assert.equal(del.rows[0].out, 'deleted');
+      const recusado = await emitirOk(u);
+      const b2 = await iniciar(u, recusado);
+      const ref = await client.query(
+        'select private.idoc_confirm_refuse($1, $2, $3, $4, $5) as out',
+        [u, recusado, b2.rows[0].out_attempt, 'tipo_nao_aceito', AGORA],
+      );
+      assert.equal(ref.rows[0].out, 'refused');
+      const sw = await client.query('select * from private.idoc_sweep($1, 100)', [AGORA]);
+      const lr = sw.rows.find((x) => x.out_id === recebido);
+      const lf = sw.rows.find((x) => x.out_id === recusado);
+      assert.ok(lr && lf, 'as duas linhas marcadas deveriam aparecer na varredura');
+      assert.deepEqual([lr.out_staging, lr.out_final], [false, true]);
+      assert.deepEqual([lf.out_staging, lf.out_final], [true, false]);
     }));
 });
 
