@@ -18,8 +18,8 @@ import { ReduceGate } from '../src/media/reduce-gate.js';
 
 const SITE = 'https://fastpro.example.test';
 const LIBERACAO = 'MEDIA_UPLOAD_ENABLED (liberacao explicita)';
-const SENTINELA_APP_API = 'postgres://sentinela-app-api-u1:sentinela-senha-a1@db.example.test/app';
-const SENTINELA_APP_SYSTEM = 'postgres://sentinela-app-system-u2:sentinela-senha-s2@db.example.test/sys';
+const SENTINELA_APP_API = 'postgres://sentinela-app-api-u1:senha@db.example.test/app';
+const SENTINELA_APP_SYSTEM = 'postgres://sentinela-app-system-u2:senha@db.example.test/sys';
 const SENTINELA_CHAVE_IP = 'sentinela-chave-ip-hmac-k3-'.padEnd(40, 'x');
 const SENTINELA_STORAGE = 'sentinela-service-key-storage-s4-0123456789';
 const SENTINELA_URL = 'https://sentinela-projeto-u5.supabase.example.test';

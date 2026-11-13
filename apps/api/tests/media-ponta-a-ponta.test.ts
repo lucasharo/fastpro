@@ -27,8 +27,8 @@ const CUID = '11111111-1111-4111-8111-000000000001';
 
 const ENV_LIGADO: Readonly<Record<string, string>> = {
   MEDIA_UPLOAD_ENABLED: '1',
-  DATABASE_URL_APP_API: 'postgres://sentinela-e2e-app-api:sentinela-e2e-senha@db.example.test/app',
-  DATABASE_URL_APP_SYSTEM: 'postgres://sentinela-e2e-app-system:sentinela-e2e-senha@db.example.test/sys',
+  DATABASE_URL_APP_API: 'postgres://sentinela-e2e-app-api:senha@db.example.test/app',
+  DATABASE_URL_APP_SYSTEM: 'postgres://sentinela-e2e-app-system:senha@db.example.test/sys',
   DRAFT_IP_HMAC_KEY: CHAVE_IP,
   SITE_URL: SITE,
   SUPABASE_URL: URL_STORAGE,

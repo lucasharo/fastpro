@@ -11,7 +11,7 @@ import { montarProfissional, PROFISSIONAL_ENV_OBRIGATORIAS } from '../src/profes
 const SEGREDO_SINTETICO = 'segredo-sintetico-nao-real-0123456789';
 
 const ENV_COMPLETO: Record<string, string> = {
-  DATABASE_URL_APP_SYSTEM: 'postgres://app_system:senha-sintetica@127.0.0.1:1/teste',
+  DATABASE_URL_APP_SYSTEM: 'postgres://app_system:senha@127.0.0.1:1/teste',
   SUPABASE_URL: 'https://projeto-sintetico.example.test',
   SUPABASE_SECRET_KEY: SEGREDO_SINTETICO,
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'publicavel-sintetica',
