@@ -111,13 +111,13 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 | Issue | Título |
 |---|---|
-| #119 | [E13] Expurgos operacionais |
+| #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
 
 ## QA (2)
 
 | Issue | Título |
 |---|---|
-| #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
+| #119 | [E13] Expurgos operacionais |
 | #50 | [E4] Documentos de identidade |
 
 ## Concluído (55)
