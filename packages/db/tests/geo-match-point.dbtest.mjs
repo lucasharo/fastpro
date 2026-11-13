@@ -315,7 +315,13 @@ test('T-CA05b: so app_system executa funcoes que tocam exact_point (lista fechad
              or exists (select 1 from aclexplode(p.proacl) a where a.grantee = 0 and a.privilege_type = 'EXECUTE'))
       order by p.proname`,
   );
-  assert.deepEqual(rows.map((r) => r.proname), ['geo_store_permanent']);
+  // Lista fechada atualizada na #140 (triagem do db:test): request_publish_commit (H-031,
+  // docs/factory/110-DESENHO-H031 §4.4 e D-04) toca exact_point e e executada so por app_system.
+  assert.deepEqual(rows.map((r) => r.proname), ['geo_store_permanent', 'request_publish_commit']);
+  const apiExecuta = await client.query(
+    `select has_function_privilege('app_api', 'private.request_publish_commit(uuid,uuid,text,text,text,integer,uuid,boolean,timestamptz)'::regprocedure, 'EXECUTE') as n`,
+  );
+  assert.equal(apiExecuta.rows[0].n, false, 'app_api nao executa request_publish_commit (H-031 D-04)');
 });
 
 test('T-CA05b: o retorno de match_points_within e exatamente subject, centro e distancia', async () => {
