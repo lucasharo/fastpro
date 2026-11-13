@@ -16,10 +16,10 @@ interface LinhaBloco {
 }
 
 function paraResultado(linha: LinhaBloco | undefined): ResultadoLoteOpsPurge {
-  if (!linha) return { estado: 'falha', removidos: 0, retidos: 0, falhos: 1 };
-  const estado = ESTADOS.has(linha.out_estado) ? (linha.out_estado as EstadoBlocoOpsPurge) : 'falha';
+  // Sem linha ou estado fora da lista fechada: falha do bloco, contada como uma falha.
+  if (!linha || !ESTADOS.has(linha.out_estado)) return { estado: 'falha', removidos: 0, retidos: 0, falhos: 1 };
   return {
-    estado,
+    estado: linha.out_estado as EstadoBlocoOpsPurge,
     removidos: Number(linha.out_removidos),
     retidos: Number(linha.out_retidos),
     falhos: Number(linha.out_falhos),
