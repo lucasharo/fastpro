@@ -26,7 +26,7 @@ export interface EnsurePermanentInput {
   /** Texto do endereco como digitado. Nao e guardado: so o HMAC chega ao armazenamento. */
   readonly addressText: string;
   /**
-   * Teto vitalicio de chamadas pagas do assunto (H-036: profile.offering_limits.calls_cap, desenho ง4.5).
+   * Teto vitalicio de chamadas pagas do assunto (H-036: profile.offering_limits.calls_cap, desenho ยง4.5).
    * Ausente = PERMANENT_CALLS_PER_REQUEST_MAX, como antes (H-031 e a #34 seguem sem mudanca).
    */
   readonly callsCap?: number;
@@ -54,7 +54,7 @@ export async function ensurePermanentPoint(
     hash: deps.hashAddress(endereco.key),
     nowMs: deps.clock(),
     leaseMs: PERMANENT_LEASE_MS,
-    callsCap: PERMANENT_CALLS_PER_REQUEST_MAX,
+    callsCap: input.callsCap ?? PERMANENT_CALLS_PER_REQUEST_MAX,
     caps: deps.caps,
   });
 
