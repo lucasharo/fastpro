@@ -92,8 +92,7 @@ const ROTAS: readonly RotaContato[] = [
 export function contatoRota(metodo: string, path: string): { readonly rota: RotaContato; readonly id: string } | null {
   for (const rota of ROTAS) {
     const casou = rota.padrao.exec(path);
-    if (casou === null) continue;
-    if (rota.metodo !== metodo) return null;
+    if (casou === null || rota.metodo !== metodo) continue;
     return { rota, id: casou[1] ?? '' };
   }
   return null;
