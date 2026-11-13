@@ -266,7 +266,11 @@ export interface DraftRatePolicy {
     | 'media_emissao_ip_hora'
     | 'media_emissao_ip_dia'
     | 'media_confirma_rascunho'
-    | 'media_leitura_ip';
+    | 'media_leitura_ip'
+    // H-029 (#42): galeria do dono (98 §2.2 a §2.4).
+    | 'media_imagem_ip'
+    | 'media_exclui_rascunho'
+    | 'media_ordem_rascunho';
   readonly spanS: number;
   readonly bucketS: number;
   readonly limit: number;
