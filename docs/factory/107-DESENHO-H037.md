@@ -115,7 +115,7 @@ RLS habilitada e **forçada**, sem políticas; `revoke all` da tabela e das fun�
 
 - **Quantidade (decisão 175):** 5 vivos por profissional (D-4 define "vivo").
 - **Cotas de emissão (decisão 188):** por profissional 12/h e 25/dia; por IP-HMAC 40/h e 150/dia; finalização 30/h por profissional; leitura da lista 120/min por IP. Constantes novas de domínio (`IDOC_RATE_*`, ids próprios), mesma forma de `MEDIA_RATE_*`; chave do balde SHA-256 de `idoc:<política>:<valor>`; `rl_hit` só após aceite; 429 só com `Retry-After`, sem campo que revele o limite.
-- **D-8 Teto global (decisão 189), `[PROPOSTA]` do Arquiteto:** em **bytes**, não em contagem. `IDOC_GLOBAL_BYTES_CAP = 250.000.000` (≈ 250 MB, dentro dos 300 MB de documentos de 09 §9, com ≈ 50 MB de folga para a entrada transitória de até 5 MiB por envio). Soma = `stored_bytes` das linhas com objeto + **2.097.152** reservados por linha `pendente_envio` (pior caso do que será gravado). Sob trava consultiva transacional, porque emissão de documento é rara (ao contrário de H-025, a corrida é fechada). Resposta ao atingir: 429 neutro (`Retry-After` fixo, sem revelar o teto). Pior caso por profissional: 5 × 2 MiB = 10 MiB ⇒ ≈ 25 profissionais; caso típico (3 imagens de ≈ 0,5 MB + 1 PDF de 1 MB ≈ 2,5 MB) ⇒ ≈ 100 (CA-16). O valor é constante e pode ser revisto na L1.
+- **D-8 Teto global (decisão 189), `[PROPOSTA]` do Arquiteto:** em **bytes**, não em contagem. `IDOC_GLOBAL_BYTES_CAP = 250.000.000` (≈ 250 MB, dentro dos 300 MB de documentos de 09 §9, com ≈ 50 MB de folga para a entrada transitória de até 5 MiB por envio). Soma = `stored_bytes` das linhas com objeto + **2.097.152** reservados por linha `pendente_envio` (pior caso do que será gravado). Sob trava consultiva transacional, porque emissão de documento é rara (ao contrário de H-025, a corrida é fechada). Resposta ao atingir: 429 neutro (`Retry-After` fixo, sem revelar o teto). Pior caso por profissional: 5 × 2 MiB = 10.485.760 bytes ⇒ 250.000.000 ÷ 10.485.760 ≈ 23,8, ou seja, ≈ 23 profissionais com o pior caso em MiB (≈ 25 se o pior caso for lido como 5 × 2 MB decimais, 10 MB); caso típico (3 imagens de ≈ 0,5 MB + 1 PDF de 1 MB ≈ 2,5 MB) ⇒ ≈ 100 (CA-16). O valor é constante e pode ser revisto na L1.
 - **TTL do pendente 30 min; URL de envio 15 min de alvo; varredura de órfãos 3 h** (mesmos valores e a mesma ressalva `[NÃO VERIFICADO]` de H-026 §3 sobre a validade real do token do Storage).
 
 ## 6. Validação e reencode
@@ -179,7 +179,7 @@ Página nova `apps/web/public/profissional-documentos.html/.js/.css` (arquivos n
 2. Migração, rollback e `packages/db/tests/identity-docs-h037.dbtest.mjs`.
 3. `packages/db/src/identity-docs.ts` (adaptador Pg, `app_system`) e `identity-docs-storage.ts` (adaptadores de entrada e final).
 4. `apps/api/src/identity-docs/identity-doc-service.ts`, `identity-doc-sweep.ts` e `identity-doc-route.ts` (função de despacho exportada, testada com servidor `http` em porta 0 e portas falsas, **sem passar por `app.ts`**).
-5. `identity-doc-composicao.ts` (`montarDocumentosIdentidade(env, opcoes)` ⇒ `{ options, pendencias }`), testado isoladamente.
+5. `identity-doc-montagem.ts` (`montarDocumentosIdentidade(env, opcoes)` ⇒ `{ options, pendencias }`), testado isoladamente.
 6. Página `profissional-documentos.*` e seus testes de sandbox.
 
 **Depois da #141 (e, nos arquivos compartilhados, depois do merge de #43):**
@@ -194,7 +194,7 @@ Página nova `apps/web/public/profissional-documentos.html/.js/.css` (arquivos n
 - `supabase/migrations/20261112210000_identity_create_documents.sql` e `supabase/rollbacks/20261112210000_identity_create_documents.down.sql` (conferir o número)
 - `packages/domain/src/identity-docs/{constants,body,pdf,keys,ports,index}.ts` e `packages/domain/tests/identity-docs-*.test.ts`
 - `packages/db/src/identity-docs.ts`, `packages/db/src/identity-docs-storage.ts`, `packages/db/tests/identity-docs-h037.dbtest.mjs`, `packages/db/tests/identity-docs-storage.test.ts`
-- `apps/api/src/identity-docs/{identity-doc-service,identity-doc-sweep,identity-doc-route,identity-doc-composicao}.ts` e `apps/api/tests/identity-docs-*.test.ts` (inclui o teste de R6 e a varredura de rotas)
+- `apps/api/src/identity-docs/{identity-doc-service,identity-doc-sweep,identity-doc-route,identity-doc-montagem}.ts` e `apps/api/tests/identity-docs-*.test.ts` (inclui o teste de R6 e a varredura de rotas)
 - `apps/web/public/profissional-documentos.{html,js,css}` e `apps/web/tests/profissional-documentos-*.test.ts`
 
 **Compartilhados (conflito possível, editar só no fim e em blocos separados):**
