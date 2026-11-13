@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>FastPro - Pedir um serviço</title>
+    <link rel="stylesheet" href="/tokens.css" />
+    <link rel="stylesheet" href="/pedido.css" />
+  </head>
+  <body>
+    <main id="pedido-raiz" class="pedido-pagina" aria-busy="false">
+      <h1 id="titulo">Pedir um serviço</h1>
+      <p id="estado" class="pedido-aviso" role="status" aria-live="polite"></p>
+      <p>
+        <button id="carregar-de-novo" class="pedido-botao pedido-botao-secundario" type="button" hidden>Tentar de novo</button>
+      </p>
+
+      <section id="secao-formulario" aria-labelledby="titulo">
+        <form id="formulario" class="pedido-formulario" novalidate>
+          <div class="pedido-campo">
+            <label for="servico">Qual serviço você precisa?</label>
+            <input id="servico" name="servico" type="search" autocomplete="off" aria-autocomplete="list" aria-describedby="servico-aviso servico-erro" />
+            <ul id="servico-lista" class="pedido-lista" aria-label="Serviços encontrados"></ul>
+            <p id="servico-aviso" class="pedido-aviso" role="status"></p>
+            <p id="servico-erro" class="pedido-erro"></p>
+          </div>
+
+          <div class="pedido-campo">
+            <label for="endereco">Onde o serviço será feito?</label>
+            <input id="endereco" name="endereco" type="text" autocomplete="off" aria-autocomplete="list" aria-controls="endereco-lista" aria-describedby="endereco-aviso endereco-erro" />
+            <ul id="endereco-lista" class="pedido-lista" role="listbox" aria-label="Endereços sugeridos"></ul>
+            <p id="endereco-aviso" class="pedido-aviso"></p>
+            <p id="endereco-erro" class="pedido-erro"></p>
+          </div>
+
+          <div class="pedido-campo">
+            <label for="urgencia">Urgência</label>
+            <select id="urgencia" name="urgencia" aria-describedby="urgencia-erro">
+              <option value="imediato">Imediato</option>
+              <option value="proximas_semanas">Nas próximas semanas</option>
+              <option value="proximo_mes">Próximo mês</option>
+              <option value="nao_definido">Ainda não defini</option>
+            </select>
+            <p id="urgencia-erro" class="pedido-erro"></p>
+          </div>
+
+          <div class="pedido-campo">
+            <label for="descricao">Descreva o que você precisa</label>
+            <p id="descricao-ajuda" class="pedido-ajuda">Não escreva telefone nem e-mail na descrição.</p>
+            <textarea id="descricao" name="descricao" rows="5" maxlength="2000" aria-describedby="descricao-ajuda descricao-contador descricao-erro"></textarea>
+            <p id="descricao-contador" class="pedido-ajuda">0 de 2000 caracteres</p>
+            <p id="descricao-erro" class="pedido-erro"></p>
+          </div>
+
+          <div class="pedido-campo">
+            <label for="nome">Primeiro nome</label>
+            <input id="nome" name="nome" type="text" autocomplete="given-name" aria-describedby="nome-erro" />
+            <p id="nome-erro" class="pedido-erro"></p>
+          </div>
+
+          <div class="pedido-campo">
+            <label for="email">E-mail</label>
+            <input id="email" name="email" type="email" autocomplete="email" inputmode="email" aria-describedby="email-erro" />
+            <p id="email-erro" class="pedido-erro"></p>
+          </div>
+
+          <p id="resumo-erro" class="pedido-erro pedido-resumo" role="alert" tabindex="-1"></p>
+          <button id="revisar" class="pedido-botao" type="submit">Revisar pedido</button>
+        </form>
+      </section>
+
+      <section id="secao-email" class="pedido-secao" aria-labelledby="titulo-email" hidden>
+        <h2 id="titulo-email" tabindex="-1">Confira seu e-mail</h2>
+        <p id="email-texto" role="status"></p>
+        <p id="email-instrucao">Enviamos um link para o seu e-mail. Abra o link e volte a esta página.</p>
+        <div class="pedido-campo">
+          <label for="codigo">Código de 6 dígitos</label>
+          <input id="codigo" name="codigo" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" aria-describedby="codigo-erro" />
+          <p id="codigo-erro" class="pedido-erro"></p>
+        </div>
+        <p class="pedido-acoes">
+          <button id="validar-codigo" class="pedido-botao" type="button">Validar código</button>
+          <button id="ja-confirmei" class="pedido-botao pedido-botao-secundario" type="button">Já confirmei meu e-mail</button>
+          <button id="reenviar" class="pedido-botao pedido-botao-secundario" type="button">Reenviar</button>
+          <button id="corrigir-email" class="pedido-botao pedido-botao-secundario" type="button">Corrigir e-mail</button>
+        </p>
+      </section>
+    </main>
+    <script type="module" src="/pedido.js"></script>
+  </body>
+</html>

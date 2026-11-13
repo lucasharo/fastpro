@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>FastPro - Revisar pedido</title>
+    <link rel="stylesheet" href="/tokens.css" />
+    <link rel="stylesheet" href="/pedido.css" />
+  </head>
+  <body>
+    <main id="pedido-raiz" class="pedido-pagina" aria-busy="false">
+      <h1 id="titulo">Revise seu pedido</h1>
+      <p id="estado" class="pedido-aviso" role="status" aria-live="polite"></p>
+      <p>
+        <button id="carregar-de-novo" class="pedido-botao pedido-botao-secundario" type="button" hidden>Tentar de novo</button>
+      </p>
+
+      <section id="secao-revisao" aria-labelledby="titulo" hidden>
+        <section class="pedido-revisao-bloco" aria-labelledby="t-servico">
+          <h2 id="t-servico">Serviço</h2>
+          <p id="v-servico"></p>
+          <p><a id="e-servico" class="pedido-link" href="/pedido#servico">Editar serviço</a></p>
+        </section>
+        <section class="pedido-revisao-bloco" aria-labelledby="t-endereco">
+          <h2 id="t-endereco">Local</h2>
+          <p id="v-endereco"></p>
+          <p><a id="e-endereco" class="pedido-link" href="/pedido#endereco">Editar local</a></p>
+        </section>
+        <section class="pedido-revisao-bloco" aria-labelledby="t-urgencia">
+          <h2 id="t-urgencia">Urgência</h2>
+          <p id="v-urgencia"></p>
+          <p><a id="e-urgencia" class="pedido-link" href="/pedido#urgencia">Editar urgência</a></p>
+        </section>
+        <section class="pedido-revisao-bloco" aria-labelledby="t-descricao">
+          <h2 id="t-descricao">Descrição</h2>
+          <p id="v-descricao"></p>
+          <p><a id="e-descricao" class="pedido-link" href="/pedido#descricao">Editar descrição</a></p>
+        </section>
+        <section class="pedido-revisao-bloco" aria-labelledby="t-identificacao">
+          <h2 id="t-identificacao">Nome e e-mail</h2>
+          <p id="v-identificacao"></p>
+          <p><a id="e-identificacao" class="pedido-link" href="/pedido#nome">Editar nome e e-mail</a></p>
+        </section>
+
+        <p id="confirmado" role="status" hidden></p>
+        <p id="confirmar-erro" class="pedido-erro"></p>
+        <p>
+          <button id="confirmar" class="pedido-botao" type="button">Confirmar pedido</button>
+        </p>
+        <p><a id="editar-pedido" class="pedido-link" href="/pedido" hidden>Editar pedido</a></p>
+      </section>
+
+      <section id="secao-vazia" aria-labelledby="titulo" hidden>
+        <p>Não encontramos um pedido em andamento. Comece um novo pedido.</p>
+        <p><a class="pedido-link" href="/pedido">Comece um novo pedido</a></p>
+      </section>
+
+      <section id="secao-email" aria-labelledby="titulo" hidden>
+        <h2>Confira seu e-mail</h2>
+        <p>Enviamos um link para o seu e-mail. Abra o link e volte ao seu pedido.</p>
+        <p><a class="pedido-link" href="/pedido">Voltar ao pedido</a></p>
+      </section>
+
+      <section id="secao-campos" aria-labelledby="titulo" hidden>
+        <p id="campos-texto" role="status"></p>
+        <p><a class="pedido-link" href="/pedido">Voltar ao pedido</a></p>
+      </section>
+    </main>
+    <script type="module" src="/pedido-revisao.js"></script>
+  </body>
+</html>
