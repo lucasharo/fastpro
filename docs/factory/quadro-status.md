@@ -106,16 +106,13 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 
-## Code Review (1)
+## Code Review (0)
+
+## QA (3)
 
 | Issue | Título |
 |---|---|
 | #150 | [E6] Remover o histórico de acesso às fotos (media_access_log e resumo diário) |
-
-## QA (2)
-
-| Issue | Título |
-|---|---|
 | #44 | [E3] Publicação idempotente com 7 dias |
 | #58 | [E5] Acesso comercial derivado |
 
