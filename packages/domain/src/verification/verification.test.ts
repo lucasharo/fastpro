@@ -44,6 +44,18 @@ describe('prazo-meta em dias uteis (dec. 384, 397; paridade com private.verifica
   it('domingo conta como segunda 00:00', () => {
     expect(prazoMeta(brasilia('2026-11-15T23:59:00'))).toEqual(brasilia('2026-11-18T00:00:00'));
   });
+  // Mesma tabela de verification-sla-paridade.dbtest.mjs (T-19): as duas pontas comparam os mesmos casos.
+  it.each([
+    ['2026-11-12T10:00:00', '2026-11-16T10:00:00'],
+    ['2026-11-13T10:00:00', '2026-11-17T10:00:00'],
+    ['2026-11-13T23:59:00', '2026-11-17T23:59:00'],
+    ['2026-11-14T00:00:00', '2026-11-18T00:00:00'],
+    ['2026-11-14T10:00:00', '2026-11-18T00:00:00'],
+    ['2026-11-15T23:59:00', '2026-11-18T00:00:00'],
+    ['2026-11-16T09:00:00', '2026-11-18T09:00:00'],
+  ])('tabela de fronteira T-19: %s vira %s', (entrada, esperado) => {
+    expect(prazoMeta(brasilia(entrada))).toEqual(brasilia(esperado));
+  });
 });
 
 describe('motivos e complemento (dec. 375 a 377; CA-H039-04)', () => {
