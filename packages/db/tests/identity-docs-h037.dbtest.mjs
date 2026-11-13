@@ -11,6 +11,7 @@ import { Buffer } from 'node:buffer';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { setTimeout as pausa } from 'node:timers/promises';
 import { connect } from '../scripts/lib/env.mjs';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -434,11 +435,304 @@ describe('rollback (T-21)', () => {
       // Sem linhas e sem objetos nos buckets (nenhum upload neste teste; o Supabase bloqueia DELETE direto
       // em storage.objects). A guarda de dados e a ordem de remocao sao o que se prova aqui.
       await client.query('delete from app.identity_document');
-      await client.query(sql);
-      const sumiu = await client.query(`select to_regclass('app.identity_document') as t`);
-      assert.equal(sumiu.rows[0].t, null);
+      // Auditoria e imutavel: se a suite de concorrencia gravou eventos identity.doc.*, o rollback deve recusar
+      // pela chave estrangeira do catalogo (107 §4.4, "o que e desejado"). Sem eventos, o rollback completo roda.
+      const eventosDoc = await client.query(
+        `select count(*)::int as n from audit.audit_event where action like 'identity.doc.%'`,
+      );
+      if (eventosDoc.rows[0].n > 0) {
+        const fk = await erroDe(sql);
+        assert.ok(fk, 'rollback com eventos de auditoria deveria recusar');
+        assert.match(fk.message, /audit_event_action_fk/);
+        process.stdout.write(`# T-21 rollback recusado pela FK do catalogo (eventos de auditoria: ${eventosDoc.rows[0].n})\n`);
+      } else {
+        await client.query(sql);
+        const sumiu = await client.query(`select to_regclass('app.identity_document') as t`);
+        assert.equal(sumiu.rows[0].t, null);
+      }
     } finally {
       await client.query('rollback');
     }
   });
+});
+
+// ---------------------------------------------------------------------------
+// Concorrencia real e falha injetada (T-05, T-14, T-20, T-24; ciclo de correcao 2 da #50).
+// Os cenarios de concorrencia GRAVAM no banco de desenvolvimento (politica permanente para dados sinteticos):
+// usam um marcador unico por execucao no dominio do e-mail sintetico e removem somente os ids que criaram.
+// audit.audit_event e imutavel (tg_block_mutation): os eventos que esses cenarios gravam nao podem ser
+// removidos; o teste conta e reporta esses eventos em vez de apaga-los.
+// Padrao: uma conexao "trava" a linha (ou a trava consultiva do teto) numa transacao aberta; as conexoes de
+// trabalho bloqueiam de verdade (confirmado em pg_locks) e so depois a trava e liberada.
+// ---------------------------------------------------------------------------
+const MARCADOR = `h037-conc-${randomUUID().slice(0, 8)}`;
+const APP_NAME = `h037:${MARCADOR}`;
+const CRIADOS = { usuarios: [] };
+const CONEXOES = [];
+const EMITIR_SQL = 'select out_code, out_id, out_status from private.idoc_issue($1, $2, $3, $4, $5, $6)';
+const RESERVA = 2097152;
+
+async function nova() {
+  const c = await connect();
+  CONEXOES.push(c);
+  await c.query(`select set_config('application_name', $1, false)`, [APP_NAME]);
+  return c;
+}
+
+/** Espera ate n sessoes do marcador estarem bloqueadas em lock. Observador: a conexao principal, fora de transacao. */
+async function esperarBloqueios(n, limiteMs = 8000) {
+  const inicio = Date.now();
+  for (;;) {
+    const r = await client.query(
+      `select count(*)::int as n from pg_locks l join pg_stat_activity a on a.pid = l.pid
+        where not l.granted and a.application_name = $1`,
+      [APP_NAME],
+    );
+    if (r.rows[0].n >= n || Date.now() - inicio > limiteMs) return r.rows[0].n;
+    await pausa(40);
+  }
+}
+
+async function perfilCometido(estado = 'pendente') {
+  const id = randomUUID();
+  CRIADOS.usuarios.push(id);
+  await client.query(
+    `insert into app.app_user (id, email, auth_user_id, status, email_verified_at, created_at)
+     values ($1, $2, $3, 'ativo', $4, now())`,
+    [id, `${randomUUID()}@${MARCADOR}.example.test`, randomUUID(), AGORA],
+  );
+  await client.query(
+    `insert into app.professional_profile (user_id, verification_status, created_at, updated_at)
+     values ($1, $2, now(), now())`,
+    [id, estado],
+  );
+  return id;
+}
+
+async function contagem() {
+  const r = await client.query(
+    `select (select count(*)::int from app.identity_document) as docs,
+            (select count(*)::int from app.app_user where email like $1) as usuarios,
+            (select count(*)::int from app.professional_profile p join app.app_user u on u.id = p.user_id
+              where u.email like $1) as perfis`,
+    [`%@${MARCADOR}.example.test`],
+  );
+  return r.rows[0];
+}
+
+/** Remove SOMENTE o que este run criou (ids guardados). Auditoria nao e removida (imutavel). */
+async function limpar() {
+  const ids = CRIADOS.usuarios;
+  if (ids.length === 0) return { docs: 0, perfis: 0, usuarios: 0 };
+  const docs = await client.query('delete from app.identity_document where professional_id = any($1::uuid[])', [ids]);
+  const perfis = await client.query('delete from app.professional_profile where user_id = any($1::uuid[])', [ids]);
+  const usuarios = await client.query('delete from app.app_user where id = any($1::uuid[])', [ids]);
+  CRIADOS.usuarios = [];
+  return { docs: docs.rowCount, perfis: perfis.rowCount, usuarios: usuarios.rowCount };
+}
+
+const comoResultado = (p) => p.then((r) => r.rows[0], (e) => ({ erro: e.message }));
+
+describe('concorrencia real com conexoes separadas (T-05, T-20, T-24; grava e limpa o que criou)', () => {
+  let antes;
+  before(async () => {
+    antes = await contagem();
+  });
+  after(async () => {
+    for (const c of CONEXOES.splice(0)) await c.end().catch(() => {});
+    const removidos = await limpar();
+    const depois = await contagem();
+    process.stdout.write(
+      `# h037 concorrencia marcador=${MARCADOR} antes=${JSON.stringify(antes)} removidos=${JSON.stringify(removidos)} depois=${JSON.stringify(depois)}\n`,
+    );
+    assert.deepEqual(depois, antes, 'a limpeza deve devolver a contagem inicial');
+  });
+
+  test('6 emissoes simultaneas com 4 vivos: exatamente 1 aceita, 5 doc_limit, 5 vivos no banco (T-05, CA-05)', async () => {
+    const u = await perfilCometido();
+    for (let i = 0; i < 4; i++) await client.query(EMITIR_SQL, [u, randomUUID(), JPEG, 1000, AGORA, CAP]);
+    const trava = await nova();
+    await trava.query('begin');
+    await trava.query('select 1 from app.professional_profile where user_id = $1 for update', [u]);
+    const trabalhadores = await Promise.all(Array.from({ length: 6 }, () => nova()));
+    let promessas;
+    let bloqueadas;
+    try {
+      promessas = trabalhadores.map((c) =>
+        comoResultado(c.query(EMITIR_SQL, [u, randomUUID(), JPEG, 1000, AGORA, CAP])));
+      bloqueadas = await esperarBloqueios(6);
+    } finally {
+      await trava.query('rollback');
+    }
+    const resultados = await Promise.all(promessas);
+    process.stdout.write(`# T-05 sessoes bloqueadas antes de liberar a trava: ${bloqueadas}\n`);
+    assert.ok(bloqueadas >= 6, `esperava 6 sessoes bloqueadas, viu ${bloqueadas}`);
+    assert.deepEqual(
+      resultados.map((r) => r.out_code).sort(),
+      ['doc_limit', 'doc_limit', 'doc_limit', 'doc_limit', 'doc_limit', 'new'],
+    );
+    const vivos = await client.query(
+      `select count(*)::int as n from app.identity_document
+        where professional_id = $1 and purge_requested_at is null and status in ('pendente_envio', 'recebido')`,
+      [u],
+    );
+    assert.equal(vivos.rows[0].n, 5);
+  });
+
+  test('duas emissoes simultaneas no limite do teto global: exatamente uma aceita (T-20, RN-15)', async () => {
+    const soma = async () =>
+      Number(
+        (await client.query(
+          `select coalesce(sum(d.stored_bytes), 0)::bigint + ${RESERVA}::bigint
+                    * count(*) filter (where d.status = 'pendente_envio') as total
+             from app.identity_document d`,
+        )).rows[0].total,
+      );
+    const base = await soma();
+    const cap = base + RESERVA; // cabe exatamente uma reserva
+    const p1 = await perfilCometido();
+    const p2 = await perfilCometido();
+    const trava = await nova();
+    await trava.query('begin');
+    await trava.query(`select pg_advisory_xact_lock(hashtext('identity_docs_teto_global'))`);
+    const trabalhadores = await Promise.all([nova(), nova()]);
+    let promessas;
+    let bloqueadas;
+    try {
+      promessas = [[trabalhadores[0], p1], [trabalhadores[1], p2]].map(([c, u]) =>
+        comoResultado(c.query(EMITIR_SQL, [u, randomUUID(), JPEG, 1000, AGORA, cap])));
+      bloqueadas = await esperarBloqueios(2);
+    } finally {
+      await trava.query('rollback');
+    }
+    const resultados = await Promise.all(promessas);
+    process.stdout.write(`# T-20 sessoes bloqueadas no teto: ${bloqueadas}\n`);
+    assert.ok(bloqueadas >= 2, `esperava 2 sessoes bloqueadas, viu ${bloqueadas}`);
+    assert.deepEqual(resultados.map((r) => r.out_code).sort(), ['cap', 'new']);
+    assert.equal(await soma(), base + RESERVA, 'o total nao pode passar do que coube no teto');
+  });
+
+  test('duas finalizacoes simultaneas: so uma inicia a tentativa; depois so uma grava recebido (T-24, D-5)', async () => {
+    const u = await perfilCometido();
+    const emitido = await client.query(EMITIR_SQL, [u, randomUUID(), PDF, 1000, AGORA, CAP]);
+    const id = emitido.rows[0].out_id;
+
+    const trava = await nova();
+    await trava.query('begin');
+    await trava.query('select 1 from app.identity_document where id = $1 for update', [id]);
+    const iniciadores = await Promise.all(Array.from({ length: 4 }, () => nova()));
+    let inicios;
+    let bloqueadas;
+    try {
+      inicios = iniciadores.map((c) =>
+        comoResultado(c.query('select out_code, out_attempt from private.idoc_confirm_begin($1, $2, $3, 30)', [u, id, AGORA])));
+      bloqueadas = await esperarBloqueios(4);
+    } finally {
+      await trava.query('rollback');
+    }
+    const iniciados = await Promise.all(inicios);
+    process.stdout.write(`# T-24 sessoes bloqueadas no inicio da finalizacao: ${bloqueadas}\n`);
+    assert.ok(bloqueadas >= 4, `esperava 4 sessoes bloqueadas, viu ${bloqueadas}`);
+    assert.deepEqual(iniciados.map((r) => r.out_code).sort(), ['begin', 'busy', 'busy', 'busy']);
+    const tentativa = iniciados.find((r) => r.out_code === 'begin').out_attempt;
+
+    const trava2 = await nova();
+    await trava2.query('begin');
+    await trava2.query('select 1 from app.identity_document where id = $1 for update', [id]);
+    const concluidores = await Promise.all([nova(), nova()]);
+    let conclusoes;
+    let bloqueadas2;
+    try {
+      conclusoes = concluidores.map((c) =>
+        c.query('select private.idoc_confirm_done($1, $2, $3, $4, $5, $6, $7) as r',
+          [u, id, tentativa, PDF, 1000, Buffer.alloc(32, 9), AGORA]).then((r) => r.rows[0].r, (e) => `erro:${e.message}`));
+      bloqueadas2 = await esperarBloqueios(2);
+    } finally {
+      await trava2.query('rollback');
+    }
+    const finais = await Promise.all(conclusoes);
+    process.stdout.write(`# T-24 sessoes bloqueadas na conclusao: ${bloqueadas2}\n`);
+    assert.ok(bloqueadas2 >= 2, `esperava 2 sessoes bloqueadas, viu ${bloqueadas2}`);
+    assert.deepEqual(finais.sort(), ['gone', 'received']);
+
+    const st = await client.query('select status from app.identity_document where id = $1', [id]);
+    assert.equal(st.rows[0].status, 'recebido');
+    const ev = await client.query(
+      `select count(*)::int as n from audit.audit_event
+        where object_type = 'identity_document' and object_id = $1 and action = 'identity.doc.received'`,
+      [id],
+    );
+    assert.equal(ev.rows[0].n, 1, 'um unico evento de recebimento');
+    const repetido = await client.query('select out_code from private.idoc_confirm_begin($1, $2, $3, 30)', [u, id, AGORA]);
+    assert.equal(repetido.rows[0].out_code, 'replay');
+  });
+});
+
+describe('falha injetada em private.audit_append desfaz a acao (T-14, CA-14)', () => {
+  test('recebimento, recusa, exclusao e emissoes recusadas falham: sem mudanca de linha e sem evento', () =>
+    tx(async () => {
+      const u = await profissional();
+      const d1 = await emitirOk(u, JPEG, 1000);
+      const d2 = await emitirOk(u, PDF, 1000);
+      const b2 = await iniciar(u, d2);
+      const lim = await profissional();
+      for (let i = 0; i < 5; i++) await emitirOk(lim);
+      const aprov = await profissional({ estado: 'aprovada' });
+      const linhas = async (usuario) =>
+        (await client.query(
+          `select id, status, purge_requested_at, stored_type, attempts
+             from app.identity_document where professional_id = $1 order by id`,
+          [usuario],
+        )).rows;
+      const eventos = async () =>
+        (await client.query(
+          'select count(*)::int as n from audit.audit_event where object_id = any($1::uuid[])',
+          [[d1, d2]],
+        )).rows[0].n;
+      const antes = await linhas(u);
+      const antesLim = await linhas(lim);
+      assert.equal(antes.length, 2);
+      assert.equal(antesLim.length, 5);
+      assert.equal(await eventos(), 0);
+
+      // Gatilho temporario: toda gravacao em audit.audit_event falha. Some no rollback da transacao de teste.
+      await client.query(
+        `create function private.h037_falha_auditoria() returns trigger language plpgsql as
+         $$ begin raise exception 'falha_injetada_h037'; end $$`,
+      );
+      await client.query(
+        `create trigger h037_falha_auditoria before insert on audit.audit_event
+         for each row execute function private.h037_falha_auditoria()`,
+      );
+
+      // Controle: a falha de fato dispara (sem isso, os cenarios abaixo seriam vacuos).
+      const controle = await erroDe(
+        `select private.audit_append($1, 'professional', 'identity.doc.deleted', 'identity_document', $2,
+           '{}'::jsonb, '{}'::jsonb, null, null)`,
+        [`professional:${u}`, d1],
+      );
+      assert.equal(controle?.message, 'falha_injetada_h037', 'o controle deveria disparar a falha');
+
+      const recebimento = await erroDe(
+        'select private.idoc_confirm_done($1, $2, $3, $4, $5, $6, $7)',
+        [u, d2, b2.rows[0].out_attempt, PDF, 1000, Buffer.alloc(32, 4), AGORA],
+      );
+      const recusa = await erroDe(
+        'select private.idoc_confirm_refuse($1, $2, $3, $4, $5)',
+        [u, d2, b2.rows[0].out_attempt, 'pdf_ativo', AGORA],
+      );
+      const exclusao = await erroDe('select private.idoc_delete($1, $2, $3)', [u, d1, AGORA]);
+      const emissaoLimite = await erroDe(EMITIR_SQL, [lim, randomUUID(), JPEG, 1000, AGORA, CAP]);
+      const emissaoEstado = await erroDe(EMITIR_SQL, [aprov, randomUUID(), JPEG, 1000, AGORA, CAP]);
+      assert.equal(recebimento?.message, 'falha_injetada_h037', 'recebimento');
+      assert.equal(recusa?.message, 'falha_injetada_h037', 'recusa');
+      assert.equal(exclusao?.message, 'falha_injetada_h037', 'exclusao');
+      assert.equal(emissaoLimite?.message, 'falha_injetada_h037', 'emissao com recusa por limite');
+      assert.equal(emissaoEstado?.message, 'falha_injetada_h037', 'emissao com recusa por estado');
+
+      assert.deepEqual(await linhas(u), antes, 'nenhuma linha do profissional deve mudar');
+      assert.deepEqual(await linhas(lim), antesLim, 'a sexta emissao nao pode criar linha');
+      assert.equal((await linhas(aprov)).length, 0, 'emissao recusada por estado nao cria linha');
+      assert.equal(await eventos(), 0, 'nenhum evento de auditoria pode ter ficado');
+    }));
 });
