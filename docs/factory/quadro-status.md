@@ -108,15 +108,14 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 ## Code Review (0)
 
-## QA (3)
+## QA (2)
 
 | Issue | Título |
 |---|---|
 | #150 | [E6] Remover o histórico de acesso às fotos (media_access_log e resumo diário) |
 | #44 | [E3] Publicação idempotente com 7 dias |
-| #58 | [E5] Acesso comercial derivado |
 
-## Concluído (58)
+## Concluído (59)
 
 | Issue | Título |
 |---|---|
@@ -161,6 +160,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #43 | [E3] Revisão e confirmação expressa |
 | #48 | [E4] Cadastro profissional com CPF/CNPJ cifrado |
 | #49 | [E4] Perfil: serviços, base e raio |
+| #58 | [E5] Acesso comercial derivado |
 | #50 | [E4] Documentos de identidade |
 | #83 | [E7] Acesso excepcional a conversa |
 | #102 | [E11] Pipeline de notificações e cooldown |
