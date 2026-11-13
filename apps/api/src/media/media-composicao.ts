@@ -5,7 +5,15 @@
 // Nunca le, grava nem registra valores: so os nomes aparecem nas pendencias (a chave curta vai marcada).
 // A galeria (decisao 191) so monta com as portas injetadas em opcoes; sem elas, a pendencia da galeria fica
 // visivel e as rotas da galeria seguem 404 uniforme. Nunca usa DATABASE_URL_APP_SYSTEM.
-import { PgDraftRate, PgMediaStore, SupabaseMediaReduceStorage, SupabaseQuarantineStorage, type SqlClient } from '@fastpro/db';
+import {
+  PgDraftRate,
+  PgMediaGallery,
+  PgMediaStore,
+  SupabaseMediaReduceStorage,
+  SupabaseQuarantineStorage,
+  SupabaseReducedPhotoReader,
+  type SqlClient,
+} from '@fastpro/db';
 import { siteOriginOf, type DraftRatePort, type MediaStorePort, type QuarantineStoragePort } from '@fastpro/domain';
 import { faltantesRascunho } from '../drafts/compose.js';
 import { createDraftHasher } from '../drafts/draft-hash.js';
@@ -79,7 +87,8 @@ export interface MediaMontagem {
  * Ponto de montagem da midia. Funcao sobre o ambiente recebido: nao abre conexao, nao faz I/O e nao registra
  * valores. Construir os adaptadores nao consulta o banco nem o Storage.
  */
-export function montarMidia(env: Ambiente, opcoes: MediaOpcoes = {}): MediaMontagem {
+/** Pendencias (so nomes, nunca valores) que mantem a midia fechada: liberacao, itens e SITE_URL valida. */
+export function pendenciasDaMidia(env: Ambiente): string[] {
   const pendencias: string[] = [];
   if (env[MEDIA_LIBERACAO_ENV] !== MEDIA_LIBERACAO_VALOR) {
     pendencias.push(`${MEDIA_LIBERACAO_ENV} (liberacao explicita)`);
@@ -92,16 +101,44 @@ export function montarMidia(env: Ambiente, opcoes: MediaOpcoes = {}): MediaMonta
       pendencias.push('SITE_URL (invalida)');
     }
   }
+  return pendencias;
+}
+
+/** Ambiente do Storage da midia (mesmos nomes da quarentena e da reducao). So o construtor recebe a chave. */
+function storageDaMidia(env: Ambiente, fetchImpl: typeof fetch | undefined) {
+  return {
+    baseUrl: (env.SUPABASE_URL ?? '').trim().replace(/\/+$/, ''),
+    serviceKey: env.SUPABASE_SECRET_KEY ?? '',
+    ...(fetchImpl !== undefined ? { fetchImpl } : {}),
+  };
+}
+
+/**
+ * Portas da galeria (H-029) para a borda: galeria do dono sobre o papel app_api e leitor do bucket reduzido.
+ * Undefined enquanto a midia nao liga (liberacao, item ou SITE_URL): a galeria segue 404 uniforme.
+ * Nao consulta banco nem Storage; so constroi os adaptadores sobre o cliente memoizado da borda.
+ */
+export function portasGaleriaMidia(
+  env: Ambiente,
+  abrirCliente: ((connectionString: string) => SqlClient) | undefined,
+  fetchImpl?: typeof fetch,
+): MediaGaleriaPortas | undefined {
+  if (abrirCliente === undefined || pendenciasDaMidia(env).length > 0) return undefined;
+  const cliente = abrirCliente(env.DATABASE_URL_APP_API ?? '');
+  return {
+    gallery: new PgMediaGallery(cliente),
+    reader: new SupabaseReducedPhotoReader(storageDaMidia(env, fetchImpl)),
+  };
+}
+
+export function montarMidia(env: Ambiente, opcoes: MediaOpcoes = {}): MediaMontagem {
+  const pendencias = pendenciasDaMidia(env);
   if (pendencias.length > 0) return { options: undefined, pendencias };
   if (opcoes.abrirCliente === undefined) return { options: undefined, pendencias: [MEDIA_FABRICA_PENDENCIA] };
 
   const relogio = opcoes.relogio ?? { nowMs: () => Date.now() };
   const cliente = opcoes.abrirCliente(env.DATABASE_URL_APP_API ?? '');
-  const storage = {
-    baseUrl: (env.SUPABASE_URL ?? '').trim().replace(/\/+$/, ''),
-    serviceKey: env.SUPABASE_SECRET_KEY ?? '',
-    ...(opcoes.fetchImpl !== undefined ? { fetchImpl: opcoes.fetchImpl } : {}),
-  };
+  const storage = storageDaMidia(env, opcoes.fetchImpl);
   const store = opcoes.portas?.store ?? new PgMediaStore(cliente);
   const reduceStorage = opcoes.portas?.reduceStorage ?? new SupabaseMediaReduceStorage(storage);
   const reducao = opcoes.reducao ?? { gate: new ReduceGate(), contadores: new ReduceCounters() };

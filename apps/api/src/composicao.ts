@@ -54,7 +54,7 @@ import type { ProfessionalProfileRouteOptions } from './professional-profile-rou
 import { montarOfertaProfissional } from './professional-offering-composicao.js';
 import type { ProfessionalOfferingRouteOptions } from './professional-offering-route.js';
 // E3 (#141) | Midia: upload, quarentena e galeria (so liga com MEDIA_UPLOAD_ENABLED=1 e todos os itens; decisao 190).
-import { montarMidia } from './media/media-composicao.js';
+import { montarMidia, portasGaleriaMidia } from './media/media-composicao.js';
 import type { MediaRouteOptions } from './media/media-route.js';
 import type { ReduceCounters } from './media/media-reduce-service.js';
 import type { ReduceGate } from './media/reduce-gate.js';
@@ -225,7 +225,13 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   const oferta = montarOfertaProfissional(env, { abrirCliente: opcoes.abrirClienteSql, relogio: opcoes.clock });
 
   // E3: midia. Liga so com MEDIA_UPLOAD_ENABLED=1 e os itens completos (decisao 190); sem isso, 404.
-  const midia = montarMidia(env, { abrirCliente: opcoes.abrirClienteApi, reducao: opcoes.reducaoMidia });
+  // A galeria (H-029) entra junto, pelas portas montadas na borda; sem a midia ligada, ela tambem fica 404.
+  const galeriaMidia = portasGaleriaMidia(env, opcoes.abrirClienteApi);
+  const midia = montarMidia(env, {
+    abrirCliente: opcoes.abrirClienteApi,
+    reducao: opcoes.reducaoMidia,
+    ...(galeriaMidia !== undefined ? { galeria: galeriaMidia } : {}),
+  });
 
   return {
     catalog,
