@@ -371,3 +371,40 @@ Recomendação anterior (rodada 3): sim, com ressalva. Superada pelo ciclo de co
 - Falhas restantes: #145 (T-BK-09, decisão humana), #146 (T-H018-13) e #147 (D-10, testes 2 e 3).
 - Pode seguir para Code Review e depois QA? Recomendação do DEV: sim, pelo escopo deste ciclo (o achado do Code Review foi corrigido e verificado). Ressalvas: #145 continua pendente de decisão humana; `pnpm check:secrets` (que faz parte do `check:all`, #149) continua vermelho por causa de `apps/` e de outros arquivos, fora do escopo desta Issue.
 - GitHub: a Issue #148 recebeu um comentário com a evidência. Não foi fechada: fechar a Issue equivale a Concluído, que só o humano decide (regra do projeto). Quem fecha é o humano, se concordar.
+
+## 13. Quarta rodada (Issue 140, DEV, 2026-11-13): D-02b, catálogo do DEV e T-02 da auditoria
+
+### 13.1 Escopo
+Só fixture e expectativa de testes (decisão 264). Arquivos tocados: `packages/db/tests/audit.dbtest.mjs` e `packages/db/tests/catalog-service.dbtest.mjs`. Nada em `apps/`, em `packages/*/src`, em migração, nem `db:migrate`. Nenhum dado do DEV foi apagado (pergunta 261 segue sem resposta). Nenhum item foi movido no quadro.
+
+### 13.2 D-02b (auditoria): lista fechada de funções de `private`
+- Causa: `private.commercial_access(uuid, timestamptz)` tem EXECUTE para `app_api` e `app_system` (migração `20261113170000_billing_create_access_grant.sql`; decisão 279; desenho 114 §4 e §6). A lista fechada do teste não a incluía.
+- Correção: entrada `commercial_access` na lista, com comentário que cita a decisão 279 e o desenho 114. Commit `a54c75e`.
+- Resultado: D-02b passa.
+
+### 13.3 T-H018-11 e T-H018-12 (catálogo)
+- Causa: as contagens globais de `app.service_group`, `app.service` e `app.service_synonym` pegavam grupos e serviços sintéticos com marcador H031 (nomes "Grupo H031 ..." e "Servico H031 ...") deixados no DEV pelos testes da Issue 44.
+- Correção: contagens de grupos e serviços por `seed_key is not null`; sinônimos (que não têm `seed_key`) contados pela junção com serviços semeados. Commit `61877cd`.
+- Resultado: T-H018-11 e T-H018-12 passam. T-H018-13 não foi alterado: nesta rodada falha com 23505 em `service_group_name_key`, ao aplicar a semente (linha 563 do teste). A Issue 146 (aberta; título "T-H018-13 depende de semente ausente no DEV") registra o caso. A mensagem observada aponta para conflito de nome, não para semente ausente; o dono da Issue 146 deve confirmar a causa antes de mexer no teste.
+
+### 13.4 T-02 (auditoria): classificação da causa
+- Classificação: **defeito do próprio teste** (ordenação por alias textual). Não é contenção de concorrência, não é defeito do verificador (SQL nem TypeScript) e não é estado inválido da cadeia.
+- Evidências:
+  - A falha estava na asserção do espelho TypeScript (`verifyChain(...).ok === true`). A verificação SQL (`private.audit_verify_chain`) devolvia `ok: true` nas mesmas rodadas.
+  - `ROW_SQL` declara `seq::text as seq`. Em `order by seq`, o PostgreSQL ordena pelo alias (texto: 1, 10, 11, ..., 2, 20). `verifyChain` exige ordem por seq e devolve `lacuna_seq` na seq 2.
+  - Diagnóstico somente leitura no DEV (SELECT apenas, script no scratchpad): 52 linhas, seq 1 a 52, sem lacunas, cabeça em 52. Com a ordem textual, a verificação TypeScript falha. Com `order by audit.audit_event.seq`, 52 de 52 linhas têm hash e encadeamento corretos e `verifyChain` devolve `ok: true, checked: 52`.
+  - A falha não depende de outro processo: qualquer cadeia com 10 ou mais linhas a reproduz. A hipótese da Rodada 65 (efeito de eventos gravados pelos testes concorrentes) não se confirmou. Os eventos reais gravados pelos testes estão na cadeia e são válidos.
+- Correção: as consultas `where id = any($1)` e a leitura completa do espelho TypeScript passam a ordenar por `audit.audit_event.seq`, com comentário explicativo. Os outros arquivos com `order by seq` (ex.: `approval-dual-h105`, `audit-query`) selecionam `seq` sem alias textual e não são afetados.
+- Issue de origem: **não aberta**. A causa está no teste. O verificador `verifyChain` (`packages/db/src/audit.ts`) exige ordem por seq e está correto; não há outro chamador de `verifyChain` em `apps/` ou `packages/*/src`.
+- Série (`node --test --test-concurrency=1 packages/db/tests/audit.dbtest.mjs`), três rodadas após a correção: 27 testes, 25 passam, 0 falham, 2 ignorados (T-21 e T-23, exigem `AUDIT_ALLOW_COMMIT=1`), código de saída 0 nas três. T-02 passou nas três.
+
+### 13.5 Comandos e resultados (2026-11-13)
+- `npx eslint packages/db/tests/audit.dbtest.mjs packages/db/tests/catalog-service.dbtest.mjs`: código 0.
+- `node --test --test-concurrency=1 packages/db/tests/audit.dbtest.mjs`, após a correção da D-02b e antes da correção do T-02: 27 testes, 24 passam, 1 falha (T-02), 2 ignorados.
+- Mesmo comando, após a correção do T-02, três rodadas: 27 / 25 / 0 / 2 nas três; código 0 nas três.
+- `node --test --test-concurrency=1 packages/db/tests/catalog-service.dbtest.mjs`, após a correção: 13 testes, 12 passam, 1 falha (T-H018-13, Issue 146), 0 ignorados, código 1.
+
+### 13.6 Pendências
+- Esta rodada rodou só os dois arquivos tocados. A série completa do DEV (65 arquivos) não foi rodada de novo nesta etapa.
+- T-H018-13 segue vermelho (Issue 146, fora do escopo desta Issue).
+- Pergunta 261 segue sem resposta; nada foi apagado do DEV.

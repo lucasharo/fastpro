@@ -89,6 +89,9 @@ function append(c, a) {
 }
 
 const AT_SQL = `to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
+// ATENCAO: o alias `seq` (texto) esconde a coluna. Em `order by seq` o PostgreSQL ordena pelo alias
+// (texto: 1, 10, 11, ..., 2) e nao pela coluna bigint; por isso as consultas ordenam por
+// `audit.audit_event.seq` (Issue 140, triagem do T-02).
 const ROW_SQL = `select id, seq::text as seq, ${AT_SQL} as at, actor_ref, actor_role, action, object_type,
   object_id, before_state, after_state, reason_code, correlation_id, hash_version, prev_hash, row_hash
   from audit.audit_event`;
@@ -194,7 +197,7 @@ test('D-02b regressao: app_api executa apenas audit_append entre as funcoes de p
   // - rascunho (H-013, H-025, H-030): docs/factory/91-DESENHO-H013, 74-DESENHO-H025, 90-DESENHO-H030.
   // - midia (H-026, H-027, H-029): docs/factory/88-DESENHO-H026, 93-DESENHO-H027, 98-DESENHO-H029.
   // - acesso comercial (H-045, Issue 58): docs/factory/114-DESENHO-H045 §4 e §6; decisao 279 (app_api e app_system).
-  // Lista atualizada na #140 (triagem do db:test): a versao anterior so previa o catalogo do H-018.
+  // Lista atualizada na Issue 140 (triagem do db:test): a versao anterior so previa o catalogo do H-018.
   assert.deepEqual(
     res.rows.map((r) => r.proname).sort(),
     [
@@ -502,7 +505,9 @@ test('T-02 CA-08: seq consecutivo, encadeamento, paridade de hash SQL x TS e ver
         ).rows[0].id,
       );
     }
-    const rows = (await client.query(`${ROW_SQL} where id = any($1) order by seq`, [ids])).rows;
+    const rows = (
+      await client.query(`${ROW_SQL} where id = any($1) order by audit.audit_event.seq`, [ids])
+    ).rows;
     assert.equal(rows.length, 3);
     let prev = start.last_hash;
     let seq = BigInt(start.last_seq);
@@ -524,7 +529,7 @@ test('T-02 CA-08: seq consecutivo, encadeamento, paridade de hash SQL x TS e ver
       reason: null,
     });
     // O espelho TS tambem valida a cadeia inteira lida do banco.
-    const all = (await client.query(`${ROW_SQL} order by seq`)).rows.map((r) => ({
+    const all = (await client.query(`${ROW_SQL} order by audit.audit_event.seq`)).rows.map((r) => ({
       ...toFields(r),
       rowHash: r.row_hash,
     }));
