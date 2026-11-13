@@ -29,10 +29,15 @@ const DIA = 86400000;
 const T0 = Date.parse('2099-01-01T12:00:00.000Z');
 const at = (ms) => new Date(ms).toISOString();
 const CAP = 1000000;
+// Modelo de cabeca (#140, triagem do db:test). As colunas de identificacao (first_name, email,
+// email_hmac, email_verified_at) vem do H-030 (docs/factory/90-DESENHO-H030 §1.1); confirmed_at e
+// content_rev, do H-030; photo_rev, do H-029. Telefone, senha e coordenada continuam proibidos.
 const COLUNAS_ESPERADAS = [
-  'address_text', 'browser_nonce_hash', 'created_at', 'description', 'expires_at', 'id',
-  'ip_hmac', 'service_id', 'status', 'updated_at', 'urgency',
+  'address_text', 'browser_nonce_hash', 'confirmed_at', 'content_rev', 'created_at', 'description',
+  'email', 'email_hmac', 'email_verified_at', 'expires_at', 'first_name', 'id', 'ip_hmac',
+  'photo_rev', 'service_id', 'status', 'updated_at', 'urgency',
 ];
+const COLUNAS_PROIBIDAS = ['phone', 'telefone', 'password', 'senha', 'exact_point', 'lat', 'lon', 'latitude', 'longitude'];
 
 /** Transacao de teste: aplica a migracao e desfaz tudo no fim. Nada fica no banco compartilhado. */
 async function tx(fn) {
@@ -113,7 +118,10 @@ test('D-01 cria rascunho sem conta com colunas exatas e sem dado pessoal', () =>
       `select column_name from information_schema.columns
         where table_schema = 'app' and table_name = 'request_draft' order by column_name`);
     assert.deepEqual(colunas.map((c) => c.column_name), COLUNAS_ESPERADAS,
-      'so as colunas do modelo: nenhuma de e-mail, nome, telefone, senha ou coordenada');
+      'so as colunas do modelo de cabeca (H-025 + H-029/H-030): sem telefone, senha ou coordenada');
+    for (const proibida of COLUNAS_PROIBIDAS) {
+      assert.equal(colunas.some((c) => c.column_name === proibida), false, `coluna proibida: ${proibida}`);
+    }
 
     const lida = await ler(hash);
     assert.equal(lida.length, 1, 'o rascunho e lido pelo mesmo segredo');
@@ -456,7 +464,9 @@ test('D-10 aplicar a migracao duas vezes deixa o mesmo estado da primeira aplica
     const primeira = await estado();
     await client.query(MIGRACAO);
     const segunda = await estado();
-    assert.ok(primeira.funcoes && primeira.funcoes.length === 4, 'quatro funcoes de rascunho');
+    // As quatro funcoes do H-025 existem; migracoes posteriores (H-013, H-029, H-030) somam outras
+    // funcoes draft_*. Mesma regra de D-06: pelo menos as quatro.
+    assert.ok(primeira.funcoes && primeira.funcoes.length >= 4, 'as quatro funcoes de rascunho do H-025 existem');
     assert.deepEqual(segunda, primeira, 'segunda aplicacao nao altera nada');
   } finally {
     await client.query('rollback');
