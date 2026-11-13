@@ -157,7 +157,7 @@ test('CA-H110-01: sem nenhuma chave purge.* todos os blocos ficam desligados e n
     await eventoOutbox({ agregado: randomUUID(), seq: 1, despachado: T0 - 60 * DIA });
     const antes = await n('select count(*) as n from app.app_session');
     for (const nome of ['ops_purge_auth_challenge', 'ops_purge_session', 'ops_purge_draft', 'ops_purge_outbox_event',
-      'ops_purge_email_outbox', 'ops_purge_idempotency', 'ops_purge_media_access', 'ops_purge_provider_event',
+      'ops_purge_email_outbox', 'ops_purge_idempotency', 'ops_purge_provider_event',
       'ops_purge_media_mark']) {
       assert.equal((await chama(nome)).out_estado, 'desligado', nome);
     }
@@ -304,51 +304,11 @@ test('CA-H110-10: legal_hold do sujeito retem sessao e evento de outbox do agreg
     assert.equal(await n('select count(*) as n from app.app_session where id = $1', [sess]), 1);
   }));
 
-test('CA-H110-09: rollup de dias fechados soma igual; reexecucao nao duplica; detalhe so sai com a chave propria', () =>
-  tx(async () => {
-    await client.query(`create table ops.media_access_log (
-      id bigserial primary key, at timestamptz not null, professional_id uuid not null,
-      outcome text not null)`);
-    const prof = randomUUID();
-    for (let i = 0; i < 3; i += 1) {
-      await client.query('insert into ops.media_access_log (at, professional_id, outcome) values ($1, $2, $3)',
-        [at(T0 - 3 * DIA + i * 60000), prof, 'ok']);
-    }
-    await client.query('insert into ops.media_access_log (at, professional_id, outcome) values ($1, $2, $3)',
-      [at(T0 - 3 * DIA), prof, 'negado']);
-    await client.query('insert into ops.media_access_log (at, professional_id, outcome) values ($1, $2, $3)',
-      [at(T0 - 60000), prof, 'ok']);
-    await cfg('purge.media_access_rollup_after_seconds', 86400);
-    const r1 = await chama('ops_purge_media_access');
-    assert.equal(r1.out_estado, 'ok');
-    assert.equal(r1.out_removidos, 0, 'sem chave de detalhe nada e removido');
-    const somaRollup = await n('select coalesce(sum(n), 0) as n from ops.media_access_daily where professional_id = $1', [prof]);
-    assert.equal(somaRollup, 4, 'soma do rollup e igual as 4 linhas de dias fechados (a linha de hoje fica de fora)');
-    await chama('ops_purge_media_access');
-    assert.equal(
-      await n('select count(*) as n from ops.media_access_daily where professional_id = $1', [prof]),
-      2, 'reexecucao nao cria agregado duplicado (dois grupos: ok e negado)',
-    );
-    await cfg('purge.media_access_detail_seconds', 86400);
-    const r3 = await chama('ops_purge_media_access');
-    assert.equal(r3.out_removidos, 4, 'detalhe removido so dos dias ja agregados');
-    assert.equal(await n('select count(*) as n from ops.media_access_log'), 1, 'so o dia corrente permanece');
-  }));
-
 test('CA-H110-16: tabela ausente pula o bloco com pulado_ausente e nao falha', () =>
   tx(async () => {
     await cfg('purge.provider_event_seconds', 7 * 86400);
-    await cfg('purge.media_access_rollup_after_seconds', 86400);
     assert.equal((await chama('ops_purge_provider_event')).out_estado, 'pulado_ausente');
-    assert.equal((await chama('ops_purge_media_access')).out_estado, 'pulado_ausente');
     assert.equal((await chama('ops_purge_outbox_event')).out_estado, 'desligado');
-  }));
-
-test('CA-H110-16b: tabela sem o contrato do E8 vira pulado_incompativel', () =>
-  tx(async () => {
-    await cfg('purge.media_access_rollup_after_seconds', 86400);
-    await client.query('create table ops.media_access_log (id bigserial primary key, at timestamptz not null)');
-    assert.equal((await chama('ops_purge_media_access')).out_estado, 'pulado_incompativel');
   }));
 
 test('CA-H110-12: segunda execucao concorrente do mesmo bloco devolve ocupado e zeros', async () => {
@@ -420,6 +380,7 @@ test('auditoria: um evento por execucao so com contagens; catalogo aceita o form
     assert.deepEqual(ev.rows[0], { actor_ref: 'system:ops_purge', actor_role: 'system', object_type: 'ops_job' });
     const chaves = (await client.query(
       "select array_length(state_keys, 1) as n from audit.action_catalog where action = 'ops.purge.executed'")).rows[0];
+    // O catalogo de auditoria e allowlist de 37 chaves (decisao 329, Issue 150): a execucao emite 33.
     assert.equal(chaves.n, 37);
   }));
 
@@ -437,8 +398,6 @@ test('concessoes: so app_system executa; app_api, anon, authenticated e service_
         assert.equal((await client.query('select has_function_privilege($1, $2, $3) as ok', [papel, f, 'execute'])).rows[0].ok, false, `${papel} ${f}`);
       }
     }
-    assert.equal((await client.query(
-      "select has_table_privilege('app_api', 'ops.media_access_daily', 'select') as ok")).rows[0].ok, false);
   }));
 
 test('enfileiramento: chave do dia e continuacao com sufixo; execucao invalida e recusada', () =>
@@ -590,4 +549,41 @@ test('achado 1: bloco E9 desligado (sem TTL) devolve estado sem nomes', () =>
     assert.equal(r.out_estado, 'desligado');
     assert.deepEqual(r.out_nomes, []);
     assert.equal(r.out_retidos, 0);
+  }));
+
+// ---------------------------------------------------------------------------------------------------------------
+// Issue 150 (decisoes 158 opcao A, 325, 329 e 330): remocao do historico de acesso as fotos. Estes testes rodam
+// depois que a migracao 20261113180000 esta aplicada no banco (118-DESENHO-REMOCAO-HISTORICO-ACESSO.md, secao 7).
+const MIGRACAO_REMOCAO_HISTORICO = readFileSync(
+  join(REPO_ROOT, 'supabase', 'migrations', '20261113180000_ops_remove_media_access_history.sql'),
+  'utf8',
+);
+
+// Fora de tx(): tx() reaplica as migracoes antigas (20261112230000 e 20261113130000) e recriaria a tabela e a funcao.
+// Aqui se le o estado real do banco de desenvolvimento, depois da migracao 20261113180000.
+test('CA-H150-02/05/06: sem tabela de resumo, sem funcao E8, sem origem de log e sem chave purge.media_access_*', async () => {
+    assert.equal((await client.query("select to_regclass('ops.media_access_daily') is null as ok")).rows[0].ok, true);
+    assert.equal((await client.query("select to_regclass('ops.media_access_log') is null as ok")).rows[0].ok, true);
+    assert.equal((await client.query("select to_regclass('app.media_access_log') is null as ok")).rows[0].ok, true);
+    assert.equal(await n("select count(*) as n from pg_proc where proname = 'ops_purge_media_access'"), 0);
+    assert.equal(await n("select count(*) as n from ops.app_config where key like 'purge.media_access%'"), 0);
+});
+
+test('CA-H150-03: a migracao 20261113180000 roda duas vezes sem erro e o estado final e o mesmo', () =>
+  tx(async () => {
+    await client.query(MIGRACAO_REMOCAO_HISTORICO);
+    await client.query(MIGRACAO_REMOCAO_HISTORICO);
+    assert.equal((await client.query("select to_regclass('ops.media_access_daily') is null as ok")).rows[0].ok, true);
+  }));
+
+test('CA-H150-07: o evento ops.purge.executed aceita as 33 chaves emitidas (sem e8_*)', () =>
+  tx(async () => {
+    const job = randomUUID();
+    const contagens = { run_no: 1 };
+    for (const b of ['e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7', 'e9']) {
+      for (const s of ['removidos', 'retidos', 'falhos', 'pulado']) contagens[`${b}_${s}`] = 0;
+    }
+    assert.equal(Object.keys(contagens).length, 33);
+    const res = await client.query('select private.ops_purge_audit($1::uuid, $2::jsonb) as id', [job, JSON.stringify(contagens)]);
+    assert.ok(res.rows[0].id);
   }));

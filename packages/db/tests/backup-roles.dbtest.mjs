@@ -109,7 +109,6 @@ test('parametros de sessao: somente leitura por padrao nos dois papeis', async (
 //   app.professional_area, app.professional_area_history, app.professional_service: H-036 (#49), desenho §3
 //     (revoke total a papeis de API e de backup; base e raio sao dados de localizacao privados).
 //   app.identity_document: 107-DESENHO-H037 (revoke de app_backup_reader, sem leitura).
-//   ops.media_access_daily: 105-DESENHO-H110 (revoke de app_backup_reader).
 // NAO esta na lista: app.media_asset. A migracao 20261112120000 revoga o papel de backup, mas nao ha
 // decisao registrada que aceite excluir essa tabela do backup (#140, secao 12). Falha conhecida ate decidir.
 // Motivo: dados pessoais e geograficos restritos (geocodificacao). DECISAO A CONFIRMAR PELO ARQUITETO (#29): a exclusao do backup e aceita ate la.
@@ -121,7 +120,6 @@ const EXCECOES_BACKUP_LEITURA = new Set([
   'app.professional_area_history',
   'app.professional_service',
   'app.identity_document',
-  'ops.media_access_daily',
 ]);
 
 test('T-BK-09: app_backup_reader le toda tabela e sequencia de dominio (exceto as excecoes declaradas)', async () => {

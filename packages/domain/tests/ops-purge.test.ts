@@ -36,7 +36,7 @@ function executor(bloco: BlocoOpsPurge, lotes: ResultadoLoteOpsPurge[], chamadas
 }
 
 describe('executaOpsPurge', () => {
-  it('executa os blocos na ordem E1 a E9', async () => {
+  it('executa os blocos na ordem E1 a E7 e E9 (E8 removido pela Issue 150)', async () => {
     const chamadas: string[] = [];
     const executores = BLOCOS_OPS_PURGE.map((b) => executor(b, [ok(0)], chamadas));
     await executaOpsPurge({ executores, ...relogio() });
@@ -63,16 +63,16 @@ describe('executaOpsPurge', () => {
     const r = await executaOpsPurge({ executores, ...relogio() });
     expect(r.estados.e5).toBe('pulado_ausente');
     expect(r.contagens.e5_pulado).toBe(1);
-    expect(r.contagens.e8_pulado).toBe(0);
+    expect(Object.keys(r.contagens).some((c) => c.startsWith('e8_'))).toBe(false);
   });
 
   it('pulado_incompativel devolvido pelo executor marca pulado; desligado nao marca', async () => {
     const executores: ExecutorBlocoOpsPurge[] = [
-      { bloco: 'e8', async lote() { return { estado: 'pulado_incompativel', removidos: 0, retidos: 0, falhos: 0 }; } },
+      { bloco: 'e5', async lote() { return { estado: 'pulado_incompativel', removidos: 0, retidos: 0, falhos: 0 }; } },
       { bloco: 'e3', async lote() { return { estado: 'desligado', removidos: 0, retidos: 0, falhos: 0 }; } },
     ];
     const r = await executaOpsPurge({ executores, ...relogio() });
-    expect(r.contagens.e8_pulado).toBe(1);
+    expect(r.contagens.e5_pulado).toBe(1);
     expect(r.contagens.e3_pulado).toBe(0);
     expect(r.estados.e3).toBe('desligado');
   });
@@ -122,11 +122,12 @@ describe('executaOpsPurge', () => {
     expect(r.restante).toBe(false);
   });
 
-  it('evento de auditoria tem exatamente as 37 chaves inteiras do catalogo, sem texto livre (CA-H110-15)', async () => {
+  it('evento de auditoria tem 33 chaves inteiras (8 blocos x 4 e run_no), sem texto livre (CA-H110-15, Issue 150)', async () => {
     const executores = BLOCOS_OPS_PURGE.map((b) => executor(b, [ok(2, 1)], []));
     const r = await executaOpsPurge({ executores, numeroExecucao: 3, ...relogio() });
     const chaves = Object.keys(r.contagens);
-    expect(chaves).toHaveLength(37);
+    expect(chaves).toHaveLength(33);
+    expect(chaves.some((c) => c.startsWith('e8_'))).toBe(false);
     expect(chaves).toContain('run_no');
     for (const chave of chaves) {
       expect(chave).toMatch(/^(run_no|e[1-9]_(removidos|retidos|falhos|pulado))$/);

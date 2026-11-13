@@ -1,8 +1,11 @@
 // H-110 (Issue 119) | Tipos da orquestracao dos expurgos operacionais (docs/factory/105-DESENHO-H110.md §2 e §6).
 // Sem banco, sem Storage e sem dado pessoal: so contagens e codigos fixos.
 
-/** Blocos na ordem de execucao (E1 a E9). E6 soma a saida de eventos (E6a) e a de e-mail (E6b). */
-export const BLOCOS_OPS_PURGE = ['e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7', 'e8', 'e9'] as const;
+/**
+ * Blocos na ordem de execucao: E1 a E7 e E9. E8 (historico de acesso a fotos) foi removido pela Issue 150; a letra
+ * nao e reaproveitada. E6 soma a saida de eventos (E6a) e a de e-mail (E6b).
+ */
+export const BLOCOS_OPS_PURGE = ['e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7', 'e9'] as const;
 export type BlocoOpsPurge = (typeof BLOCOS_OPS_PURGE)[number];
 
 export type EstadoBlocoOpsPurge =
@@ -41,7 +44,7 @@ export interface OpcoesOpsPurge {
   readonly numeroExecucao?: number;
 }
 
-/** Chaves do evento de auditoria: run_no e, por bloco, _removidos, _retidos, _falhos, _pulado (37 chaves). */
+/** Chaves do evento de auditoria: run_no e, por bloco, _removidos, _retidos, _falhos, _pulado (33 chaves emitidas; o catalogo de auditoria aceita 37, Issue 150). */
 export type ContagensOpsPurge = Readonly<Record<string, number>>;
 
 export interface RelatorioOpsPurge {

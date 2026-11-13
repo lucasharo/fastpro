@@ -330,7 +330,7 @@ describe('bloco E9 (orfaos no bucket quarantine)', () => {
 });
 
 describe('OpsPurgeHandler', () => {
-  it('registra o kind ops.purge e audita uma vez com as 37 contagens inteiras, sem texto livre', async () => {
+  it('registra o kind ops.purge e audita uma vez com as 33 contagens inteiras (Issue 150, sem e8), sem texto livre', async () => {
     expect(OPS_PURGE_KIND).toBe('ops.purge');
     const { client, chamadas } = clienteFalso(padrao());
     const handler = new OpsPurgeHandler(depsDe(client, arquivosFalsos([])));
@@ -340,7 +340,7 @@ describe('OpsPurgeHandler', () => {
     expect(auditorias[0].params[0]).toBe('job-77');
     const contagens = JSON.parse(String(auditorias[0].params[1])) as Record<string, unknown>;
     const chaves = Object.keys(contagens);
-    expect(chaves).toHaveLength(37);
+    expect(chaves).toHaveLength(33);
     for (const chave of chaves) {
       expect(chave).toMatch(/^(run_no|e[1-9]_(removidos|retidos|falhos|pulado))$/);
       expect(Number.isInteger(contagens[chave])).toBe(true);

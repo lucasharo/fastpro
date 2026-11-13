@@ -1,6 +1,6 @@
 // H-110 (Issue 119) | Job ops.purge ligado ao tick (docs/factory/105-DESENHO-H110.md §2 e §8).
 // Registro no JobRegistry, padrao de registerRetentionHandlers. Os blocos E1 e E9 usam uma porta de Storage
-// injetada (QuarentenaArquivosPort); E2 a E8 sao so SQL. Nenhum segredo e lido aqui. Nenhum agendamento e criado
+// injetada (QuarentenaArquivosPort); E2 a E7 sao so SQL. Nenhum segredo e lido aqui. Nenhum agendamento e criado
 // aqui: o disparo diario e pg_cron (condicionado) ou manual pelo runbook.
 import {
   executaOpsPurge,
@@ -121,7 +121,7 @@ function blocoE9(deps: OpsPurgeDeps, agora: () => number): ExecutorBlocoOpsPurge
   };
 }
 
-/** Monta os executores E1 a E9 a partir das dependencias. */
+/** Monta os executores E1 a E7 e E9 a partir das dependencias (E8 removido pela Issue 150). */
 export function montaExecutoresOpsPurge(deps: OpsPurgeDeps): ExecutorBlocoOpsPurge[] {
   const agora = deps.now;
   const store = deps.store;
@@ -133,7 +133,6 @@ export function montaExecutoresOpsPurge(deps: OpsPurgeDeps): ExecutorBlocoOpsPur
     blocoSql('e5', store, agora, 'ops_purge_provider_event'),
     blocoE6(store, agora),
     { bloco: 'e7', lote: (limite) => store.bloco('ops_purge_idempotency', agora(), limite) },
-    blocoSql('e8', store, agora, 'ops_purge_media_access'),
     blocoE9(deps, agora),
   ];
 }

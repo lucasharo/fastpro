@@ -1,5 +1,5 @@
 // H-110 (Issue 119) | Orquestracao pura dos expurgos operacionais (docs/factory/105-DESENHO-H110.md §2).
-// Ordem fixa (E1 a E9), isolamento de falha por bloco (RN-H110-13, caso de borda 9), orcamento de tempo, teto de
+// Ordem fixa (E1 a E7 e E9), isolamento de falha por bloco (RN-H110-13, caso de borda 9), orcamento de tempo, teto de
 // lotes e contagens. Nao conhece banco nem Storage: os executores sao injetados.
 import {
   BLOCOS_OPS_PURGE,

@@ -35,8 +35,7 @@ export type FuncaoBlocoOpsPurge =
   | 'ops_purge_provider_event'
   | 'ops_purge_outbox_event'
   | 'ops_purge_email_outbox'
-  | 'ops_purge_idempotency'
-  | 'ops_purge_media_access';
+  | 'ops_purge_idempotency';
 
 export class PgOpsPurgeStore {
   constructor(private readonly client: SqlClient) {}
