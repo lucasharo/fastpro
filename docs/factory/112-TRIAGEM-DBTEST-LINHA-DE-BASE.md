@@ -255,7 +255,7 @@ Resultado: a série ainda está em andamento neste ponto; a contagem final entra
 
 - Rodada 3, série completa de 64 arquivos (`dbtest-baseline/rodada3/resumo.tsv`): 670 testes, 654 passam, 4 falham, 12 ignorados.
 - Reexecução dos 3 arquivos afetados, em série, timeout 300 s (`dbtest-baseline/rodada3/resumo-final.tsv`): backup-roles foi de 6 para 5 passes e de 1 para 2 falhas; catalog-service e draft-rollback não mudaram.
-- Totais da tabela 12.3 (rodada 3 com os 3 arquivos substituídos pela reexecução): 64 arquivos, 670 testes, 653 passam, 5 falham, 12 ignorados.
+- Totais da tabela 12.3 (rodada 3 com os 3 arquivos substituídos pela reexecução): 64 arquivos, 670 testes, 653 passam, 5 falham, 12 ignorados. Superados pelo 12.8: com o teste 9 passando, são 654 passam e 4 falham.
 - O teste 9 passou na série 3 porque o backup-roles rodou antes do commit 9a55eb8. Ele é o 3º de 64 arquivos em ordem alfabética, e a série levou 2018 s. Isso é inferência pela ordem e pelo horário, não verificado por log.
 
 ### 12.3 Tabela final por arquivo
@@ -274,7 +274,7 @@ Valores da rodada 3, exceto os 3 arquivos reexecutados (valores da reexecução)
 | audit-query.dbtest.mjs | 0 | 93 | 12 | 12 | 0 | 0 |  |
 | audit.dbtest.mjs | 0 | 101 | 27 | 25 | 0 | 2 | 2 ignorados, sem motivo registrado |
 | auth-challenge.dbtest.mjs | 0 | 10 | 10 | 10 | 0 | 0 |  |
-| backup-roles.dbtest.mjs | 1 | 5 | 9 | 5 | 2 | 2 | T-BK-09 (media_asset): #145; teste 9 (fixture em apps/api, #50): #148 |
+| backup-roles.dbtest.mjs | 1 | 5 | 9 | 6 | 1 | 2 | T-BK-09 (media_asset): #145; teste 9 passa desde 41519f5 (#148 corrigida, ver 12.8) |
 | catalog-h107.dbtest.mjs | 0 | 22 | 7 | 7 | 0 | 0 |  |
 | catalog-promo-ausente.dbtest.mjs | 0 | 1 | 3 | 2 | 0 | 1 |  |
 | catalog-search.dbtest.mjs | 0 | 72 | 8 | 8 | 0 | 0 |  |
@@ -336,13 +336,13 @@ Valores da rodada 3, exceto os 3 arquivos reexecutados (valores da reexecução)
 | #145 | backup-roles.dbtest.mjs | T-BK-09 | `app.media_asset` sem SELECT ao papel de backup (migração 20261112120000), sem decisão registrada | conflito de decisão (não é fixture) | dono ou Arquiteto: incluir no backup, ou registrar a exclusão como a decisão 147 |
 | #146 | catalog-service.dbtest.mjs | T-H018-13 | o teste espera a semente ausente; o DEV tem a semente gravada; o insert manual dá 23505 | F (fixture dependente do estado do DEV) | como isolar a semente dentro da transação |
 | #147 | draft-rollback-h025.dbtest.mjs | D-10, testes 2 e 3 | 2BP01: `app.request_draft` tem dependentes posteriores (H-026, H-030); o teste desfaz fora da ordem | C (ordem de desfazer) | desfazer em ordem reversa, ou tratar o rollback como não suportado |
-| #148 | backup-roles.dbtest.mjs | teste 9 | URL de exemplo com senha que não é placeholder em `apps/api/tests/identity-docs-montagem.test.ts` (#50) | C (fixture, fora de `packages/`) | trocar por placeholder no arquivo de #50 |
+#148 (teste 9 do backup-roles) não aparece mais: corrigida em `41519f5` (ver 12.8).
 
-Total: 5 falhas em 4 Issues de origem. Nenhuma Issue foi movida no Project. Nenhuma falha foi confirmada como bug de produto (categoria D).
+Total: 4 falhas em 3 Issues de origem (#145, #146 e #147). Nenhuma Issue foi movida no Project. Nenhuma falha foi confirmada como bug de produto (categoria D).
 
 ### 12.5 Linha de base contra o estado atual
 
-Itens da seção 6 e 11.1 (21 falhas da linha de base): 16 passam hoje (itens 1, 4 a 11, 12, 14, 15, 18, 19, 20 e 21). Cinco falham: item 2 (#145), item 3 (#148, reaberto após a série 3), item 13 (#146), itens 16 e 17 (#147). Soma: 16 + 5 = 21.
+Itens da seção 6 e 11.1 (21 falhas da linha de base), estado após `41519f5` (verificado em 2026-11-13, ver 12.8): 17 passam hoje (itens 1, 3, 4 a 11, 12, 14, 15, 18, 19, 20 e 21; o item 3 é o teste 9 do backup-roles, #148, que passa). Quatro falham: item 2 (#145), item 13 (#146), itens 16 e 17 (#147). Soma: 17 + 4 = 21.
 
 - A seção 6 conta 21 falhas. O líder citou 22. Não verificado de onde vem a diferença; não foi reconciliado.
 - Resíduo de `ops.job` (+2, decisão 261): sem origem identificada e sem remoção. Não tratado nesta rodada.
@@ -357,4 +357,17 @@ Itens da seção 6 e 11.1 (21 falhas da linha de base): 16 passam hoje (itens 1,
 
 ### 12.7 Pode ir para Code Review?
 
-Recomendação do DEV: sim, com ressalva. As 5 falhas restantes estão aceitas pela decisão 266, porque cada uma tem Issue de origem. Zero continua sendo o alvo, e #145 precisa de decisão humana. Quem move o cartão é o líder; o DEV não moveu o Project.
+Recomendação anterior (rodada 3): sim, com ressalva. Superada pelo ciclo de correção 1 (12.8): o achado do Code Review (prova de vazamento vacua) foi corrigido em `d20f38b`, e a falha do teste 9 (#148) não existe mais. As 4 falhas restantes estão aceitas pela decisão 266, porque cada uma tem Issue de origem. Zero continua sendo o alvo, e #145 precisa de decisão humana. Quem move o cartão é o líder; o DEV não moveu o Project.
+
+### 12.8 Ciclo de correção 1 (Code Review, 2026-11-13): estado real
+
+- Achado corrigido em `d20f38b` (`test(E15): prova de vazamento com sentinela propria...`): o teste "nenhuma recusa deste bloco expoe a senha da conexao" em `packages/db/tests/demo-guard.test.mjs` monta a URL com uma sentinela própria. A prova: com uma trava que ecoa a URL na mensagem de recusa (variante temporária, não commitada e já removida), a versão antiga do teste passa e a nova falha.
+- O marcador de senha de exemplo nos URLs desse arquivo passa de `senha` para `<senha>`. Motivo: o bf2147d deixou 17 ocorrências que o check:secrets reprova; `<senha>` passa no check:secrets e no teste 9 do backup-roles. Com isso o arquivo tem 0 ocorrências no check:secrets (o total do check:secrets caiu de 86 para 69, sem novas ocorrências).
+- #148 (teste 9 do backup-roles): corrigida em `41519f5`, que trocou a URL de exemplo de `apps/api/tests/identity-docs-montagem.test.ts` por placeholder. Não houve alteração em `apps/`.
+- Comandos e resultados reais:
+  - `cd packages/db && npx vitest run tests/demo-guard.test.mjs` (2026-11-13, 10:34, UTC-3): 28 de 28 passam, código de saída 0. Observação: `node --test` não roda este arquivo, porque ele usa `describe/it/expect` do vitest (o cabeçalho do arquivo indica `pnpm test`).
+  - `node --test packages/db/tests/backup-roles.dbtest.mjs` (leitura no DEV; 10:33:49 e 10:34:39, UTC-3): 9 testes, 6 passam, 1 falha, 2 ignorados (NAO_VERIFICAVEL), código de saída 1 nas duas rodadas. A falha é só T-BK-09 com `app.media_asset` (#145). O teste 9 passa.
+- Contagens da série da rodada 3, recalculadas a partir da tabela 12.3 (64 arquivos; a linha do backup-roles foi atualizada para 6 passes e 1 falha): 670 testes, 654 passam, 4 falham, 12 ignorados. Essa soma usa os valores da série e da reexecução dos 3 arquivos, não uma nova série completa; os outros 61 arquivos não foram rodados de novo (ver 12.6).
+- Falhas restantes: #145 (T-BK-09, decisão humana), #146 (T-H018-13) e #147 (D-10, testes 2 e 3).
+- Pode seguir para Code Review e depois QA? Recomendação do DEV: sim, pelo escopo deste ciclo (o achado do Code Review foi corrigido e verificado). Ressalvas: #145 continua pendente de decisão humana; `pnpm check:secrets` (que faz parte do `check:all`, #149) continua vermelho por causa de `apps/` e de outros arquivos, fora do escopo desta Issue.
+- GitHub: a Issue #148 recebeu um comentário com a evidência. Não foi fechada: fechar a Issue equivale a Concluído, que só o humano decide (regra do projeto). Quem fecha é o humano, se concordar.
