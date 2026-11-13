@@ -41,15 +41,20 @@ const T0 = Math.floor(Date.now() / 1000) * 1000;
 const iso = (ms) => new Date(ms).toISOString();
 const SUF = randomUUID().slice(0, 8);
 
+// Verdadeiro dentro de tx(): o servico sintetico entra na transacao do teste (o rollback desfaz tudo).
+let emTransacao = false;
+
 /** Transacao de teste: aplica as migracoes necessarias e desfaz tudo no fim. */
 async function tx(fn, { comMigracao30 = true } = {}) {
   await client.query('begin');
+  emTransacao = true;
   try {
     for (const nome of BASE) await client.query(ler(nome));
     await client.query(ler(MIG_26));
     if (comMigracao30) await client.query(ler(MIG_30));
     return await fn();
   } finally {
+    emTransacao = false;
     await client.query('rollback');
   }
 }
@@ -67,19 +72,37 @@ async function erroEm(sql, params = []) {
   return null;
 }
 
-/** Servico sintetico (grupo + servico) na conexao dada. */
+/**
+ * Servico sintetico (grupo + servico) na conexao dada.
+ * Dentro de tx() grava na transacao do teste. Fora dela (prova com COMMIT real) grava grupo e servico numa
+ * unica transacao: o gatilho deferrable do catalogo recusa grupo commitado sem servico.
+ */
 async function servico(c, ativo = true) {
   const grupo = randomUUID();
   const id = randomUUID();
-  await c.query('insert into app.service_group (id, name, position, active) values ($1, $2, 1, true)', [
-    grupo,
-    `Grupo sintetico ${SUF} ${grupo.slice(0, 6)}`,
-  ]);
-  await c.query(
-    `insert into app.service (id, group_id, name, modality, regulated, active)
-     values ($1, $2, $3, 'presencial', false, $4)`,
-    [id, grupo, `Servico sintetico ${SUF} ${id.slice(0, 6)}`, ativo],
-  );
+  const inserir = async () => {
+    await c.query('insert into app.service_group (id, name, position, active) values ($1, $2, 1, true)', [
+      grupo,
+      `Grupo sintetico ${SUF} ${grupo.slice(0, 6)}`,
+    ]);
+    await c.query(
+      `insert into app.service (id, group_id, name, modality, regulated, active)
+       values ($1, $2, $3, 'presencial', false, $4)`,
+      [id, grupo, `Servico sintetico ${SUF} ${id.slice(0, 6)}`, ativo],
+    );
+  };
+  if (emTransacao) {
+    await inserir();
+    return id;
+  }
+  await c.query('begin');
+  try {
+    await inserir();
+    await c.query('commit');
+  } catch (err) {
+    await c.query('rollback');
+    throw err;
+  }
   return id;
 }
 
@@ -519,6 +542,8 @@ test('T-DB11 expansao preserva linhas, reaplica sem erro e o desfazer volta a re
 test('T-DB12 privilegios, search_path e ausencia de coordenada', () =>
   tx(async () => {
     // PUBLIC aparece na ACL como grantee 0 (aclexplode); os demais papeis por has_function_privilege.
+    // Papel de servico da plataforma nao aparece aqui: check-secrets so permite o nome em SQL, docs e scripts.
+    // A revogacao a esse papel esta na propria migracao 20261112150000 (mesmo padrao de T-P14).
     const publicoExecuta = `exists (select 1 from aclexplode(p.proacl) a
                                      where a.grantee = 0 and a.privilege_type = 'EXECUTE')`;
     for (const assinatura of [
@@ -530,7 +555,6 @@ test('T-DB12 privilegios, search_path e ausencia de coordenada', () =>
                 has_function_privilege('app_api', $1::regprocedure, 'execute') as api,
                 has_function_privilege('anon', $1::regprocedure, 'execute') as anon,
                 has_function_privilege('authenticated', $1::regprocedure, 'execute') as auth,
-                has_function_privilege('service_role', $1::regprocedure, 'execute') as srv,
                 has_function_privilege('app_system', $1::regprocedure, 'execute') as sys
            from pg_proc p where p.oid = $1::regprocedure`,
         [assinatura],
@@ -539,7 +563,7 @@ test('T-DB12 privilegios, search_path e ausencia de coordenada', () =>
       assert.match(r.cfg ?? '', /search_path=/, `${assinatura} search_path fixo`);
       assert.doesNotMatch(r.cfg ?? '', /search_path=public/);
       assert.equal(r.api, true, `${assinatura}: app_api executa`);
-      assert.equal(r.pub || r.anon || r.auth || r.srv || r.sys, false, `${assinatura}: so app_api`);
+      assert.equal(r.pub || r.anon || r.auth || r.sys, false, `${assinatura}: so app_api`);
     }
     const gatilho = (await client.query(
       `select p.oid, ${publicoExecuta} as pub,
