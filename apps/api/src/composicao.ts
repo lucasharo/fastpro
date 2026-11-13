@@ -43,6 +43,9 @@ import type { DraftRouteOptions } from './drafts/draft-route.js';
 // H-035 | Cadastro do documento do perfil profissional (PUT/GET /v1/professional/profile).
 import { montarPerfilProfissional } from './professional-profile-composicao.js';
 import type { ProfessionalProfileRouteOptions } from './professional-profile-route.js';
+// H-036 | Servicos, base e raio do perfil profissional (/v1/professional/profile/services e /area).
+import { montarOfertaProfissional } from './professional-offering-composicao.js';
+import type { ProfessionalOfferingRouteOptions } from './professional-offering-route.js';
 
 /** Nomes da busca que faltam (so nomes; a chave curta aparece marcada, sem tamanho nem valor). */
 function faltantesCatalogo(env: CatalogEnv): readonly string[] {
@@ -104,6 +107,10 @@ export interface Integracoes {
   readonly professionalProfile: ProfessionalProfileRouteOptions | undefined;
   /** Nomes (nunca valores) que impedem as rotas do perfil profissional (H-035) de ligar. */
   readonly pendenciasPerfil: readonly string[];
+  /** Rotas de servicos, base e raio do perfil profissional (H-036), ou undefined (404). */
+  readonly professionalOffering: ProfessionalOfferingRouteOptions | undefined;
+  /** Nomes (nunca valores) que impedem as rotas de servicos, base e raio (H-036) de ligar. */
+  readonly pendenciasOferta: readonly string[];
 }
 
 const RELOGIO_PADRAO: ClockPort = {
@@ -194,6 +201,9 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   // H-035: perfil profissional. Pendencias proprias (so nomes), separadas das demais integracoes.
   const perfil = montarPerfilProfissional(env, { abrirCliente: opcoes.abrirClienteSql, relogio: opcoes.clock });
 
+  // H-036: servicos, base e raio. Sem o provedor permanente (BLQ-EXEC, decisao 116) as rotas seguem 404.
+  const oferta = montarOfertaProfissional(env, { abrirCliente: opcoes.abrirClienteSql, relogio: opcoes.clock });
+
   return {
     catalog,
     email,
@@ -206,6 +216,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     pendenciasCaso,
     pendenciasRascunho,
     pendenciasPerfil: perfil.pendencias,
+    professionalOffering: oferta.options,
+    pendenciasOferta: oferta.pendencias,
   };
 }
 

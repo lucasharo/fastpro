@@ -68,6 +68,13 @@ import {
   PROFESSIONAL_PROFILE_PATH,
   type ProfessionalProfileRouteOptions,
 } from './professional-profile-route.js';
+// H-036 | Servicos, base e raio do perfil profissional (GET/PUT /v1/professional/profile/services e /area).
+import {
+  handleProfessionalOfferingRoute,
+  PROFESSIONAL_AREA_PATH,
+  PROFESSIONAL_SERVICES_PATH,
+  type ProfessionalOfferingRouteOptions,
+} from './professional-offering-route.js';
 // H-016 | Conta do profissional (GET /v1/professional/me), recuperacao, reenvio e troca de senha.
 import {
   handleProfessionalMe,
@@ -162,6 +169,8 @@ export interface AppOptions {
   readonly professionalPassword?: ProfessionalPasswordRouteOptions;
   /** Cadastro do documento e leitura do perfil profissional (H-035). Sem esta opcao as rotas nao existem (404). */
   readonly professionalProfile?: ProfessionalProfileRouteOptions;
+  /** H-036: servicos, base e raio do perfil. Sem esta opcao as rotas nao existem (404). */
+  readonly professionalOffering?: ProfessionalOfferingRouteOptions;
 }
 
 export interface BodyReadResult {
@@ -311,6 +320,9 @@ export async function handleRequest(
   if (opts.professionalProfile && path === PROFESSIONAL_PROFILE_PATH) {
     if (req.method === 'PUT') return handleProfessionalProfilePut(req, res, opts.professionalProfile);
     if (req.method === 'GET') return handleProfessionalProfileGet(req, res, opts.professionalProfile);
+  }
+  if (opts.professionalOffering && (path === PROFESSIONAL_SERVICES_PATH || path === PROFESSIONAL_AREA_PATH)) {
+    return handleProfessionalOfferingRoute(req, res, path, opts.professionalOffering);
   }
   // H-016 | Conta do profissional, recuperacao, reenvio e troca de senha (cada rota so existe com a sua opcao).
   if (req.method === 'GET' && path === PROFESSIONAL_ME_PATH && opts.professionalAccount) {

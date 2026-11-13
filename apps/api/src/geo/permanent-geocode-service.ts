@@ -25,6 +25,11 @@ export interface EnsurePermanentInput {
   readonly subject: string;
   /** Texto do endereco como digitado. Nao e guardado: so o HMAC chega ao armazenamento. */
   readonly addressText: string;
+  /**
+   * Teto vitalicio de chamadas pagas do assunto (H-036: profile.offering_limits.calls_cap, desenho ง4.5).
+   * Ausente = PERMANENT_CALLS_PER_REQUEST_MAX, como antes (H-031 e a #34 seguem sem mudanca).
+   */
+  readonly callsCap?: number;
 }
 
 /** Desfechos de ยง3.1, passo 3. Nenhum carrega coordenada. */

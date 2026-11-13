@@ -58,3 +58,7 @@ export * from './request-draft.js';
 export * from './media-quarantine.js';
 // H-109 (Issue 118) | Adaptador Pg da politica de retencao e do hold (private.retention_*, private.legal_hold_*).
 export * from './retention-store.js';
+
+// H-036 | Oferta do perfil profissional (servicos, base e raio) e adaptador da porta de coordenada.
+export * from './professional-offering.js';
+export * from './geo-point-store.js';

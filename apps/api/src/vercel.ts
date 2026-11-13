@@ -74,6 +74,7 @@ export default async function vercelHandler(
       ...(integracoes.adminStepUp !== undefined ? { adminStepUp: integracoes.adminStepUp } : {}),
       ...(integracoes.adminOps !== undefined ? { adminOps: integracoes.adminOps } : {}),
       ...(integracoes.professionalProfile !== undefined ? { professionalProfile: integracoes.professionalProfile } : {}),
+      ...(integracoes.professionalOffering !== undefined ? { professionalOffering: integracoes.professionalOffering } : {}),
     });
   } catch {
     // Sem detalhe de erro na resposta nem no log (ADR-013: sem dado sensivel).
