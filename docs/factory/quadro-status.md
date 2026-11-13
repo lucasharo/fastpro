@@ -100,17 +100,16 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 ## Desenvolvimento (0)
 
-## Code Review (1)
+## Code Review (0)
 
 | Issue | Título |
 |---|---|
-| #59 | [E5] Planos e preços em centavos |
 
 ## QA (1)
 
 | Issue | Título |
 |---|---|
-| #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
+| #59 | [E5] Planos e preços em centavos |
 
 ## Concluído (61)
 
@@ -155,9 +154,9 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #41 | [E3] Remoção de EXIF e tipo por conteúdo |
 | #42 | [E3] Pré-visualização e reordenação de fotos |
 | #43 | [E3] Revisão e confirmação expressa |
-| #44 | [E3] Publicação idempotente com 7 dias |
 | #48 | [E4] Cadastro profissional com CPF/CNPJ cifrado |
 | #49 | [E4] Perfil: serviços, base e raio |
+| #44 | [E3] Publicação idempotente com 7 dias |
 | #50 | [E4] Documentos de identidade |
 | #58 | [E5] Acesso comercial derivado |
 | #83 | [E7] Acesso excepcional a conversa |
@@ -186,6 +185,10 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #128 | [E15] Teste de restauração de backup |
 | #145 | [E15] db:test: media_asset fora do backup sem decisão registrada |
 
-## Aguardando aprovação (0)
+## Aguardando aprovação (1)
+
+| Issue | Título |
+|---|---|
+| #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 
 ## Bloqueado (0)
