@@ -99,19 +99,19 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
 
-## Desenvolvimento (2)
+## Desenvolvimento (1)
 
 | Issue | Título |
 |---|---|
-| #42 | [E3] Pré-visualização e reordenação de fotos |
 | #43 | [E3] Revisão e confirmação expressa |
 
 ## Code Review (0)
 
-## QA (1)
+## QA (2)
 
 | Issue | Título |
 |---|---|
+| #42 | [E3] Pré-visualização e reordenação de fotos |
 | #30 | [E1] Exclusividade de papéis |
 
 ## Concluído (52)
