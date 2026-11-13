@@ -408,6 +408,11 @@ export function textoDaPublicacao(tipo) {
   return chave === undefined ? '' : PUBLICACAO_TEXTOS[chave];
 }
 
+/** O token de aviso de duplicidade (ackToken) so se perde com resposta do servidor. Falha de rede (manterAck) o mantem para o reenvio. */
+export function ackDuplicidadeSobrevive(estado) {
+  return estado.tipo === 'duplicidade' || estado.manterAck === true;
+}
+
 /** Resposta de POST /v1/requests (110 §3). Lista fechada de desfechos; nada de endereco ou coordenada. */
 export function interpretarPublicacao(status, corpo) {
   const codigo = corpo?.code;

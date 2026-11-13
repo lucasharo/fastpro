@@ -1,7 +1,17 @@
 // H-031 (Issue #44) | Testes da logica pura da publicacao (docs/factory/110-DESENHO-H031.md, §3 e §8).
 // Sem rede e sem navegador: so a interpretacao da resposta de POST /v1/requests e os textos de cada desfecho.
 import { describe, it, expect } from 'vitest';
-import { interpretarPublicacao, PUBLICACAO_TEXTOS, textoDaPublicacao } from '../public/pedido-logica.js';
+import { ackDuplicidadeSobrevive, interpretarPublicacao, PUBLICACAO_TEXTOS, textoDaPublicacao } from '../public/pedido-logica.js';
+
+describe('ackDuplicidadeSobrevive: o aviso de duplicidade so se perde com resposta do servidor (H-031, #44)', () => {
+  it('falha de rede (manterAck) e o proprio aviso mantem o token; os demais desfechos o limpam', () => {
+    expect(ackDuplicidadeSobrevive({ tipo: 'indisponivel', manterAck: true })).toBe(true);
+    expect(ackDuplicidadeSobrevive({ tipo: 'duplicidade', ackToken: 'tok.1' })).toBe(true);
+    expect(ackDuplicidadeSobrevive({ tipo: 'indisponivel' })).toBe(false);
+    expect(ackDuplicidadeSobrevive({ tipo: 'publicado', acceptanceDeadlineAt: 'x' })).toBe(false);
+    expect(ackDuplicidadeSobrevive({ tipo: 'limite' })).toBe(false);
+  });
+});
 
 describe('interpretarPublicacao (110 §3): cada resposta vira um desfecho fechado', () => {
   it('201 e 200 com status publicado viram publicado, com o prazo de aceite', () => {

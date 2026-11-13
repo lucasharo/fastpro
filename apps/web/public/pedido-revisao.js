@@ -10,6 +10,7 @@ import {
   interpretarPublicacao,
   resumoFaltando,
   textoDaPublicacao,
+  ackDuplicidadeSobrevive,
 } from '/pedido-logica.js';
 
 const CAMINHOS = Object.freeze({
@@ -161,7 +162,7 @@ function aoEstadoPublicacao(estado) {
   el('publicar-erro').textContent = '';
   el('publicar-acesso').hidden = true;
   if (estado.tipo !== 'duplicidade') el('secao-duplicidade').hidden = true;
-  if (!emCurso && estado.tipo !== 'duplicidade') ackDuplicidade = null;
+  if (!emCurso && !ackDuplicidadeSobrevive(estado)) ackDuplicidade = null;
   if (emCurso) return;
   if (estado.tipo === 'publicado') {
     el('resultado-publicacao').textContent = `${PUBLICACAO_TEXTOS.publicado} ${PUBLICACAO_TEXTOS.aceitesAte(estado.acceptanceDeadlineAt)}`;
@@ -206,9 +207,9 @@ async function publicar() {
   try {
     resposta = await chamar(CAMINHOS.publica, { method: 'POST', body: corpo, headers: { 'Idempotency-Key': chave } });
   } catch {
-    // Falha de rede: a tentativa fica guardada e o proximo clique reusa a mesma chave.
+    // Falha de rede: a tentativa e o aviso de duplicidade ficam guardados; o proximo clique reusa a mesma chave.
     publicando = false;
-    aoEstadoPublicacao({ tipo: 'indisponivel' });
+    aoEstadoPublicacao({ tipo: 'indisponivel', manterAck: true });
     return;
   }
   publicando = false;
