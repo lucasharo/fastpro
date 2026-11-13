@@ -90,28 +90,28 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 ## Product Owner (0)
 
-## Arquitetura (3)
+## Arquitetura (2)
 
 | Issue | Título |
 |---|---|
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
-| #58 | [E5] Acesso comercial derivado |
 
-## Desenvolvimento (1)
+## Desenvolvimento (3)
 
 | Issue | Título |
 |---|---|
+| #58 | [E5] Acesso comercial derivado |
+| #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 | #44 | [E3] Publicação idempotente com 7 dias |
 
 ## Code Review (0)
 
-## QA (2)
+## QA (1)
 
 | Issue | Título |
 |---|---|
 | #50 | [E4] Documentos de identidade |
-| #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 
 ## Concluído (57)
 

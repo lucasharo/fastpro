@@ -638,3 +638,19 @@ Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
 - **#50 ciclo de correcao 2 entregue** (db255bf, 0e4839a): concorrencia real com conexoes separadas (T-05, T-20, T-24), falha injetada em audit_append desfazendo a acao (T-14), desenho 107 §5 corrigido (~23 profissionais). dbtest 28/28; api identity-docs 68; typecheck 17/17. `db:status`: 67 aplicadas, 0 pendentes para a #50. Volta a QA.
 - **Efeito colateral aceito (decisao do lider):** os testes concorrentes deixaram no DEV 18 eventos de auditoria `identity.doc.*` (15 refused, 3 received) de perfis sinteticos ja removidos; a auditoria e' append-only e nao se apaga. Como consequencia o caminho "sem dados" do rollback T-21 nao roda mais no DEV (o teste agora exige a recusa por `audit_event_action_fk`). Conferido por leitura: os gatilhos `tg_block_mutation`, `tg_block_truncate` e `tg_event_seal` de audit.audit_event estao habilitados (`A`) e nao ha sessao aberta em transacao; a sessao `fastpro-db-tools` vista pelo DEV era transitoria de teste.
 - **Checksum da migracao 20261113140000 (#44) reconciliado no DEV:** o arquivo foi editado (cabecalho) depois de aplicado e o `db:status` denunciava. O lider reexecutou o proprio SQL do arquivo (idempotente, `create or replace`) e atualizou o checksum em ops.schema_migration por script no scratchpad; `db:status` voltou a 67 aplicadas, 0 pendentes, sem problema. Regra reforcada: nunca editar migracao ja aplicada.
+- **#140 QA REPROVADO nesta rodada (pausada, sem bloquear):** as falhas conhecidas #145, #146 e #147 estao corretas e demo-guard 28/28, mas `audit.dbtest.mjs` falhou diferente em cada rodada (T-05 deadlock 40P01, T-07 last_seq com 7 a mais, T-02 seq/hash), compativel com outras sessoes escrevendo em audit_event no DEV (inclusive os testes concorrentes da #50). Sem exclusividade do DEV nao ha evidencia valida. Decisao do lider: a #140 volta ao Desenvolvimento e fica PAUSADA ate haver uma janela sem outro agente usando o banco; nessa janela: (1) rodar audit.dbtest.mjs tres vezes em serie, (2) contagem antes/depois, (3) serie completa dos 64 arquivos depois dos ultimos commits, (4) corrigir a contagem da entrada anterior (o numero final e' o da serie). Se audit continuar falhando em janela exclusiva, abrir Issue de origem (#19).
+
+## Rodada 62 (desenho do acesso comercial derivado, #58 / H-045 — 114-DESENHO-H045.md)
+Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
+- **279:** EXECUTE de `commercial_access` para `app_api` e `app_system`.
+- **280:** `subscription` com `unique(professional_id)`.
+- **281:** H-049 (#62) e H-052 (#65) zeram `cancel_at_period_end` ao reassinar; registrar nas duas Issues.
+- **282:** `app_system` so com SELECT agora; INSERT/UPDATE chegam com os escritores.
+- **283:** `access_until` nulo em `expirada`, `trial_expirado` e `sem_acesso`.
+- **284:** a criacao de concessoes e' auditada pelos escritores (H-044, H-049); H-045 audita so a revogacao e nao cria outbox.
+- **285:** colunas alem da 09 §3.10 (`revoked_at`, `created_at`, `mode`); atualizar a 09.
+- **286:** linha revogada ignorada para qualquer `at` (a revogacao retroage).
+- **287:** `paid` exige `source_payment_id`, sem FK ate H-047.
+- **288:** CHECK exato de 336 h para o trial.
+- **289:** origem de `identity_id` fornecida pela H-044.
+- **#58 avanca de Arquitetura para Desenvolvimento.** Migracao `20261113170000_billing_create_access_grant.sql` (confira o prefixo contra `ls supabase/migrations`).
