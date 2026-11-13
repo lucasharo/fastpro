@@ -86,19 +86,19 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 | #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 
-## Product Owner (2)
+## Product Owner (1)
 
 | Issue | Título |
 |---|---|
-| #59 | [E5] Planos e preços em centavos |
 | #51 | [E4] Certificações para atividades regulamentadas |
 
-## Arquitetura (2)
+## Arquitetura (3)
 
 | Issue | Título |
 |---|---|
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
+| #59 | [E5] Planos e preços em centavos |
 
 ## Desenvolvimento (1)
 
@@ -106,16 +106,13 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 
-## Code Review (1)
+## Code Review (0)
+
+## QA (2)
 
 | Issue | Título |
 |---|---|
 | #58 | [E5] Acesso comercial derivado |
-
-## QA (1)
-
-| Issue | Título |
-|---|---|
 | #44 | [E3] Publicação idempotente com 7 dias |
 
 ## Concluído (57)
