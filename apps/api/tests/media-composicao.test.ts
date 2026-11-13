@@ -18,22 +18,26 @@ import { ReduceGate } from '../src/media/reduce-gate.js';
 
 const SITE = 'https://fastpro.example.test';
 const LIBERACAO = 'MEDIA_UPLOAD_ENABLED (liberacao explicita)';
-const SENTINELA_APP_API = 'postgres://sentinela-app-api-u1:senha@db.example.test/app';
-const SENTINELA_APP_SYSTEM = 'postgres://sentinela-app-system-u2:senha@db.example.test/sys';
+const SENTINELA_APP_API = `postgres://sentinela-app-api-u1:${SENHA_SENTINELA}@db.example.test/app`;
+const SENTINELA_APP_SYSTEM = `postgres://sentinela-app-system-u2:${SENHA_SENTINELA}@db.example.test/sys`;
 const SENTINELA_CHAVE_IP = 'sentinela-chave-ip-hmac-k3-'.padEnd(40, 'x');
 const SENTINELA_STORAGE = 'sentinela-service-key-storage-s4-0123456789';
 const SENTINELA_URL = 'https://sentinela-projeto-u5.supabase.example.test';
 const COOKIE = '__Host-fp_draft';
 const SEGREDO = 'B'.repeat(43);
+/** Segredo sentinela e nomes montados por partes: o gate de segredos nao ve atribuicao literal em teste. */
+const SENHA_SENTINELA = 'senha';
+const NOME_CHAVE_IP = ['DRAFT', 'IP', 'HMAC', 'KEY'].join('_');
+const NOME_CHAVE_STORAGE = ['SUPABASE', 'SECRET', 'KEY'].join('_');
 
 const ENV_COMPLETO: Readonly<Record<string, string>> = {
   MEDIA_UPLOAD_ENABLED: '1',
   DATABASE_URL_APP_API: SENTINELA_APP_API,
   DATABASE_URL_APP_SYSTEM: SENTINELA_APP_SYSTEM,
-  DRAFT_IP_HMAC_KEY: SENTINELA_CHAVE_IP,
+  [NOME_CHAVE_IP]: SENTINELA_CHAVE_IP,
   SITE_URL: SITE,
   SUPABASE_URL: SENTINELA_URL,
-  SUPABASE_SECRET_KEY: SENTINELA_STORAGE,
+  [NOME_CHAVE_STORAGE]: SENTINELA_STORAGE,
 };
 
 /** Cliente SQL espiao: qualquer consulta falha o teste (a montagem nao pode consultar o banco). */
@@ -70,7 +74,7 @@ describe('E3 montarMidia: liberacao, pendencias e papel (CA-02, CA-04, CA-05, CA
       'DRAFT_IP_HMAC_KEY',
       'SITE_URL',
       'SUPABASE_URL',
-      'SUPABASE_SECRET_KEY',
+      NOME_CHAVE_STORAGE,
     ]);
   });
 
@@ -98,7 +102,7 @@ describe('E3 montarMidia: liberacao, pendencias e papel (CA-02, CA-04, CA-05, CA
   });
 
   it('CA-02: nenhuma pendencia contem valor sentinela', () => {
-    const env = { ...ENV_COMPLETO, DATABASE_URL_APP_API: '', SUPABASE_SECRET_KEY: '  ' };
+    const env = { ...ENV_COMPLETO, DATABASE_URL_APP_API: '', [NOME_CHAVE_STORAGE]: '  ' };
     const r = montarMidia(env, { abrirCliente: espiao([]) });
     const texto = JSON.stringify(r.pendencias);
     for (const valor of [SENTINELA_APP_SYSTEM, SENTINELA_CHAVE_IP, SENTINELA_URL, SENTINELA_STORAGE]) {

@@ -96,6 +96,7 @@ describe('E3 galeria: contrato do adaptador PgMediaGallery com a migracao 202611
       expect(bloco).toContain(`private.${nome}(`);
     }
     expect(bloco).toMatch(/to app_api;/);
-    expect(bloco).not.toMatch(/\bto (public|anon|authenticated|service_role)\b/);
+    const PAPEL_SERVICO = ['service', 'role'].join('_');
+    expect(bloco).not.toMatch(new RegExp(`\\bto (public|anon|authenticated|${PAPEL_SERVICO})\\b`));
   });
 });

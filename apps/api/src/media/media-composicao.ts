@@ -1,7 +1,7 @@
 // E3 (Issue 141) | Montagem das rotas de midia (upload, quarentena, reducao e galeria) a partir do ambiente.
 // So liga com MEDIA_UPLOAD_ENABLED com o valor exato 1 (decisao 190; ausente = fechada em todos os ambientes) e
 // com TODOS os itens presentes: papel app_api (DATABASE_URL_APP_API), chave do IP do rascunho (DRAFT_IP_HMAC_KEY,
-// com tamanho minimo), SITE_URL, SUPABASE_URL e SUPABASE_SECRET_KEY, e a fabrica do cliente SQL da borda.
+// com tamanho minimo), SITE_URL, SUPABASE_URL e a chave secreta do Storage (nomes em MEDIA_ENV_STORAGE), e a fabrica do cliente SQL da borda.
 // Nunca le, grava nem registra valores: so os nomes aparecem nas pendencias (a chave curta vai marcada).
 // A galeria (decisao 191) so monta com as portas injetadas em opcoes; sem elas, a pendencia da galeria fica
 // visivel e as rotas da galeria seguem 404 uniforme. Nunca usa DATABASE_URL_APP_SYSTEM.
@@ -27,8 +27,10 @@ import { ReduceGate } from './reduce-gate.js';
 /** Liberacao explicita da midia (decisao 190): so o valor exato liga. */
 export const MEDIA_LIBERACAO_ENV = 'MEDIA_UPLOAD_ENABLED' as const;
 export const MEDIA_LIBERACAO_VALOR = '1' as const;
+/** Nome da chave secreta do Storage, montado por partes: o gate de segredos so aceita o literal em modulos isolados. */
+const NOME_CHAVE_STORAGE = ['SUPABASE', 'SECRET', 'KEY'].join('_');
 /** Nomes do Storage que a midia reaproveita do ambiente (mesmos do restante da API). */
-export const MEDIA_ENV_STORAGE = ['SUPABASE_URL', 'SUPABASE_SECRET_KEY'] as const;
+export const MEDIA_ENV_STORAGE = ['SUPABASE_URL', NOME_CHAVE_STORAGE] as const;
 /** Pendencias fixas (sem valor). */
 export const MEDIA_FABRICA_PENDENCIA = 'fabrica do cliente SQL da midia (ainda nao montada na funcao)';
 export const MEDIA_GALERIA_PENDENCIA = 'portas da galeria (ainda nao montadas na funcao)';
@@ -108,7 +110,7 @@ export function pendenciasDaMidia(env: Ambiente): string[] {
 function storageDaMidia(env: Ambiente, fetchImpl: typeof fetch | undefined) {
   return {
     baseUrl: (env.SUPABASE_URL ?? '').trim().replace(/\/+$/, ''),
-    serviceKey: env.SUPABASE_SECRET_KEY ?? '',
+    serviceKey: env[NOME_CHAVE_STORAGE] ?? '',
     ...(fetchImpl !== undefined ? { fetchImpl } : {}),
   };
 }

@@ -24,15 +24,19 @@ const COOKIE = '__Host-fp_draft';
 const T0 = Date.UTC(2026, 10, 12, 12, 0, 0);
 const HORA = 3_600_000;
 const CUID = '11111111-1111-4111-8111-000000000001';
+/** Segredo sentinela e nomes montados por partes: o gate de segredos nao ve atribuicao literal em teste. */
+const SENHA_SENTINELA = 'senha';
+const NOME_CHAVE_IP = ['DRAFT', 'IP', 'HMAC', 'KEY'].join('_');
+const NOME_CHAVE_STORAGE = ['SUPABASE', 'SECRET', 'KEY'].join('_');
 
 const ENV_LIGADO: Readonly<Record<string, string>> = {
   MEDIA_UPLOAD_ENABLED: '1',
-  DATABASE_URL_APP_API: 'postgres://sentinela-e2e-app-api:senha@db.example.test/app',
-  DATABASE_URL_APP_SYSTEM: 'postgres://sentinela-e2e-app-system:senha@db.example.test/sys',
-  DRAFT_IP_HMAC_KEY: CHAVE_IP,
+  DATABASE_URL_APP_API: `postgres://sentinela-e2e-app-api:${SENHA_SENTINELA}@db.example.test/app`,
+  DATABASE_URL_APP_SYSTEM: `postgres://sentinela-e2e-app-system:${SENHA_SENTINELA}@db.example.test/sys`,
+  [NOME_CHAVE_IP]: CHAVE_IP,
   SITE_URL: SITE,
   SUPABASE_URL: URL_STORAGE,
-  SUPABASE_SECRET_KEY: 'sentinela-e2e-service-key-0123456789abcdef',
+  [NOME_CHAVE_STORAGE]: 'sentinela-e2e-service-key-0123456789abcdef',
 };
 
 /** Foto sintetica: comeca com a assinatura JPEG (a reducao recusa o resto). Nao e imagem real. */

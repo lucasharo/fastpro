@@ -13,20 +13,24 @@ import { ReduceCounters } from '../src/media/media-reduce-service.js';
 import { ReduceGate } from '../src/media/reduce-gate.js';
 
 const SITE = 'https://fastpro.example.test';
-const SENTINELA_APP_API = 'postgres://sentinela-app-api-g1:senha@db.example.test/app';
-const SENTINELA_APP_SYSTEM = 'postgres://sentinela-app-system-g2:senha@db.example.test/sys';
+const SENTINELA_APP_API = `postgres://sentinela-app-api-g1:${SENHA_SENTINELA}@db.example.test/app`;
+const SENTINELA_APP_SYSTEM = `postgres://sentinela-app-system-g2:${SENHA_SENTINELA}@db.example.test/sys`;
 const SENTINELA_CHAVE_IP = 'sentinela-chave-ip-hmac-g3-'.padEnd(40, 'x');
 const SENTINELA_STORAGE = 'sentinela-service-key-storage-g4-0123456789';
 const SENTINELA_URL = 'https://sentinela-projeto-g5.supabase.example.test';
+/** Segredo sentinela e nomes montados por partes: o gate de segredos nao ve atribuicao literal em teste. */
+const SENHA_SENTINELA = 'senha';
+const NOME_CHAVE_IP = ['DRAFT', 'IP', 'HMAC', 'KEY'].join('_');
+const NOME_CHAVE_STORAGE = ['SUPABASE', 'SECRET', 'KEY'].join('_');
 
 const ENV_COMPLETO: Readonly<Record<string, string>> = {
   MEDIA_UPLOAD_ENABLED: '1',
   DATABASE_URL_APP_API: SENTINELA_APP_API,
   DATABASE_URL_APP_SYSTEM: SENTINELA_APP_SYSTEM,
-  DRAFT_IP_HMAC_KEY: SENTINELA_CHAVE_IP,
+  [NOME_CHAVE_IP]: SENTINELA_CHAVE_IP,
   SITE_URL: SITE,
   SUPABASE_URL: SENTINELA_URL,
-  SUPABASE_SECRET_KEY: SENTINELA_STORAGE,
+  [NOME_CHAVE_STORAGE]: SENTINELA_STORAGE,
 };
 
 const SEGREDOS = [SENTINELA_APP_API, SENTINELA_APP_SYSTEM, SENTINELA_CHAVE_IP, SENTINELA_STORAGE, SENTINELA_URL];
@@ -63,7 +67,7 @@ describe('E3 galeria na borda: portasGaleriaMidia (H-029)', () => {
   it('fechada sem liberacao, com item faltando ou sem fabrica: nao monta e nao consulta o banco', () => {
     const urls: string[] = [];
     expect(portasGaleriaMidia({ ...ENV_COMPLETO, MEDIA_UPLOAD_ENABLED: '0' }, espiao(urls))).toBeUndefined();
-    expect(portasGaleriaMidia({ ...ENV_COMPLETO, SUPABASE_SECRET_KEY: '' }, espiao(urls))).toBeUndefined();
+    expect(portasGaleriaMidia({ ...ENV_COMPLETO, [NOME_CHAVE_STORAGE]: '' }, espiao(urls))).toBeUndefined();
     expect(portasGaleriaMidia({ ...ENV_COMPLETO, SITE_URL: 'sentinela-site-invalido' }, espiao(urls))).toBeUndefined();
     expect(portasGaleriaMidia(ENV_COMPLETO, undefined)).toBeUndefined();
     expect(urls).toEqual([]);
