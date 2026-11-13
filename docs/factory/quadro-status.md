@@ -103,9 +103,12 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 | Issue | Título |
 |---|---|
-| #59 | [E5] Planos e preços em centavos |
 
-## Code Review (0)
+## Code Review (1)
+
+| Issue | Título |
+|---|---|
+| #59 | [E5] Planos e preços em centavos |
 
 ## QA (2)
 
