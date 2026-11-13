@@ -130,16 +130,32 @@ test('CA-4: modo temporary e recusado (so existe permanent no dominio)', () =>
     assert.equal(e?.code, '23514');
   }));
 
+// O gatilho de grade (H-022, geocode_point_match_biu) roda ANTES do CHECK e recusa o mesmo dominio
+// (match_grade_fora_do_dominio, 22023). Para testar o CHECK da caixa isoladamente, o gatilho e desligado
+// so dentro do savepoint do caso; o rollback do savepoint o religa (triagem #140, CA-4).
+async function semGatilhoDeGrade() {
+  await client.query('alter table app.geocode_point disable trigger geocode_point_match_biu');
+}
+
 test('CA-4: ponto fora do Brasil e recusado pelo CHECK da caixa', () =>
   isolado(async () => {
+    await semGatilhoDeGrade();
     const e = await inserir({ lon: 10, lat: 10 });
     assert.equal(e?.code, '23514');
   }));
 
-test('CA-4: eixos invertidos (latitude no lugar da longitude) e recusado', () =>
+test('CA-4: eixos invertidos (latitude no lugar da longitude) e recusado pelo CHECK da caixa', () =>
   isolado(async () => {
+    await semGatilhoDeGrade();
     const e = await inserir({ lon: SP_LAT, lat: SP_LON });
     assert.equal(e?.code, '23514');
+  }));
+
+test('CA-4: com o gatilho de grade ligado, ponto fora da caixa e recusado antes do CHECK (22023)', () =>
+  isolado(async () => {
+    const e = await inserir({ lon: 10, lat: 10 });
+    assert.equal(e?.code, '22023');
+    assert.equal(e?.message, 'match_grade_fora_do_dominio');
   }));
 
 test('CA-4: estado ok sem ponto e recusado (ponto e estado andam juntos)', () =>
