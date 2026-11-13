@@ -277,7 +277,7 @@ Observação: RF-122 aparece em H-094 (cota) e H-095 (aceite). RF-041 usa o e-ma
 | P-01 a P-06 | Fotos | H-026, H-027, H-056 |
 | M-01, M-02 | Chat sem anexos | H-067 |
 | Q-01 a Q-14 | Cotas, plano gratuito e tick | H-008, H-094, H-108, H-027, H-057 |
-| D-01 a D-09 | Recuperação | H-114, H-119 |
+| D-04 a D-07 e D-09 (D-01, D-02, D-03 e D-08 removidos, #151) | Recuperação | H-114 (H-119 removida, #151) |
 
 Todas as famílias têm pelo menos uma história responsável no plano.
 
