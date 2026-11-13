@@ -358,3 +358,12 @@ Perguntas do refino 100-REFINO-H017.md, numeradas de forma continua. Adotadas co
 - **140 (Q5):** dados que ja violem a regra nao sao apagados; a migracao falha com lista para revisao manual (recomendacao A; hoje nao ha aceite construido).
 - **141 (Q6):** a recusa responde texto fixo generico e registra auditoria sem dado pessoal (recomendacao A).
 - **Escopo:** "profissional nao aceita o proprio pedido" so e' testavel no nivel do banco (aceite e publicacao ainda nao existem); teste por API e tela fica para as ondas seguintes.
+
+## Rodada 38 (desenho da exclusividade de papeis, #30 / H-017)
+
+Recomendadas pelo lider; o usuario pode vetar (aguardando confirmacao).
+
+- **142 (A1):** a decisao 139 vale como "nenhum caminho publico nem autoatribuicao de admin"; o convite por Superadmin com dupla aprovacao das #111/#112 e o bootstrap continuam. Nao ha retrabalho nelas.
+- **143 (A2):** incluir o gatilho que torna app_user.auth_user_id imutavel, com teste.
+- **Registro para as Issues das Ondas 2 e 3:** anexar o gatilho acceptance_nao_proprio_pedido ao criar acceptance; tornar service_request.customer_user_id imutavel; mapear o erro aceite_proprio_pedido para a mensagem fixa.
+- **Achados do desenho 101:** nao existe customer_profile (sera criado, com verificacao previa que aborta a migracao se houver violacao); admin_email_is_reserved nao era chamada por nenhum codigo (link de cliente com e-mail de admin deve ficar uniforme, link_invalido).
