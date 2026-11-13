@@ -92,23 +92,26 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #51 | [E4] Certificações para atividades regulamentadas |
 
-## Arquitetura (4)
+## Arquitetura (3)
 
 | Issue | Título |
 |---|---|
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
 | #59 | [E5] Planos e preços em centavos |
-| #150 | [E6] Remover o histórico de acesso às fotos (media_access_log e resumo diário) |
 
 ## Desenvolvimento (2)
 
 | Issue | Título |
 |---|---|
-| #44 | [E3] Publicação idempotente com 7 dias |
+| #150 | [E6] Remover o histórico de acesso às fotos (media_access_log e resumo diário) |
 | #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 
-## Code Review (0)
+## Code Review (1)
+
+| Issue | Título |
+|---|---|
+| #44 | [E3] Publicação idempotente com 7 dias |
 
 ## QA (1)
 
