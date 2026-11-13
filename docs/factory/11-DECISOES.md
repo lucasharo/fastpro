@@ -430,3 +430,8 @@ Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar), todas em app_confi
 - **166 (Q9):** email_outbox entra no expurgo de outbox, se a tabela existir.
 - **167 (Q10):** janela de idempotencia de 48 h, a confirmar com os prazos de reentrega dos provedores.
 - **168 (Q11):** sessao revogada e' removida apos 30 dias (a revogacao ja fica em audit_event).
+
+## Rodada 44 (Code Review da #43 REPROVADO, ciclo de correcao 1 de 2)
+- Achado 1 (foco): h1#titulo e p#confirmado de pedido/revisao.html sem tabindex="-1" (e verificar resumo/titulo-email em pedido.html); corrigir com teste estatico.
+- Achado 2 (CA-14 sem evidencia de navegador): **decisao 169 do lider:** o DEV instala Playwright e @axe-core/playwright como devDependency gratuita e entrega os testes T-E essenciais (foco, aria, axe, clique unico, fluxo) para /pedido e /pedido/revisao; o roteiro humano com NVDA continua para a aprovacao. Se o ambiente nao permitir rodar o navegador, registrar como NAO VERIFICADO com o motivo; a infraestrutura serve tambem as proximas telas (#42, #141).
+- Achados 3 a 8: integracao /acesso -> /pedido/revisao testada no E2E conforme o desenho (aba original com polling; link em outro dispositivo e' limitacao a registrar); separar describe T-API06 e T-API09; registrar na documentacao de rollback a ordem 190000 antes de 150000; conferir tokens de tamanho de fonte em pedido.css; conferir que a ligacao da rota de revisao na composicao esta commitada.
