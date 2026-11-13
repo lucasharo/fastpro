@@ -98,16 +98,19 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
 
-## Desenvolvimento (4)
+## Desenvolvimento (3)
 
 | Issue | Título |
 |---|---|
 | #30 | [E1] Exclusividade de papéis |
 | #42 | [E3] Pré-visualização e reordenação de fotos |
 | #43 | [E3] Revisão e confirmação expressa |
-| #49 | [E4] Perfil: serviços, base e raio |
 
-## Code Review (0)
+## Code Review (1)
+
+| Issue | Título |
+|---|---|
+| #49 | [E4] Perfil: serviços, base e raio |
 
 ## QA (0)
 
