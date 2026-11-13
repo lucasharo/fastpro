@@ -105,19 +105,19 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
 
-## Desenvolvimento (2)
+## Desenvolvimento (1)
 
 | Issue | Título |
 |---|---|
 | #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
-| #50 | [E4] Documentos de identidade |
 
-## Code Review (2)
+## Code Review (3)
 
 | Issue | Título |
 |---|---|
 | #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 | #44 | [E3] Publicação idempotente com 7 dias |
+| #50 | [E4] Documentos de identidade |
 
 ## QA (1)
 
