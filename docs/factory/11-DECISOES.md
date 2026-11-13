@@ -367,3 +367,9 @@ Recomendadas pelo lider; o usuario pode vetar (aguardando confirmacao).
 - **143 (A2):** incluir o gatilho que torna app_user.auth_user_id imutavel, com teste.
 - **Registro para as Issues das Ondas 2 e 3:** anexar o gatilho acceptance_nao_proprio_pedido ao criar acceptance; tornar service_request.customer_user_id imutavel; mapear o erro aceite_proprio_pedido para a mensagem fixa.
 - **Achados do desenho 101:** nao existe customer_profile (sera criado, com verificacao previa que aborta a migracao se houver violacao); admin_email_is_reserved nao era chamada por nenhum codigo (link de cliente com e-mail de admin deve ficar uniforme, link_invalido).
+
+## Incidente de processo (2026-11-12) — indice do git compartilhado
+- Os commits 903c87a (refino #30) e dd25616 (decisoes #30) levaram, sem querer, arquivos da #49 que ja estavam no indice compartilhado (fiacao de app.ts, composicao.ts, index.ts, geo-point-store, professional-offering, migracoes 20261112160000/170000/180000 e testes). O HEAD ficou consistente; nao se reescreveu historico. Causa: agentes em paralelo na mesma arvore e commit sem restringir caminhos.
+- Regra daqui em diante: todo commit usa `git commit -m ... -- <caminhos>` (so os arquivos da Issue) e confere `git diff --cached --stat` antes.
+- Desvio registrado: migracoes aplicadas pelo executor do repositorio (`corepack pnpm db:migrate`, tabela ops.schema_migration, dry-run transacional, documentado em supabase/README.md) e nao por `npx supabase db push`, que usa outra tabela de historico e poderia reexecutar as 59 migracoes. O MCP do Supabase continua proibido.
+- db:test completo no DEV: 22 falhas fora da #49 (D-02b, T-BK-09, T-H019-09..16, T-H018-11/13, D-01, D-10, T-DB02, desfazer de rascunho, CA-4 e T-CA10 de geo). Registrado para triagem; nao bloqueia a #49.
