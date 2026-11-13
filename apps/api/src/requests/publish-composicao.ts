@@ -1,15 +1,23 @@
-// H-031 (Issue #44) | Montagem da rota de publicacao a partir do ambiente (docs/factory/110-DESENHO-H031.md, §7; D-12).
+// H-031 (Issue 44) | Montagem da rota de publicacao a partir do ambiente (docs/factory/110-DESENHO-H031.md, §7; D-12).
 // Liga com os itens fixos presentes: papel app_system (DATABASE_URL_APP_SYSTEM), SITE_URL, chave de hash do endereco
 // (ADDRESS_HASH_KEY, com tamanho minimo) e a chave dos baldes e do token (REQUEST_PUBLISH_HMAC_KEY, >= 32).
-// Sem o provedor de geocodificacao (BLQ-EXEC, decisao 239) a rota existe e responde 503 (D-12).
+// Provedor real (Mapbox, permanente): liga so com MAPBOX_ACCESS_TOKEN e APP_ENV de desenvolvimento (decisao 239,
+// Rodada 66 do quadro). Em producao, ou sem a chave, a rota existe e responde 503 (D-12).
 // Nunca le, grava nem registra o valor das variaveis: so o nome aparece nas pendencias.
 import { createHmac } from 'node:crypto';
 import { PgGeoPointStore, PgRequestPublishStore, PgSessionRepository, type SqlClient } from '@fastpro/db';
 import { parseBreakerCaps } from '@fastpro/domain';
 import { createDraftHasher } from '../drafts/draft-hash.js';
 import { createAddressHasher } from '../geo/address-hash.js';
+import { createMapboxPermanentAdapter } from '../geo/mapbox-permanent-adapter.js';
 import type { GeocodingPermanentPort } from '../geo/permanent-ports.js';
 import type { PublishRouteOptions } from './publish-route.js';
+
+/** Chave do token de servidor da Mapbox (mesmo nome usado pela sugestao de endereco). Nunca registrada. */
+export const MAPBOX_TOKEN_ENV = 'MAPBOX_ACCESS_TOKEN' as const;
+
+/** APP_ENV em que o provedor real pode ligar (decisao 239: so desenvolvimento). Sem APP_ENV, nao liga. */
+const AMBIENTES_COM_PROVEDOR_REAL: readonly string[] = ['development', 'dev', 'test'];
 
 /** Variaveis fixas exigidas (nomes). */
 export const PUBLICACAO_PEDIDO_ENV_OBRIGATORIAS = [
@@ -55,6 +63,19 @@ function preenchida(env: Ambiente, nome: string): boolean {
   return (env[nome] ?? '').trim() !== '';
 }
 
+/**
+ * Provedor real da Mapbox para a publicacao: so com a chave no ambiente e APP_ENV de desenvolvimento.
+ * Fora disso (producao, ambiente desconhecido ou chave ausente) devolve undefined e a rota segue 503.
+ */
+function provedorMapboxDesenvolvimento(env: Ambiente): GeocodingPermanentPort | undefined {
+  const ambiente = (env.APP_ENV ?? '').trim().toLowerCase();
+  if (!AMBIENTES_COM_PROVEDOR_REAL.includes(ambiente)) return undefined;
+  if ((env.VERCEL_ENV ?? '').trim().toLowerCase() === 'production') return undefined;
+  const token = (env[MAPBOX_TOKEN_ENV] ?? '').trim();
+  if (token === '') return undefined;
+  return createMapboxPermanentAdapter({ token, fetchImpl: globalThis.fetch });
+}
+
 export function montarPublicacaoPedido(env: Ambiente, opcoes: PublicacaoPedidoOpcoes = {}): PublicacaoPedidoMontagem {
   const pendencias: string[] = PUBLICACAO_PEDIDO_ENV_OBRIGATORIAS.filter((nome) => !preenchida(env, nome));
   if (opcoes.abrirCliente === undefined) pendencias.push('fabrica do cliente SQL da publicacao (ainda nao montada na funcao)');
@@ -75,20 +96,23 @@ export function montarPublicacaoPedido(env: Ambiente, opcoes: PublicacaoPedidoOp
   if (pendencias.length > 0 || !url || !siteUrl || hashEndereco === undefined || opcoes.abrirCliente === undefined) {
     return { options: undefined, pendencias };
   }
-  if (opcoes.provedor === undefined) pendencias.push('provedor de geocodificacao permanente (BLQ-EXEC, decisao 239)');
+  const provedor = opcoes.provedor ?? provedorMapboxDesenvolvimento(env);
+  if (provedor === undefined) {
+    pendencias.push(`${MAPBOX_TOKEN_ENV} com APP_ENV de desenvolvimento (provedor de geocodificacao, decisao 239)`);
+  }
 
   const relogio = opcoes.relogio ?? { nowMs: () => Date.now() };
   const cliente = clienteDe(url, opcoes.abrirCliente);
   const geoStore = new PgGeoPointStore({ client: cliente, subjectKind: 'request', clock: () => relogio.nowMs() });
   const caps = parseBreakerCaps(env.MAPBOX_PERMANENT_SOFT_LIMIT, env.MAPBOX_PERMANENT_HARD_LIMIT);
   const servico =
-    opcoes.provedor === undefined
+    provedor === undefined
       ? undefined
       : {
           store: new PgRequestPublishStore(cliente),
           geo: {
             store: geoStore,
-            provider: opcoes.provedor,
+            provider: provedor,
             hashAddress: hashEndereco,
             caps,
             clock: () => relogio.nowMs(),
