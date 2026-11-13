@@ -85,11 +85,10 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #136 | [E7] Mensagem automática do aceite |
 | #137 | [E11] Canal “no site” |
 
-## Product Owner (1)
+## Product Owner (0)
 
 | Issue | Título |
 |---|---|
-| #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 
 | Issue | Título |
 |---|---|
@@ -101,10 +100,11 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
 
-## Desenvolvimento (2)
+## Desenvolvimento (3)
 
 | Issue | Título |
 |---|---|
+| #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 | #44 | [E3] Publicação idempotente com 7 dias |
 | #119 | [E13] Expurgos operacionais |
 

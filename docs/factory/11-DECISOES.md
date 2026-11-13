@@ -577,3 +577,15 @@ Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
 - **#141 QA APROVADO para a parte entregue** (fases 1 e 2 parciais): API 55 e 832 passam; web 89; dbtest da galeria 6/6; serializacao 3; Playwright 14 (so do /pedido); bundle 2304 bytes e ignorado pelo git; lock coerente; eslint limpo. Ressalvas: os testes rodaram sobre a arvore de trabalho (ha 7 arquivos modificados por outros trabalhos); comparacao do 404 uniforme cobre status e corpo, nao os cabecalhos (parcial); CA-07 e CA-13 sem check:all; CA-09/CA-10 reais no DEV aguardam a decisao 150. **A #141 fica em QA** ate ligar a galeria na borda (barril packages/db/src/index.ts, decisao do usuario).
 - **Retomada da #140** (triagem das 22 falhas do db:test): sem agentes concorrentes no banco DEV agora, entra em Product Owner. A causa do T-DB02 da #43 ja foi corrigida (fixture); confirmar quais das 22 falhas continuam.
 - **Estado de espera:** #44 (Desenvolvimento), #119 (Desenvolvimento), #50 e #141 (QA) dependem do barril packages/db/src/index.ts, restauracao pedida ao usuario.
+
+## Rodada 57 (refino da triagem do db:test, #140 — 111-REFINO-TRIAGEM-DBTEST.md)
+Pergunta ao usuario (numeracao continua):
+- **261 (P-140-1, remocao de linhas de teste residuais no DEV):** recomendacao: autorizar a remocao SOMENTE de linhas com marcador de teste (sintetico), depois de dry-run e com recontagem antes e depois. Sem sua resposta, a #140 nao apaga nada e so classifica.
+Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
+- **262 (P-140-2):** os dados de demonstracao ficam carregados durante a triagem; remover so se uma falha depender da contagem.
+- **263 (P-140-3):** o db:test roda em serie por arquivo (limite de 300 s cada), em segundo plano; registrar qual forma foi usada.
+- **264 (P-140-4):** pode-se alterar fixture ou expectativa dentro da #140 so quando uma decisao registrada sustenta a expectativa; bug real vira Issue propria.
+- **265 (P-140-5):** a atribuicao das falhas e' por arquivo (nomes de teste se repetem).
+- **266 (P-140-7):** a conclusao aceita falhas conhecidas so com Issue de origem aberta; zero e' o alvo.
+- **P-140-6 e P-140-8:** ja sao as perguntas 157 (executor de migracoes) e 150 (rotacao de senhas); a triagem usa db:migrate enquanto a 157 nao for respondida e NAO espera a 150.
+- **Escopo desta rodada:** F1 a F3 do refino (preparacao, linha de base por arquivo, classificacao): so leitura e execucao de testes; sem apagar dados, sem corrigir codigo, sem migrar. Correcoes seguem em ciclo proprio.
