@@ -377,3 +377,8 @@ Recomendadas pelo lider; o usuario pode vetar (aguardando confirmacao).
 ## Rodada 39 (respostas do usuario, 2026-11-12)
 - **145:** SIM. A #41 em Concluido foi decisao do usuario (CONCLUIR). Nada a desfazer.
 - **144:** o usuario respondeu "sim" a "CONCLUIR ou BLOQUEAR a #129?". Resposta ambigua entre as duas opcoes; confirmacao pedida antes de mover. A #129 permanece em Aguardando aprovacao.
+- **Resposta "sim para todas" (2026-11-12):** 
+  - **144:** CONCLUIR a #129. Movida para Concluido por decisao humana.
+  - **146:** decisoes 136 a 143 da #30 confirmadas.
+  - **147:** aceito: o papel de backup nao le professional_area, professional_area_history e professional_service (dados de localizacao); o procedimento de backup (TODO 1) deve tratar essas tabelas.
+  - **148:** autorizada a triagem das falhas do db:test; criada a Issue #140 [E15] no Backlog.

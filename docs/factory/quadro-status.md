@@ -4,10 +4,11 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (79)
+## Backlog (80)
 
 | Issue | Título |
 |---|---|
+| #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 | #1 | [SETUP] Validar integração GitHub Projects ↔ Laze ↔ Claude |
 | #14 | [Spike] Regras das lojas (login social, IAP, exclusão) |
 | #44 | [E3] Publicação idempotente com 7 dias |
@@ -110,10 +111,11 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 ## QA (0)
 
-## Concluído (51)
+## Concluído (52)
 
 | Issue | Título |
 |---|---|
+| #129 | [E15] Dados sintéticos de demonstração |
 | #2 | [TESTE] Validação de criação de Issue pelo Orquestrador |
 | #3 | [E0] Monorepo pnpm e Turborepo |
 | #4 | [Spike] PostGIS, pg_cron e pg_net no Supabase Free |
