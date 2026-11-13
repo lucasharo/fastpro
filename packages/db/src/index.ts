@@ -77,3 +77,5 @@ export * from './identity-docs.js';
 export * from './identity-docs-storage.js';
 // H-045 (Issue 58) | Adaptador Pg do acesso comercial derivado (private.commercial_access, somente leitura).
 export * from './commercial-access.js';
+// H-046 (Issue 59) | Adaptador Pg de planos e precos (private.plan_price_at, somente leitura).
+export * from './plan-pricing.js';
