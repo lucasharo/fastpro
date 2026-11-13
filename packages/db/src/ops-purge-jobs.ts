@@ -1,4 +1,4 @@
-// H-110 (Issue #119) | Job ops.purge ligado ao tick (docs/factory/105-DESENHO-H110.md §2 e §8).
+// H-110 (Issue 119) | Job ops.purge ligado ao tick (docs/factory/105-DESENHO-H110.md §2 e §8).
 // Registro no JobRegistry, padrao de registerRetentionHandlers. Os blocos E1 e E9 usam uma porta de Storage
 // injetada (QuarentenaArquivosPort); E2 a E8 sao so SQL. Nenhum segredo e lido aqui. Nenhum agendamento e criado
 // aqui: o disparo diario e pg_cron (condicionado) ou manual pelo runbook.
@@ -22,7 +22,7 @@ export interface QuarentenaArquivosPort {
 export interface OpsPurgeDeps {
   readonly store: PgOpsPurgeStore;
   readonly arquivos: QuarentenaArquivosPort;
-  /** Caminho do objeto de uma foto na quarentena (formato definido pela #141; injetado, G-3). */
+  /** Caminho do objeto de uma foto na quarentena (formato definido pela Issue 141; injetado, G-3). */
   readonly caminhoDoObjeto: (assetId: string) => string;
   readonly now: () => number;
   readonly limiteLote?: number;
@@ -155,7 +155,7 @@ export class OpsPurgeHandler implements JobHandler {
   }
 }
 
-/** Registro no tick (chamado pela composicao do app; a composicao e fase 2 da #141 e da #43). */
+/** Registro no tick (chamado pela composicao do app; a composicao e fase 2 da Issue 141 e da Issue 43). */
 export function registerOpsPurgeHandlers(registry: JobRegistry, deps: OpsPurgeDeps): void {
   registerJobHandler(registry, OPS_PURGE_KIND, new OpsPurgeHandler(deps));
 }

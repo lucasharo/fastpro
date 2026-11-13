@@ -1,4 +1,4 @@
-// H-110 (Issue #119) | Adaptador de Storage da quarentena (docs/factory/105-DESENHO-H110.md §3, "Adaptador de Storage proprio").
+// H-110 (Issue 119) | Adaptador de Storage da quarentena (docs/factory/105-DESENHO-H110.md §3, "Adaptador de Storage proprio").
 // Lista permitida de um unico bucket (quarantine) e validacao de nome. Nao reutiliza SupabaseStorageRetencao, para
 // nao ampliar a lista de buckets de H-109. Erro com codigo fixo: sem URL, chave ou caminho na mensagem.
 // 404 = objeto ja ausente = sucesso (mesma regra de CA-H109-09). A prova com Storage real esta pendente (A-4 de H-109).

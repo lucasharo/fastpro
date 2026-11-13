@@ -1,4 +1,4 @@
-// H-110 (Issue #119) | Expurgos operacionais (docs/factory/105-DESENHO-H110.md §7). Migracao
+// H-110 (Issue 119) | Expurgos operacionais (docs/factory/105-DESENHO-H110.md §7). Migracao
 // 20261112230000_ops_create_operational_purge, aplicada DENTRO da transacao de cada teste e desfeita com rollback.
 // Nada persiste no banco de desenvolvimento. Dados sinteticos (@example.test). TTL de teste existem so dentro da
 // transacao (nunca na migracao). Erros esperados usam savepoint. Storage nao e tocado aqui (ver adapters.test.ts).

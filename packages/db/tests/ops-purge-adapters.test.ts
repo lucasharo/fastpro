@@ -1,4 +1,4 @@
-// H-110 (Issue #119) | Adaptadores dos expurgos operacionais (docs/factory/105-DESENHO-H110.md §3, §7, CA-H110-11).
+// H-110 (Issue 119) | Adaptadores dos expurgos operacionais (docs/factory/105-DESENHO-H110.md §3, §7, CA-H110-11).
 // Sem banco e sem rede: SqlClient falso responde por texto da consulta; fetch falso simula o Storage.
 // A prova com o banco real esta em ops-purge-h110.dbtest.mjs; a prova com Storage real fica pendente (A-4 de H-109).
 import { describe, expect, it } from 'vitest';

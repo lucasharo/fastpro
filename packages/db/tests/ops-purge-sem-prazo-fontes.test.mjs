@@ -1,4 +1,4 @@
-// H-110 (Issue #119) | Busca de CA-H110-14 nos arquivos do H-110 (docs/factory/105-DESENHO-H110.md §7).
+// H-110 (Issue 119) | Busca de CA-H110-14 nos arquivos do H-110 (docs/factory/105-DESENHO-H110.md §7).
 // Restrita aos arquivos novos do H-110: o auth_challenge_purge de H-011 tem interval '24 hours' legitimo e anterior.
 // Nenhum prazo de dado (TTL) pode ser literal no codigo: vem de ops.app_config, lido a cada chamada (CA-H110-13).
 // Permitidos: parametros tecnicos (statement_timeout, tamanho de lote, orcamento de tempo) e o teto tecnico de

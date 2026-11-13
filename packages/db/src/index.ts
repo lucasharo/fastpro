@@ -66,7 +66,7 @@ export * from './professional-offering.js';
 export * from './geo-point-store.js';
 // H-017 (Issue #30) | Auditoria da recusa de exclusividade de papeis (private.audit_append).
 export * from './role-exclusivity.js';
-// H-110 (Issue #119) | Expurgos operacionais: adaptador Pg, Storage da quarentena e job ops.purge.
+// H-110 (Issue 119) | Expurgos operacionais: adaptador Pg, Storage da quarentena e job ops.purge.
 export * from './ops-purge-store.js';
 export * from './ops-purge-jobs.js';
 export * from './ops-purge-storage.js';

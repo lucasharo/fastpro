@@ -1,4 +1,4 @@
-// H-110 (Issue #119) | Adaptador Pg dos expurgos operacionais (docs/factory/105-DESENHO-H110.md §2, §3, §6).
+// H-110 (Issue 119) | Adaptador Pg dos expurgos operacionais (docs/factory/105-DESENHO-H110.md §2, §3, §6).
 // Cada metodo e uma chamada a uma funcao private.ops_purge_* (ou a uma funcao de H-026 ja concedida a app_system).
 // Parametros sempre posicionais; nenhum SQL e montado com entrada de fora. Erros do banco viram codigo fixo.
 import type { SqlClient } from './jobs-tick.js';

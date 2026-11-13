@@ -1,4 +1,4 @@
-// H-110 (Issue #119) | Teste estatico da migracao dos expurgos operacionais (docs/factory/105-DESENHO-H110.md §4, §5, CA-H110-14).
+// H-110 (Issue 119) | Teste estatico da migracao dos expurgos operacionais (docs/factory/105-DESENHO-H110.md §4, §5, CA-H110-14).
 // Sem banco e sem rede: le o SQL e confere a postura (security definer, search_path vazio, privilegios minimos,
 // RLS forcada, sem literal de prazo, sem DML em audit_event nem em legal_hold, sem semente de TTL, agenda condicionada,
 // rollback presente). A prova no Postgres fica em ops-purge-h110.dbtest.mjs.
