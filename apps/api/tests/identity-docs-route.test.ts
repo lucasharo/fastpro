@@ -21,6 +21,13 @@ const SEM_PERFIL = 'cccccccc-0000-4000-8000-000000000003';
 const SEG_USUARIO = 'segredo-do-usuario-de-teste';
 const SEG_OUTRO = 'segredo-do-outro-de-teste';
 const SEG_SEM_PERFIL = 'segredo-sem-perfil-de-teste';
+// Cliente, admin e conta em Verificacao: a rota so enxerga perfil profissional; estas contas nao tem perfil.
+const CLIENTE = 'eeeeeeee-0000-4000-8000-000000000005';
+const ADMIN = 'ffffffff-0000-4000-8000-000000000006';
+const VERIFICACAO = 'gggggggg-0000-4000-8000-000000000007';
+const SEG_CLIENTE = 'segredo-cliente-de-teste';
+const SEG_ADMIN = 'segredo-admin-de-teste';
+const SEG_VERIFICACAO = 'segredo-verificacao-de-teste';
 const ID_INEXISTENTE = '00000000-0000-4000-8000-0000000000ff';
 const CUID = '44444444-4444-4444-8444-444444444444';
 
@@ -28,7 +35,12 @@ const HASHES: Record<string, string> = {
   [hashSessionSecret(SEG_USUARIO)]: USUARIO,
   [hashSessionSecret(SEG_OUTRO)]: OUTRO,
   [hashSessionSecret(SEG_SEM_PERFIL)]: SEM_PERFIL,
+  [hashSessionSecret(SEG_CLIENTE)]: CLIENTE,
+  [hashSessionSecret(SEG_ADMIN)]: ADMIN,
+  [hashSessionSecret(SEG_VERIFICACAO)]: VERIFICACAO,
 };
+
+const SEM_PERFIS = new Set([SEM_PERFIL, CLIENTE, ADMIN, VERIFICACAO]);
 
 interface Ambiente {
   readonly opts: IdentityDocRouteOptions;
@@ -68,7 +80,7 @@ function ambiente(): Ambiente {
   };
   const opts: IdentityDocRouteOptions = {
     sessions,
-    perfis: { existe: async (userId) => userId !== SEM_PERFIL },
+    perfis: { existe: async (userId) => !SEM_PERFIS.has(userId) },
     deps,
     siteUrl: SITE,
   };
@@ -206,6 +218,26 @@ describe('H-037 | rota dos documentos (CA-12, CA-18, CA-06)', () => {
       expect(r.headers['cache-control']).toBe(semPerfil.headers['cache-control']);
       expect(r.headers['content-type']).toBe(semPerfil.headers['content-type']);
     }
+  });
+
+  it('cliente, admin e conta em Verificacao sem perfil: o mesmo 404 uniforme do id inexistente (T-12)', async () => {
+    const referencia = await chamar('DELETE', `${IDOC_PATH}/${ID_INEXISTENTE}`);
+    expect(referencia.status).toBe(404);
+    for (const segredo of [SEG_CLIENTE, SEG_ADMIN, SEG_VERIFICACAO]) {
+      const r = await chamar('DELETE', `${IDOC_PATH}/${ID_INEXISTENTE}`, { segredo });
+      expect(r.status).toBe(404);
+      expect(r.texto).toBe(referencia.texto);
+      expect(r.headers['cache-control']).toBe(referencia.headers['cache-control']);
+      expect(r.headers['content-type']).toBe(referencia.headers['content-type']);
+    }
+  });
+
+  it('id que nao e uuid: 404 uniforme e nenhuma chamada ao banco (T-12)', async () => {
+    const antes = amb.store.chamadas.length;
+    const r = await chamar('DELETE', `${IDOC_PATH}/nao-e-uuid`);
+    expect(r.status).toBe(404);
+    expect(r.texto).toBe(JSON.stringify(IDOC_NAO_ENCONTRADO.corpo));
+    expect(amb.store.chamadas.length).toBe(antes);
   });
 
   it('conta sem perfil nao lista documentos: 404, nao 200 vazio (decisao 221)', async () => {

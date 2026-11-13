@@ -12,7 +12,7 @@ import {
   type IdentityDocServiceDeps,
 } from '../src/identity-docs/identity-doc-service.js';
 import { sweepIdentityDocs } from '../src/identity-docs/identity-doc-sweep.js';
-import { identityDocFinalKey, identityDocIncomingKey, IDOC_IMAGE_MAX_BYTES, IDOC_PDF_MAX_BYTES, IDOC_RATE_EMISSAO_PROFISSIONAL_HORA } from '@fastpro/domain';
+import { identityDocFinalKey, identityDocIncomingKey, IDOC_IMAGE_MAX_BYTES, IDOC_PDF_MAX_BYTES, IDOC_RATE_EMISSAO_IP_HORA, IDOC_RATE_EMISSAO_PROFISSIONAL_HORA } from '@fastpro/domain';
 import {
   FakeReducer,
   JPEG_FAKE,
@@ -417,5 +417,97 @@ describe('H-037 | listagem, exclusao e varredura (CA-06, CA-10, CA-11, T-24)', (
   it('id de entrada fora do formato uuid nao chega a gerar chave (guard de dominio)', () => {
     expect(() => identityDocIncomingKey('../../etc')).toThrow();
     expect(identityDocFinalKey(UUID_A)).toBe(`i/${UUID_A}`);
+  });
+});
+
+// T-05, T-20 e T-24 com fakes (sem banco). A contagem e a reserva seguem o MemStore (espelho de private.idoc_*).
+// A "concorrencia" aqui e a intercalacao do Promise.all; a atomicidade real (linha, gatilho, lock) fica no dbtest.
+function cuidDe(n: number): string {
+  return `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+}
+
+function descartar(a: ReturnType<typeof arranjo>, id: string): void {
+  const linha = a.store.linhas.get(id);
+  if (linha !== undefined) linha.purge = true;
+}
+
+describe('H-037 | T-05: limite de cinco vivos (fakes)', () => {
+  it('substituido e marcado para expurgo nao contam: a quinta vida passa e a sexta barra (CA-05)', async () => {
+    const a = arranjo();
+    for (let n = 1; n <= 4; n++) expect((await emitir(a.deps, USUARIO, 'image/jpeg', 100, cuidDe(n))).status).toBe(201);
+    const expurgo = (await emitir(a.deps, USUARIO, 'image/jpeg', 100, cuidDe(5))).corpo as { id: string };
+    descartar(a, expurgo.id);
+    const substituido = (await emitir(a.deps, USUARIO, 'image/jpeg', 100, cuidDe(6))).corpo as { id: string };
+    const linhaSubstituida = a.store.linhas.get(substituido.id);
+    if (linhaSubstituida !== undefined) linhaSubstituida.status = 'substituido';
+    expect((await emitir(a.deps, USUARIO, 'image/jpeg', 100, cuidDe(7))).status).toBe(201);
+    expect(await emitir(a.deps, USUARIO, 'image/jpeg', 100, cuidDe(8))).toEqual({ status: 422, corpo: { code: 'limite_documentos' } });
+    expect(a.store.linhas.size).toBe(7);
+  });
+
+  it('duas emissoes concorrentes com quatro vivos: exatamente uma passa e ficam cinco', async () => {
+    const a = arranjo();
+    for (let n = 1; n <= 4; n++) await emitir(a.deps, USUARIO, 'image/jpeg', 100, cuidDe(n));
+    const [r1, r2] = await Promise.all([
+      emitir(a.deps, USUARIO, 'image/jpeg', 100, cuidDe(10)),
+      emitir(a.deps, USUARIO, 'image/jpeg', 100, cuidDe(11)),
+    ]);
+    expect([r1.status, r2.status].sort((x, y) => x - y)).toEqual([201, 422]);
+    expect(a.store.linhas.size).toBe(5);
+  });
+});
+
+describe('H-037 | T-20: cotas de emissao (fakes)', () => {
+  it('13a emissao na hora por profissional: 429 com Retry-After; as consultas nao contam (RN-13)', async () => {
+    const a = arranjo();
+    a.rate.limites.set(IDOC_RATE_EMISSAO_PROFISSIONAL_HORA.id, IDOC_RATE_EMISSAO_PROFISSIONAL_HORA.limit);
+    for (let n = 1; n <= 20; n++) await listarDocumentos({ userId: USUARIO, ip: IP }, a.deps);
+    for (let n = 1; n <= 12; n++) {
+      const r = await emitir(a.deps, USUARIO, 'image/jpeg', 100, cuidDe(n));
+      expect(r.status).toBe(201);
+      descartar(a, (r.corpo as { id: string }).id);
+    }
+    const treze = await emitir(a.deps, USUARIO, 'image/jpeg', 100, cuidDe(13));
+    expect(treze.status).toBe(429);
+    expect(treze.retryAfterS).toBeGreaterThan(0);
+    expect(treze.corpo).toEqual({ code: 'muitas_tentativas' });
+  });
+
+  it('41a emissao por IP-HMAC na hora: 429 com Retry-After e corpo sem o numero do limite (RN-13)', async () => {
+    const a = arranjo();
+    a.rate.limites.set(IDOC_RATE_EMISSAO_IP_HORA.id, IDOC_RATE_EMISSAO_IP_HORA.limit);
+    const dono = (n: number): string => `dddddddd-0000-4000-8000-${String(n).padStart(12, '0')}`;
+    for (let n = 1; n <= 41; n++) a.store.emailVerificado.add(dono(n));
+    for (let n = 1; n <= 40; n++) expect((await emitir(a.deps, dono(n), 'image/jpeg', 100, cuidDe(n))).status).toBe(201);
+    const quarentaEUm = await emitir(a.deps, dono(41), 'image/jpeg', 100, cuidDe(41));
+    expect(quarentaEUm.status).toBe(429);
+    expect(quarentaEUm.retryAfterS).toBeGreaterThan(0);
+    expect(JSON.stringify(quarentaEUm.corpo)).not.toMatch(/40|limite/i);
+  });
+
+  it('corrida de duas emissoes no limite do teto global: no maximo uma passa (RN-15)', async () => {
+    const a = arranjo();
+    a.deps.globalBytesCap = 2_097_152;
+    const [r1, r2] = await Promise.all([
+      emitir(a.deps, USUARIO, 'image/jpeg', 100, cuidDe(1)),
+      emitir(a.deps, OUTRO, 'image/jpeg', 100, cuidDe(2)),
+    ]);
+    expect([r1.status, r2.status].sort((x, y) => x - y)).toEqual([201, 429]);
+    const barrada = r1.status === 429 ? r1 : r2;
+    expect(barrada.retryAfterS).toBe(IDOC_CAP_RETRY_S);
+  });
+});
+
+describe('H-037 | T-24: finalizacao concorrente (fakes)', () => {
+  it('duas finalizacoes simultaneas: uma processa e a outra 409 em_processamento; o redutor roda uma vez', async () => {
+    const a = arranjo();
+    const id = await enviarArquivo(a, JPEG_FAKE(1000), 'image/jpeg');
+    const [r1, r2] = await Promise.all([
+      finalizarDocumento({ userId: USUARIO, id }, a.deps),
+      finalizarDocumento({ userId: USUARIO, id }, a.deps),
+    ]);
+    expect([r1, r2]).toContainEqual({ status: 200, corpo: { id, status: 'recebido', kind: 'imagem' } });
+    expect([r1, r2]).toContainEqual({ status: 409, corpo: { code: 'em_processamento' } });
+    expect(a.reducer.recebidos).toHaveLength(1);
   });
 });
