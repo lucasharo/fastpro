@@ -115,7 +115,8 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 ## Code Review (1)
 
 | Issue | Título |
-|---|---|| #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
+|---|---|
+| #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 
 ## QA (1)
 
