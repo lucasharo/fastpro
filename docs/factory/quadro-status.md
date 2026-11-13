@@ -4,7 +4,7 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (77)
+## Backlog (76)
 
 | Issue | Título |
 |---|---|
@@ -72,7 +72,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #124 | [E15] Autorização por recurso e paridade |
 | #126 | [E15] Suíte de concorrência e falha |
 | #127 | [E15] Acessibilidade WCAG 2.2 AA com evidência |
-| #128 | [E15] Teste de restauração de backup |
 | #130 | [E15] Gate de release do MVP web |
 | #131 | [E14] App Expo base |
 | #132 | [E14] Reuso de contratos e tokens no mobile |
@@ -86,10 +85,11 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 | #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 
-## Product Owner (1)
+## Product Owner (2)
 
 | Issue | Título |
 |---|---|
+| #128 | [E15] Teste de restauração de backup |
 | #51 | [E4] Certificações para atividades regulamentadas |
 
 ## Arquitetura (3)
