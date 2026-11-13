@@ -1,5 +1,5 @@
 // H-037 (Issue #50) | ESPELHO de packages/domain/src/identity-docs/ports.ts (fase 1). O barril do dominio ainda nao exporta identity-docs;
-// na fase 2 (depois da #141) troque por import de @fastpro/domain e apague esta pasta. Paridade provada em tests/identity-docs-espelho.test.ts.
+// na fase 2 (depois da Issue 141) troque por import de @fastpro/domain e apague esta pasta. Paridade provada em tests/identity-docs-espelho.test.ts.
 // H-037 (Issue #50) | Portas dos documentos (107-DESENHO-H037.md, §2 D-3 e §4.2). O dominio nao conhece banco nem
 // Storage: as implementacoes ficam em @fastpro/db (packages/db/src/identity-docs*.ts). Tres portas de Storage,
 // separadas por finalidade. A porta do bucket final NAO tem leitura (CA-06, CA-19). IdentityDocReaderPort so

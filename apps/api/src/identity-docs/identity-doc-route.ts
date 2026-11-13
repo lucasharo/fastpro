@@ -6,7 +6,7 @@
 // Ordem: Origin/Sec-Fetch-Site -> Content-Type (so emissao) -> sessao (sem cookie valido: 401) -> id uuid (senao 404,
 // sem banco) -> perfil profissional (conta sem perfil: 404 uniforme) -> corpo -> servico. Qualquer outro caminho ou
 // metodo recebe o mesmo 404 uniforme. Nao existe rota de leitura de arquivo nem URL de leitura (CA-06).
-// Esta funcao NAO e montada em app.ts nesta fase (fase 2, depois da #141). Os testes chamam o despacho direto.
+// Esta funcao NAO e montada em app.ts nesta fase (fase 2, depois da Issue 141). Os testes chamam o despacho direto.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { hashSessionSecret } from '@fastpro/db';
 import {

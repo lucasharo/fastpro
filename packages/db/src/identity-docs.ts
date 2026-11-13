@@ -2,7 +2,7 @@
 // chamada a uma funcao private.idoc_* (security definer, executada como app_system). Parametros posicionais; nenhum
 // SQL e montado com entrada de fora. Erro de banco vira IdentityDocStoreError com codigo fixo (sem eco de SQL).
 import type { SqlClient } from './jobs-tick.js';
-// O db nao importa @fastpro/domain ate o barril receber o modulo (fase 2, depois da #141): os tipos abaixo espelham
+// O db nao importa @fastpro/domain ate o barril receber o modulo (fase 2, depois da Issue 141): os tipos abaixo espelham
 // packages/domain/src/identity-docs. A paridade com o dominio e provada em tests/identity-docs-adaptadores.test.ts.
 
 /** Limite de documentos vivos por profissional (espelha IDOC_MAX_VIVOS do dominio). */

@@ -1,5 +1,5 @@
 // H-037 (Issue #50) | ESPELHO de packages/domain/src/identity-docs/tipo.ts (fase 1). O barril do dominio ainda nao exporta identity-docs;
-// na fase 2 (depois da #141) troque por import de @fastpro/domain e apague esta pasta. Paridade provada em tests/identity-docs-espelho.test.ts.
+// na fase 2 (depois da Issue 141) troque por import de @fastpro/domain e apague esta pasta. Paridade provada em tests/identity-docs-espelho.test.ts.
 // H-037 (Issue #50) | Tipo do documento pelo conteudo (107-DESENHO-H037.md, §3 e §6.1 passo 4; B1). O tipo declarado so
 // decide o limite de emissao; a decisao final e pela assinatura dos bytes. Reaproveita o detector de imagem
 // de foto sem alterar esse modulo (decisao de R6: o detector de foto nao muda).

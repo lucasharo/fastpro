@@ -1,5 +1,5 @@
 // H-037 (Issue #50) | ESPELHO de packages/domain/src/identity-docs/constants.ts (fase 1). O barril do dominio ainda nao exporta identity-docs;
-// na fase 2 (depois da #141) troque por import de @fastpro/domain e apague esta pasta. Paridade provada em tests/identity-docs-espelho.test.ts.
+// na fase 2 (depois da Issue 141) troque por import de @fastpro/domain e apague esta pasta. Paridade provada em tests/identity-docs-espelho.test.ts.
 // H-037 (Issue #50) | Constantes dos documentos de identidade (docs/factory/107-DESENHO-H037.md, §2, §3, §5 e §6).
 // Decisoes 173, 174, 175, 188, 189 (teto em bytes, 220), 213 (bucket proprio), 225 (MiB). Documento nao e foto:
 // nada daqui reaproveita constante de bucket ou de chave de foto (R6, R7).

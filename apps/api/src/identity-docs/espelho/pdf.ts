@@ -1,5 +1,5 @@
 // H-037 (Issue #50) | ESPELHO de packages/domain/src/identity-docs/pdf.ts (fase 1). O barril do dominio ainda nao exporta identity-docs;
-// na fase 2 (depois da #141) troque por import de @fastpro/domain e apague esta pasta. Paridade provada em tests/identity-docs-espelho.test.ts.
+// na fase 2 (depois da Issue 141) troque por import de @fastpro/domain e apague esta pasta. Paridade provada em tests/identity-docs-espelho.test.ts.
 // H-037 (Issue #50) | Validador de PDF (107-DESENHO-H037.md, §6.2; decisoes 177, 178, 224). Puro, sem I/O, sem lancar
 // excecao, tempo linear nos bytes. Heuristica: nao renderiza nem converte o arquivo (risco residual R-2 aceito).
 
