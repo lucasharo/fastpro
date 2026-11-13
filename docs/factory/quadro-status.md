@@ -93,9 +93,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #50 | [E4] Documentos de identidade |
 
-| Issue | Título |
-|---|---|
-
 ## Arquitetura (4)
 
 | Issue | Título |
