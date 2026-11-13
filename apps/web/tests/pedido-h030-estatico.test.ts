@@ -68,18 +68,48 @@ describe('CA-11 sem coordenada, mapa ou ponto na tela', () => {
 });
 
 describe('CA-13 "publicado" so na frase aprovada', () => {
-  it('no codigo e no HTML, todo texto visivel com "publicad" e uma frase aprovada (identificadores e codigos de uma palavra nao sao texto)', () => {
-    // H-031 (#44): "publicado" continua existindo como codigo de status e nome de chave (ex.: 'publicado', PUBLICACAO_TEXTOS.publicado).
-    // Esses trechos nao aparecem na tela; a regra vale para frases com espaco e para o HTML.
+  // Lista fechada de trechos com "publicad" que NAO sao texto de tela (H-031, #44). Justificativa:
+  // - 'publicado' como valor de status, somente em comparacao (===, !==) ou em objeto de status/tipo (status:, tipo:).
+  //   Esse valor nao vai para a tela: a tela recebe a frase aprovada pelo mapa de textos.
+  // - chave 'publicado' do mapa PUBLICACAO_TEXTOS (pedido-logica.js), so quando o valor da mesma linha e a frase aprovada
+  //   'Pedido publicado.'. O valor e checado como frase aprovada, e PUBLICACAO_TEXTOS.publicado tem teste proprio.
+  // Qualquer outro trecho (ex.: 'Publicado' em texto, ou 'publicado' passado a textContent) precisa conter frase aprovada.
+  const CONTEXTO_DE_STATUS = /(===|!==|\bstatus\s*:|\btipo\s*:)\s*['"`]$/;
+  const VALOR_APROVADO_DA_CHAVE = /^'Pedido publicado\.'/;
+
+  function trechoNaoVisivel(trecho: string, antes: string, depois: string): boolean {
+    const nucleo = trecho.replace(/[)}\];,:]*$/, '').trim();
+    if (nucleo !== 'publicado') return false;
+    return CONTEXTO_DE_STATUS.test(antes) || VALOR_APROVADO_DA_CHAVE.test(depois);
+  }
+
+  it('a excecao e estreita: so codigo de status em comparacao ou objeto, e a chave cujo valor e a frase aprovada', () => {
+    expect(trechoNaoVisivel('publicado', "if (estado.tipo === '", '')).toBe(true);
+    expect(trechoNaoVisivel('publicado', "return { tipo: '", '')).toBe(true);
+    expect(trechoNaoVisivel('publicado:', '\n  ', "'Pedido publicado.',")).toBe(true);
+    expect(trechoNaoVisivel('publicado:', '\n  ', "'Pedido publicado!',")).toBe(false);
+    expect(trechoNaoVisivel('Publicado', '<p>', '')).toBe(false);
+    expect(trechoNaoVisivel('Publicado', "if (x === '", '')).toBe(false);
+    expect(trechoNaoVisivel('publicado', "el('x').textContent = '", '')).toBe(false);
+  });
+
+  it('no codigo e no HTML, todo texto visivel com "publicad" e uma frase aprovada', () => {
     const aprovados = ['Ainda não foi publicado.', 'Pedido publicado.', 'parecido publicado recentemente.'];
     for (const caminho of TODOS) {
       const fonte = semComentario(ler(caminho)).replace(/\$\{[^}]*\}/g, ' ');
-      const ocorrencias = [...fonte.matchAll(/[^'"`\n]*publicad[^'"`\n]*/gi)].map((m) => m[0].trim());
-      for (const trecho of ocorrencias) {
-        if (/^[\w$]+(\.[\w$]+)*[)}\];,:]*$/.test(trecho)) continue;
+      for (const m of fonte.matchAll(/[^'"`\n]*publicad[^'"`\n]*/gi)) {
+        const trecho = m[0].trim();
+        const fim = (m.index ?? 0) + m[0].length;
+        if (trechoNaoVisivel(trecho, fonte.slice(0, m.index ?? 0), fonte.slice(fim))) continue;
         expect(aprovados.some((a) => trecho.includes(a)), `${caminho}: ${trecho}`).toBe(true);
       }
     }
+  });
+});
+
+describe('regiao viva dos erros de publicacao e confirmacao (H-031, #44)', () => {
+  it.each(['confirmar-erro', 'publicar-erro'])('%s anuncia o erro com role="alert"', (id) => {
+    expect(ler('../public/pedido/revisao.html')).toMatch(new RegExp(`<p id="${id}"[^>]*\\brole="alert"`));
   });
 });
 
