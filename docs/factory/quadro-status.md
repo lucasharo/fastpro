@@ -4,7 +4,7 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (80)
+## Backlog (81)
 
 | Issue | Título |
 |---|---|
@@ -88,6 +88,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #146 | [E15] db:test: T-H018-13 depende de semente ausente no DEV |
 | #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 | #148 | [E15] db:test: URL fictícia com senha em identity-docs-montagem |
+| #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 
 ## Product Owner (0)
 
@@ -104,10 +105,11 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
 
-## Desenvolvimento (3)
+## Desenvolvimento (4)
 
 | Issue | Título |
 |---|---|
+| #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
 | #50 | [E4] Documentos de identidade |
 | #44 | [E3] Publicação idempotente com 7 dias |
 | #119 | [E13] Expurgos operacionais |
@@ -118,11 +120,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 
-## QA (1)
-
-| Issue | Título |
-|---|---|
-| #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
+## QA (0)
 
 ## Concluído (55)
 
