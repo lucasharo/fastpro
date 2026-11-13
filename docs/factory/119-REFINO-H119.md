@@ -1,5 +1,7 @@
 # Refino H-119 — Teste de restauração de backup (Issue #128)
 
+> [SUPERADO em parte — Rodada 73/75, #151] A parte de backup/restauração deste documento saiu do escopo (#128 removida do escopo); o keep-alive continua válido. Texto original abaixo mantido.
+
 - **Issue:** #128 `[E15] Teste de restauração de backup` · **História:** H-119 · **Workflow:** WF-03 (Feature/infra) · **Etapa:** Product Owner.
 - **Repositório:** `D:\projetos\fastpro`, branch `feature/init`. **Data:** 2026-11-13.
 - **EXEC-ID:** não atribuído (não informado pelo líder).
