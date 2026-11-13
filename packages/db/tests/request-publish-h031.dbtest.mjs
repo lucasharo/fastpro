@@ -15,7 +15,8 @@ before(async () => {
 });
 after(async () => {
   // Limpeza das linhas sinteticas com o marcador SUF (contagens, sem valores). Ver limpar().
-  if (client && marcados.usuarios.length) {
+  // H031_SEM_LIMPEZA=1 pula a limpeza (execucao no DEV sem apagar nada; padrao: limpa como antes).
+  if (client && marcados.usuarios.length && process.env.H031_SEM_LIMPEZA !== '1') {
     console.log(`LIMPEZA H-031 ${JSON.stringify(await limpar(client))}`);
   }
   await client?.end();
@@ -260,8 +261,8 @@ test('T-DB05 nada publica sozinho: leitura e confirmacao nao criam pedido', asyn
     const d = await rascunho(client, s, u, { confirmado: false });
     await client.query('select * from private.draft_review_get($1, $2::timestamptz)', [d.hash, iso(T0)]);
     await client.query('select * from private.draft_confirm($1, $2::timestamptz, 0, 7)', [d.hash, iso(T0)]);
-    const n = (await client.query('select count(*)::int as n from app.service_request')).rows[0].n;
-    assert.equal(n, 0);
+    // So os pedidos do proprio rascunho deste teste: o DEV pode ter pedidos sinteticos de outras provas.
+    assert.equal(await contarPedidos(d.id), 0);
   });
 });
 
@@ -285,8 +286,8 @@ test('T-DB06 recusas de e-mail e de conta nao criam nada e liberam a chave', asy
         [u.id, b.key],
       )).rows[0].n;
       assert.equal(chave, 0, `${caso.nome}: chave liberada`);
-      const n = (await client.query('select count(*)::int as n from app.service_request')).rows[0].n;
-      assert.equal(n, 0, caso.nome);
+      // So os pedidos do proprio rascunho deste caso (o DEV pode ter pedidos sinteticos de outras provas).
+      assert.equal(await contarPedidos(d.id), 0, caso.nome);
     });
   }
 });
