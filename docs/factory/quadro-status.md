@@ -89,18 +89,18 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #51 | [E4] Certificações para atividades regulamentadas |
 
-## Arquitetura (3)
+## Arquitetura (2)
+
+| Issue | Título |
+|---|---|
+| #36 | [E2] Descoberta por raio e online nacional |
+| #37 | [E2] Cobertura booleana sem contagem |
+
+## Desenvolvimento (2)
 
 | Issue | Título |
 |---|---|
 | #52 | [E4] Fila de verificação |
-| #36 | [E2] Descoberta por raio e online nacional |
-| #37 | [E2] Cobertura booleana sem contagem |
-
-## Desenvolvimento (1)
-
-| Issue | Título |
-|---|---|
 | #151 | [E15] Remover backup, restauração e exportação de dados do escopo do projeto |
 
 ## Code Review (0)
@@ -110,7 +110,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | Issue | Título |
 |---|---|
 
-## Concluído (62)
+## Concluído (63)
 
 | Issue | Título |
 |---|---|
@@ -156,6 +156,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #44 | [E3] Publicação idempotente com 7 dias |
 | #48 | [E4] Cadastro profissional com CPF/CNPJ cifrado |
 | #49 | [E4] Perfil: serviços, base e raio |
+| #59 | [E5] Planos e preços em centavos |
 | #50 | [E4] Documentos de identidade |
 | #58 | [E5] Acesso comercial derivado |
 | #83 | [E7] Acesso excepcional a conversa |
@@ -185,10 +186,9 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #128 | [E15] Teste de restauração de backup |
 | #145 | [E15] db:test: media_asset fora do backup sem decisão registrada |
 
-## Aguardando aprovação (1)
+## Aguardando aprovação (0)
 
 | Issue | Título |
 |---|---|
-| #59 | [E5] Planos e preços em centavos |
 
 ## Bloqueado (0)
