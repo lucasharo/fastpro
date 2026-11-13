@@ -95,9 +95,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #58 | [E5] Acesso comercial derivado |
 
-| Issue | Título |
-|---|---|
-
 ## Arquitetura (2)
 
 | Issue | Título |
@@ -120,7 +117,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 ## QA (0)
 
-## Concluído (56)
+## Concluído (57)
 
 | Issue | Título |
 |---|---|
@@ -180,6 +177,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #119 | [E13] Expurgos operacionais |
 | #125 | [E15] Testes de injeção e abuso |
 | #129 | [E15] Dados sintéticos de demonstração |
+| #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
 
 ## Descartado (1)
 
@@ -187,10 +185,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #110 | [E11] Teste de ausência de interruptor |
 
-## Aguardando aprovação (1)
-
-| Issue | Título |
-|---|---|
-| #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
+## Aguardando aprovação (0)
 
 ## Bloqueado (0)
