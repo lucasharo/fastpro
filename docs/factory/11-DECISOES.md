@@ -619,3 +619,19 @@ Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
 - **#140 Code Review APROVADO** (achado importante: prova de vazamento do demo-guard ficou vacua apos bf2147d; corrigida em d20f38b; #148 corrigida e a fechar).
 - **#141 CONCLUIDA pelo usuario** (acao humana confirmada no quadro-status.md: Aguardando aprovacao = 0, Concluido = 57). Pendencias de evidencia que seguem como acompanhamento: CA-10 ponta a ponta no DEV (decisao 150) e pre-condicoes de producao da Rodada 55.
 - **#58 em Product Owner** (puxada do Backlog: depende so de H-005 e H-017, concluidas; independente das Issues em andamento). **#148 fechada** pelo lider (corrigida em 41519f5); **#140** corrigida (d20f38b, 2d4dee3) e em QA.
+
+## Rodada 61 (refino do acesso comercial derivado, #58 / H-045 — 113-REFINO-H045.md)
+Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
+- **267:** em `T1 + 72 h` exatos o estado e' `expirada` (convencao "prazo expirado" da 08 §6); B-01 perde o "inclusive".
+- **268:** trial de 14 dias corridos (`ends_at = starts_at + 14 dias`).
+- **269:** o acesso pago prevalece sobre o trial quando coexistem (inclusive em carencia).
+- **270:** tabela `subscription` minima em H-045 com `cancel_at_period_end` e `canceled_at`, para cumprir os oito estados.
+- **271:** NAO criar `grace_until` em `access_grant`; carencia derivada, uma unica fonte de verdade.
+- **272:** o CHECK aceita `adjustment`, mas a funcao ignora `adjustment` e `revogada` ate a decisao L3 ([PROPOSTA]).
+- **273:** unicidade do trial por `identity_id` redundante, como a 09 define; confirmar com H-040.
+- **274:** `commercial_access` NAO verifica aprovacao do profissional (a guarda e' de H-042/H-044).
+- **275:** livro imutavel: `starts_at` e `ends_at` fixos; `status` so de `ativa` para `revogada`, por sistema/Financeiro com auditoria; sem DELETE pela aplicacao.
+- **276:** nao sobreposicao de concessoes pagas por restricao de exclusao (`btree_gist`) se disponivel no DEV; senao trigger (Arquiteto confirma).
+- **277:** `commercial_access` executavel so pelo papel de aplicacao do servidor; leitura direta de `access_grant` negada a `anon` e `authenticated`.
+- **278 (onda):** opcao (b): H-045 entra agora porque depende so de H-005 e H-017 (concluidas) e nao consome verificacao; excecao registrada no backlog.
+- **#58 avanca de Product Owner para Arquitetura.**

@@ -88,18 +88,15 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 | #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 
-## Product Owner (1)
+## Product Owner (0)
 
-| Issue | Título |
-|---|---|
-| #58 | [E5] Acesso comercial derivado |
-
-## Arquitetura (2)
+## Arquitetura (3)
 
 | Issue | Título |
 |---|---|
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
+| #58 | [E5] Acesso comercial derivado |
 
 ## Desenvolvimento (2)
 
