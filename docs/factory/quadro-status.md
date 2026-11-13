@@ -4,7 +4,7 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (81)
+## Backlog (80)
 
 | Issue | Título |
 |---|---|
@@ -20,7 +20,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #55 | [E4] Guarda de elegibilidade na API e no banco |
 | #56 | [E4] Perfil público e selo verificado |
 | #57 | [E5] Trial de 14 dias |
-| #58 | [E5] Acesso comercial derivado |
 | #59 | [E5] Planos e preços em centavos |
 | #60 | [E5] Checkout Mercado Pago (Pix e cartão) |
 | #61 | [E5] Webhook MP idempotente |
@@ -90,10 +89,11 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #148 | [E15] db:test: URL fictícia com senha em identity-docs-montagem |
 | #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 
-## Product Owner (0)
+## Product Owner (1)
 
 | Issue | Título |
 |---|---|
+| #58 | [E5] Acesso comercial derivado |
 
 | Issue | Título |
 |---|---|
