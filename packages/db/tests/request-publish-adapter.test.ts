@@ -44,7 +44,7 @@ const beginInput: PublishBeginInput = {
   userId: USER,
   draftId: DRAFT,
   secretHash: 'a'.repeat(64),
-  idemKey: 'chave-idempotencia-01',
+  idemKey: 'idem-teste-abc',
   bodyHash: 'b'.repeat(64),
   contentRev: 3,
   userRateKey: 'c'.repeat(64),
@@ -56,7 +56,7 @@ const commitInput: PublishCommitInput = {
   userId: USER,
   draftId: DRAFT,
   secretHash: 'a'.repeat(64),
-  idemKey: 'chave-idempotencia-01',
+  idemKey: 'idem-teste-abc',
   bodyHash: 'b'.repeat(64),
   contentRev: 3,
   pointId: PONTO,
@@ -92,7 +92,7 @@ describe('PgRequestPublishStore.begin', () => {
       USER,
       DRAFT,
       'a'.repeat(64),
-      'chave-idempotencia-01',
+      'idem-teste-abc',
       'b'.repeat(64),
       3,
       'c'.repeat(64),
@@ -196,12 +196,12 @@ describe('PgRequestPublishStore.abort', () => {
     const { client, chamadas } = clienteFalso(resposta({ ok: true } as Partial<typeof linhaVazia>));
     const out = await new PgRequestPublishStore(client).abort({
       userId: USER,
-      idemKey: 'chave-idempotencia-01',
+      idemKey: 'idem-teste-abc',
       bodyHash: 'b'.repeat(64),
     });
     expect(out).toBe(true);
     expect(chamadas[0]?.sql).toBe(SQL_PUBLISH_ABORT);
-    expect(chamadas[0]?.params).toEqual([USER, 'chave-idempotencia-01', 'b'.repeat(64)]);
+    expect(chamadas[0]?.params).toEqual([USER, 'idem-teste-abc', 'b'.repeat(64)]);
   });
 });
 
@@ -217,7 +217,7 @@ describe('isolamento do adaptador', () => {
     const store = new PgRequestPublishStore(client);
     await store.begin(beginInput);
     await store.commit(commitInput);
-    await store.abort({ userId: USER, idemKey: 'chave-idempotencia-01', bodyHash: 'b'.repeat(64) });
+    await store.abort({ userId: USER, idemKey: 'idem-teste-abc', bodyHash: 'b'.repeat(64) });
     for (const sql of todas) {
       expect(sql).toMatch(/^select (\* from )?private\.request_publish_/);
       expect(sql).not.toMatch(/\b(insert|update|delete)\b|\bapp\./i);
