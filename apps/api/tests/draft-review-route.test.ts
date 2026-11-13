@@ -330,7 +330,7 @@ describe('T-API04/05 POST confirm: corpo, resposta fechada e idempotencia', () =
   });
 });
 
-describe('T-API06/07 conteudo alterado e limite de taxa', () => {
+describe('T-API06 conteudo alterado: versao velha recusa, versao atual confirma', () => {
   it('versao velha: 409 conteudo_alterado; a versao atual confirma', async () => {
     const m = await iniciar();
     const s = segredo(11);
@@ -341,7 +341,9 @@ describe('T-API06/07 conteudo alterado e limite de taxa', () => {
     const atual = await chamar(m.porta, 'POST', DRAFT_CONFIRM_PATH, { cookie: enviaCookie(s), corpo: { content_rev: 2 } });
     expect(atual.status).toBe(200);
   });
+});
 
+describe('T-API07 limite de taxa: 11a confirmacao em 60 s recebe 429', () => {
   it('11a confirmacao em 60 s por rascunho: 429 com Retry-After e sem revelar o limite', async () => {
     const m = await iniciar();
     const s = segredo(12);
@@ -357,6 +359,13 @@ describe('T-API06/07 conteudo alterado e limite de taxa', () => {
     expect(JSON.parse(r.body)).toEqual({ code: 'muitos_pedidos', retry_after_seconds: 60 });
     expect(r.body).not.toMatch(/limit|limite/i);
   });
+});
+
+// T-API09 (desenho 90 §7.2): "nenhuma rota nova cria service_request nem muda status" exige inspecao do banco real.
+// O harness deste arquivo e em memoria (MemReview), entao nao ha como provar a ausencia de escrita em service_request
+// aqui sem inventar cobertura. Fica pendente ate existir teste contra o banco de desenvolvimento (inspecao pos-chamada).
+describe('T-API09 nenhuma rota de revisao cria service_request nem muda status', () => {
+  it.todo('T-API09: apos GET review e POST confirm, nenhuma linha de service_request e criada e o status do rascunho nao muda (inspecao do banco real; pendente: harness em memoria nao consegue provar)');
 });
 
 describe('T-API08 privacidade: nome, e-mail e descricao nunca vao para o log', () => {
