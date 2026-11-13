@@ -83,6 +83,9 @@ export const SQL = Object.freeze({
   appUser: `insert into app.app_user (id, email, auth_user_id, status, email_verified_at, created_at)
             values ($1, $2, $3, 'ativo', now(), now())
             on conflict (id) do nothing`,
+  // H-017 (101 §9): cliente de demonstracao tambem tem perfil de cliente.
+  perfilCliente: `insert into app.customer_profile (user_id, created_at) values ($1, now())
+            on conflict (user_id) do nothing`,
   perfil: `insert into app.professional_profile (user_id, verification_status, verified_at, suspended_at,
              suspension_reason, created_at, updated_at, public_name, slug, document_type, document_enc, document_hmac)
            values ($1, $2, $3, $4, $5, now(), now(), $6, $7, 'CPF', $8, $9)
@@ -114,6 +117,7 @@ export const REMOCAO = Object.freeze([
   ['orcamento_geo', 'delete from app.geocode_budget where subject_id::text like $1'],
   ['coordenadas', 'delete from app.geocode_point where id::text like $1 or subject_id::text like $1'],
   ['rascunhos', 'delete from app.request_draft where id::text like $1'],
+  ['perfis_cliente', 'delete from app.customer_profile where user_id::text like $1'],
   ['usuarios', 'delete from app.app_user where id::text like $1'],
 ]);
 
@@ -290,6 +294,7 @@ export async function carregarCamada1(client, keys) {
 
   for (const cl of CLIENTES) {
     c.clientes += (await client.query(SQL.appUser, [cl.id, cl.email, cl.authId])).rowCount;
+    await client.query(SQL.perfilCliente, [cl.id]);
   }
 
   for (const p of PROFISSIONAIS) {
