@@ -382,3 +382,8 @@ Recomendadas pelo lider; o usuario pode vetar (aguardando confirmacao).
   - **146:** decisoes 136 a 143 da #30 confirmadas.
   - **147:** aceito: o papel de backup nao le professional_area, professional_area_history e professional_service (dados de localizacao); o procedimento de backup (TODO 1) deve tratar essas tabelas.
   - **148:** autorizada a triagem das falhas do db:test; criada a Issue #140 [E15] no Backlog.
+
+## Rodada 40 (Code Review de #49 e #42, 2026-11-12)
+- **#49:** Code Review APROVADO com condicao A1 (commit do callsCap), cumprida em 1d9cc44 com teste. Dividas registradas: T-P19 (serializacao com lock_timeout entre duas conexoes) a cobrir antes de ligar a rota em producao; teste da funcao real ensurePermanentPoint contra o banco (o pacote db nao importa apps); T-P14 sem service_role; escrita invalida consome slot das 30/h (conservador).
+- **#42:** Code Review reprovou so por 2 erros de lint em fotos.js (corrigidos em 5bd5d07). Pendencias para a QA: composicao da rota de midia (nova Issue #141, no Backlog; sem ela as rotas da galeria dao 404 em runtime), dbtest do adaptador PgMediaGallery, roteiro manual G-14 (NVDA, zoom, contraste).
+- **T-DB02 da #43** falha por estado do catalogo no DEV (CT002), nao pela #42; tratar na triagem #140.
