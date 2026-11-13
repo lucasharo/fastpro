@@ -105,16 +105,12 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 ## Code Review (0)
 
-| Issue | Título |
-|---|---|
-
-## QA (1)
+## QA (0)
 
 | Issue | Título |
 |---|---|
-| #59 | [E5] Planos e preços em centavos |
 
-## Concluído (61)
+## Concluído (62)
 
 | Issue | Título |
 |---|---|
@@ -157,9 +153,9 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #41 | [E3] Remoção de EXIF e tipo por conteúdo |
 | #42 | [E3] Pré-visualização e reordenação de fotos |
 | #43 | [E3] Revisão e confirmação expressa |
+| #44 | [E3] Publicação idempotente com 7 dias |
 | #48 | [E4] Cadastro profissional com CPF/CNPJ cifrado |
 | #49 | [E4] Perfil: serviços, base e raio |
-| #44 | [E3] Publicação idempotente com 7 dias |
 | #50 | [E4] Documentos de identidade |
 | #58 | [E5] Acesso comercial derivado |
 | #83 | [E7] Acesso excepcional a conversa |
@@ -177,6 +173,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #119 | [E13] Expurgos operacionais |
 | #125 | [E15] Testes de injeção e abuso |
 | #129 | [E15] Dados sintéticos de demonstração |
+| #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 | #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
 | #150 | [E6] Remover o histórico de acesso às fotos (media_access_log e resumo diário) |
 
@@ -192,6 +189,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 | Issue | Título |
 |---|---|
-| #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
+| #59 | [E5] Planos e preços em centavos |
 
 ## Bloqueado (0)
