@@ -110,12 +110,11 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #59 | [E5] Planos e preços em centavos |
 
-## QA (2)
+## QA (1)
 
 | Issue | Título |
 |---|---|
 | #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
-| #44 | [E3] Publicação idempotente com 7 dias |
 
 ## Concluído (60)
 
@@ -188,6 +187,10 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #110 | [E11] Teste de ausência de interruptor |
 
-## Aguardando aprovação (0)
+## Aguardando aprovação (1)
+
+| Issue | Título |
+|---|---|
+| #44 | [E3] Publicação idempotente com 7 dias |
 
 ## Bloqueado (0)
