@@ -42,6 +42,11 @@ describe('postura da pagina (sem script ou estilo em linha)', () => {
     expect(html).toMatch(/id="alerta"[^>]*role="alert"/);
   });
 
+  it('as regioes vivas nunca somem do layout quando vazias (sem display:none em :empty)', () => {
+    const css = ler(CSS);
+    expect(css).not.toMatch(/:empty\s*,?\s*[^{]*\{\s*display\s*:\s*none/);
+  });
+
   it('o campo de arquivo aceita so os quatro tipos declarados', () => {
     expect(html).toMatch(/accept="image\/jpeg,image\/png,image\/webp,application\/pdf"/);
   });

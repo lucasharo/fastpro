@@ -61,9 +61,10 @@ input[type="file"] {
   color: var(--color-text-secondary);
 }
 
-.estado:empty,
-.alerta:empty {
-  display: none;
+/* As regioes aria-live ficam sempre no layout (display:none faz leitores de tela perderem o anuncio). */
+.estado,
+.alerta {
+  margin: 0;
 }
 
 .estado:not(:empty),
