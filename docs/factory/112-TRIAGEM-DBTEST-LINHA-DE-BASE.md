@@ -206,3 +206,38 @@ Nenhuma falha foi confirmada com categoria definitiva. Os itens com "NÃO VERIFI
 
 - **Teste 9 de backup-roles (prioridade):** leitura feita pelo líder sem imprimir valores. Nenhuma senha real do `.env.local` aparece em arquivo versionado (0 coincidências). O teste falha porque 4 arquivos de teste têm URL de banco fictícia com senha que não é placeholder: `apps/api/tests/media-composicao.test.ts`, `apps/api/tests/media-ponta-a-ponta.test.ts` (ambos da #141), `apps/api/tests/professional-composicao.test.ts` (#48/H-035) e `packages/db/tests/demo-guard.test.mjs` (#129). Classificação final: **C (fixture do teste)**, não é incidente de credencial. Correção: trocar as URLs fictícias por forma aceita pelo placeholder do teste (por exemplo `postgres://usuario:senha@host/db`), ou, para o demo-guard, que precisa de refs reais fictícios, manter a senha no formato `senha`.
 - **Resíduo `ops.job` +2:** segue sem origem identificada; sem remoção (pergunta 261 sem resposta).
+
+## 11. Segunda rodada (#140, Desenvolvimento, 2026-11-13): categorias definitivas e correções
+
+Leitura de metadados do DEV em transação READ ONLY, desfeita (script fora do repo: `...\scratchpad\triagem-leitura3.mjs`, saída em `...\scratchpad\dbtest-baseline\leitura3.txt`). Sem valores de conexão. Correções só de fixture ou expectativa (categorias C e F), cada uma em commit separado com `test(E15): ... (#140)`.
+
+### 11.1 Categoria definitiva de cada falha da linha de base
+
+| # | Arquivo | Teste | Categoria definitiva | Causa (uma linha) | Situação |
+|---|---|---|---|---|---|
+| 1 | audit.dbtest.mjs | D-02b | C | Lista esperada só previa o catálogo do H-018; H-019, H-107, H-013/H-025/H-030 e H-026/H-027/H-029 concedem execute a app_api (Q8: 32 funções) | Corrigido `b5ba98b` (25 passam, 0 falham) |
+| 2 | backup-roles.dbtest.mjs | T-BK-09 | C provável | Tabelas de localização fora do backup pela decisão 147; lista de exceções do teste a conferir | NÃO VERIFICADO nesta rodada; não corrigido |
+| 3 | backup-roles.dbtest.mjs | teste 9 | C (fixture) | Quatro arquivos com URL fictícia cuja senha não é placeholder; nenhuma senha real envolvida | Corrigido `bf2147d` (api 25/25; demo-guard 28/28) |
+| 4-11 | catalog-search.dbtest.mjs | T-H019-09 a -16 | F | Helper esperava 'aplicada'; o DEV já tem a semente (catalog_seed_run = 1; 25 grupos; 575 serviços; 1253 sinônimos) e a função devolve 'ja_aplicada' | Corrigido o helper (aceita 'ja_aplicada' com o mesmo checksum); aguarda série |
+| 12 | catalog-service.dbtest.mjs | T-H018-11 | F | Mesmo motivo: 'ja_aplicada' em vez de 'aplicada' | Corrigido (contadores só na primeira aplicação); aguarda série |
+| 13 | catalog-service.dbtest.mjs | T-H018-13 | F | Insere manualmente "Reformas e construção", que já existe na semente gravada (g01): 23505. O cenário exige semente ausente na transação | NÃO corrigido: exige reset controlado da semente dentro da transação; registrar como falha conhecida |
+| 14 | draft-request-h025.dbtest.mjs | D-01 | C | app.request_draft ganhou first_name, email, email_hmac, email_verified_at (H-030 §1.1), confirmed_at e content_rev (H-030), photo_rev (H-029) | Corrigido `c666c56` (17 passam, 0 falham no arquivo) |
+| 15 | draft-request-h025.dbtest.mjs | D-10 | C | Contagem exata de quatro funções draft_* em private; hoje há 11 (migrações posteriores) | Corrigido `c666c56` (pelo menos as quatro de H-025, como D-06) |
+| 16-17 | draft-rollback-h025.dbtest.mjs | D-10 (testes 2 e 3) | C (ordem de desfazer) | Desfazer H-025 com o banco na cabeça falha (2BP01): dependem de request_draft a FK media_asset_draft_id_fkey (H-026) e service_request_origin_draft_id_fkey, além de trigger e índices (Q4). O teste desfaz fora da ordem das migrações | NÃO corrigido: exige desfazer as migrações posteriores dentro da transação; falha conhecida. Origem: #38 |
+| 18-19 | geo-geocode-point.dbtest.mjs | CA-4 (testes 3 e 4) | NÃO VERIFICADO (B ou D) | Esperado 23514 (CHECK); obtido 22023 antes do CHECK. A CHECK geocode_point_caixa_brasil existe (Q5, lon -74..-34); a origem do 22023 não foi identificada (provável gatilho ou validação anterior) | NÃO corrigido; próxima leitura: gatilhos de app.geocode_point |
+| 20 | geo-match-point.dbtest.mjs | T-CA05b (teste 11) | C | Lista fechada só previa geo_store_permanent; request_publish_commit (H-031 §4.4 e D-04, só app_system) também toca exact_point (Q7) | Corrigido em `geo-match-point.dbtest.mjs` (ver 11.3); aguarda série |
+| 21 | geo-match-point.dbtest.mjs | T-CA10 (teste 27) | NÃO VERIFICADO (A, B ou D) | Esperado 166860438 (grade de private.match_grid) e obtido 279844523 (match_cell gravado pela migração) | NÃO corrigido; comparar a função match_grid e a migração aplicadas |
+
+Contagem: 21 falhas da linha de base. Corrigidas nesta rodada: 1, 3, 4-11, 12, 14, 15, 20 (17 testes, aguardando confirmação pela série). Falhas conhecidas restantes, sem categoria final: 2, 13 (F), 16-17 (C), 18-19 (NÃO VERIFICADO), 21 (NÃO VERIFICADO). Nenhuma falha D foi confirmada; por isso nenhuma Issue de origem foi aberta (sem escrita no GitHub nesta rodada).
+
+### 11.2 Estado do DEV (leitura)
+
+- Relações e linhas: `app.service_group` 25 (todas com seed_key), `app.service` 575, `app.service_synonym` 1253, `app.catalog_seed_run` 1, `app.request_draft` com identidade do H-030.
+- Nenhuma linha com marcador `@example.test` no catálogo (Q13 = 0).
+- Nenhuma remoção, migração ou carga foi feita.
+
+### 11.3 Série completa (64 arquivos) desta rodada
+
+Runner: `...\scratchpad\run-rodada2.sh`. Resumo por arquivo: `...\scratchpad\dbtest-baseline\rodada2\resumo.tsv`. Logs: `...\scratchpad\dbtest-baseline\rodada2\<arquivo>.log`. Execução: uma por vez, timeout 300 s por arquivo, em segundo plano.
+
+Resultado: a série ainda está em andamento neste ponto; a contagem final entra no relatório ao líder, a partir do `resumo.tsv`, e não é declarada aqui antes de terminar.
