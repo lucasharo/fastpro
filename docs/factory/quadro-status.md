@@ -87,23 +87,23 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #51 | [E4] Certificações para atividades regulamentadas |
 
-## Arquitetura (1)
+## Arquitetura (0)
 
 | Issue | Título |
 |---|---|
-| #46 | [E3] Opt-in de telefone no pedido |
 
 ## Desenvolvimento (2)
 
 | Issue | Título |
 |---|---|
-| #45 | [E3] Visibilidade de localização |
+| #46 | [E3] Opt-in de telefone no pedido |
 | #37 | [E2] Cobertura booleana sem contagem |
 
-## Code Review (0)
+## Code Review (1)
 
 | Issue | Título |
 |---|---|
+| #45 | [E3] Visibilidade de localização |
 
 ## QA (1)
 
