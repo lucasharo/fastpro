@@ -99,10 +99,11 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #36 | [E2] Descoberta por raio e online nacional |
 | #37 | [E2] Cobertura booleana sem contagem |
 
-## Desenvolvimento (1)
+## Desenvolvimento (2)
 
 | Issue | Título |
 |---|---|
+| #42 | [E3] Pré-visualização e reordenação de fotos |
 | #43 | [E3] Revisão e confirmação expressa |
 
 ## Code Review (1)
@@ -111,12 +112,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #30 | [E1] Exclusividade de papéis |
 
-## QA (2)
-
-| Issue | Título |
-|---|---|
-| #42 | [E3] Pré-visualização e reordenação de fotos |
-| #49 | [E4] Perfil: serviços, base e raio |
+## QA (0)
 
 ## Concluído (51)
 
@@ -180,6 +176,10 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #110 | [E11] Teste de ausência de interruptor |
 
-## Aguardando aprovação (0)
+## Aguardando aprovação (1)
+
+| Issue | Título |
+|---|---|
+| #49 | [E4] Perfil: serviços, base e raio |
 
 ## Bloqueado (0)
