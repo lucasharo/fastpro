@@ -402,3 +402,16 @@ Recomendadas pelo lider; o usuario pode vetar (aguardando confirmacao).
 - Cadeia de dependencia: #43 (H-030) -> #44 (H-031) -> #36 (H-023) -> #37 (H-024). A #44 so entra em Desenvolvimento depois da #43; o PO da #44 pode comecar antes, se houver vaga.
 - Proxima atividade independente puxada: #119 [E13] Expurgos operacionais (H-110: depende de H-005, H-008, H-109, todas concluidas). Candidata seguinte: #50 [E4] Documentos de identidade (H-037: depende de H-026, H-016, S-06, concluidos), depois da #141 para nao disputar a infraestrutura de midia.
 - Quadro: o servidor do quadro.html reescreveu o arquivo quando o usuario concluiu a #49 e a #42 sumiu; restaurada em Aguardando aprovacao.
+
+## Rodada 42 (refino da composicao da midia, #141 — 102-REFINO-MIDIA-COMPOSICAO.md)
+Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar):
+- **151 (P-141-1):** a midia e' montada na raiz da API, mas liberada em producao somente com variavel explicita de liberacao, ausente em producao ate o expurgo agendado (H-110, #119) existir (condicao 3 de 88 §8). Em desenvolvimento e preview, montada.
+- **152 (P-141-3):** reaproveitar SUPABASE_URL e SUPABASE_SECRET_KEY para o Storage da midia.
+- **153 (P-141-4):** galeria separada do upload (cada uma com as proprias pendencias na composicao).
+- **154 (P-141-6):** aprovados os tres textos novos propostos no refino (arquivo grande demais; tipo nao aceito; falha de envio).
+- **155 (P-141-7):** a ligacao do AbortController (excluir foto durante o envio) entra na #141.
+- **156 (P-141-9):** aceitar em desenvolvimento e preview a reducao no servidor sem a carga do sharp em Linux verificada (falha vira 503); producao fechada pela 151.
+- **P-141-5 (como gerar o script publico de /fotos):** vai para o Arquiteto (recomendacao do PO: esbuild como dependencia de desenvolvimento gratuita, saida gerada e ignorada pelo git).
+Perguntas ao usuario (numeracao continua):
+- **157 (P-141-10, executor de migracoes):** `npx supabase db push/migration list` deu 403 nesta conta (relatado pelo DEV da #42) e `db push` usa outra tabela de historico; o executor do repositorio (`corepack pnpm db:migrate`, ops.schema_migration, dry-run transacional) e' o que todos os agentes usam. Recomendacao: formalizar `db:migrate` como o executor oficial e manter proibido o MCP do Supabase. Aguardando decisao.
+- **P-141-2 e P-141-8:** ja respondidas pelo fluxo: a #42 espera a decisao do usuario com a ressalva; o teste ponta a ponta da #141 espera a decisao 150 (senhas).
