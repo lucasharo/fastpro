@@ -82,21 +82,36 @@ export class PgOpsPurgeStore {
     return Number((res.rows[0] as { n: number | string }).n);
   }
 
-  /** Objetos do bucket quarantine a considerar como orfaos (E9). Sem nome nem caminho em log. */
-  async orfaos(agora: number, limite: number): Promise<readonly { estado: string; nome: string | null; id: string | null; existe: boolean | null }[]> {
-    const res = await this.client.query(
-      'select out_estado, out_nome, out_id, out_existe from private.ops_purge_media_orfaos($1::timestamptz, $2::integer)',
-      [new Date(agora).toISOString(), limite],
-    );
-    return res.rows.map((r) => {
-      const row = r as Record<string, unknown>;
+  /** Adia (fim da fila de marcados) as fotos cuja remocao falhou, para uma falha persistente nao travar o lote. */
+  async adiarMarcados(ids: readonly string[], agora: number): Promise<number> {
+    if (ids.length === 0) return 0;
+    const res = await this.client.query('select private.ops_purge_media_adia($1::uuid[], $2::timestamptz) as n', [
+      ids,
+      new Date(agora).toISOString(),
+    ]);
+    return Number((res.rows[0] as { n: number | string }).n);
+  }
+
+  /**
+   * Orfaos do bucket quarantine (E9). O SQL ja filtra (padrao uuid e sem linha em app.media_asset) e devolve so
+   * os nomes orfaos, ate o limite; os fora do padrao vem como contagem em retidos. Nomes nao vao para log.
+   */
+  async orfaos(agora: number, limite: number): Promise<{ estado: EstadoBlocoOpsPurge; nomes: readonly string[]; retidos: number }> {
+    try {
+      const res = await this.client.query(
+        'select out_estado, out_nomes, out_retidos from private.ops_purge_media_orfaos($1::timestamptz, $2::integer)',
+        [new Date(agora).toISOString(), limite],
+      );
+      const row = res.rows[0] as { out_estado: string; out_nomes: string[] | null; out_retidos: number | string } | undefined;
+      if (!row || !ESTADOS.has(row.out_estado)) return { estado: 'falha', nomes: [], retidos: 0 };
       return {
-        estado: String(row.out_estado),
-        nome: row.out_nome === null ? null : String(row.out_nome),
-        id: row.out_id === null ? null : String(row.out_id),
-        existe: row.out_existe === null ? null : row.out_existe === true,
+        estado: row.out_estado as EstadoBlocoOpsPurge,
+        nomes: (row.out_nomes ?? []).map(String),
+        retidos: Number(row.out_retidos),
       };
-    });
+    } catch {
+      return { estado: 'falha', nomes: [], retidos: 0 };
+    }
   }
 
   /** Auditoria da execucao: so contagens inteiras (CA-H110-15). */

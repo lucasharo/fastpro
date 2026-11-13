@@ -23,16 +23,27 @@ const MIGRACAO = readFileSync(
   join(REPO_ROOT, 'supabase', 'migrations', '20261112230000_ops_create_operational_purge.sql'),
   'utf8',
 );
+// Correcao pos Code Review (E9 com filtro no SQL e ops_purge_media_adia): aplicada depois da original.
+const MIGRACAO_CORRECAO = readFileSync(
+  join(REPO_ROOT, 'supabase', 'migrations', '20261113130000_ops_fix_purge_media_orfaos.sql'),
+  'utf8',
+);
 const DIA = 86400000;
 const T0 = Date.parse('2099-01-01T12:00:00.000Z');
 const at = (ms) => new Date(ms).toISOString();
 const hex64 = () => randomBytes(32).toString('hex');
 
-/** Transacao de teste: aplica a migracao e desfaz tudo no fim. */
+/**
+ * Transacao de teste: aplica a migracao (e a correcao) e desfaz tudo no fim. O DEV ja tem a correcao aplicada, e a
+ * correcao muda o tipo de retorno de ops_purge_media_orfaos; por isso a funcao sai antes da sequencia (dentro da
+ * transacao, desfeita), o que equivale a uma instalacao do zero: original, depois correcao.
+ */
 async function tx(fn) {
   await client.query('begin');
   try {
+    await client.query('drop function if exists private.ops_purge_media_orfaos(timestamptz, integer)');
     await client.query(MIGRACAO);
+    await client.query(MIGRACAO_CORRECAO);
     return await fn();
   } finally {
     await client.query('rollback');
@@ -447,4 +458,136 @@ test('limite de lote fora de 1 a 5000 e recusado com codigo fixo', () =>
     const err = await erroEm(() => chama('ops_purge_session', T0, 0));
     assert.ok(err);
     assert.match(err.message, /purge_limite_invalido/);
+  }));
+
+// ---------------------------------------------------------------------------------------------------------------
+// Correcao pos Code Review (20261113130000): CA-05, CA-06, falha persistente (achado 2) e filtro de orfaos (achado 1).
+
+/** Foto ready valida pelos CHECKs de app.media_asset (confirmada, com variante pronta). */
+async function fotoPronta({ draft, criada = T0 - 2 * DIA, marcada = null, originalRemovido = null }) {
+  const id = randomUUID();
+  await client.query(
+    `insert into app.media_asset (id, draft_id, client_upload_id, declared_type, declared_bytes, status, confirmed_at,
+                                  confirmed_bytes, pending_expires_at, purge_requested_at, created_at, ready_at,
+                                  ready_bytes, ready_width, ready_height, original_removed_at)
+     values ($1, $2, $3, 'image/jpeg', 1000, 'ready', $4, 1000, $5, $6, $4, $4, 500, 100, 100, $7)`,
+    [id, draft, randomUUID(), at(criada), at(criada + DIA), marcada ? at(marcada) : null,
+      originalRemovido ? at(originalRemovido) : null],
+  );
+  return id;
+}
+
+async function marcadosAte(limite = 500) {
+  return (await client.query('select private.ops_purge_media_marcados($1::integer) as ids', [limite])).rows[0].ids;
+}
+
+async function sobrasAte(limite = 500) {
+  return (await client.query('select private.media_original_cleanup_list($1::integer) as ids', [limite])).rows[0].ids;
+}
+
+async function objetoQuarentena(nome, criado) {
+  await client.query(
+    `insert into storage.objects (id, bucket_id, name, created_at) values ($1, 'quarantine', $2, $3)`,
+    [randomUUID(), nome, at(criado)],
+  );
+}
+
+test('CA-05: foto ready COM marca de saida e selecionada por ops_purge_media_marcados e nao cai na sobra de original', () =>
+  tx(async () => {
+    const draft = await rascunho({ atualizado: T0 - DIA, expira: T0 + DIA });
+    const marcada = await fotoPronta({ draft, marcada: T0 - DIA });
+    assert.ok((await marcadosAte()).includes(marcada), 'ready com marca entra na fila de marcados');
+    assert.ok(!(await sobrasAte()).includes(marcada), 'ready com marca nao entra na sobra de original (sem dupla remocao)');
+  }));
+
+test('CA-06: foto ready SEM marca de saida nao e selecionada por ops_purge_media_marcados e nao e marcada pelo E1', () =>
+  tx(async () => {
+    const draft = await rascunho({ atualizado: T0 - DIA, expira: T0 + DIA });
+    const semMarca = await fotoPronta({ draft, marcada: null });
+    assert.ok(!(await marcadosAte()).includes(semMarca), 'ready sem marca nao entra em marcados');
+    await chama('ops_purge_media_mark');
+    assert.equal(
+      await n('select count(*) as n from app.media_asset where id = $1 and purge_requested_at is null', [semMarca]),
+      1,
+      'o bloco de marca (so pending) nao toca em ready',
+    );
+  }));
+
+test('CA-06b: ready sem marca com original ja removido nao e selecionada por marcados nem pela sobra de original', () =>
+  tx(async () => {
+    const draft = await rascunho({ atualizado: T0 - DIA, expira: T0 + DIA });
+    const limpa = await fotoPronta({ draft, marcada: null, originalRemovido: T0 - DIA });
+    assert.ok(!(await marcadosAte()).includes(limpa));
+    assert.ok(!(await sobrasAte()).includes(limpa));
+  }));
+
+test('CA-06c (fronteira H-026): ready sem marca com original pendente aparece so na sobra de original, nunca em marcados', () =>
+  tx(async () => {
+    // Limite de decisao: a sobra de original (media_original_cleanup_list) e o H-026 e nao e expurgo. Este teste
+    // registra o comportamento real para que a decisao do PO/Arquitetura fique visivel.
+    const draft = await rascunho({ atualizado: T0 - DIA, expira: T0 + DIA });
+    const pendente = await fotoPronta({ draft, marcada: null });
+    assert.ok(!(await marcadosAte()).includes(pendente));
+    assert.ok((await sobrasAte()).includes(pendente));
+  }));
+
+test('achado 2: ops_purge_media_adia manda a foto com falha para o fim da fila de marcados', () =>
+  tx(async () => {
+    const draft = await rascunho({ atualizado: T0 - DIA, expira: T0 + DIA });
+    const a = await fotoPronta({ draft, marcada: T0 - 2 * DIA });
+    const b = await fotoPronta({ draft, marcada: T0 - DIA });
+    assert.deepEqual(await marcadosAte(1), [a]);
+    const adiadas = await client.query('select private.ops_purge_media_adia($1::uuid[], $2::timestamptz) as n', [[a], at(T0)]);
+    assert.equal(Number(adiadas.rows[0].n), 1);
+    assert.deepEqual(await marcadosAte(1), [b], 'a falha persistente nao ocupa mais o topo da fila');
+    assert.equal(
+      await n('select count(*) as n from app.media_asset where id = $1 and purge_requested_at = $2', [a, at(T0)]),
+      1,
+      'adiar nao apaga a linha nem altera outra foto',
+    );
+    assert.equal(
+      Number((await client.query('select private.ops_purge_media_adia($1::uuid[], $2::timestamptz) as n',
+        [[], at(T0)])).rows[0].n),
+      0,
+    );
+  }));
+
+test('achado 2: ops_purge_media_adia so existe para app_system (app_api sem execucao)', () =>
+  tx(async () => {
+    const r = await client.query(
+      `select has_function_privilege('app_api', 'private.ops_purge_media_adia(uuid[], timestamptz)', 'execute') as api,
+              has_function_privilege('app_system', 'private.ops_purge_media_adia(uuid[], timestamptz)', 'execute') as sys`,
+    );
+    assert.equal(r.rows[0].api, false);
+    assert.equal(r.rows[0].sys, true);
+  }));
+
+test('achado 1: E9 filtra no SQL; fora do padrao e linha existente nao consomem o limite e so orfao volta', () =>
+  tx(async () => {
+    await cfg('purge.quarantine_pending_seconds', 86400);
+    const draft = await rascunho({ atualizado: T0 - DIA, expira: T0 + DIA });
+    const comLinha = await fotoPronta({ draft, marcada: null });
+    const antigo = T0 - 3 * DIA;
+    await objetoQuarentena('fora-do-padrao.jpg', antigo - 2000);
+    await objetoQuarentena(`${comLinha}/original.jpg`, antigo - 1000);
+    const orfa = randomUUID();
+    await objetoQuarentena(`${orfa}/original.jpg`, antigo);
+    const r = (await client.query(
+      'select out_estado, out_nomes, out_retidos from private.ops_purge_media_orfaos($1::timestamptz, 1)',
+      [at(T0)],
+    )).rows[0];
+    assert.equal(r.out_estado, 'ok');
+    assert.deepEqual(r.out_nomes, [`${orfa}/original.jpg`], 'com limite 1, o orfao nao e engolido pelos outros');
+    assert.equal(r.out_retidos, 1, 'o nome fora do padrao e contado a parte');
+  }));
+
+test('achado 1: bloco E9 desligado (sem TTL) devolve estado sem nomes', () =>
+  tx(async () => {
+    const r = (await client.query(
+      'select out_estado, out_nomes, out_retidos from private.ops_purge_media_orfaos($1::timestamptz, 10)',
+      [at(T0)],
+    )).rows[0];
+    assert.equal(r.out_estado, 'desligado');
+    assert.deepEqual(r.out_nomes, []);
+    assert.equal(r.out_retidos, 0);
   }));

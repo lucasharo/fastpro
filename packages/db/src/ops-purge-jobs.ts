@@ -61,13 +61,22 @@ function blocoE1(deps: OpsPurgeDeps, agora: () => number): ExecutorBlocoOpsPurge
         }
       }
       const prontos: string[] = [];
+      const falharam: string[] = [];
       for (const id of await deps.store.marcados(limite)) {
         try {
           await deps.arquivos.remover(deps.caminhoDoObjeto(id));
           prontos.push(id);
         } catch {
           falhos += 1;
+          falharam.push(id);
         }
+      }
+      // Falha de objeto (ex.: objeto_recusado) e contada e a foto vai para o fim da fila: sem isso, a mesma foto
+      // ocupava o topo de marcados em todo lote e travava a fila (achado 2 do Code Review).
+      try {
+        await deps.store.adiarMarcados(falharam, agora());
+      } catch {
+        falhos += 1;
       }
       removidos += await deps.store.concluirMarcados(prontos);
       return { estado: 'ok', removidos, retidos: 0, falhos };
@@ -87,36 +96,27 @@ function blocoE6(store: PgOpsPurgeStore, agora: () => number): ExecutorBlocoOpsP
   };
 }
 
-/** E9: objetos orfaos do bucket quarentena. Nome fora do padrao conta retido; objeto com linha nao e orfao. */
+/**
+ * E9: objetos orfaos do bucket quarentena. O filtro (padrao uuid e sem linha em app.media_asset) e o limite ficam
+ * no SQL; o Node so remove os nomes que vieram e soma os fora do padrao (retidos).
+ */
 function blocoE9(deps: OpsPurgeDeps, agora: () => number): ExecutorBlocoOpsPurge {
   return {
     bloco: 'e9',
     async lote(limite) {
-      const linhas = await deps.store.orfaos(agora(), limite);
-      if (linhas.length === 0) return { estado: 'ok', removidos: 0, retidos: 0, falhos: 0 };
-      const primeira = linhas[0];
-      if (!primeira || primeira.estado !== 'ok') {
-        // Estado de pulado ou desligado vem numa unica linha, sem nome (ver ops_purge_media_orfaos).
-        return { estado: (primeira?.estado ?? 'falha') as ResultadoLoteOpsPurge['estado'], removidos: 0, retidos: 0, falhos: 0 };
-      }
+      const r = await deps.store.orfaos(agora(), limite);
+      if (r.estado !== 'ok') return { estado: r.estado, removidos: 0, retidos: 0, falhos: 0 };
       let removidos = 0;
-      let retidos = 0;
       let falhos = 0;
-      for (const linha of linhas) {
-        if (linha.nome === null || linha.id === null) {
-          retidos += 1;
-        } else if (linha.existe === true) {
-          continue;
-        } else {
-          try {
-            await deps.arquivos.remover(linha.nome);
-            removidos += 1;
-          } catch {
-            falhos += 1;
-          }
+      for (const nome of r.nomes) {
+        try {
+          await deps.arquivos.remover(nome);
+          removidos += 1;
+        } catch {
+          falhos += 1;
         }
       }
-      return { estado: 'ok', removidos, retidos, falhos };
+      return { estado: 'ok', removidos, retidos: r.retidos, falhos };
     },
   };
 }

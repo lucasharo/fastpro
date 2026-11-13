@@ -247,25 +247,76 @@ describe('bloco E1 (ordem objeto antes da linha, RN-H110-12; CA-H110-11)', () =>
   });
 });
 
+describe('bloco E1, falha persistente de objeto (achado 2 do Code Review)', () => {
+  it('foto cuja remocao falha vai para o fim da fila com ops_purge_media_adia e nao volta no mesmo lote', async () => {
+    const log: string[] = [];
+    const { client, chamadas } = clienteFalso((sql, params) => {
+      if (sql.includes('ops_purge_media_mark(')) return OK_VAZIO;
+      if (sql.includes('ops_purge_media_marcados')) return { rows: [{ ids: ['id-ruim', 'id-bom'] }] };
+      if (sql.includes('media_purge_done')) return { rows: [{ n: 1 }] };
+      if (sql.includes('ops_purge_media_adia')) return { rows: [{ n: 1 }] };
+      return padrao()(sql, params);
+    });
+    const [e1] = montaExecutoresOpsPurge(depsDe(client, arquivosFalsos(log, ['id-ruim.jpg'])));
+    const r = await e1.lote(10);
+    const adia = chamadas.find((c) => c.sql.includes('ops_purge_media_adia'));
+    expect(adia?.params[0]).toEqual(['id-ruim']);
+    expect(chamadas.find((c) => c.sql.includes('media_purge_done'))?.params[0]).toEqual(['id-bom']);
+    expect(r).toEqual({ estado: 'ok', removidos: 1, retidos: 0, falhos: 1 });
+  });
+
+  it('sem falha, nao chama ops_purge_media_adia', async () => {
+    const { client, chamadas } = clienteFalso((sql, params) => {
+      if (sql.includes('ops_purge_media_mark(')) return OK_VAZIO;
+      if (sql.includes('ops_purge_media_marcados')) return { rows: [{ ids: ['id-1'] }] };
+      if (sql.includes('media_purge_done')) return { rows: [{ n: 1 }] };
+      return padrao()(sql, params);
+    });
+    const [e1] = montaExecutoresOpsPurge(depsDe(client, arquivosFalsos([])));
+    await e1.lote(10);
+    expect(chamadas.some((c) => c.sql.includes('ops_purge_media_adia'))).toBe(false);
+  });
+});
+
 describe('bloco E9 (orfaos no bucket quarantine)', () => {
-  it('nome fora do padrao e retido; linha existente nao e orfa; orfa e removida pelo Storage', async () => {
+  it('o SQL devolve so orfaos e conta os fora do padrao; cada orfao e removido pelo Storage', async () => {
     const log: string[] = [];
     const { client } = clienteFalso((sql, params) => {
       if (sql.includes('ops_purge_media_orfaos')) {
-        return {
-          rows: [
-            { out_estado: 'ok', out_nome: 'fora-do-padrao.jpg', out_id: null, out_existe: null },
-            { out_estado: 'ok', out_nome: 'com-linha.jpg', out_id: 'id-a', out_existe: true },
-            { out_estado: 'ok', out_nome: 'orfa.jpg', out_id: 'id-b', out_existe: false },
-          ],
-        };
+        return { rows: [{ out_estado: 'ok', out_nomes: ['orfa-1.jpg', 'orfa-2.jpg'], out_retidos: 3 }] };
       }
       return padrao()(sql, params);
     });
     const e9 = montaExecutoresOpsPurge(depsDe(client, arquivosFalsos(log))).find((e) => e.bloco === 'e9');
     const r = await e9!.lote(10);
-    expect(log).toEqual(['remover:orfa.jpg']);
-    expect(r).toEqual({ estado: 'ok', removidos: 1, retidos: 1, falhos: 0 });
+    expect(log).toEqual(['remover:orfa-1.jpg', 'remover:orfa-2.jpg']);
+    expect(r).toEqual({ estado: 'ok', removidos: 2, retidos: 3, falhos: 0 });
+  });
+
+  it('falha ao remover um orfao conta falhos e segue para o proximo', async () => {
+    const log: string[] = [];
+    const { client } = clienteFalso((sql, params) => {
+      if (sql.includes('ops_purge_media_orfaos')) {
+        return { rows: [{ out_estado: 'ok', out_nomes: ['ruim.jpg', 'orfa.jpg'], out_retidos: 0 }] };
+      }
+      return padrao()(sql, params);
+    });
+    const e9 = montaExecutoresOpsPurge(depsDe(client, arquivosFalsos(log, ['ruim.jpg']))).find((e) => e.bloco === 'e9');
+    const r = await e9!.lote(10);
+    expect(log).toEqual(['remover:ruim.jpg', 'remover:orfa.jpg']);
+    expect(r).toEqual({ estado: 'ok', removidos: 1, retidos: 0, falhos: 1 });
+  });
+
+  it('estado fora da lista fechada vira falha do bloco e nao toca o Storage', async () => {
+    const log: string[] = [];
+    const { client } = clienteFalso((sql, params) => {
+      if (sql.includes('ops_purge_media_orfaos')) return { rows: [{ out_estado: 'inventado', out_nomes: ['x.jpg'], out_retidos: 0 }] };
+      return padrao()(sql, params);
+    });
+    const e9 = montaExecutoresOpsPurge(depsDe(client, arquivosFalsos(log))).find((e) => e.bloco === 'e9');
+    const r = await e9!.lote(10);
+    expect(r.estado).toBe('falha');
+    expect(log).toHaveLength(0);
   });
 
   it('bloco desligado no SQL e repassado sem tocar o Storage', async () => {
