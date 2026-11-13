@@ -88,16 +88,16 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #51 | [E4] Certificações para atividades regulamentadas |
 
-## Arquitetura (1)
+## Arquitetura (0)
+
+| Issue | Título |
+|---|---|
+
+## Desenvolvimento (3)
 
 | Issue | Título |
 |---|---|
 | #45 | [E3] Visibilidade de localização |
-
-## Desenvolvimento (2)
-
-| Issue | Título |
-|---|---|
 | #37 | [E2] Cobertura booleana sem contagem |
 | #52 | [E4] Fila de verificação |
 
