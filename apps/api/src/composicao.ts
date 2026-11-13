@@ -12,7 +12,14 @@ import {
 } from '@fastpro/email';
 import type { ClockPort, EmailProviderPort } from '@fastpro/domain';
 import type { SqlClient } from '@fastpro/db';
-import { PgAdminSessionRepository, PgRetentionAdmin } from '@fastpro/db';
+import {
+  PgAdminSessionRepository,
+  PgOpsPurgeStore,
+  PgRetentionAdmin,
+  registerOpsPurgeHandlers,
+  SupabaseStorageQuarentena,
+  type JobRegistry,
+} from '@fastpro/db';
 import {
   montarAdministracaoCaso,
   montarPainelOperacional,
@@ -264,5 +271,72 @@ export function montarRetencaoAdmin(
     port: new PgRetentionAdmin(cliente),
     baseUrl,
     clock: opcoes.relogio ?? { nowMs: () => Date.now() },
+  };
+}
+
+// H-110 (Issue 119) | Expurgo operacional (job ops.purge, docs/factory/105-DESENHO-H110.md §8). Monta o registro do
+// handler so com DATABASE_URL_APP_SYSTEM, SUPABASE_URL, a chave do Storage, a fabrica do cliente SQL da borda e o
+// caminho do objeto da quarentena (formato da Issue 141, G-3). A chave do Storage NAO e' lida aqui: a regra de segredos
+// so permite o nome do servico em modulos de midia e identidade (decisao 152), entao quem monta a passa pronta.
+// Montar nao abre conexao: cliente e Storage nascem dentro de registrar(). Ainda NAO ligado ao tick: a API nao tem
+// executor de jobs (vercel.ts nao passa a opcao), entao nada roda em producao por esta funcao. Nomes de variaveis e
+// de portas aparecem nas pendencias; valores nunca.
+export const EXPURGO_ENV_OBRIGATORIAS = ['DATABASE_URL_APP_SYSTEM', 'SUPABASE_URL'] as const;
+
+export interface ExpurgoOperacionalOpcoes {
+  /** Fabrica do cliente SQL do papel app_system (memoizada por URL na borda). Sem ela, o registro nao existe. */
+  readonly abrirCliente?: (connectionString: string) => SqlClient;
+  /** Caminho do objeto de uma foto na quarentena (formato definido pela Issue 141). Sem ele, o registro nao existe. */
+  readonly caminhoDoObjeto?: (assetId: string) => string;
+  /** Chave de servico do Storage (lida pelo modulo de midia, nunca aqui). Sem ela, o registro nao existe. */
+  readonly chaveDoStorage?: string;
+  /** fetch do Storage. Padrao: o global. */
+  readonly fetchImpl?: typeof fetch;
+  /** Relogio do job. Padrao: relogio do sistema. */
+  readonly relogio?: { nowMs(): number };
+}
+
+export interface ExpurgoOperacional {
+  /** Registra o handler ops.purge num JobRegistry do tick; undefined enquanto faltar alguma porta. */
+  readonly registrar: ((registry: JobRegistry) => void) | undefined;
+  /** Nomes (nunca valores) e portas que impedem o registro. */
+  readonly pendencias: readonly string[];
+}
+
+const clientesExpurgo = new Map<string, SqlClient>();
+
+function clienteDoExpurgo(url: string, abrir: (connectionString: string) => SqlClient): SqlClient {
+  let cliente = clientesExpurgo.get(url);
+  if (cliente === undefined) {
+    cliente = abrir(url);
+    clientesExpurgo.set(url, cliente);
+  }
+  return cliente;
+}
+
+export function montarExpurgoOperacional(env: ComposicaoEnv, opcoes: ExpurgoOperacionalOpcoes = {}): ExpurgoOperacional {
+  const pendencias: string[] = EXPURGO_ENV_OBRIGATORIAS.filter((nome) => !preenchida(env, nome));
+  const abrir = opcoes.abrirCliente;
+  const caminho = opcoes.caminhoDoObjeto;
+  const chave = opcoes.chaveDoStorage ?? '';
+  if (abrir === undefined) pendencias.push('fabrica do cliente SQL do expurgo (ainda nao montada na funcao)');
+  if (caminho === undefined) pendencias.push('caminho do objeto da quarentena (formato da Issue 141, ainda nao definido)');
+  if (chave.trim() === '') pendencias.push('chave do Storage da quarentena (lida pelo modulo de midia, decisao 152)');
+  if (pendencias.length > 0 || abrir === undefined || caminho === undefined) return { registrar: undefined, pendencias };
+
+  const url = env.DATABASE_URL_APP_SYSTEM ?? '';
+  const baseUrl = env.SUPABASE_URL ?? '';
+  const relogio = opcoes.relogio ?? RELOGIO_PADRAO;
+  const fetchImpl = opcoes.fetchImpl;
+  return {
+    pendencias: [],
+    registrar: (registry) => {
+      registerOpsPurgeHandlers(registry, {
+        store: new PgOpsPurgeStore(clienteDoExpurgo(url, abrir)),
+        arquivos: new SupabaseStorageQuarentena({ baseUrl, serviceKey: chave, ...(fetchImpl ? { fetchImpl } : {}) }),
+        caminhoDoObjeto: caminho,
+        now: () => relogio.nowMs(),
+      });
+    },
   };
 }
