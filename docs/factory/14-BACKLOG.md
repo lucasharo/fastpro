@@ -36,7 +36,7 @@ Cobertura de FA e RF: ver `15-RASTREABILIDADE.md`. Manifesto proposto de Issues 
 | **3 — Aceite e chat (M1)** | H-044, H-045; H-055 a H-073 (inclui aceite, vagas, chat somente texto, mensagem automática); H-095, H-101 | Onda 2 concluída | **Núcleo web: pedido → aceite → chat** |
 | **4 — Ciclo de vida e assinatura (M2)** | H-046 a H-053 (Mercado Pago em sandbox); H-074 a H-085; H-094, H-096 a H-099 | S-03; cota de e-mail (H-094) | Seleção, conclusão, cancelamento, republicação; assinatura em sandbox |
 | **5 — Avaliação, admin, LGPD e hardening (M3)** | H-086 a H-091; H-103 a H-108; H-109, H-110, H-112, H-114; H-115 a H-121 | L1 só para ativar prazos de retenção | **MVP web em ensaio fechado** (sem cobrança real, sem e-mail real) |
-| **Gate M4 — Lançamento restrito** | H-054, H-106, H-111, H-113 e domínio de e-mail | Domínio verificado no Resend; L1–L4 e L7; Vercel Pro antes de cobrar; backup; tarifas MP | Decisão humana CONCLUIR ou BLOQUEAR |
+| **Gate M4 — Lançamento restrito** | H-054, H-106, H-111, H-113 e domínio de e-mail | Domínio verificado no Resend; L1–L4 e L7; Vercel Pro antes de cobrar; tarifas MP | Decisão humana CONCLUIR ou BLOQUEAR |
 | **6 — Mobile (M5)** | H-122 a H-124 | MVP web estável; SD-13; S-07 | Mobile (fora do MVP web) |
 
 Caminho crítico [PROPOSTA]: S-02 e S-01 → H-003 → H-011/H-012 → H-025 a H-031 → H-058 → H-065 a H-068 (M1).
@@ -93,7 +93,7 @@ Colunas: **Rastro** = RF, FA, ADR, invariante (I-xx) ou decisão · **Dep.** = h
 | H-007 | Logs estruturados por allowlist; redação de e-mail, telefone, CPF, token e cabeçalhos; varredura automática de logs de teste | P8; ADR-013; RF-163 | Padrão de PII em log de teste reprova o build | H-001 | M | Ferramenta gratuita com retenção curta (SD-06) | T-11 |
 | H-008 | Tick de jobs: `POST /internal/jobs/tick` com segredo de máquina; mecanismo A (pg_cron + pg_net), B (chamada externa gratuita) ou C (oportunista), conforme S-10 | ADR-018 item 3; Q-14; R-30, R-38 | Lembretes e digest rodam dentro do atraso medido; login, aceite e webhook não dependem do tick; jobs idempotentes sob lease | H-005; S-02, S-10 | M | pg_cron/pg_net não encontrados no Free (R-38); cron do Hobby 1×/dia | Q-14, F-08, C-13 |
 | H-009 | Hospedagem: web (Next.js) em projeto Vercel; API NestJS como função única com rewrite `/api/*` (mesma origem); admin em projeto separado; Hobby só em dev | ADR-001, ADR-018; SD-01; decisão 28; 08 §16 | Healthcheck responde; web chama a API na mesma origem; admin com origem e cookies próprios | H-001; S-09 | M | Hobby proíbe uso comercial (R-28): nada cobrável nesta fase; cold start (R-10). BLQ-EXEC para criar projetos | Healthcheck; cookies entre origens; Q-05, Q-08 |
-| H-010 | Keep-alive diário e backup manual (dump criptografado) com procedimento escrito | ADR-020; H3; R-08, R-32; `12-TODO` #1 | Procedimento documentado; export executado com dados sintéticos; periodicidade definida pelo usuário | H-003 | P | Pausa após 1 semana; sem backup no Free; periodicidade **pendente** (BK-7) | D-01 (ver H-119) |
+| H-010 | Keep-alive diário com procedimento escrito | ADR-020; R-08 | Procedimento de keep-alive documentado | H-003 | P | Pausa após 1 semana | — |
 
 ### E1 — Identidade e sessão (Onda 1)
 
@@ -162,7 +162,7 @@ Colunas: **Rastro** = RF, FA, ADR, invariante (I-xx) ou decisão · **Dep.** = h
 | H-051 | Adesão expressa à renovação no cartão (texto e versão registrados); Pix exige pagamento manual a cada ciclo | RF-058; FA-006; 08 §8.3 | Sem adesão → sem cobrança automática; Pix não renova sozinho | H-047 | M | — | FA-006 |
 | H-052 | Cancelamento de assinatura paga: `cancel_at_period_end`; acesso até o fim do período; sem carência | RF-061; B-08 | Cancelado → acesso até `period_end`; sem nova cobrança | H-049, H-050 | P | — | B-08 |
 | H-053 | Reconciliação diária MP × livro: relatório ao Financeiro; nunca corrige acesso sozinha | 08 §8.8 | Divergência gera registro e alerta; nenhuma alteração automática | H-048, H-005, H-008 | M | Depende do tick (H-008) | T-09 |
-| H-054 | **Gate de cobrança real (bloqueada):** Vercel Pro antes de cobrar; L1–L4 e L7; backup e tarifas MP confirmados; cartão e limite no Mapbox | Decisões 28, 29; ADR-018, ADR-020; `12-TODO` #9, #12 | Cobrança real não é ativada sem todas as condições | H-009, H-010, H-047, H-048 | P | Risco legal e de termos (R-28) | Checklist de H-121 |
+| H-054 | **Gate de cobrança real (bloqueada):** Vercel Pro antes de cobrar; L1–L4 e L7; tarifas MP confirmadas; cartão e limite no Mapbox | Decisões 28, 29; ADR-018, ADR-020; `12-TODO` #9, #12 | Cobrança real não é ativada sem todas as condições | H-009, H-047, H-048 | P | Risco legal e de termos (R-28) | Checklist de H-121 |
 
 ### E6 — Distribuição e aceites (Onda 3)
 
@@ -261,12 +261,12 @@ Nota: o épico E7 do relatório se chamava "Chat e anexos". Pelas decisões 32 e
 
 | ID | História (objetivo) | Rastro | Critérios de aceite (resumo) | Dep. | Tam. | Riscos | Testes |
 |---|---|---|---|---|---|---|---|
-| H-109 | **Mecanismo de retenção (parcialmente bloqueada):** `retention_policy` (período nulo = desligado), `legal_hold`, expurgo idempotente e auditado | ADR-016; 09 §8; RC-01 a RC-11 | Mecanismo pronto; nenhum prazo ativo sem L1 | H-006, H-005; **BLQ-JUR L1** | G | Prazos não definidos (AMB-14) | Job desligado enquanto o período é nulo |
+| H-109 | **Mecanismo de retenção (parcialmente bloqueada):** `retention_policy` (período nulo = desligado), `legal_hold`, expurgo idempotente e auditado | ADR-016; 09 §8; RC-01 a RC-10 (RC-11 removida, #151) | Mecanismo pronto; nenhum prazo ativo sem L1 | H-006, H-005; **BLQ-JUR L1** | G | Prazos não definidos (AMB-14) | Job desligado enquanto o período é nulo |
 | H-110 | Expurgos operacionais: quarentena e rascunhos por TTL, desafios, sessões, inbox de webhook, outbox entregue, idempotência (E8 removido pela Issue 150) | 09 §10; RC-08, RC-09 | Expurgos rodam sem apagar dado com `legal_hold` | H-005, H-008, H-109 | M | TTL técnico [PROPOSTA], não é prazo legal | Q-04 |
 | H-111 | **Bloqueada:** direitos do titular (`dsr_case`): acesso, correção e eliminação; base legal e prazos | RF-140; 09 §3.8 | Fluxo desenhado; ativação após L1 e L2 | H-109; **BLQ-JUR L1, L2** | G | Exclusão × auditoria e financeiro | — |
 | H-112 | Consentimentos e trilha de revelação: `contact_consent` com escopos, `contact_reveal_log`; compartilhamento de endereço exato com participante | RF-016, RF-138, RF-139; FA-030 | Cada revelação de telefone ou endereço fica registrada; revogação vale para o futuro | H-033, H-058 | M | — | T-03; FA-030; I-16 |
 | H-113 | **Bloqueada:** termos de uso, política de privacidade, textos de consentimento, suboperadores e encarregado (DPO) | RF-078, RF-140, RF-141; SD-11 | Textos validados antes do lançamento | **BLQ-JUR L2, L7** | G | Responsabilidade por "verificado" e conteúdo (L7) | Revisão jurídica |
-| H-114 | Runbook: incidente de dados, reconciliação pós-restauração (MP e e-mail), periodicidade do backup | D-03 a D-09; `12-TODO` #1 | Runbook revisado e exercitado com dados sintéticos | H-010, H-053, H-119 | M | Notificação de incidente [PENDENTE JURÍDICO] | D-03, D-04 |
+| H-114 | Runbook: incidente de dados, reconciliação (MP e e-mail) | D-04 a D-07 e D-09 (D-03 e D-08 removidos, #151) | Runbook revisado e exercitado com dados sintéticos | H-053 | M | Notificação de incidente [PENDENTE JURÍDICO] | D-04 |
 
 ### E15 — Hardening e release (Ondas 3 a 5)
 
@@ -276,9 +276,9 @@ Nota: o épico E7 do relatório se chamava "Chat e anexos". Pelas decisões 32 e
 | H-116 | Testes de injeção, XSS, CSRF, SSRF, upload malicioso e redirecionamento | T-10 | Nenhum achado crítico antes do release | H-004 | M | — | T-10 |
 | H-117 | Suíte de concorrência e falha: C-01 a C-18 e F-01 a F-12 em Postgres efêmero, com N ≥ 100 iterações e monitores de invariante | 11 §7 e §8; I-01 a I-22 | Todos os invariantes sem violação em cada cenário | H-058, H-059, H-062, H-081, H-084, H-048, H-005 | G | Tempo de CI (R-02) | C-01 a C-18; F-01 a F-12; I-01 a I-22 |
 | H-118 | Acessibilidade WCAG 2.2 AA com evidência (teclado, leitor de tela, contraste); estados vazio, erro e carregando; responsivo | RF-161, RF-162, RF-164; FA-033, FA-034 | Conformidade só declarada com evidência registrada | H-002, H-029, H-066 | G | Sem evidência ainda (L5; R-24) | FA-034; T-15 |
-| H-119 | Restauração de backup: restaurar dump em ambiente limpo, aplicar migrações, rodar monitores I-xx e reconciliar Storage | 08 §17; 11 §9 (D-01, D-02) | RTO ≤ 8 h [PROPOSTA]; invariantes sem violação | H-010, H-003, H-117 | M | Backup manual sem automação | D-01, D-02 |
+| H-119 | REMOVIDA do escopo (Rodada 73/75, #151). Texto original no histórico do git. | — | — | — | — | — | — |
 | H-120 | Dados sintéticos de demonstração e seeds (usuários, pedidos, fotos e aceites fictícios) | RF-163 | Seed sem dado real; varredura de PII passa | H-018, H-007 | P | — | T-11 |
-| H-121 | Gate de release do MVP web: checklist (testes críticos verdes, backup, domínio, Vercel Pro antes de cobrar, L1–L4 e L7, tarifas MP) | 11 §11; ADR-020; decisões 15, 28, 29 | Checklist aprovado pelo usuário; nada publicado sem CONCLUIR | H-117, H-119, H-093, H-054 | P | Decisão CONCLUIR ou BLOQUEAR é só humana | Checklist |
+| H-121 | Gate de release do MVP web: checklist (testes críticos verdes, domínio, Vercel Pro antes de cobrar, L1–L4 e L7, tarifas MP) | 11 §11; ADR-020; decisões 15, 28, 29 | Checklist aprovado pelo usuário; nada publicado sem CONCLUIR | H-117, H-093, H-054 | P | Decisão CONCLUIR ou BLOQUEAR é só humana | Checklist |
 
 ### E14 — Mobile (Onda 6, fase posterior; não planejado para execução)
 
@@ -298,7 +298,7 @@ Nota: o épico E7 do relatório se chamava "Chat e anexos". Pelas decisões 32 e
 | BLQ-JUR L2 (termos, privacidade, DPO) | Textos e suboperadores | H-063, H-099 (parcial), H-111, H-113 | Jurídico |
 | BLQ-JUR L3 (reembolso) | Política de estorno e retenção de 50% (proposta, não automatizar) | H-099 (parcial), H-105, H-106 | Jurídico |
 | BLQ-JUR L4 (certificações) | Lista REG e forma de verificação | H-038 | Jurídico |
-| BLQ-JUR L5 (evidências) | WCAG, testes, backup e observabilidade como evidência | H-118, H-121 | Execução (evidência) |
+| BLQ-JUR L5 (evidências) | WCAG, testes e observabilidade como evidência | H-118, H-121 | Execução (evidência) |
 | BLQ-JUR L6 (lojas) | Contas de desenvolvedor e revisão | H-122, H-124 | Usuário (SD-13) |
 | BLQ-JUR L7 (responsabilidade) | Texto do selo "verificado" e conteúdo trocado | H-043, H-063, H-113 | Jurídico |
 | BLQ-EXEC (SD-14 / Gate 2) | Criar contas e chaves: Supabase, Vercel, Mercado Pago (sandbox), Mapbox (cartão), Resend e domínio | H-009, H-010, H-021, H-047, H-093; spikes S-01 a S-04, S-09, S-11 | Usuário (autorização de execução) |
@@ -338,7 +338,7 @@ Numeração interna `BK-n`. Ao consolidar, o líder deve renumerar de forma cont
 | BK-4 | Quais estados de origem permitem republicar? (SD-09) | (a) expirado ou cancelado; (b) mais concluído; (c) mais selecionado que desistiu | (a) + (c), como no `10-ADRS` | H-082 |
 | BK-5 | Textos para "sem profissional elegível" (AMB-03) e "sem vaga" (AMB-04) | Texto neutro proposto pelo PO, sem números, por exemplo "Este pedido não está recebendo novos profissionais no momento." | Aprovar o texto proposto e definir o de cobertura | H-024, H-059 |
 | BK-6 | Autorização de execução (SD-14) para os spikes com conta: Supabase Free, Vercel Hobby, Mercado Pago sandbox, Mapbox e Resend | (a) autorizar tudo de uma vez; (b) autorizar por spike, na ordem S-02, S-01, S-03, S-04, S-09, S-10, S-11 | (b), sem criar nada além do que o spike exigir | Onda 0 |
-| BK-7 | Periodicidade do backup manual (`12-TODO` #1) | (a) semanal; (b) semanal e antes de migração destrutiva; (c) diária com automação (exige decisão) | (b) | H-010, H-119 |
+| BK-7 | REMOVIDA do escopo (Rodada 73/75, #151). Texto original no histórico do git. | — | — | — |
 | BK-8 | Confirma o recorte de fatias: M1 (pedido → aceite → chat) é a primeira entrega web, e cobrança real só no Gate M4 (AMB-20 B)? | (a) sim; (b) incluir cobrança real no M1 | (a) | Ordem de ondas |
 | BK-9 | Seed de catálogo com 25 grupos [PROPOSTA] pode ser usado em dev até os 10 grupos originais chegarem? | (a) sim; (b) esperar os originais | (a) | H-018 |
 | BK-10 | Domínio de e-mail (H2): haverá domínio antes do Gate M4? Sem domínio nenhum e-mail real sai (R-33) | (a) comprar domínio antes do M4; (b) lançar sem envio real (inviável para login); (c) adiar o lançamento | (a), decisão do usuário sobre custo | H-093, H-121 |
