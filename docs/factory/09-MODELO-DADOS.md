@@ -3,6 +3,9 @@
 - **Etapa:** architecture · **Data:** 2026-11-09 · **Papel:** Software Architect · **Status:** rascunho para validação humana (revisão 2)
 
 ## Histórico de mudanças
+### Revisão 7 — 2026-11-13 (H-046, Issue 59; decisões 292 a 296 e 343 a 348)
+- **§3.10 alinhado ao SQL de planos e preços** (migração `20261113190000_billing_create_plan_pricing`): `plan` sem `active` (decisão 343) e com `created_at`; `plan_price` com `created_at`, vigência `[valid_from, valid_to)` e restrição de exclusão `btree_gist` (um preço vigente por plano, decisão 294); leitura por `private.plan_price_at`; a gravação do preço no pagamento é da H-047.
+
 ### Revisão 6 — 2026-11-10 (Rodada 14 nº 31 e 32; Revisão 5 do PO)
 - **Fotos do pedido (decisão 31):** reduzidas **no envio** para ≈ **0,5 MB** e **no máximo 1.280 px**, **5 por pedido** (≈ 2,5 MB/pedido; ≈ 280 pedidos em ≈ 700 MB de Storage). **Só a versão reduzida é guardada**: o original e qualquer *master* maior nunca são persistidos. Supera o alvo "1–2 MB" da revisão 5.
 - **Chat somente texto (decisões 32 e 33):** nenhum anexo, nem imagem nem PDF. **Removidos:** bucket `chat-attachments`, tabela `message_attachment`, validação por conteúdo e antimalware de anexos do chat, URLs assinadas e limites (5 × 10 MB) de anexo, miniatura e marca d'água do chat, e os riscos/testes de PDF do chat. A API **rejeita qualquer anexo** no chat. EXIF só se aplica às fotos do pedido.
@@ -124,7 +127,17 @@ Checks: `status<>'publicado' OR selecionado inexistente` (via trigger); `wave2_o
 Gatilhos: avaliação exige `completion` não revertida e `professional_id = selection.professional_id` (I-08); reversão de conclusão com avaliação ⇒ `em_revisao_validade` + caso (RF-133).
 
 ### 3.10 billing
-**plan** (`code` {`mensal|trimestral|semestral|anual`}, `months` 1/3/6/12, `active`) · **plan_price** (`plan_id`, `amount_cents`, `valid_from`, `valid_to?`; valores aprovados: 2990, 8070, 14940, 23880; sem promoção no MVP).
+**plan** (`billing.plan`, H-046 / Issue 59): `id`, `code` {`mensal|trimestral|semestral|anual`} único, `months` 1/3/6/12 único, `created_at`. A restrição `plan_code_months` amarra cada código à sua duração. São quatro linhas fixas, **sem coluna `active`** (decisão 343): um plano sai da oferta quando o seu preço vigente é fechado sem substituto. Imutável por inteiro: `UPDATE`, `DELETE` e `TRUNCATE` são recusados por gatilho. Sem coluna de benefício, limite, desconto ou promoção (decisões 292 e 296).
+
+**plan_price** (`billing.plan_price`): `id` (identificador que o pagamento grava, na H-047), `plan_id` (FK, `on delete restrict`), `amount_cents` inteiro maior que zero, `currency` = `BRL`, `valid_from`, `valid_to?` (nulo = vigente), `created_at`. Valores aprovados: 2990, 8070, 14940 e 23880 centavos, por carga de referência idempotente (decisões 295 e 346), com `valid_from` = 2026-01-01 UTC. Sem promoção no MVP.
+- **Vigência** `[valid_from, valid_to)`, semiaberta. A restrição de exclusão `plan_price_sem_sobreposicao` (`btree_gist`: `plan_id` com `=` e `tstzrange(valid_from, valid_to, '[)')` com `&&`) garante um só preço vigente por plano em cada instante (decisão 294). Intervalos encostados não colidem.
+- **Imutabilidade:** valor, `plan_id`, `currency` e `valid_from` não mudam. `valid_to` pode ser fechado uma única vez, para instante posterior a `valid_from`. `DELETE` e `TRUNCATE` são recusados.
+- **Troca de preço** (fora de H-046): na mesma transação, fecha-se a linha vigente (`valid_to` = T) e insere-se a nova com `valid_from` = T. Até a tela administrativa (RF-153), só por migração revisada. Período já pago não muda (decisão 293).
+
+**Leitura por instante:** `private.plan_price_at(p_at timestamptz, p_plan_code text default null)`, `security definer`, `stable`, `search_path = ''`. Devolve `plan_code`, `months`, `plan_price_id`, `amount_cents` e `currency` dos planos com preço vigente em `p_at`. O instante é sempre injetado pelo chamador (o corpo não lê relógio); `p_plan_code` nulo devolve os quatro planos. Instante sem preço vigente devolve zero linhas, e o adaptador responde com erro, nunca com valor padrão. Execução só para `app_api` e `app_system`. RLS habilitada e forçada nas duas tabelas, sem política; leitura direta só para `app_system` (decisão 345).
+
+**Gravação no pagamento (é da H-047, não da H-046):** o pagamento grava `plan_price_id` e `amount_cents` a partir de `plan_price_at` (RN-H046-06). `subscription.plan_id` e a FK de pagamento para `plan_price` também entram na H-047 (decisão 347). H-046 não altera `subscription` nem `payment`.
+
 **access_grant**: `id`, `professional_id`, `type` {`trial|paid|adjustment`}, `starts_at`, `ends_at`, `grace_until?`, `source_payment_id?`, `status` {`ativa|revogada`}; a **carência de 72 h não é armazenada**: é derivada (`period_end + 72 h`, §8 de `08`) e vale para `type='paid'` sem `cancel_at_period_end`. **Único parcial** `(identity_id) WHERE type='trial'` (um trial por identidade, AMB-09 A) — via coluna `identity_id` redundante.
 **subscription**: `id`, `professional_id`, `plan_id`, `provider` {`mercadopago`}, `provider_subscription_id?`, `mode` {`cartao_recorrente|manual`}, `auto_renew_opt_in_at?`, `auto_renew_text_version`, `status_provider`, `cancel_at_period_end`, `canceled_at?`.
 **payment**: `id`, `professional_id`, `subscription_id?`, `provider_payment_id` (**único** por provedor), `method` {`cartao|pix`} (CHECK; **sem boleto**, H5), `amount_cents`, `plan_price_id`, `status` {`aprovado|pendente|recusado|estornado|chargeback`}, `paid_at?`, `period_start?`, `period_end?`.
