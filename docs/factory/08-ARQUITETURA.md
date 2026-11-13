@@ -15,7 +15,7 @@
 - **Tick de jobs:** `pg_cron`/`pg_net` do Supabase como primeira opção, mas **PostGIS/pg_cron/pg_net no plano Free = NÃO ENCONTRADO** na documentação ⇒ spike S-02/S-10 com plano B (chamada HTTP externa gratuita) e plano C (tick oportunista nas próprias requisições) (§16.2).
 - **Mapbox (decisão 29):** autocomplete e mapas no gratuito (resultado **temporário, nunca armazenado**); coordenadas só persistem via geocodificação **permanente** (US$ 5/1.000, cartão, limite de gasto). Fluxo ajustado (§9.5): o cliente escolhe a sugestão e **uma única chamada `permanent=true` no servidor** grava a coordenada; custo estimado por pedido. SD-02 respondida.
 - **Fotos (decisão 30):** máximo **5 por pedido**; adicionais só via WhatsApp se o cliente aceitar compartilhar o contato; senão ficam as 5. Compressão no envio (alvo 1–2 MB) é **PROPOSTA** (§10.4).
-- **Supabase Free (verificado):** pausa após 1 semana, 2 projetos ativos, banco 500 MB, Storage 1 GB, egress 5 GB, Realtime 200 conexões/2 mi mensagens, 60 conexões diretas/200 no pooler, sem backup. Estimativas de espaço refeitas (09 §9).
+- [SUPERADO — Rodada 73/75, #151] **Supabase Free (verificado):** pausa após 1 semana, 2 projetos ativos, banco 500 MB, Storage 1 GB, egress 5 GB, Realtime 200 conexões/2 mi mensagens, 60 conexões diretas/200 no pooler, sem backup. Estimativas de espaço refeitas (09 §9).
 - **Mercado Pago:** tarifas **não obtidas** (403); Pix Automático **não encontrado** (Pix manual, coerente com o desenho); o teste grátis sem cartão é do **nosso app**, não do MP. Webhooks `x-signature` e reenvio a cada 15 min (resumo, a reconfirmar).
 - **SD:** SD-01, SD-02 e SD-15 respondidas/reencaminhadas (ver `10-ADRS.md`).
 
@@ -28,14 +28,14 @@
 ### Revisão 3 — 2026-11-09 (Rodadas 8 e 9; trecho de e-mail desativado SUPERADO pela revisão 4)
 - **Rodada 9 nº 23: sem interruptor.** Removidos `notification_flag`, tela/endpoint administrável, auditoria de flag e o "estado por tipo". O envio dos e-mails de **aviso de aceite** e de **mensagem não lida** fica **implementado, porém desativado no código**, com **um único ponto de ativação documentado** (§12.2). Não há reenvio de aceites antigos. O link mágico e os e-mails de conta seguem ativos.
 - **Rodada 9 nº 22:** o aviso "o FastPro apenas conecta, não é contrato" fica **só nos termos de uso**, não no botão/UI do aceite.
-- **Rodada 8:** nº 17 (SD-16) período novo começa no fim do anterior; nº 19 (Rodada 8 nº 19) sem novo aceite após retirada; nº 20 (AMB-27) "4 aceites" = vagas consumidas; nº 14 mensagem automática do aceite com o texto fixo "Estou disponível para trabalhar"; nº 18 backup manual vai para `12-TODO.md` (`12-TODO.md` adiada).
+- [SUPERADO — Rodada 73/75, #151] **Rodada 8:** nº 17 (SD-16) período novo começa no fim do anterior; nº 19 (Rodada 8 nº 19) sem novo aceite após retirada; nº 20 (AMB-27) "4 aceites" = vagas consumidas; nº 14 mensagem automática do aceite com o texto fixo "Estou disponível para trabalhar"; nº 18 backup manual vai para `12-TODO.md` (`12-TODO.md` adiada).
 - SD-03 (domínio) e SD-15 (termos Vercel/NestJS serverless) **adiadas** (tratadas em `12-TODO.md` e antes da primeira cobrança/lançamento real); SD-16, Rodada 8 nº 19, SD-19, SD-20 respondidas.
 ### Revisão 2 — 2026-11-09 (Rodadas 5 e 6: H1, H3, H4, H5 e respostas 1–7)
 - **H4: fim da oferta.** Removidos `offer`, `offer_revision`, o lock "enviar/editar oferta" e o gatilho "4 ofertas". Entra o **aceite de trabalho** (`acceptance`), regra única por `(pedido, profissional)`, idempotente (§7.2). Respostas 1–3: o aceite ocupa a vaga, cria a conversa e libera o primeiro nome, tudo na mesma transação; a conversa recebe uma **mensagem de sistema** idempotente (§7.2, §11); o profissional pode **retirar** o aceite antes da seleção e a vaga **permanece consumida** (§7.3).
 - **2ª onda** passa a depender do contador de aceites (vagas consumidas), uma única vez, rótulo da UI "Chamar mais profissionais" (§7.3).
 - **Resposta 5 / RF-122 (SUPERADA pela Rodada 9 nº 23):** havia interruptor por tipo de e-mail; foi **removido**. Vale: aviso de aceite e de mensagem não lida **desativados no código**, sem tabela de flags, tela ou auditoria (§12.2); link mágico sempre ativo.
 - **H5:** sem boleto; Pix e cartão. **Carência de 72 h vale para Pix** (e cartão), por função de tempo (§8). SD-10 respondida.
-- **H1:** hospedagem na **Vercel** (Next.js e API). NestJS roda como função serverless: impactos em jobs, rate limit, mídia e termos do plano gratuito, todos `[NÃO VERIFICADO]`, com alternativas (§16, ADR-018, SD-15). **H3:** Supabase gratuito mantido com **backup manual periódico** (§16.7, `12-TODO.md`).
+- **H1:** hospedagem na **Vercel** (Next.js e API). NestJS roda como função serverless: impactos em jobs, rate limit, mídia e termos do plano gratuito, todos `[NÃO VERIFICADO]`, com alternativas (§16, ADR-018, SD-15). [SUPERADO — Rodada 73/75, #151] **H3:** Supabase gratuito mantido com **backup manual periódico** (§16.7, `12-TODO.md`).
 - **Resposta 4:** preço e contratação são **diretos entre as partes**; o FastPro apenas conecta (§0, regra 5). Sem escrow, sem valor/prazo estruturado, sem intermediação de pagamento do serviço.
 - Renomeações: `participation` → `acceptance`; `offers_deadline_at` → `acceptance_deadline_at`; `offers_received` → `acceptances_count`; categoria de notificação `oferta` → `aceite`.
 - **Rodada 7:** provedor de e-mail **Resend** atrás de `EmailProviderPort`, também candidato a SMTP customizado do Supabase Auth; exigência provável de **domínio verificado** tratada como risco R-33/SD-03 com plano de desenvolvimento sem domínio (Mailpit local) (§12.5). O cliente só vê os aceites abrindo o site; e-mails preparados e desligados (§12.2).
@@ -467,7 +467,7 @@ Detalhes, riscos e gatilhos: **ADR-018** e **ADR-020**.
 4. **Rate limit** só em Postgres (`rate_counter`); estado em memória não conta (ADR-014).
 5. **Mídia:** upload direto ao Storage por URL assinada (limite de corpo de função `[NÃO VERIFICADO]`); reencode e marca d'água um ativo por invocação (300 s e 2 GB do Hobby bastam em princípio; biblioteca nativa de imagem e tamanho do pacote `[NÃO VERIFICADO]`, S-06/S-09).
 6. **Realtime:** conexão direta navegador–Supabase; Free = 200 conexões simultâneas e 2 milhões de mensagens/mês ⇒ *polling* como contingência.
-7. **Supabase Free (verificado):** pausa após 1 semana de inatividade; 2 projetos ativos; banco 500 MB; Storage 1 GB (upload máx. 50 MB); egress 5 GB; 50.000 MAU; logs 1 dia; **sem backup** (recomendado `supabase db dump`). **Mitigações (H3 aceito):** *keep-alive* diário legítimo (cron diário da Vercel basta); backup manual periódico (12-TODO #1); orçamento de espaço em 09 §9; reavaliar (Pro a partir de US$ 25/mês) **antes de cobrar valores reais ou usar dados reais**.
+7. **Supabase Free (verificado):** pausa após 1 semana de inatividade; 2 projetos ativos; banco 500 MB; Storage 1 GB (upload máx. 50 MB); egress 5 GB; 50.000 MAU; logs 1 dia. **Mitigações (H3 aceito):** *keep-alive* diário legítimo (cron diário da Vercel basta); orçamento de espaço em 09 §9; reavaliar (Pro a partir de US$ 25/mês) **antes de cobrar valores reais ou usar dados reais**.
 8. **E-mail (T6):** Resend atrás de `EmailProviderPort`, cota 100/dia e 3.000/mês e domínio exigido (§12.5–§12.6). **Mapbox:** §9.5. **MP:** §8 (sem mensalidade encontrada; tarifas não obtidas).
 9. **Termos da Vercel (verificado):** cobrar assinatura exige Pro; é gatilho **antes da primeira cobrança real** (SD-15 respondida pela decisão 28).
 10. **Origem e domínio (H2):** sem domínio próprio usa-se o subdomínio da plataforma; `apps/web` encaminha `/api/*` à função (mesma origem, cookies `SameSite=Lax`); `apps/admin` é outro projeto (origem e cookies próprios; limite de projetos do plano `[NÃO VERIFICADO]`).
@@ -475,11 +475,10 @@ Detalhes, riscos e gatilhos: **ADR-018** e **ADR-020**.
 
 ---
 
-## 17. Ambientes, migrações, backup e recuperação
+## 17. Ambientes e migrações
 - **Ambientes:** local (Supabase CLI + Docker, dados sintéticos) → CI efêmero → *staging* (projeto gratuito separado, quando autorizado) → produção. Segredos fora do repositório e dos prompts; chaves distintas por ambiente; rotação documentada.
-- **Migrações:** SQL versionado em `packages/db`, *expand/contract* (compatível em duas versões), aplicadas por pipeline; reversão = nova migração compensatória ou restauração; toda migração testada contra cópia sintética.
-- **Backup/recuperação (resumo; testes em `11` §9):** metas provisórias `[PROPOSTA]` no plano gratuito com **backup manual periódico (H3)**: **RPO = intervalo entre exports** (proposta: semanal e antes de migração destrutiva; 24 h exigiria automação, `12-TODO.md`) e RTO ≤ 8 h; metas melhores só após plano com PITR (gatilho). Cópias criptografadas com chave separada; **expurgo do titular e backups**: backups contêm dados já excluídos até o ciclo de rotação — política de rotação `[PENDENTE JURÍDICO]`. Teste de restauração trimestral `[PROPOSTA]` e antes do lançamento.
-- **Reprocessamento pós-restauração:** webhooks do MP e e-mails são reconciliados; jobs são idempotentes.
+- **Migrações:** SQL versionado em `packages/db`, *expand/contract* (compatível em duas versões), aplicadas por pipeline; reversão = nova migração compensatória; toda migração testada contra cópia sintética.
+- **Reprocessamento:** jobs são idempotentes.
 
 ---
 
