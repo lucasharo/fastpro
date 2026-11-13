@@ -73,6 +73,8 @@ import {
   PROFESSIONAL_PROFILE_PATH,
   type ProfessionalProfileRouteOptions,
 } from './professional-profile-route.js';
+// Issue 57 (H-044) | Ativacao do trial de 14 dias (POST /v1/billing/trial/activate).
+import { handleProfessionalTrialRoute, TRIAL_ACTIVATE_PATH, type ProfessionalTrialRouteOptions } from './professional-trial-route.js';
 // H-036 | Servicos, base e raio do perfil profissional (GET/PUT /v1/professional/profile/services e /area).
 import {
   handleProfessionalOfferingRoute,
@@ -184,6 +186,8 @@ export interface AppOptions {
   readonly professionalPassword?: ProfessionalPasswordRouteOptions;
   /** Cadastro do documento e leitura do perfil profissional (H-035). Sem esta opcao as rotas nao existem (404). */
   readonly professionalProfile?: ProfessionalProfileRouteOptions;
+  // Issue 57 (H-044) | Ativacao do trial (so existe com a opcao).
+  readonly professionalTrial?: ProfessionalTrialRouteOptions;
   /** H-036: servicos, base e raio do perfil. Sem esta opcao as rotas nao existem (404). */
   readonly professionalOffering?: ProfessionalOfferingRouteOptions;
   /** H-031 (#44): publicacao do pedido. Sem esta opcao a rota POST /v1/requests responde 404 uniforme (decisao 254). */
@@ -377,6 +381,9 @@ export async function handleRequest(
   if (opts.professionalProfile && path === PROFESSIONAL_PROFILE_PATH) {
     if (req.method === 'PUT') return handleProfessionalProfilePut(req, res, opts.professionalProfile);
     if (req.method === 'GET') return handleProfessionalProfileGet(req, res, opts.professionalProfile);
+  }
+  if (opts.professionalTrial && path === TRIAL_ACTIVATE_PATH) {
+    return handleProfessionalTrialRoute(req, res, opts.professionalTrial);
   }
   if (opts.professionalOffering && (path === PROFESSIONAL_SERVICES_PATH || path === PROFESSIONAL_AREA_PATH)) {
     return handleProfessionalOfferingRoute(req, res, path, opts.professionalOffering);

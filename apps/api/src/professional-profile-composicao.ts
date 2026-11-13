@@ -31,7 +31,7 @@ export interface PerfilProfissionalMontagem {
 const clientes = new Map<string, SqlClient>();
 
 /** Um cliente por string de conexao (a fabrica da borda abre o pool uma vez por URL). */
-function clienteDe(url: string, abrirCliente: (connectionString: string) => SqlClient): SqlClient {
+export function clienteDe(url: string, abrirCliente: (connectionString: string) => SqlClient): SqlClient {
   let cliente = clientes.get(url);
   if (cliente === undefined) {
     cliente = abrirCliente(url);
