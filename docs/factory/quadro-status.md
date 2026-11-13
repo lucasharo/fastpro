@@ -104,18 +104,15 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #119 | [E13] Expurgos operacionais |
 | #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
 
-## Code Review (1)
+## Code Review (0)
+
+## QA (1)
 
 | Issue | Título |
 |---|---|
 | #43 | [E3] Revisão e confirmação expressa |
 
-## QA (0)
-
-| Issue | Título |
-|---|---|
-
-## Concluído (52)
+## Concluído (54)
 
 | Issue | Título |
 |---|---|
@@ -146,6 +143,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #27 | [E1] Sessão de 7 dias e step-up |
 | #28 | [E1] Anti-enumeração e limites |
 | #29 | [E1] Cadastro e login do profissional |
+| #30 | [E1] Exclusividade de papéis |
 | #31 | [E2] Catálogo com seed de 25 grupos [PROPOSTA] |
 | #32 | [E2] Autocomplete de serviço e sinônimos |
 | #33 | [E2] Autocomplete de endereço Mapbox temporário |
@@ -155,6 +153,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #39 | [E3] Upload de fotos em quarentena |
 | #40 | [E3] Redução e reencode das fotos |
 | #41 | [E3] Remoção de EXIF e tipo por conteúdo |
+| #42 | [E3] Pré-visualização e reordenação de fotos |
 | #48 | [E4] Cadastro profissional com CPF/CNPJ cifrado |
 | #49 | [E4] Perfil: serviços, base e raio |
 | #83 | [E7] Acesso excepcional a conversa |
@@ -178,11 +177,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #110 | [E11] Teste de ausência de interruptor |
 
-## Aguardando aprovação (2)
-
-| Issue | Título |
-|---|---|
-| #30 | [E1] Exclusividade de papéis |
-| #42 | [E3] Pré-visualização e reordenação de fotos |
+## Aguardando aprovação (0)
 
 ## Bloqueado (0)
