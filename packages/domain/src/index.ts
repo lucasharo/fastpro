@@ -14,3 +14,5 @@ export * from './catalog/index.js';
 export * from './retention/index.js';
 // H-026 | Fotos em quarentena (88-DESENHO-H026): constantes, corpo, portas e expurgo.
 export * from './media/index.js';
+// H-110 (Issue #119) | Expurgos operacionais: orquestracao pura (docs/factory/105-DESENHO-H110.md).
+export * from './ops-purge/index.js';
