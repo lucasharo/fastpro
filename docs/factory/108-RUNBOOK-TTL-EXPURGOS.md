@@ -68,6 +68,7 @@ Itens sem valor de TTL (não se define chave):
 1. **Produção:** a migração agenda `ops-purge-daily` (`23 3 * * *`, UTC) com `cron.schedule` **somente se** a extensão `pg_cron` estiver instalada. Confirmar a agenda antes de ligar qualquer valor de TTL em produção.
 2. **Sem `pg_cron`** (ex.: banco local): o disparo é manual, chamando `private.ops_purge_enqueue(now())` pelo papel de execução, e a execução fica no tick da API (decisão 204).
 3. **Condição de liberação de mídia:** a decisão 151 mantém a mídia fechada em produção até o expurgo agendado existir. Esse passo só fecha depois de agenda confirmada e de valores aprovados.
+4. **Agenda não é efeito (achado 4 do Code Review):** o `pg_cron` só enfileira o job `ops.purge` (`private.ops_purge_enqueue`). O handler que executa os blocos só tem efeito depois de ligado ao tick da API (`registerOpsPurgeHandlers` na composição, com as portas de Storage e caminho do objeto). Enquanto isso não estiver ligado, a fila cresce e nada é expurgado. Antes de liberar mídia em produção, conferir as duas pontas: a agenda `ops-purge-daily` **e** o registro do handler no tick, com uma execução manual vista na auditoria do job (gravada por `private.ops_purge_audit`).
 
 ## 5. Como aplicar um valor (modelo; não executar em produção sem decisão)
 
