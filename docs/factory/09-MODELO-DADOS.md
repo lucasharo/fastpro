@@ -86,6 +86,7 @@ erDiagram
 `published_at`, `acceptance_deadline_at` (= `published_at + 7 dias corridos`, **imutável**: trigger bloqueia UPDATE), `wave2_opened_at?`, `acceptances_count` int (mantido sob lock + verificado por trigger/rotina de consistência),
 `exact_point` (C3; **somente de resultado `permanent=true`**), `geocode_mode` {`permanent`} (CHECK: `exact_point IS NOT NULL ⇒ geocode_mode='permanent'`), `geocoded_at`, `match_point` (célula generalizada), `public_label` (bairro/cidade/UF), `address_text_enc` (C3),
 `first_name` (snapshot visível a participantes), `phone_enc?` (C3), `completed_at?`, `cancelled_at?`, `cancelled_by`.
+**Nota (H-031, decisao 233; 110-DESENHO-H031 §4.1):** na implementacao `exact_point`, `match_point`, `geocode_mode`, `geocoded_at` e `address_text_enc` NAO existem em `service_request`; a localizacao e' `geocode_point_id` (unico, referencia `app.geocode_point`, I-28). `origin_draft_id` (unico) e `duplicate_ack` foram acrescentados; `public_label`, `phone_enc`, `completed_at/cancelled_*` entram por expansao nas historias donas. Nao ha GiST de `match_point` (decisao 57).
 Checks: `status<>'publicado' OR selecionado inexistente` (via trigger); `wave2_opened_at IS NULL OR wave2_opened_at >= published_at`.
 Índices: `GIST(match_point)`; `(customer_user_id, status)`; `(service_id, status, acceptance_deadline_at)`; `(chain_id)`; **único parcial** `(chain_id) WHERE is_republication AND status IN ('publicado','selecionado')` (I-09).
 **duplicate_ack**: `request_id`, `similar_request_id`, `confirmed_at` (AMB-01).
