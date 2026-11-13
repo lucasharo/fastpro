@@ -5,7 +5,7 @@
 // ausente ou development (decisao 239, Rodada 66 do quadro). Em preview, producao, ou sem a chave, a rota responde 503 (D-12).
 // Nunca le, grava nem registra o valor das variaveis: so o nome aparece nas pendencias.
 import { createHmac } from 'node:crypto';
-import { PgGeoPointStore, PgRequestPublishStore, PgSessionRepository, type SqlClient } from '@fastpro/db';
+import { PgContactStore, PgGeoPointStore, PgRequestPublishStore, PgSessionRepository, type SqlClient } from '@fastpro/db';
 import { parseBreakerCaps } from '@fastpro/domain';
 import { createDraftHasher } from '../drafts/draft-hash.js';
 import { createAddressHasher } from '../geo/address-hash.js';
@@ -14,6 +14,9 @@ import { MAPBOX_TOKEN_ENV } from '../geo/composicao-sugestao.js';
 import { createMapboxPermanentAdapter } from '../geo/mapbox-permanent-adapter.js';
 import type { GeocodingPermanentPort } from '../geo/permanent-ports.js';
 import type { PublishRouteOptions } from './publish-route.js';
+import type { PublishServiceDeps } from './publish-service.js';
+// Issue 46 (H-033): telefone opcional da publicacao (mesmo cliente app_system; sem PHONE_ENC_KEY valida, sem telefone).
+import { cofreDoTelefone } from '../contact/contact-composicao.js';
 
 /** APP_ENV em que o provedor real pode ligar (decisao 239: so desenvolvimento). Sem APP_ENV, nao liga. */
 const AMBIENTES_COM_PROVEDOR_REAL: readonly string[] = ['development', 'dev', 'test'];
@@ -84,6 +87,12 @@ function provedorMapboxDesenvolvimento(env: Ambiente): GeocodingPermanentPort | 
   return createMapboxPermanentAdapter({ token, fetchImpl: globalThis.fetch });
 }
 
+/** Telefone da publicacao (Issue 46): cofre e porta do mesmo cliente. Sem chave valida, undefined. */
+function telefoneDaPublicacao(env: Ambiente, cliente: SqlClient): PublishServiceDeps['telefone'] {
+  const cofre = cofreDoTelefone(env);
+  return cofre === undefined ? undefined : { store: new PgContactStore(cliente), cofre };
+}
+
 export function montarPublicacaoPedido(env: Ambiente, opcoes: PublicacaoPedidoOpcoes = {}): PublicacaoPedidoMontagem {
   const pendencias: string[] = PUBLICACAO_PEDIDO_ENV_OBRIGATORIAS.filter((nome) => !preenchida(env, nome));
   if (opcoes.abrirCliente === undefined) pendencias.push('fabrica do cliente SQL da publicacao (ainda nao montada na funcao)');
@@ -142,6 +151,7 @@ export function montarPublicacaoPedido(env: Ambiente, opcoes: PublicacaoPedidoOp
           },
           hasher: createDraftHasher(chave),
           vault: cofre,
+          telefone: telefoneDaPublicacao(env, cliente),
           chave,
           rateKey: (finalidade: string, identificador: string) =>
             createHmac('sha256', chave).update(`${finalidade}:${identificador}`, 'utf8').digest('hex'),

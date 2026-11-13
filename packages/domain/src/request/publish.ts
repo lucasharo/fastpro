@@ -12,13 +12,18 @@ export const PUBLISH_HMAC_MIN_CHARS = 32;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CHAVE = /^[A-Za-z0-9_-]{16,64}$/;
-const CHAVES_CORPO = ['draft_id', 'content_rev', 'duplicate_ack'] as const;
+const CHAVES_CORPO = ['draft_id', 'content_rev', 'duplicate_ack', 'phone', 'sharePhone'] as const;
 const ACK_MAX = 512;
+const TELEFONE_MAX = 32;
 
 export interface PublishBody {
   readonly draftId: string;
   readonly contentRev: number;
   readonly duplicateAck?: string;
+  /** Issue 46 (H-033): telefone opcional, cifrado pela API depois da validacao. */
+  readonly phone?: string;
+  /** Issue 46 (H-033): consentimento marcado no formulario (padrao falso). */
+  readonly sharePhone?: boolean;
 }
 
 export type PublishBodyResult =
@@ -59,18 +64,38 @@ export function parsePublishBody(raw: unknown, bytes?: number): PublishBodyResul
     }
     duplicateAck = ack;
   }
+  let telefone: string | undefined;
+  if (campos.phone !== undefined) {
+    if (typeof campos.phone !== 'string' || campos.phone.length > TELEFONE_MAX) return { ok: false, code: 'corpo_invalido' };
+    telefone = campos.phone;
+  }
+  let compartilhar: boolean | undefined;
+  if (campos.sharePhone !== undefined) {
+    if (typeof campos.sharePhone !== 'boolean') return { ok: false, code: 'corpo_invalido' };
+    compartilhar = campos.sharePhone;
+  }
   return {
     ok: true,
-    body: duplicateAck === undefined
-      ? { draftId: draftId.toLowerCase(), contentRev }
-      : { draftId: draftId.toLowerCase(), contentRev, duplicateAck },
+    body: {
+      draftId: draftId.toLowerCase(),
+      contentRev,
+      ...(duplicateAck === undefined ? {} : { duplicateAck }),
+      ...(telefone === undefined ? {} : { phone: telefone }),
+      ...(compartilhar === undefined ? {} : { sharePhone: compartilhar }),
+    },
   };
 }
 
 /** Hash do corpo canonico (110 §5.1): sha256 de "draft_id|content_rev|duplicate_ack ou vazio". */
+/** Issue 46: os campos de telefone entram no hash so quando presentes (corpos antigos mantem o hash). O numero nao entra. */
+function marcaTelefone(body: PublishBody): string {
+  if (body.phone === undefined && body.sharePhone !== true) return '';
+  return `|tel:${body.phone === undefined ? 0 : 1}:${body.sharePhone === true ? 1 : 0}`;
+}
+
 export function publishBodyHash(body: PublishBody): string {
   return createHash('sha256')
-    .update(`${body.draftId}|${body.contentRev}|${body.duplicateAck ?? ''}`, 'utf8')
+    .update(`${body.draftId}|${body.contentRev}|${body.duplicateAck ?? ''}${marcaTelefone(body)}`, 'utf8')
     .digest('hex');
 }
 

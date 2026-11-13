@@ -110,6 +110,8 @@ import { handleIdentityDocRoute, isIdentityDocRoute, type IdentityDocRouteOption
 import { handleRequestPublishRoute, REQUEST_PUBLISH_PATH, type PublishRouteOptions } from './requests/publish-route.js';
 // Issue 45 (H-032) | Leitura do pedido: dono (GET /v1/requests/:id) e profissional elegivel (GET /v1/professional/requests/:id).
 import { handleRequestDetailRoute, isRequestDetailRoute, type RequestDetailRouteOptions } from './requests/detail-route.js';
+// Issue 46 (H-033) | Telefone e consentimento de contato (dono e profissional).
+import { handleContactRoute, isContactRoute, type ContactRouteOptions } from './contact/contact-route.js';
 import { draftNotFound } from './drafts/draft-service.js';
 import {
   handleSessionConvert,
@@ -194,6 +196,8 @@ export interface AppOptions {
   readonly requestPublish?: PublishRouteOptions;
   /** Issue 45 (H-032): leitura do pedido pelo dono e pelo profissional. Sem esta opcao as rotas respondem 404 uniforme. */
   readonly requestDetail?: RequestDetailRouteOptions;
+  /** Issue 46 (H-033): telefone e consentimento de contato. Sem esta opcao as rotas respondem 404 uniforme. */
+  readonly requestContact?: ContactRouteOptions;
 }
 
 export interface BodyReadResult {
@@ -369,6 +373,14 @@ export async function handleRequest(
   // Issue 45 (H-032): leitura do pedido. Sem a montagem completa (chave ou banco), o mesmo 404 uniforme do rascunho.
   if (isRequestDetailRoute(path)) {
     if (opts.requestDetail) return handleRequestDetailRoute(req, res, path, opts.requestDetail);
+    const r = draftNotFound();
+    res.writeHead(r.status, r.headers);
+    res.end(r.body);
+    return;
+  }
+  // Issue 46 (H-033): contato. Sem a montagem completa (chave ou banco), o mesmo 404 uniforme do rascunho.
+  if (isContactRoute(req.method ?? '', path)) {
+    if (opts.requestContact) return handleContactRoute(req, res, path, opts.requestContact);
     const r = draftNotFound();
     res.writeHead(r.status, r.headers);
     res.end(r.body);

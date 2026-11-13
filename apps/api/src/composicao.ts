@@ -71,6 +71,9 @@ import type { PublishRouteOptions } from './requests/publish-route.js';
 // Issue 45 (H-032) | Leitura do pedido por papel: liga so com ADDRESS_ENC_KEY e a fabrica do papel app_system.
 import { montarDetalhePedido } from './requests/detail-composicao.js';
 import type { RequestDetailRouteOptions } from './requests/detail-route.js';
+// Issue 46 (H-033) | Telefone e consentimento de contato: so monta com DATABASE_URL_APP_SYSTEM, SITE_URL e PHONE_ENC_KEY.
+import { montarContato } from './contact/contact-composicao.js';
+import type { ContactRouteOptions } from './contact/contact-route.js';
 
 /** Nomes da busca que faltam (so nomes; a chave curta aparece marcada, sem tamanho nem valor). */
 function faltantesCatalogo(env: CatalogEnv): readonly string[] {
@@ -161,6 +164,10 @@ export interface Integracoes {
   readonly requestDetail: RequestDetailRouteOptions | undefined;
   /** Nomes (nunca valores) que impedem as rotas de leitura do pedido de ligar (H-032). */
   readonly pendenciasDetalhe: readonly string[];
+  /** Issue 46 (H-033): rotas de telefone e consentimento, ou undefined (404). */
+  readonly requestContact: ContactRouteOptions | undefined;
+  /** Nomes (nunca valores) que impedem as rotas de contato de ligar. */
+  readonly pendenciasContato: readonly string[];
 }
 
 const RELOGIO_PADRAO: ClockPort = {
@@ -266,6 +273,9 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   // Issue 45 (H-032): leitura do pedido (dono e profissional). Sem ADDRESS_ENC_KEY ou banco, as rotas nao ligam (404).
   const detalhe = montarDetalhePedido(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
 
+  // Issue 46 (H-033): telefone e consentimento. Sem PHONE_ENC_KEY valida, as rotas nao ligam (404).
+  const contato = montarContato(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
+
   // E3: midia. Liga so com MEDIA_UPLOAD_ENABLED=1 e os itens completos (decisao 190); sem isso, 404.
   // A galeria (H-029) entra junto, pelas portas montadas na borda; sem a midia ligada, ela tambem fica 404.
   const galeriaMidia = portasGaleriaMidia(env, opcoes.abrirClienteApi);
@@ -305,6 +315,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     pendenciasPublicacao: publicacao.pendencias,
     requestDetail: detalhe.options,
     pendenciasDetalhe: detalhe.pendencias,
+    requestContact: contato.options,
+    pendenciasContato: contato.pendencias,
   };
 }
 

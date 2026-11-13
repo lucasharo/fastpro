@@ -10,6 +10,8 @@ import {
   derivePublicLabel,
   publishBodyHash,
   verifyDuplicateAck,
+  normalizePhoneBr,
+  CONTACT_CONSENT_VERSION,
   type PublishBody,
 } from '@fastpro/domain';
 import type {
@@ -21,6 +23,8 @@ import type {
 } from '@fastpro/db';
 import type { DraftHasher } from '../drafts/draft-hash.js';
 import type { AddressVault } from './address-crypto.js';
+import type { PgContactStore } from '@fastpro/db';
+import type { PhoneVault } from '../contact/phone-crypto.js';
 import { ensurePermanentPoint, type EnsurePermanentDeps } from '../geo/permanent-geocode-service.js';
 import { randomUUID } from 'node:crypto';
 
@@ -48,6 +52,11 @@ export interface PublishServiceDeps {
   readonly vault?: AddressVault;
   /** Gerador do id do pedido (padrao: uuid v4). Injetavel para teste. */
   readonly novoId?: () => string;
+  /**
+   * Telefone opcional (Issue 46, H-033): cofre e porta de anexo. Sem ele, publicacao com telefone responde 503 antes do banco;
+   * publicacao sem telefone segue igual.
+   */
+  readonly telefone?: { readonly store: Pick<PgContactStore, 'attachPhone'>; readonly cofre: Pick<PhoneVault, 'seal'> };
 }
 
 export interface PublishRequestInput {
@@ -114,6 +123,13 @@ export async function publishRequest(input: PublishRequestInput, deps: PublishSe
   const vault = deps.vault;
   if (vault === undefined) return resposta(503, { code: 'publicacao_indisponivel' }, { 'Retry-After': '10' });
   const { body, userId } = input;
+  // Issue 46 (H-033): telefone opcional, validado antes de qualquer escrita. Sem cifra configurada, 503 antes do banco.
+  const telefoneE164 = body.phone === undefined ? undefined : normalizePhoneBr(body.phone);
+  if (body.sharePhone === true && body.phone === undefined) return resposta(400, { code: 'telefone_necessario' });
+  if (body.phone !== undefined && telefoneE164 === null) return resposta(422, { code: 'telefone_invalido' });
+  if (body.phone !== undefined && deps.telefone === undefined) {
+    return resposta(503, { code: 'publicacao_indisponivel' }, { 'Retry-After': '10' });
+  }
   const bodyHash = publishBodyHash(body);
   const chaveBanco = { userId, idemKey: input.idemKey, bodyHash };
   // Melhor esforco: a resposta ao cliente nao depende do abort. Se ele falhar, a chave em andamento libera pelo prazo (lease).
@@ -181,10 +197,12 @@ export async function publishRequest(input: PublishRequestInput, deps: PublishSe
   // Issue 45: a API gera o id do pedido, cifra o endereco (AAD = id) e deriva o rotulo. Falha vira 503 fixo.
   const requestId = (deps.novoId ?? randomUUID)();
   let addressEnc: Buffer;
+  let telefoneEnc: Buffer | undefined;
   let publicLabel: string | null;
   try {
     addressEnc = vault.seal(inicio.addressText, requestId);
     publicLabel = derivePublicLabel(inicio.addressText);
+    if (telefoneE164 && deps.telefone !== undefined) telefoneEnc = deps.telefone.cofre.seal(telefoneE164, requestId);
   } catch {
     await abortar();
     return porCodigo('indisponivel');
@@ -200,6 +218,14 @@ export async function publishRequest(input: PublishRequestInput, deps: PublishSe
   }
 
   if (saida.status === 'criado' || saida.status === 'ja_publicado') {
+    // Issue 46: anexo do telefone depois do commit. Falha nao desfaz a publicacao: o dono repete pela rota de troca.
+    if (saida.status === 'criado' && telefoneEnc !== undefined && deps.telefone !== undefined) {
+      try {
+        await deps.telefone.store.attachPhone(userId, requestId, telefoneEnc, body.sharePhone === true, CONTACT_CONSENT_VERSION, agora);
+      } catch {
+        // Sem acao: o registro nao carrega o numero nem o erro do driver.
+      }
+    }
     return resposta(saida.status === 'criado' ? 201 : 200, corpoDoPedido(saida.pedido));
   }
   await abortar();
