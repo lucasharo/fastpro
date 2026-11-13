@@ -1,5 +1,6 @@
-// H-036 | Adaptador Pg da GeoPointStorePort + ensurePermanentPoint contra Postgres real (docs/factory/99-DESENHO-H036.md,
-// §5 passos 3 a 7, §7; T-P06 e T-P07; CA-05, CA-06). Usa o adaptador compilado (dist) e a funcao da API compilada.
+// H-036 | Adaptador Pg da GeoPointStorePort contra Postgres real (docs/factory/99-DESENHO-H036.md, §5 passos 3 a 7,
+// §7; T-P06 e T-P07; CA-05, CA-06). Usa o adaptador compilado (dist); a sequencia de ensurePermanentPoint e espelhada
+// aqui porque packages/* nao importa apps/* (check:boundaries). Pendencia: o teste com a funcao real fica em apps/api.
 // Provedor SIMULADO com contador de chamadas: nenhuma chamada real ao Mapbox (decisao 116). Sem rede.
 // Transacoes: os casos sem erro SQL rodam em begin/rollback (nada persiste). O caso de ponto recusado pelo banco
 // precisa de autocommit (um erro SQL aborta a transacao e a liberacao da reserva falharia); ele cria uma fixture
@@ -10,7 +11,50 @@ import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { connect } from '../scripts/lib/env.mjs';
 import { PgGeoPointStore, GEO_STORE_FALHOU } from '../dist/geo-point-store.js';
-import { ensurePermanentPoint } from '../../../apps/api/dist/geo/permanent-geocode-service.js';
+
+/**
+ * Espelho da sequencia de ensurePermanentPoint (apps/api/src/geo/permanent-geocode-service.ts, §3.1 a §3.4).
+ * A funcao real NAO e importada aqui: packages/* nao pode importar apps/* (scripts/check-module-boundaries.mjs).
+ * A sequencia e a mesma (reserva atomica no banco, uma chamada, liberacao no erro, sem coordenada parcial);
+ * a ordem de decisao em memoria e coberta por apps/api/tests/geo-permanent-service.test.ts.
+ */
+async function ensurePermanentPoint({ subject, addressText, callsCap }, deps) {
+  const reserva = await deps.store.reserve({
+    subject,
+    hash: deps.hashAddress(addressText.toLowerCase()),
+    nowMs: deps.clock(),
+    leaseMs: 60000,
+    callsCap,
+    caps: deps.caps,
+  });
+  switch (reserva.acao) {
+    case 'reutilizar':
+      return { status: 'ok', pointId: reserva.pointId };
+    case 'chamar': {
+      const lookup = await deps.provider.geocode(addressText);
+      if (lookup.status === 'falha') {
+        await deps.store.release(reserva.ref);
+        return { status: 'indisponivel' };
+      }
+      if (lookup.status === 'sem_resultado') {
+        await deps.store.markNoResult(reserva.ref);
+        return { status: 'endereco_nao_encontrado' };
+      }
+      const pointId = await deps.store.storePermanent(reserva.ref, lookup.point, deps.clock());
+      return { status: 'ok', pointId };
+    }
+    case 'em_andamento':
+      return { status: 'em_andamento' };
+    case 'teto':
+      return { status: 'teto' };
+    case 'sem_resultado':
+      return { status: 'endereco_nao_encontrado' };
+    case 'breaker':
+      return { status: 'aguardando_geocodificacao' };
+    default:
+      throw new Error('geo_acao_desconhecida');
+  }
+}
 
 const client = await connect();
 after(async () => {
