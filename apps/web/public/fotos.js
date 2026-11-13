@@ -120,8 +120,8 @@
         function (res) {
           return res.text().then(
             function (texto) {
-              var dados = null;
-              try { dados = texto ? JSON.parse(texto) : null; } catch (e) { dados = null; }
+              var dados;
+              try { dados = texto ? JSON.parse(texto) : null; } catch { dados = null; }
               return { status: res.status, retryAfter: res.headers ? res.headers.get('Retry-After') : null, dados: dados };
             },
             function () { return { status: res.status, retryAfter: null, dados: null }; }
