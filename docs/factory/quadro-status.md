@@ -98,19 +98,19 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #37 | [E2] Cobertura booleana sem contagem |
 | #58 | [E5] Acesso comercial derivado |
 
-## Desenvolvimento (2)
+## Desenvolvimento (1)
 
 | Issue | Título |
 |---|---|
-| #50 | [E4] Documentos de identidade |
 | #44 | [E3] Publicação idempotente com 7 dias |
 
 ## Code Review (0)
 
-## QA (1)
+## QA (2)
 
 | Issue | Título |
 |---|---|
+| #50 | [E4] Documentos de identidade |
 | #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 
 ## Concluído (57)
