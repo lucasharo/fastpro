@@ -92,10 +92,11 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #55 | [E4] Guarda de elegibilidade na API e no banco |
 
-## Code Review (0)
+## Code Review (1)
 
 | Issue | Título |
 |---|---|
+| #37 | [E2] Cobertura booleana sem contagem |
 
 ## QA (3)
 
@@ -188,10 +189,9 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #128 | [E15] Teste de restauração de backup |
 | #145 | [E15] db:test: media_asset fora do backup sem decisão registrada |
 
-## Aguardando aprovação (1)
+## Aguardando aprovação (0)
 
 | Issue | Título |
 |---|---|
-| #37 | [E2] Cobertura booleana sem contagem |
 
 ## Bloqueado (0)
