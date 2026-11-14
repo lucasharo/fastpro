@@ -6,7 +6,7 @@ import type { LinhaPerfilPublico, PublicProfilePort } from '@fastpro/domain';
 export const SQL_LER_PERFIL_PUBLICO = 'select private.professional_public_profile($1) as perfil';
 
 export interface PublicProfileSqlClient {
-  query(text: string, params: readonly unknown[]): Promise<{ readonly rows: readonly Record<string, unknown>[] }>;
+  query(text: string, params: unknown[]): Promise<{ readonly rows: readonly Record<string, unknown>[] }>;
 }
 
 export class PgPublicProfileStore implements PublicProfilePort {

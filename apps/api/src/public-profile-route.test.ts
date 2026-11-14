@@ -23,7 +23,6 @@ function fakeRes(): { res: ServerResponse; resposta: Resposta; escritas: number 
     writeHead(status: number, headers: Record<string, string>) {
       resposta.status = status;
       resposta.headers = { ...headers };
-      this.headersSent = true;
     },
     end(corpo: string) {
       resposta.corpo = corpo;
@@ -122,7 +121,7 @@ describe('T43-06, T43-08 404 uniforme byte a byte', () => {
 
   it('todos os casos negados devolvem o mesmo corpo e os mesmos cabecalhos', async () => {
     const respostas = await Promise.all(negados.map((u) => executar(u, porta, { ip: `10.1.${negados.indexOf(u)}.1` })));
-    const base = respostas[0];
+    const base = respostas[0] as Resposta;
     expect(base.status).toBe(404);
     expect(base.corpo).toBe('{"code":"professional_not_found"}');
     for (const r of respostas) {
