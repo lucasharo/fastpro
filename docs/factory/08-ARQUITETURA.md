@@ -4,6 +4,9 @@
 - **Natureza:** SOMENTE planejamento. Nenhum código, repositório, conta, projeto, credencial ou chamada externa foi criado/feito. Nenhum limite de serviço externo foi consultado em fonte oficial nesta sessão (a web não foi consultada; todo limite/termo de Vercel, Supabase, Mapbox, Mercado Pago e e-mail permanece `[NÃO VERIFICADO]`).
 
 ## Histórico de mudanças
+### Revisão 7 — 2026-11-14 (H-043, Issue 56; desenho 143-DESENHO-H043 §5)
+- **Rota pública do perfil:** `GET /v1/public/professionals/:slug` sem sessão, com cache de borda curto, limite por IP e 404 uniforme (§5.5).
+
 ### Revisão 6 — 2026-11-10 (Rodada 14 nº 31 e 32; Revisão 5 do PO)
 - **Fotos do pedido (decisão 31):** reduzidas **no envio** para ≈ **0,5 MB** e **no máximo 1.280 px**, **5 por pedido** (≈ 2,5 MB/pedido; ≈ 280 pedidos em ≈ 700 MB de Storage). **Só a versão reduzida é guardada**: o original e qualquer *master* maior nunca são persistidos. Supera o alvo "1–2 MB" da revisão 5.
 - **Chat somente texto (decisões 32 e 33):** nenhum anexo, nem imagem nem PDF. **Removidos:** bucket `chat-attachments`, tabela `message_attachment`, validação por conteúdo e antimalware de anexos do chat, URLs assinadas e limites (5 × 10 MB) de anexo, miniatura e marca d'água do chat, e os riscos/testes de PDF do chat. A API **rejeita qualquer anexo** no chat. EXIF só se aplica às fotos do pedido.
@@ -205,6 +208,16 @@ Respostas e tempos uniformes em início de desafio, recuperação de senha e cad
 
 ### 5.4 Step-up para ações críticas (AMB-13 A+C) [DELEGADO]
 Ações **cancelar, concluir, corrigir conclusão, compartilhar/revogar telefone/endereço, selecionar/trocar** (esta última `[PROPOSTA]`, por ser a ação de maior consequência) exigem autenticação recente (`recent_auth_at` ≤ janela `[PROPOSTA]` 30 min). Senão, a API responde 401 com `step_up_required` e a UI pede novo código por e-mail. A sessão de 7 dias não muda.
+
+---
+
+### 5.5 Perfil público (H-043, Issue 56; desenho 143 §5)
+- **Rota:** `GET /v1/public/professionals/:slug`, sem autenticação. Não lê nem emite cookie de sessão; corpo e query string são ignorados. O slug é validado por formato; fora do padrão, a resposta é o mesmo `404` do inexistente.
+- **Respostas:** `200` com o corpo da lista fechada (nome, slug, `verified`, selo, serviços e reputação zerada) e `Cache-Control: public, max-age=60, s-maxage=300, stale-while-revalidate=600`; `404 {"code":"professional_not_found"}` idêntico em corpo e cabeçalhos para inexistente, mal formado, não aprovado, suspenso, bloqueado ou com caso aberto, com `no-store`; `429 {"code":"muitas_requisicoes"}` com `Retry-After` e `no-store`; `500 {"code":"erro_interno"}` sem detalhe e com `no-store`.
+- **Cabeçalhos:** `X-Robots-Tag: noindex, nofollow` em todas as respostas (configuração do DEV; a indexação só muda por decisão humana no lançamento) e `X-Content-Type-Options: nosniff`.
+- **Limite:** 60 requisições por minuto por IP, aplicado antes de qualquer consulta ao banco; o IP vem do cabeçalho de proxy confiável. O contador é em memória por instância (dec. 654): no DEV é aceito; o limite definitivo fica no gateway do lançamento.
+- **Cache:** o `200` pode ficar na borda por até cerca de 15 minutos, então um perfil suspenso pode aparecer nesse intervalo (dec. 653; reavaliar antes de produção). `404`, `429` e `500` nunca são cacheados.
+- **Sem chamada externa:** a leitura depende só do banco.
 
 ---
 
