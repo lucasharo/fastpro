@@ -90,19 +90,19 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #47 | [E3] Painel do cliente na sessão do dono |
 
-## Desenvolvimento (4)
+## Desenvolvimento (3)
 
 | Issue | Título |
 |---|---|
 | #45 | [E3] Visibilidade de localização |
-| #53 | [E4] Retenção por duplicidade |
 | #46 | [E3] Opt-in de telefone no pedido |
 | #37 | [E2] Cobertura booleana sem contagem |
 
-## Code Review (1)
+## Code Review (2)
 
 | Issue | Título |
 |---|---|
+| #53 | [E4] Retenção por duplicidade |
 | #57 | [E5] Trial de 14 dias |
 
 ## QA (0)
