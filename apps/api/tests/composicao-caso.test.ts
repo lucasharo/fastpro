@@ -55,7 +55,9 @@ describe('montarIntegracoes: rotas do caso de acesso (H-073)', () => {
     expect(integracoes.accessCase).toBeDefined();
     expect(integracoes.accessCase?.baseUrl).toBe(BASE);
     expect(integracoes.pendenciasCaso).toEqual([...ADMIN_AUTH_ENV_OBRIGATORIAS, ...ADMIN_LIMITES_ENV_OBRIGATORIAS]);
-    expect(recebidas).toEqual([URL_SINTETICA]);
+    // Issue 47 (H-034): a lista do dono (so DATABASE_URL_APP_SYSTEM) abre o mesmo cliente pela mesma fabrica.
+    expect(recebidas.length).toBeGreaterThan(0);
+    expect(recebidas.every((url) => url === URL_SINTETICA)).toBe(true);
   });
 
   it('a URL de conexao nunca aparece nas pendencias nem nas opcoes montadas', () => {
