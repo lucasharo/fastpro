@@ -65,6 +65,31 @@ describe('T43-03 e T43-04 descarte de chaves fora da lista', () => {
   });
 });
 
+describe('T43-12 prova negativa de localizacao', () => {
+  it('nenhuma chave de endereco, bairro, cidade, UF, base ou raio chega ao perfil, mesmo se a linha as trouxer', () => {
+    const comLocalizacao = {
+      ...linhaValida,
+      address: 'Rua Marcador, 100',
+      logradouro: 'Rua Marcador',
+      bairro: 'Bairro Marcador',
+      cidade: 'Cidade Marcador',
+      uf: 'MX',
+      base_label: 'Base Marcador',
+      radius_m: 4321,
+      base_point: 'POINT(-46.63 -23.55)',
+      geocode_point_id: 'ponto-marcador',
+    };
+    const r = montarPerfilPublico(comLocalizacao);
+    if (!r.ok) throw new Error('esperado ok');
+    const chaves = Object.keys(r.perfil).concat(Object.keys(r.perfil.services[0] ?? {}));
+    for (const proibida of ['address', 'logradouro', 'bairro', 'cidade', 'uf', 'base', 'radius', 'point', 'geocode']) {
+      expect(chaves.some((k) => k.toLowerCase().includes(proibida)), proibida).toBe(false);
+    }
+    const texto = JSON.stringify(r.perfil);
+    for (const marcador of ['Marcador', '4321', 'POINT', 'MX']) expect(texto.includes(marcador), marcador).toBe(false);
+  });
+});
+
 describe('T43-11 servicos e estados de entrada', () => {
   it('aceita lista de servicos vazia', () => {
     const r = montarPerfilPublico({ ...linhaValida, services: [] });

@@ -61,11 +61,30 @@ async function criarPerfil({ m = randomUUID().slice(0, 8), status = 'aprovada', 
     ],
   );
   if (caso !== null) {
-    await client.query(
-      `insert into app.verification_case (professional_id, status, sla_target_at, created_at, updated_at)
-       values ($1, $2, now() + interval '1 day', now(), now())`,
-      [id, caso],
-    );
+    // Caso em revisao exige responsavel (vc_revisao_com_responsavel): cria um revisor sintetico na transacao.
+    if (caso === 'em_revisao') {
+      const revisor = randomUUID();
+      await client.query(
+        'insert into app.app_user (id, email, auth_user_id, status, created_at) values ($1, $2, $3, $4, now())',
+        [revisor, `revisor-${m}@example.test`, randomUUID(), 'ativo'],
+      );
+      await client.query(
+        `insert into app.admin_staff (user_id, status, origin, created_at, status_changed_at)
+         values ($1, 'pendente_mfa', 'bootstrap', now(), now())`,
+        [revisor],
+      );
+      await client.query(
+        `insert into app.verification_case (professional_id, status, assigned_to, sla_target_at, created_at, updated_at)
+         values ($1, 'em_revisao', $2, now() + interval '1 day', now(), now())`,
+        [id, revisor],
+      );
+    } else {
+      await client.query(
+        `insert into app.verification_case (professional_id, status, sla_target_at, created_at, updated_at)
+         values ($1, $2, now() + interval '1 day', now(), now())`,
+        [id, caso],
+      );
+    }
   }
   if (catalogo) {
     const grupo = randomUUID();
@@ -171,6 +190,7 @@ describe('T43-06 e T43-07 perfil nao visivel devolve null', () => {
     ['aprovada com suspended_at', { suspenso: true }],
     ['usuario bloqueado', { usuarioStatus: 'bloqueado' }],
     ['aprovada com caso pendente', { caso: 'pendente' }],
+    ['aprovada com caso em revisao', { caso: 'em_revisao' }],
   ];
   for (const [nome, opts] of casos) {
     test(`${nome}: null`, () =>
@@ -250,7 +270,9 @@ describe('T43-19 imutabilidade: a leitura nao grava nada', () => {
           `select (select count(*)::int from app.professional_profile) as perfis,
                   (select count(*)::int from app.professional_service) as servicos,
                   (select count(*)::int from app.verification_case) as casos,
-                  (select md5(string_agg(p::text, '|')) from app.professional_profile p where p.user_id = $1) as hash_perfil`,
+                  (select count(*)::int from audit.audit_event) as auditoria,
+                  (select md5(string_agg(p::text, '|')) from app.professional_profile p where p.user_id = $1) as hash_perfil,
+                  (select md5(string_agg(s::text, '|')) from app.professional_service s where s.professional_id = $1) as hash_servicos`,
           [f.id],
         );
         return r.rows[0];
