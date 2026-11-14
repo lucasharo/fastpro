@@ -29,8 +29,8 @@ describe('T43-02 montagem por lista fechada', () => {
     expect(r.perfil.verified).toBe(true);
     expect(Object.keys(r.perfil.rating).sort()).toEqual(['average', 'count', 'label'].sort());
     expect(Object.keys(r.perfil.verificationBadge).sort()).toEqual(['disclaimer', 'label']);
-    expect(Object.keys(r.perfil.services[0]).sort()).toEqual(['groupName', 'items']);
-    expect(Object.keys(r.perfil.services[0].items[0]).sort()).toEqual(['modalities', 'name']);
+    expect(Object.keys(r.perfil.services[0] ?? {}).sort()).toEqual(['groupName', 'items']);
+    expect(Object.keys(r.perfil.services[0]?.items[0] ?? {}).sort()).toEqual(['modalities', 'name']);
   });
 
   it('acrescenta o selo e a reputacao a partir dos textos unicos', () => {
