@@ -86,7 +86,6 @@ export default async function vercelHandler(
       ...(integracoes.identityDocs !== undefined ? { identityDocs: integracoes.identityDocs } : {}),
       ...(integracoes.requestPublish !== undefined ? { requestPublish: integracoes.requestPublish } : {}),
       ...(integracoes.requestContact !== undefined ? { requestContact: integracoes.requestContact } : {}),
-      ...(integracoes.requestList !== undefined ? { requestList: integracoes.requestList } : {}),
       ...(integracoes.publicProfile !== undefined ? { publicProfile: integracoes.publicProfile } : {}),
     });
   } catch {
