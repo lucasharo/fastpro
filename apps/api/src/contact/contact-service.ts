@@ -20,7 +20,7 @@ export interface ContactStorePort {
 
 export interface ContactServiceDeps {
   readonly store: ContactStorePort;
-  readonly vault: Pick<PhoneVault, 'seal' | 'open'>;
+  readonly phoneVault: Pick<PhoneVault, 'seal' | 'open'>;
   readonly clock: { nowMs(): number };
 }
 
@@ -57,7 +57,7 @@ export async function telefoneDoDono(userId: string, requestId: string, deps: Co
   const blob = await deps.store.ownerPhone(userId, requestId);
   if (blob === null) return NAO_ENCONTRADO;
   try {
-    return { status: 200, body: { phone: deps.vault.open(blob, requestId) } };
+    return { status: 200, body: { phone: deps.phoneVault.open(blob, requestId) } };
   } catch {
     return INDISPONIVEL;
   }
@@ -75,7 +75,7 @@ export async function definirTelefone(
     const e164 = normalizePhoneBr(telefone);
     if (e164 === null) return { status: 422, body: { code: 'telefone_invalido' } };
     try {
-      blob = deps.vault.seal(e164, requestId);
+      blob = deps.phoneVault.seal(e164, requestId);
     } catch {
       return INDISPONIVEL;
     }
@@ -130,7 +130,7 @@ export async function revelarTelefone(professionalId: string, requestId: string,
   if (r.limited) return { status: 429, body: { code: 'limite_de_leituras' } };
   if (r.phoneEnc === null) return NAO_ENCONTRADO;
   try {
-    return { status: 200, body: { phone: deps.vault.open(r.phoneEnc, requestId) } };
+    return { status: 200, body: { phone: deps.phoneVault.open(r.phoneEnc, requestId) } };
   } catch {
     return INDISPONIVEL;
   }

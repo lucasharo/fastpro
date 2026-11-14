@@ -56,7 +56,7 @@ function opcoes(recentAuthAtMs: number | null, store: Record<string, unknown>): 
     sessions: { authenticate: vi.fn(async () => ({ userId: DONO, recentAuthAtMs })) },
     service: {
       store: store as never,
-      vault: createPhoneVault(CHAVE_CIFRA),
+      phoneVault: createPhoneVault(CHAVE_CIFRA),
       clock: { nowMs: () => AGORA },
     },
   };
@@ -209,7 +209,8 @@ describe('T-03 e T-18 | telefone na publicacao (validacao antes do banco)', () =
       chave: 'c'.repeat(40),
       rateKey: (f: string, i: string) => `${f}:${i}`,
       clock: { nowMs: () => AGORA },
-      vault: { seal: () => Buffer.from('a'), open: () => 'x' } as never,
+      addressVault: { seal: () => Buffer.from('a'), open: () => 'x' } as never,
+      phoneVault: { seal: () => Buffer.from('a'), open: () => 'x' } as never,
       novoId: () => PEDIDO,
       telefone,
     } as unknown as PublishServiceDeps;

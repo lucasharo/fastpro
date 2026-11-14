@@ -77,7 +77,7 @@ export function montarContato(env: Ambiente, opcoes: ContatoOpcoes = {}): Contat
       sessions: new PgSessionRepository(cliente),
       service: {
         store: new PgContactStore(cliente),
-        vault: cofre,
+        phoneVault: cofre,
         clock: relogio,
       },
     },
