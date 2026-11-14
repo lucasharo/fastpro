@@ -90,16 +90,16 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #54 | [E4] Estado da verificação visível |
 | #47 | [E3] Painel do cliente na sessão do dono |
 
-## Desenvolvimento (1)
+## Desenvolvimento (0)
+
+| Issue | Título |
+|---|---|
+
+## Code Review (1)
 
 | Issue | Título |
 |---|---|
 | #37 | [E2] Cobertura booleana sem contagem |
-
-## Code Review (0)
-
-| Issue | Título |
-|---|---|
 
 ## QA (3)
 
