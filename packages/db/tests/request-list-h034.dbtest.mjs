@@ -109,6 +109,42 @@ async function pedido(c, { dono, svc, publicadoEm, status = 'publicado' }) {
   return id;
 }
 
+/** N pedidos publicados do mesmo dono, em lote (um insert por tabela): volume para o teste de plano do T-16. */
+async function pedidosEmMassa(c, dono, svc, n) {
+  const rascunhos = Array.from({ length: n }, () => randomUUID());
+  const pontos = Array.from({ length: n }, () => randomUUID());
+  await c.query(
+    `insert into app.request_draft (id, browser_nonce_hash, service_id, address_text, urgency, description, status,
+                                    expires_at, ip_hmac, created_at, updated_at, first_name, email, email_hmac,
+                                    email_verified_at, confirmed_at)
+     select d, encode(sha256(convert_to('cookie-' || d::text, 'UTF8')), 'hex'), $2::uuid, 'Rua sintetica 1',
+            'imediato', 'Descricao sintetica', 'aberto', $3::timestamptz + interval '7 days',
+            encode(sha256(convert_to('ip', 'UTF8')), 'hex'), $3::timestamptz, $3::timestamptz, 'Ana',
+            'h034-' || d::text || '@example.test', encode(sha256(convert_to(d::text, 'UTF8')), 'hex'),
+            $3::timestamptz, $3::timestamptz
+       from unnest($1::uuid[]) as t(d)`,
+    [rascunhos, svc, AGORA],
+  );
+  await c.query(
+    `insert into app.geocode_point (id, subject_kind, subject_id, address_hash, state, exact_point, geocode_mode,
+                                    precision, geocoded_at)
+     select p, 'request', d, encode(sha256(convert_to(p::text, 'UTF8')), 'hex'), 'ok',
+            extensions.st_setsrid(extensions.st_makepoint($3, $4), 4326)::extensions.geography,
+            'permanent', 'endereco', $5::timestamptz
+       from unnest($1::uuid[], $2::uuid[]) as t(p, d)`,
+    [pontos, rascunhos, SP.lon, SP.lat, AGORA],
+  );
+  await c.query(
+    `insert into app.service_request (customer_user_id, service_id, status, urgency, description, address_text, first_name,
+                                      geocode_point_id, origin_draft_id, published_at, acceptance_deadline_at)
+     select $1::uuid, $2::uuid, 'publicado', 'imediato', 'Descricao sintetica', 'Rua sintetica 1', 'Ana',
+            p, d, $3::timestamptz - (i * interval '1 second'),
+            $3::timestamptz - (i * interval '1 second') + interval '168 hours'
+       from unnest($4::uuid[], $5::uuid[]) with ordinality as t(p, d, i)`,
+    [dono, svc, AGORA, pontos, rascunhos],
+  );
+}
+
 async function lista(c, dono, agora, cursor = null, limite = 21) {
   const r = await c.query(SQL_LISTA, [dono, agora, cursor?.ts ?? null, cursor?.id ?? null, limite]);
   return r.rows;
@@ -306,12 +342,18 @@ test('T-16 migracao: reaplicar, reverter e reaplicar sem erro (CA-15); plano usa
     assert.equal(await funcaoExiste(client), true, 'a reaplicacao recria a funcao');
   });
   await isolado(async () => {
+    // Volume do desenho (Issue 47, T-16): 1000 pedidos de um dono, com estatisticas atualizadas dentro da transacao
+    // desfeita. Sem volume, o planejador estima uma linha e escolhe o indice antigo com Sort; a prova abaixo mede o caso real.
+    const dono = await usuario(client);
+    const svc = await servico(client);
+    await pedidosEmMassa(client, dono, svc, 1000);
+    await client.query('analyze app.service_request');
     await client.query('set local enable_seqscan = off');
     const plano = (
       await client.query(
         `explain (costs off) select r.id from app.service_request r where r.customer_user_id = $1
           order by r.published_at desc, r.id desc limit 21`,
-        [randomUUID()],
+        [dono],
       )
     ).rows
       .map((x) => x['QUERY PLAN'])
