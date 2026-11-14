@@ -92,19 +92,18 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #55 | [E4] Guarda de elegibilidade na API e no banco |
 
-## Code Review (3)
+## Code Review (0)
 
 | Issue | Título |
 |---|---|
-| #56 | [E4] Perfil público e selo verificado |
-| #47 | [E3] Painel do cliente na sessão do dono |
+
+## QA (3)
+
+| Issue | Título |
+|---|---|
 | #54 | [E4] Estado da verificação visível |
-
-## QA (1)
-
-| Issue | Título |
-|---|---|
-| #37 | [E2] Cobertura booleana sem contagem |
+| #47 | [E3] Painel do cliente na sessão do dono |
+| #56 | [E4] Perfil público e selo verificado |
 
 ## Concluído (70)
 
@@ -189,9 +188,10 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #128 | [E15] Teste de restauração de backup |
 | #145 | [E15] db:test: media_asset fora do backup sem decisão registrada |
 
-## Aguardando aprovação (0)
+## Aguardando aprovação (1)
 
 | Issue | Título |
 |---|---|
+| #37 | [E2] Cobertura booleana sem contagem |
 
 ## Bloqueado (0)

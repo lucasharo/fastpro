@@ -954,3 +954,8 @@ Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar): **650** cidade/UF,
 
 ## Rodada 135 (entrega da #56, 2026-11-14)
 - **#56 (H-043) Desenvolvimento entregue** (17dcf56 renderizador e CSS com rotulos no dominio; ffb9c95 T43-12, T43-07, T43-19; ce16022 documentos 08 e 09; c5f0586 lint): dominio 16/16, renderizador 17/17, dbtest 26/26, estatico 8/8, audit D-02b 25/25, tipos 17/17. Nota de numeracao: a nota que o DEV acrescentou ao 11-DECISOES com o titulo "Rodada 132" colide com a Rodada 132 do lider (estado da #47); vale a numeracao do lider e a nota do DEV e' lida como "Rodada 132b (#56)". Pendencias declaradas: T43-13 e T43-15 em navegador real (nao executado); icone decorativo do selo nao criado; casca web fora de escopo (decisao 661); revisao juridica do texto do selo antes de producao. Vai para Code Review via agy.
+
+## Rodada 136 (Code Review e QA via agy, 2026-11-14)
+- **#54, #47 e #56 APROVADAS TECNICAMENTE no Code Review (agy, saidas 0 conferidas)** e vao para QA via agy, em cadeia unica (#54, #47, #56) para limitar a contencao no banco.
+- **#37 QA via agy: APROVADO COM RESSALVAS** (saida 0): banco 12/12, dominio 6, adaptador e migracao estatica 19. Decisao do lider: a #37 fica em **Aguardando aprovacao, NAO concluida**, porque a parte de API (`cobertura` no estado do pedido do dono, T-C09 e T-C10) ainda nao existe; um DEV a entrega agora (sem rodar em paralelo com mudancas nos arquivos de composicao de outros); depois a #37 conclui pela autorizacao permanente.
+- **Refinos pelo agy prontos (saidas 0):** #68, #51 (reexame), #120, #131 e #123: arquivos 139, 140, 144 a 146 a revisar pelo lider (adocao das recomendacoes e avanco para Arquitetura) na proxima rodada.
