@@ -19,7 +19,7 @@ import {
   siteOriginOf,
 } from '@fastpro/domain';
 import { hashSessionSecret } from '@fastpro/db';
-import { PEDIDO_NAO_ENCONTRADO_BODY, UUID_RE } from '../requests/detail-service.js';
+import { PEDIDO_NAO_ENCONTRADO_BODY } from '../requests/detail-service.js';
 import {
   definirTelefone,
   estadoDoDono,

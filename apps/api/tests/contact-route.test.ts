@@ -210,7 +210,6 @@ describe('T-03 e T-18 | telefone na publicacao (validacao antes do banco)', () =
       rateKey: (f: string, i: string) => `${f}:${i}`,
       clock: { nowMs: () => AGORA },
       addressVault: { seal: () => Buffer.from('a'), open: () => 'x' } as never,
-      phoneVault: { seal: () => Buffer.from('a'), open: () => 'x' } as never,
       novoId: () => PEDIDO,
       telefone,
     } as unknown as PublishServiceDeps;

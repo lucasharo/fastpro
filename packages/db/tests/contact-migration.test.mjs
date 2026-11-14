@@ -45,7 +45,7 @@ describe('T-21 prefixo e ordem das migracoes da Issue 46', () => {
     expect(p[1] < p[2]).toBe(true);
   });
 
-  it('a correcao dos gatilhos vem depois dos prefixos de #57 e #53 ja existentes', () => {
+  it('a correcao dos gatilhos vem depois dos prefixos de Issue 57 e Issue 53 ja existentes', () => {
     expect(prefixo(CORRECAO_GATILHO) > '20261113280000').toBe(true);
     expect(prefixo(CORRECAO_GATILHO) > '20261113270000').toBe(true);
   });
