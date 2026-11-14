@@ -29,7 +29,6 @@ export interface OwnerRequestRow {
   readonly publicLabel: string | null;
   readonly publishedAt: string;
   readonly acceptanceDeadlineAt: string;
-  readonly acceptancesCount: number;
 }
 
 /** Linha do profissional elegivel: so as chaves da RN-10 (sem coordenada, sem endereco). */
@@ -99,7 +98,6 @@ export class PgRequestVisibilityStore {
       publicLabel: textoOuNulo(r.out_public_label),
       publishedAt: instante(r.out_published_at),
       acceptanceDeadlineAt: instante(r.out_deadline_at),
-      acceptancesCount: inteiro(r.out_acceptances_count),
     };
   }
 

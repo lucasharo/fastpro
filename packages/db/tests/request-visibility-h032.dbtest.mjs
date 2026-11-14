@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import { connect } from '../scripts/lib/env.mjs';
 
 const MIG = new URL('../../../supabase/migrations/20261113230000_requests_expand_location_visibility.sql', import.meta.url);
+const MIG_CORRECAO = new URL('../../../supabase/migrations/20261113300000_requests_fix_owner_get_no_counter.sql', import.meta.url);
 
 const AGORA = '2099-08-15T12:00:00.000Z';
 const PRAZO_FIM = '2099-08-22T12:00:00.000Z';
@@ -36,7 +37,10 @@ let client;
 before(async () => {
   client = await connect();
   await client.query('begin');
+  // Replay dentro da transacao (revertida no after): 230000 e, em seguida, a correcao 300000 (estado atual do banco).
+  await client.query('drop function if exists private.request_owner_get(uuid, uuid)');
   await client.query(semControle(readFileSync(MIG, 'utf8')));
+  await client.query(semControle(readFileSync(MIG_CORRECAO, 'utf8')));
 });
 
 after(async () => {

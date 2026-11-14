@@ -43,7 +43,6 @@ describe('PgRequestVisibilityStore.readOwner', () => {
         out_public_label: 'Sao Paulo - SP',
         out_published_at: new Date(AGORA),
         out_deadline_at: new Date(AGORA + 3600_000),
-        out_acceptances_count: 0,
       },
     ]);
     const r = await new PgRequestVisibilityStore(client).readOwner(USER, PEDIDO);

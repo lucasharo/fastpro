@@ -52,7 +52,6 @@ function linhaDono(): OwnerRequestRow {
     publicLabel: 'Campinas - SP',
     publishedAt: new Date(AGORA).toISOString(),
     acceptanceDeadlineAt: new Date(PRAZO).toISOString(),
-    acceptancesCount: 0,
   };
 }
 
@@ -173,7 +172,7 @@ beforeEach(() => {
 });
 
 describe('GET /v1/requests/:id (dono)', () => {
-  it('CA-05 (T-05): o dono recebe o endereco original, com o corpo de 12 chaves na ordem da lista fechada', async () => {
+  it('CA-05 (T-05): o dono recebe o endereco original, com o corpo de 11 chaves na ordem da lista fechada', async () => {
     const r = await pedir('GET', `/v1/requests/${PEDIDO}`, SEG_DONO);
     expect(r.status).toBe(200);
     const corpo = JSON.parse(r.body) as Record<string, unknown>;

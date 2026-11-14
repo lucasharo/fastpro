@@ -36,7 +36,6 @@ function linhaDono(over: Partial<OwnerRequestRow> = {}): OwnerRequestRow {
     publicLabel: 'Vila Teste - SP',
     publishedAt: new Date(AGORA).toISOString(),
     acceptanceDeadlineAt: new Date(AGORA + 3600_000).toISOString(),
-    acceptancesCount: 0,
     ...over,
   };
 }

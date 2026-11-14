@@ -19,7 +19,6 @@ export const OWNER_KEYS = [
   'publicLabel',
   'publishedAt',
   'acceptanceDeadlineAt',
-  'acceptancesCount',
 ] as const;
 
 /** Chaves do profissional elegivel (GET /v1/pro/requests/:id), lista fechada (RN-10). */
