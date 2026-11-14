@@ -4,13 +4,12 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (67)
+## Backlog (65)
 
 | Issue | Título |
 |---|---|
 | #1 | [SETUP] Validar integração GitHub Projects ↔ Laze ↔ Claude |
 | #14 | [Spike] Regras das lojas (login social, IAP, exclusão) |
-| #56 | [E4] Perfil público e selo verificado |
 | #60 | [E5] Checkout Mercado Pago (Pix e cartão) |
 | #61 | [E5] Webhook MP idempotente |
 | #62 | [E5] Concessão paga e início de período |
@@ -19,7 +18,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #65 | [E5] Cancelamento com acesso até o fim |
 | #66 | [E5] Reconciliação diária MP × livro |
 | #67 | [E5] Gate de cobrança real |
-| #68 | [E6] Descoberta de pedidos elegíveis |
 | #69 | [E6] Fotos a elegíveis com marca d'água |
 | #70 | [E6] Limite de visualização e sinal de raspagem |
 | #71 | [E6] Aceitar trabalho idempotente |
@@ -76,10 +74,12 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 | #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 
-## Product Owner (3)
+## Product Owner (5)
 
 | Issue | Título |
 |---|---|
+| #56 | [E4] Perfil público e selo verificado |
+| #68 | [E6] Descoberta de pedidos elegíveis |
 | #54 | [E4] Estado da verificação visível |
 | #55 | [E4] Guarda de elegibilidade na API e no banco |
 | #51 | [E4] Certificações para atividades regulamentadas |
