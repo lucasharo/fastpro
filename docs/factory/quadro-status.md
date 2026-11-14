@@ -86,17 +86,17 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | Issue | Título |
 |---|---|
 
-## Desenvolvimento (2)
+## Desenvolvimento (1)
 
 | Issue | Título |
 |---|---|
 | #55 | [E4] Guarda de elegibilidade na API e no banco |
-| #56 | [E4] Perfil público e selo verificado |
 
-## Code Review (2)
+## Code Review (3)
 
 | Issue | Título |
 |---|---|
+| #56 | [E4] Perfil público e selo verificado |
 | #47 | [E3] Painel do cliente na sessão do dono |
 | #54 | [E4] Estado da verificação visível |
 
