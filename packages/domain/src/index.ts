@@ -29,3 +29,5 @@ export * from './discovery/index.js';
 export * from './coverage/index.js';
 // Issue 46 (H-033) | Contato do pedido: telefone e consentimento (docs/factory/129-DESENHO-H033.md).
 export * from './contact/index.js';
+// Issue 55 (H-042) | Guarda de elegibilidade do profissional: modos e porta (142-DESENHO-H042.md, §8).
+export * from './eligibility/index.js';

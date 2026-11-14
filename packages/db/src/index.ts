@@ -88,3 +88,5 @@ export * from './discovery-requests.js';
 export * from './coverage-requests.js';
 // Issue 46 (H-033) | Adaptador do telefone e do consentimento (docs/factory/129-DESENHO-H033.md, §5).
 export * from './contact-consent.js';
+// Issue 55 (H-042) | Adaptador Pg da guarda de elegibilidade (private.professional_access_guard).
+export * from './professional-access.js';

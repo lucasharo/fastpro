@@ -26,8 +26,9 @@ export class DiscoveryStoreError extends Error {
   }
 }
 
+// Issue 55 (H-042): sexto argumento p_now, um instante por requisicao, usado pela guarda e pelo casamento.
 const SQL_DISCOVER =
-  'select out_request_id, out_cursor_group, out_cursor_key from private.discover_requests($1::uuid, $2::integer, $3::smallint, $4::integer, $5::uuid)';
+  'select out_request_id, out_cursor_group, out_cursor_key from private.discover_requests($1::uuid, $2::integer, $3::smallint, $4::integer, $5::uuid, $6::timestamptz)';
 
 const ERROS_BANCO = new Map<string, DiscoveryStoreErrorCode>([
   ['discover_parametro_invalido', 'discovery_parametro_invalido'],
@@ -41,6 +42,8 @@ function traduzirErro(err: unknown): DiscoveryStoreErrorCode {
 
 export interface DiscoveryPageInput {
   readonly professionalId: string;
+  /** Instante unico da requisicao (Issue 55): a guarda e o casamento usam o mesmo valor. */
+  readonly at: Date;
   readonly limit?: number;
   readonly after?: DiscoveryCursor | null;
 }
@@ -66,6 +69,7 @@ export class PgDiscoveryStore {
         after?.group ?? null,
         after?.key ?? null,
         after?.requestId ?? null,
+        input.at.toISOString(),
       ]);
       return res.rows.map((r) => ({
         requestId: String(r.out_request_id),
