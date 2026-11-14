@@ -2,6 +2,8 @@
 // Ordem: begin (banco, sem custo) -> geocodificacao fora de transacao (porta; so com provedor) -> commit (banco).
 // Toda saida que nao cria nem repete o pedido chama abort (libera a chave que a propria API abriu).
 // Nenhum erro interno sai daqui: falha vira codigo fixo. Nada de coordenada, endereco, e-mail ou nome na resposta.
+// Issue 47 (H-034): o cookie do rascunho expira em toda resposta de sucesso da publicacao (decisao 519).
+import { DRAFT_CLEAR_COOKIE_HEADER } from '@fastpro/domain';
 import {
   DRAFT_HEADERS,
   DRAFT_NOT_FOUND_BODY,
@@ -161,7 +163,7 @@ export async function publishRequest(input: PublishRequestInput, deps: PublishSe
     return porCodigo('indisponivel');
   }
 
-  if (inicio.status === 'repetida') return resposta(201, corpoDoPedido(inicio.pedido));
+  if (inicio.status === 'repetida') return resposta(201, corpoDoPedido(inicio.pedido), { 'Set-Cookie': DRAFT_CLEAR_COOKIE_HEADER });
   if (inicio.status === 'ja_publicado') return resposta(200, corpoDoPedido(inicio.pedido));
   if (inicio.status === 'campos_faltando') return porCodigo('campos_faltando', { missing: inicio.missing });
   if (inicio.status === 'limite') return resposta(429, { code: 'limite' }, { 'Retry-After': String(inicio.retryAfter) });
@@ -226,7 +228,7 @@ export async function publishRequest(input: PublishRequestInput, deps: PublishSe
         // Sem acao: o registro nao carrega o numero nem o erro do driver.
       }
     }
-    return resposta(saida.status === 'criado' ? 201 : 200, corpoDoPedido(saida.pedido));
+    return resposta(saida.status === 'criado' ? 201 : 200, corpoDoPedido(saida.pedido), { 'Set-Cookie': DRAFT_CLEAR_COOKIE_HEADER });
   }
   await abortar();
   if (saida.status === 'duplicidade') {
