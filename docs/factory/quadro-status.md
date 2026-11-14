@@ -4,7 +4,7 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (65)
+## Backlog (62)
 
 | Issue | Título |
 |---|---|
@@ -55,15 +55,12 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #108 | [E11] E-mails de seleção, cancelamento e desistência |
 | #109 | [E11] Lembretes de prazo, trial e ciclo |
 | #115 | [E12] Estorno e chargeback manual |
-| #120 | [E13] Direitos do titular (dsr_case) |
 | #121 | [E13] Consentimentos e trilha de revelação |
 | #122 | [E13] Termos, privacidade e DPO |
-| #123 | [E13] Runbook de incidente e reconciliação |
 | #124 | [E15] Autorização por recurso e paridade |
 | #126 | [E15] Suíte de concorrência e falha |
 | #127 | [E15] Acessibilidade WCAG 2.2 AA com evidência |
 | #130 | [E15] Gate de release do MVP web |
-| #131 | [E14] App Expo base |
 | #132 | [E14] Reuso de contratos e tokens no mobile |
 | #133 | [E14] Assinatura e login no mobile |
 | #134 | [E6] Botão “Chamar mais profissionais” |
@@ -74,10 +71,13 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 | #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 
-## Product Owner (2)
+## Product Owner (5)
 
 | Issue | Título |
 |---|---|
+| #120 | [E13] Direitos do titular (dsr_case) |
+| #131 | [E14] App Expo base |
+| #123 | [E13] Runbook de incidente e reconciliação |
 | #68 | [E6] Descoberta de pedidos elegíveis |
 | #51 | [E4] Certificações para atividades regulamentadas |
 
