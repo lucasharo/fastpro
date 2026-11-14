@@ -31,3 +31,5 @@ export * from './coverage/index.js';
 export * from './contact/index.js';
 // Issue 55 (H-042) | Guarda de elegibilidade do profissional: modos e porta (142-DESENHO-H042.md, §8).
 export * from './eligibility/index.js';
+// Issue 56 (H-043) | Perfil publico e selo verificado: regras puras, textos, tela e porta (143-DESENHO-H043.md, §6.1).
+export * from './public-profile/index.js';
