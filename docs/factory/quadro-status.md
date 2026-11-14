@@ -81,35 +81,32 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #68 | [E6] Descoberta de pedidos elegíveis |
 | #51 | [E4] Certificações para atividades regulamentadas |
 
-## Arquitetura (4)
+## Arquitetura (0)
 
 | Issue | Título |
 |---|---|
-| #56 | [E4] Perfil público e selo verificado |
-| #55 | [E4] Guarda de elegibilidade na API e no banco |
+
+## Desenvolvimento (4)
+
+| Issue | Título |
+|---|---|
 | #54 | [E4] Estado da verificação visível |
+| #55 | [E4] Guarda de elegibilidade na API e no banco |
+| #56 | [E4] Perfil público e selo verificado |
 | #47 | [E3] Painel do cliente na sessão do dono |
 
-## Desenvolvimento (0)
+## Code Review (0)
 
 | Issue | Título |
 |---|---|
 
-## Code Review (1)
+## QA (1)
 
 | Issue | Título |
 |---|---|
 | #37 | [E2] Cobertura booleana sem contagem |
 
-## QA (3)
-
-| Issue | Título |
-|---|---|
-| #46 | [E3] Opt-in de telefone no pedido |
-| #53 | [E4] Retenção por duplicidade |
-| #45 | [E3] Visibilidade de localização |
-
-## Concluído (67)
+## Concluído (70)
 
 | Issue | Título |
 |---|---|
@@ -155,6 +152,9 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #44 | [E3] Publicação idempotente com 7 dias |
 | #48 | [E4] Cadastro profissional com CPF/CNPJ cifrado |
 | #49 | [E4] Perfil: serviços, base e raio |
+| #45 | [E3] Visibilidade de localização |
+| #53 | [E4] Retenção por duplicidade |
+| #46 | [E3] Opt-in de telefone no pedido |
 | #57 | [E5] Trial de 14 dias |
 | #52 | [E4] Fila de verificação |
 | #36 | [E2] Descoberta por raio e online nacional |
