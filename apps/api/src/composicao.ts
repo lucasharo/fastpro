@@ -52,6 +52,9 @@ import type { DraftRouteOptions } from './drafts/draft-route.js';
 // H-035 | Cadastro do documento do perfil profissional (PUT/GET /v1/professional/profile).
 import { montarPerfilProfissional } from './professional-profile-composicao.js';
 import type { ProfessionalProfileRouteOptions } from './professional-profile-route.js';
+// Issue 54 (H-041) | Estado visivel e recurso do profissional (GET e POST /v1/professional/verificacao).
+import { montarVerificacaoProfissional } from './professional-verification-composicao.js';
+import type { ProfessionalVerificationRouteOptions } from './professional-verification-route.js';
 // Issue 57 (H-044) | Ativacao do trial (POST /v1/billing/trial/activate).
 import { montarAtivacaoTrial } from './professional-trial-composicao.js';
 import type { ProfessionalTrialRouteOptions } from './professional-trial-route.js';
@@ -141,6 +144,8 @@ export interface Integracoes {
   readonly pendenciasRascunho: readonly string[];
   /** Rotas do documento do perfil profissional (H-035), ou undefined (404). */
   readonly professionalProfile: ProfessionalProfileRouteOptions | undefined;
+  /** Issue 54 (H-041): estado visivel e recurso do profissional, ou undefined (404). */
+  readonly professionalVerification?: ProfessionalVerificationRouteOptions;
   readonly professionalTrial: ProfessionalTrialRouteOptions | undefined;
   /** Nomes (nunca valores) que impedem as rotas do perfil profissional (H-035) de ligar. */
   readonly pendenciasPerfil: readonly string[];
@@ -262,6 +267,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
 
   // H-035: perfil profissional. Pendencias proprias (so nomes), separadas das demais integracoes.
   const perfil = montarPerfilProfissional(env, { abrirCliente: opcoes.abrirClienteSql, relogio: opcoes.clock });
+  // Issue 54 (H-041): estado visivel e recurso (mesmo cliente app_system; sem opcoes, rotas em 404).
+  const verificacao = montarVerificacaoProfissional(env, { abrirCliente: opcoes.abrirClienteSql, relogio: opcoes.clock });
   const trial = montarAtivacaoTrial(env, { abrirCliente: opcoes.abrirClienteSql, relogio: opcoes.clock });
 
   // H-036: servicos, base e raio. Sem o provedor permanente (BLQ-EXEC, decisao 116) as rotas seguem 404.
@@ -300,6 +307,7 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     adminOps,
     drafts,
     professionalProfile: perfil.options,
+    professionalVerification: verificacao,
     professionalTrial: trial.options,
     pendencias,
     pendenciasCaso,

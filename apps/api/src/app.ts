@@ -73,6 +73,14 @@ import {
   PROFESSIONAL_PROFILE_PATH,
   type ProfessionalProfileRouteOptions,
 } from './professional-profile-route.js';
+// Issue 54 (H-041) | Estado visivel e recurso do profissional (GET e POST /v1/professional/verificacao).
+import {
+  handleProfessionalVerificationAppeal,
+  handleProfessionalVerificationGet,
+  PROFESSIONAL_VERIFICATION_APPEAL_PATH,
+  PROFESSIONAL_VERIFICATION_PATH,
+  type ProfessionalVerificationRouteOptions,
+} from './professional-verification-route.js';
 // Issue 57 (H-044) | Ativacao do trial de 14 dias (POST /v1/billing/trial/activate).
 import { handleProfessionalTrialRoute, TRIAL_ACTIVATE_PATH, type ProfessionalTrialRouteOptions } from './professional-trial-route.js';
 // H-036 | Servicos, base e raio do perfil profissional (GET/PUT /v1/professional/profile/services e /area).
@@ -110,6 +118,8 @@ import { handleIdentityDocRoute, isIdentityDocRoute, type IdentityDocRouteOption
 import { handleRequestPublishRoute, REQUEST_PUBLISH_PATH, type PublishRouteOptions } from './requests/publish-route.js';
 // Issue 45 (H-032) | Leitura do pedido: dono (GET /v1/requests/:id) e profissional elegivel (GET /v1/professional/requests/:id).
 import { handleRequestDetailRoute, isRequestDetailRoute, type RequestDetailRouteOptions } from './requests/detail-route.js';
+// Issue 47 (H-034): lista do dono (GET /v1/requests); a publicacao (POST) segue na mesma URL.
+import { handleRequestListRoute, isRequestListRoute, type RequestListRouteOptions } from './requests/list-route.js';
 // Issue 46 (H-033) | Telefone e consentimento de contato (dono e profissional).
 import { handleContactRoute, isContactRoute, type ContactRouteOptions } from './contact/contact-route.js';
 import { draftNotFound } from './drafts/draft-service.js';
@@ -188,6 +198,8 @@ export interface AppOptions {
   readonly professionalPassword?: ProfessionalPasswordRouteOptions;
   /** Cadastro do documento e leitura do perfil profissional (H-035). Sem esta opcao as rotas nao existem (404). */
   readonly professionalProfile?: ProfessionalProfileRouteOptions;
+  /** Issue 54 (H-041): estado visivel e recurso do profissional. Sem esta opcao as rotas nao existem (404). */
+  readonly professionalVerification?: ProfessionalVerificationRouteOptions;
   // Issue 57 (H-044) | Ativacao do trial (so existe com a opcao).
   readonly professionalTrial?: ProfessionalTrialRouteOptions;
   /** H-036: servicos, base e raio do perfil. Sem esta opcao as rotas nao existem (404). */
@@ -196,6 +208,8 @@ export interface AppOptions {
   readonly requestPublish?: PublishRouteOptions;
   /** Issue 45 (H-032): leitura do pedido pelo dono e pelo profissional. Sem esta opcao as rotas respondem 404 uniforme. */
   readonly requestDetail?: RequestDetailRouteOptions;
+  /** Issue 47 (H-034): lista do dono. Sem a montagem, o mesmo 404 uniforme do rascunho. */
+  readonly requestList?: RequestListRouteOptions;
   /** Issue 46 (H-033): telefone e consentimento de contato. Sem esta opcao as rotas respondem 404 uniforme. */
   readonly requestContact?: ContactRouteOptions;
 }
@@ -362,6 +376,14 @@ export async function handleRequest(
     res.end(r.body);
     return;
   }
+  // Issue 47 (H-034): lista do dono, so GET. O POST da mesma URL segue no bloco de publicacao.
+  if (req.method === 'GET' && isRequestListRoute(path)) {
+    if (opts.requestList) return handleRequestListRoute(req, res, opts.requestList);
+    const r = draftNotFound();
+    res.writeHead(r.status, r.headers);
+    res.end(r.body);
+    return;
+  }
   // H-031 (#44): publicacao do pedido. Sem a montagem completa, o mesmo 404 uniforme do rascunho.
   if (path === REQUEST_PUBLISH_PATH) {
     if (opts.requestPublish) return handleRequestPublishRoute(req, res, path, opts.requestPublish);
@@ -393,6 +415,13 @@ export async function handleRequest(
   if (opts.professionalProfile && path === PROFESSIONAL_PROFILE_PATH) {
     if (req.method === 'PUT') return handleProfessionalProfilePut(req, res, opts.professionalProfile);
     if (req.method === 'GET') return handleProfessionalProfileGet(req, res, opts.professionalProfile);
+  }
+  // Issue 54 (H-041): estado visivel e recurso do profissional.
+  if (opts.professionalVerification && path === PROFESSIONAL_VERIFICATION_PATH && req.method === 'GET') {
+    return handleProfessionalVerificationGet(req, res, opts.professionalVerification);
+  }
+  if (opts.professionalVerification && path === PROFESSIONAL_VERIFICATION_APPEAL_PATH && req.method === 'POST') {
+    return handleProfessionalVerificationAppeal(req, res, opts.professionalVerification);
   }
   if (opts.professionalTrial && path === TRIAL_ACTIVATE_PATH) {
     return handleProfessionalTrialRoute(req, res, opts.professionalTrial);
