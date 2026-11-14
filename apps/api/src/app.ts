@@ -122,6 +122,8 @@ import { handleRequestDetailRoute, isRequestDetailRoute, type RequestDetailRoute
 import { handleRequestListRoute, isRequestListRoute, type RequestListRouteOptions } from './requests/list-route.js';
 // Issue 46 (H-033) | Telefone e consentimento de contato (dono e profissional).
 import { handleContactRoute, isContactRoute, type ContactRouteOptions } from './contact/contact-route.js';
+// Issue 56 (H-043) | Perfil publico por slug (GET /v1/public/professionals/:slug): sem sessao e sem Set-Cookie.
+import { handlePublicProfileGet, PUBLIC_PROFILE_ROUTE_PREFIX, type PublicProfileRouteOptions } from './public-profile-route.js';
 import { draftNotFound } from './drafts/draft-service.js';
 import {
   handleSessionConvert,
@@ -212,6 +214,8 @@ export interface AppOptions {
   readonly requestList?: RequestListRouteOptions;
   /** Issue 46 (H-033): telefone e consentimento de contato. Sem esta opcao as rotas respondem 404 uniforme. */
   readonly requestContact?: ContactRouteOptions;
+  /** Issue 56 (H-043): perfil publico por slug. Sem esta opcao a rota nao existe (404). */
+  readonly publicProfile?: PublicProfileRouteOptions;
 }
 
 export interface BodyReadResult {
@@ -408,6 +412,15 @@ export async function handleRequest(
     res.end(r.body);
     return;
   }
+  // Issue 56 (H-043): perfil publico. Sem a montagem completa (banco), o mesmo 404 uniforme do rascunho.
+  if (req.method === 'GET' && path.startsWith(PUBLIC_PROFILE_ROUTE_PREFIX)) {
+    if (opts.publicProfile) return handlePublicProfileGet(req, res, opts.publicProfile);
+    const r = draftNotFound();
+    res.writeHead(r.status, r.headers);
+    res.end(r.body);
+    return;
+  }
+
   if (req.method === 'POST' && path === CATALOG_SEARCH_PATH && opts.catalog) {
     await handleCatalogSearch(req, res, opts.catalog);
     return;

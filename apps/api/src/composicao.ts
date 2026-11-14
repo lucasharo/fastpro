@@ -77,6 +77,9 @@ import type { RequestDetailRouteOptions } from './requests/detail-route.js';
 // Issue 46 (H-033) | Telefone e consentimento de contato: so monta com DATABASE_URL_APP_SYSTEM, SITE_URL e PHONE_ENC_KEY.
 import { montarContato } from './contact/contact-composicao.js';
 import type { ContactRouteOptions } from './contact/contact-route.js';
+// Issue 56 (H-043) | Perfil publico por slug (GET /v1/public/professionals/:slug): so liga com DATABASE_URL_APP_SYSTEM.
+import { montarPerfilPublicoRota } from './public-profile/public-profile-composicao.js';
+import type { PublicProfileRouteOptions } from './public-profile-route.js';
 
 /** Nomes da busca que faltam (so nomes; a chave curta aparece marcada, sem tamanho nem valor). */
 function faltantesCatalogo(env: CatalogEnv): readonly string[] {
@@ -171,6 +174,8 @@ export interface Integracoes {
   readonly pendenciasDetalhe: readonly string[];
   /** Issue 46 (H-033): rotas de telefone e consentimento, ou undefined (404). */
   readonly requestContact: ContactRouteOptions | undefined;
+  /** Issue 56 (H-043): leitura publica do perfil por slug, ou undefined (404). */
+  readonly publicProfile: PublicProfileRouteOptions | undefined;
   /** Nomes (nunca valores) que impedem as rotas de contato de ligar. */
   readonly pendenciasContato: readonly string[];
 }
@@ -292,6 +297,9 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     ...(galeriaMidia !== undefined ? { galeria: galeriaMidia } : {}),
   });
 
+  // Issue 56 (H-043): perfil publico; liga so com DATABASE_URL_APP_SYSTEM e a fabrica do papel app_system.
+  const perfilPublico = montarPerfilPublicoRota(env, { abrirCliente: opcoes.abrirClienteSql });
+
   // H-037 (#50): documentos de identidade; fechados por trava (sem pendencias) ou incompletos (com nomes).
   const documentos = montarDocumentosDoAmbiente(env, {
     abrirCliente: opcoes.abrirClienteSistema,
@@ -324,6 +332,7 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     requestDetail: detalhe.options,
     pendenciasDetalhe: detalhe.pendencias,
     requestContact: contato.options,
+    publicProfile: perfilPublico,
     pendenciasContato: contato.pendencias,
   };
 }
