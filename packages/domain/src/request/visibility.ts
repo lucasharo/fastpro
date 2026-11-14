@@ -6,7 +6,10 @@
 export const VISIBILITY_ROLES = ['owner', 'eligible_professional', 'participant', 'admin_with_case'] as const;
 export type VisibilityRole = (typeof VISIBILITY_ROLES)[number];
 
-/** Chaves do dono (GET /v1/requests/:id), lista fechada. */
+/**
+ * Chaves do dono (GET /v1/requests/:id), lista fechada. `cobertura` (Issue 37, H-024) e so booleana (true, false ou
+ * null) e so existe aqui: nunca na lista do profissional, que nao recebe cobertura.
+ */
 export const OWNER_KEYS = [
   'id',
   'status',
@@ -19,6 +22,7 @@ export const OWNER_KEYS = [
   'publicLabel',
   'publishedAt',
   'acceptanceDeadlineAt',
+  'cobertura',
 ] as const;
 
 /** Chaves do profissional elegivel (GET /v1/pro/requests/:id), lista fechada (RN-10). */

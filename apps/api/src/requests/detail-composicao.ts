@@ -2,8 +2,10 @@
 // Liga so com os itens fixos: DATABASE_URL_APP_SYSTEM (papel app_system, mesma fabrica da publicacao), ADDRESS_ENC_KEY
 // (cofre de endereco, minimo de 32 caracteres) e a fabrica do cliente SQL. Sem a chave, a rota nao e montada (404 uniforme).
 // Nunca le, grava nem registra o valor da chave: a pendencia leva so o nome.
-import { PgRequestVisibilityStore, PgSessionRepository, type SqlClient } from '@fastpro/db';
+import { createHmac } from 'node:crypto';
+import { PgCoverageStore, PgRequestVisibilityStore, PgSessionRepository, type SqlClient } from '@fastpro/db';
 import { createAddressVault, type AddressVault } from './address-crypto.js';
+import type { CoverageReaderPort } from './detail-service.js';
 import type { RequestDetailRouteOptions } from './detail-route.js';
 
 const ADDRESS_ENC_KEY_NOME = 'ADDRESS_ENC_KEY';
@@ -67,8 +69,29 @@ export function montarDetalhePedido(env: Ambiente, opcoes: DetalhePedidoOpcoes =
         store: new PgRequestVisibilityStore(cliente),
         addressVault: cofre,
         clock: relogio,
+        ...opcionalCobertura(env, cliente),
       },
     },
     pendencias,
+  };
+}
+
+/**
+ * Porta da cobertura do dono (Issue 37, H-024), sobre o mesmo papel app_system. Sem PEPPER_IP_HMAC o IP nao pode
+ * virar chave (ADR-014): a porta fica ausente e o campo `cobertura` do pedido aberto sai null, sem consulta.
+ */
+/** Acrescenta a chave `cobertura` ao servico so quando a porta existe (sem pepper, a chave nao e montada). */
+function opcionalCobertura(env: Ambiente, cliente: SqlClient): { readonly cobertura?: CoverageReaderPort } {
+  const porta = coberturaDoDono(env, cliente);
+  return porta === undefined ? {} : { cobertura: porta };
+}
+
+function coberturaDoDono(env: Ambiente, cliente: SqlClient): CoverageReaderPort | undefined {
+  const pepper = (env.PEPPER_IP_HMAC ?? '').trim();
+  if (pepper === '') return undefined;
+  const loja = new PgCoverageStore(cliente);
+  return {
+    coverageFor: (entrada) => loja.coverageFor(entrada),
+    ipKey: (ip) => createHmac('sha256', pepper).update(ip).digest('hex'),
   };
 }

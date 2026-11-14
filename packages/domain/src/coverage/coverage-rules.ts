@@ -43,3 +43,28 @@ export function isValidCoverageLimit(limit: unknown): limit is number {
 export function isValidCoverageIpKey(key: unknown): key is string {
   return typeof key === 'string' && /^[0-9a-f]{64}$/.test(key);
 }
+
+/** Campo booleano do dono: true (existe profissional), false (nao existe) ou null (sem resposta, sem detalhe). */
+export type CoverageFlag = boolean | null;
+
+/** Converte o resultado do banco no campo booleano do dono. Limite e indisponivel viram null (CA-07, CA-08). */
+export function coverageFlag(result: CoverageResult): CoverageFlag {
+  if (result === 'com') return true;
+  if (result === 'sem') return false;
+  return null;
+}
+
+/** Pedido aberto para cobertura: publicado e antes do prazo, a mesma regra de private.discovery_open (99 §2.1). */
+export function coverageIsOpen(status: string, deadlineMs: number, nowMs: number): boolean {
+  return status === 'publicado' && Number.isFinite(deadlineMs) && nowMs < deadlineMs;
+}
+
+/**
+ * Textos da tela para cobertura "com" e "sem" [PROPOSTA] (Issue 37, CA-11): modelo do DEV, pendente de aprovacao
+ * do dono (BK-5). Fonte unica: a API nao envia texto; o front escolhe o texto pelo booleano. Sem numero e sem
+ * promessa de atendimento ou de aviso por e-mail.
+ */
+export const COVERAGE_TEXTS_PROPOSTA = {
+  true: 'Há profissionais na sua região para este serviço.',
+  false: 'Ainda não há profissionais disponíveis para este pedido.',
+} as const;

@@ -81,7 +81,7 @@ export async function handleRequestDetailRoute(
 
     const resultado =
       rota.papel === 'dono'
-        ? await readRequestAsOwner(sessao.userId, rota.id, opts.service)
+        ? await readRequestAsOwner(sessao.userId, rota.id, opts.service, req.socket.remoteAddress ?? 'desconhecido')
         : await readRequestAsProfessional(sessao.userId, rota.id, opts.service);
     return enviar(res, resultado.status, resultado.body);
   } catch {

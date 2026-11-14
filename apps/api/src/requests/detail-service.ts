@@ -3,7 +3,14 @@
 // da RN-10 sem decifrar nada. Toda recusa (id mal formado, pedido de outro, inexistente, fechado, fora do raio,
 // profissional nao aprovado) sai como a MESMA resposta 404 (corpo constante). Erro de banco ou de cifra vira
 // codigo fixo: nunca o texto do endereco, da chave ou da mensagem do driver.
-import { ELIGIBLE_PROFESSIONAL_KEYS, OWNER_KEYS } from '@fastpro/domain';
+import {
+  ELIGIBLE_PROFESSIONAL_KEYS,
+  OWNER_KEYS,
+  coverageFlag,
+  coverageIsOpen,
+  type CoverageFlag,
+  type CoverageResult,
+} from '@fastpro/domain';
 import type { OwnerRequestRow, ProfessionalRequestRow } from '@fastpro/db';
 import type { AddressVault } from './address-crypto.js';
 
@@ -27,10 +34,21 @@ export interface VisibilityStorePort {
   readProfessional(professionalId: string, requestId: string, nowMs: number): Promise<ProfessionalRequestRow | null>;
 }
 
+/**
+ * Porta da cobertura do dono (Issue 37, H-024). Só a leitura do dono a usa; o profissional nunca chega a ela.
+ * `ipKey` recebe o IP em claro e devolve o HMAC de 64 caracteres (ADR-014): o IP nunca vai ao banco.
+ */
+export interface CoverageReaderPort {
+  coverageFor(entrada: { requestId: string; customerId: string; ipKey: string; now: Date }): Promise<CoverageResult>;
+  ipKey(ip: string): string;
+}
+
 export interface DetailServiceDeps {
   readonly store: VisibilityStorePort;
   readonly addressVault: AddressVault;
   readonly clock: { nowMs(): number };
+  /** Ausente: o campo `cobertura` do pedido aberto sai como null (sem consulta, sem IP). */
+  readonly cobertura?: CoverageReaderPort;
 }
 
 const NAO_ENCONTRADO: DetailOutcome = { status: 404, body: PEDIDO_NAO_ENCONTRADO_BODY };
@@ -44,11 +62,38 @@ function recorte(origem: object, chaves: readonly string[]): Record<string, unkn
   return corpo;
 }
 
+/**
+ * Campo `cobertura` do dono (Issue 37, CA-08, CA-07): só pedido aberto tem o campo. Sem porta, ou com falha da
+ * consulta, ou com limite excedido, sai null: sem número, sem detalhe e sem derrubar o restante do pedido.
+ */
+async function coberturaDoDono(
+  linha: OwnerRequestRow,
+  userId: string,
+  ip: string,
+  deps: DetailServiceDeps,
+  agora: number,
+): Promise<CoverageFlag | undefined> {
+  if (!coverageIsOpen(linha.status, Date.parse(linha.acceptanceDeadlineAt), agora)) return undefined;
+  if (deps.cobertura === undefined) return null;
+  try {
+    const resultado = await deps.cobertura.coverageFor({
+      requestId: linha.id,
+      customerId: userId,
+      ipKey: deps.cobertura.ipKey(ip),
+      now: new Date(agora),
+    });
+    return coverageFlag(resultado);
+  } catch {
+    return null;
+  }
+}
+
 /** Leitura do dono (GET /v1/requests/:id). Decifra o endereco com o id do pedido como dado associado. */
 export async function readRequestAsOwner(
   userId: string,
   requestId: string,
   deps: DetailServiceDeps,
+  ip = 'desconhecido',
 ): Promise<DetailOutcome> {
   if (!UUID_RE.test(requestId)) return NAO_ENCONTRADO;
   let linha: OwnerRequestRow | null;
@@ -69,7 +114,9 @@ export async function readRequestAsOwner(
   } else {
     addressText = linha.addressTextLegado;
   }
-  const corpo = recorte({ ...linha, addressText }, OWNER_KEYS);
+  const cobertura = await coberturaDoDono(linha, userId, ip, deps, deps.clock.nowMs());
+  const corpo = recorte({ ...linha, addressText, cobertura }, OWNER_KEYS);
+  if (cobertura === undefined) delete corpo.cobertura;
   return { status: 200, body: corpo };
 }
 

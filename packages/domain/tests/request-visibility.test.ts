@@ -9,10 +9,10 @@ import {
 } from '../src/request/visibility.js';
 
 describe('listas fechadas por papel (CA-09, CA-10, CA-11)', () => {
-  it('dono recebe as 11 chaves do desenho, na ordem, sem coordenada nem identificador interno', () => {
+  it('dono recebe as 12 chaves (11 do desenho mais cobertura, Issue 37), na ordem, sem coordenada nem identificador interno', () => {
     expect(OWNER_KEYS).toEqual([
       'id', 'status', 'serviceId', 'serviceName', 'urgency', 'description', 'firstName',
-      'addressText', 'publicLabel', 'publishedAt', 'acceptanceDeadlineAt',
+      'addressText', 'publicLabel', 'publishedAt', 'acceptanceDeadlineAt', 'cobertura',
     ]);
     expect(visibleKeys('owner', { addressShared: false })).toEqual(OWNER_KEYS);
   });
