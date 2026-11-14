@@ -90,17 +90,17 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #47 | [E3] Painel do cliente na sessão do dono |
 
-## Desenvolvimento (2)
+## Desenvolvimento (1)
+
+| Issue | Título |
+|---|---|
+| #37 | [E2] Cobertura booleana sem contagem |
+
+## Code Review (1)
 
 | Issue | Título |
 |---|---|
 | #46 | [E3] Opt-in de telefone no pedido |
-| #37 | [E2] Cobertura booleana sem contagem |
-
-## Code Review (0)
-
-| Issue | Título |
-|---|---|
 
 ## QA (3)
 
