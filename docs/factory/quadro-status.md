@@ -4,14 +4,12 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (69)
+## Backlog (67)
 
 | Issue | Título |
 |---|---|
 | #1 | [SETUP] Validar integração GitHub Projects ↔ Laze ↔ Claude |
 | #14 | [Spike] Regras das lojas (login social, IAP, exclusão) |
-| #54 | [E4] Estado da verificação visível |
-| #55 | [E4] Guarda de elegibilidade na API e no banco |
 | #56 | [E4] Perfil público e selo verificado |
 | #60 | [E5] Checkout Mercado Pago (Pix e cartão) |
 | #61 | [E5] Webhook MP idempotente |
@@ -78,10 +76,12 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 | #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 
-## Product Owner (1)
+## Product Owner (3)
 
 | Issue | Título |
 |---|---|
+| #54 | [E4] Estado da verificação visível |
+| #55 | [E4] Guarda de elegibilidade na API e no banco |
 | #51 | [E4] Certificações para atividades regulamentadas |
 
 ## Arquitetura (1)
@@ -96,21 +96,20 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #37 | [E2] Cobertura booleana sem contagem |
 
-## Code Review (1)
+## Code Review (0)
 
 | Issue | Título |
 |---|---|
-| #46 | [E3] Opt-in de telefone no pedido |
 
 ## QA (3)
 
 | Issue | Título |
 |---|---|
-| #57 | [E5] Trial de 14 dias |
+| #46 | [E3] Opt-in de telefone no pedido |
 | #53 | [E4] Retenção por duplicidade |
 | #45 | [E3] Visibilidade de localização |
 
-## Concluído (66)
+## Concluído (67)
 
 | Issue | Título |
 |---|---|
@@ -156,6 +155,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #44 | [E3] Publicação idempotente com 7 dias |
 | #48 | [E4] Cadastro profissional com CPF/CNPJ cifrado |
 | #49 | [E4] Perfil: serviços, base e raio |
+| #57 | [E5] Trial de 14 dias |
 | #52 | [E4] Fila de verificação |
 | #36 | [E2] Descoberta por raio e online nacional |
 | #151 | [E15] Remover backup, restauração e exportação de dados do escopo do projeto |
