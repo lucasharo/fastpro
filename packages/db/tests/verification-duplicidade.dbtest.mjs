@@ -403,3 +403,21 @@ test('T40-16: caso retido aparece em retidas e nao em pendentes; visao da duplic
     assert.equal(visaoSemDup.out_is_duplicate, false, 'perfil sem duplicidade');
     assert.equal(visaoSemDup.out_original_status, 'nenhum');
   }));
+
+test('H040 regra de duplicidade do cadastro: retido nao conta como original; C com o mesmo documento fica pendente sem original vivo', () =>
+  tx(async () => {
+    const hmac = novoHmac();
+    // A: original pendente com o documento H.
+    const a = await perfilComHmac('pendente', hmac);
+    // B: segundo cadastro com H enquanto A esta vivo: fica retido.
+    const b = await perfilSemDoc();
+    assert.equal(await cadastra(b, hmac), 'retida_duplicidade', 'B retido enquanto A esta vivo');
+    assert.equal(await statusDe(b), 'retida_duplicidade');
+    // A recusada pela Verificacao: nao ha mais original vivo (B e retido e nao conta).
+    const casoA = await casoDoProf(a, false);
+    assert.equal(await decide(casoA, 'recusada', 'documento_ilegivel'), 'recusada', 'A recusada');
+    // C: chega com H. Nao ha original vivo, entao C nao pode ficar retido por causa de B.
+    const c = await perfilSemDoc();
+    assert.equal(await cadastra(c, hmac), 'pendente', 'C pendente: retido nao conta como original');
+    assert.equal(await statusDe(c), 'pendente');
+  }));
