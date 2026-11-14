@@ -71,7 +71,7 @@ export async function handleRequestListRoute(
     if (sessao === null) return enviar(res, 401, SESSAO_NECESSARIA_BODY);
 
     const r = await listRequestsAsOwner(sessao.userId, cursorRaw, opts.service);
-    return enviar(res, r.status, r.body);
+    return enviar(res, r.status, r.body, r.status === 503 ? { 'Retry-After': '10' } : {});
   } catch {
     // Falha nossa vira 503 fixo: sem detalhe de banco nem de sessao na resposta nem no registro.
     if (!res.headersSent) enviar(res, 503, LISTA_INDISPONIVEL_BODY, { 'Retry-After': '10' });

@@ -164,7 +164,7 @@ export async function publishRequest(input: PublishRequestInput, deps: PublishSe
   }
 
   if (inicio.status === 'repetida') return resposta(201, corpoDoPedido(inicio.pedido), { 'Set-Cookie': DRAFT_CLEAR_COOKIE_HEADER });
-  if (inicio.status === 'ja_publicado') return resposta(200, corpoDoPedido(inicio.pedido));
+  if (inicio.status === 'ja_publicado') return resposta(200, corpoDoPedido(inicio.pedido), { 'Set-Cookie': DRAFT_CLEAR_COOKIE_HEADER });
   if (inicio.status === 'campos_faltando') return porCodigo('campos_faltando', { missing: inicio.missing });
   if (inicio.status === 'limite') return resposta(429, { code: 'limite' }, { 'Retry-After': String(inicio.retryAfter) });
   if (inicio.status !== 'ok') return porCodigo(inicio.status === 'conflito' ? 'conflito' : inicio.status);
