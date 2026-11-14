@@ -74,6 +74,9 @@ import type { PublishRouteOptions } from './requests/publish-route.js';
 // Issue 45 (H-032) | Leitura do pedido por papel: liga so com ADDRESS_ENC_KEY e a fabrica do papel app_system.
 import { montarDetalhePedido } from './requests/detail-composicao.js';
 import type { RequestDetailRouteOptions } from './requests/detail-route.js';
+// Issue 47 (H-034) | Lista do painel do cliente (GET /v1/requests): so monta com DATABASE_URL_APP_SYSTEM.
+import { montarListaPedidos } from './requests/list-composicao.js';
+import type { RequestListRouteOptions } from './requests/list-route.js';
 // Issue 46 (H-033) | Telefone e consentimento de contato: so monta com DATABASE_URL_APP_SYSTEM, SITE_URL e PHONE_ENC_KEY.
 import { montarContato } from './contact/contact-composicao.js';
 import type { ContactRouteOptions } from './contact/contact-route.js';
@@ -169,6 +172,10 @@ export interface Integracoes {
   /** Nomes (nunca valores) que impedem a publicacao do pedido de ligar (H-031). */
   readonly pendenciasPublicacao: readonly string[];
   /** Opcoes das rotas de leitura do pedido (H-032: dono e profissional), ou undefined (404). */
+  /** Issue 47 (H-034): opcoes da lista do dono (GET /v1/requests), ou undefined (404). */
+  readonly requestList: RequestListRouteOptions | undefined;
+  /** Nomes (nunca valores) que impedem a lista do dono de ligar (H-034). */
+  readonly pendenciasLista: readonly string[];
   readonly requestDetail: RequestDetailRouteOptions | undefined;
   /** Nomes (nunca valores) que impedem as rotas de leitura do pedido de ligar (H-032). */
   readonly pendenciasDetalhe: readonly string[];
@@ -284,6 +291,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
 
   // Issue 45 (H-032): leitura do pedido (dono e profissional). Sem ADDRESS_ENC_KEY ou banco, as rotas nao ligam (404).
   const detalhe = montarDetalhePedido(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
+  // Issue 47 (H-034) | Lista do dono: so DATABASE_URL_APP_SYSTEM (sem chave de endereco e sem provedor de mapas).
+  const lista = montarListaPedidos(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
 
   // Issue 46 (H-033): telefone e consentimento. Sem PHONE_ENC_KEY valida, as rotas nao ligam (404).
   const contato = montarContato(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
@@ -329,6 +338,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     pendenciasDocumentos: documentos.pendencias,
     requestPublish: publicacao.options,
     pendenciasPublicacao: publicacao.pendencias,
+    requestList: lista.options,
+    pendenciasLista: lista.pendencias,
     requestDetail: detalhe.options,
     pendenciasDetalhe: detalhe.pendencias,
     requestContact: contato.options,
