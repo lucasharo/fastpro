@@ -7,10 +7,10 @@
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
+import { Buffer } from 'node:buffer';
 import { connect } from '../scripts/lib/env.mjs';
 
 const SQL_LER = 'select private.professional_public_profile($1) as perfil';
-const FUNCAO = 'private.professional_public_profile(text)';
 const CHAVES_PERFIL = ['publicName', 'slug', 'verified', 'services', 'rating'];
 const CHAVES_GRUPO = ['groupName', 'items'];
 const CHAVES_ITEM = ['modalities', 'name'];

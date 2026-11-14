@@ -1,3 +1,4 @@
+/* global window */
 // Issue 56 (H-043) | Renderizador do perfil publico (docs/factory/143-DESENHO-H043.md, §6.3).
 // Recebe o view-model de packages/domain (construirTelaPerfil). Sem frases proprias, sem innerHTML: so
 // createElement, textContent e atributos fixos. Estado anunciado por aria-live="polite". Sem rede e sem

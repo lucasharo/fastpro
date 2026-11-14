@@ -176,7 +176,7 @@ describe('T43-13 marcacao do renderizador (Issue 56, H-043)', () => {
 });
 
 describe('T43-14 tokens sem valor literal (Issue 56, H-043)', () => {
-  it('CSS sem hexadecimal, rgb(), hsl() ou oklch()', () => {
+  it('CSS sem hexadecimal nem funcao de cor (rgb, hsl, oklch)', () => {
     const css = semComentariosCss(FONTE_CSS);
     expect(css).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
     expect(css).not.toMatch(/\b(?:rgba?|hsla?|oklch|oklab)\s*\(/i);
