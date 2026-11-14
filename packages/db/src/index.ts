@@ -90,3 +90,5 @@ export * from './coverage-requests.js';
 export * from './contact-consent.js';
 // Issue 55 (H-042) | Adaptador Pg da guarda de elegibilidade (private.professional_access_guard).
 export * from './professional-access.js';
+// Issue 47 (H-034) | Adaptador Pg da lista do painel do cliente.
+export * from './request-list.js';
