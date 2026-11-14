@@ -4,6 +4,7 @@
 
 export const PUBLIC_PROFILE_TEXTS = {
   rotuloSelo: 'Identidade verificada',
+  rotuloLimitesSelo: 'Limites do selo',
   textoLimitacaoSelo:
     'Identidade verificada: este profissional apresentou documento oficial (CPF ou CNPJ) validado pela equipe do FastPro. O selo atesta apenas a conferência de identificação cadastral e não constitui garantia de qualidade, certificação técnica, recomendação ou cobertura securitária sobre os serviços prestados.',
   reputacaoSemAvaliacoes: 'Ainda sem avaliações',

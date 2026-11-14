@@ -1,0 +1,101 @@
+/* Issue 56 (H-043) | Estilo do perfil publico. Cores, espacos, raios e tipografia vem so das variaveis de tokens.css
+   (fonte unica em @fastpro/tokens). Nenhum valor de cor literal aqui (scripts/check-hex.mjs). Uma coluna fluida:
+   sem largura fixa e sem rolagem horizontal entre 320 px e 1280 px. */
+[aria-live][data-estado] {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 var(--space-4);
+  color: var(--color-text-primary);
+  font-family: var(--font-family), sans-serif;
+  font-weight: var(--font-weight-regular);
+}
+
+.perfil-nome {
+  margin: 0 0 var(--space-4);
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-brand);
+  overflow-wrap: anywhere;
+}
+
+.perfil-secao {
+  display: grid;
+  gap: var(--space-3);
+  box-sizing: border-box;
+  max-width: 100%;
+  margin: 0 0 var(--space-6);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+}
+
+.perfil-secao-titulo {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.perfil-selo-detalhe summary {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.perfil-selo-limitacao {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.perfil-grupo {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.perfil-grupo-nome {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.perfil-itens {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.perfil-item {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.perfil-item-modalidade {
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.perfil-reputacao,
+.perfil-aviso {
+  margin: 0;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.perfil-aviso {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-button);
+  background: var(--color-field);
+}
+
+:focus-visible {
+  outline: var(--space-1) solid var(--color-brand);
+  outline-offset: var(--space-1);
+}

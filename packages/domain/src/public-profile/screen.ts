@@ -26,9 +26,15 @@ export type TipoTelaPerfil = 'carregando' | 'perfil' | 'perfil_sem_servicos' | '
 export interface TelaPerfil {
   readonly tipo: TipoTelaPerfil;
   readonly titulo?: string;
-  readonly selo?: { readonly rotulo: string; readonly limitacao: string };
+  readonly selo?: { readonly rotulo: string; readonly limitacao: string; readonly rotuloLimites: string };
   readonly servicos?: readonly PublicProfileGroup[];
   readonly reputacao?: { readonly rotulo: string };
+  /** Rotulos fixos das secoes e das modalidades: a apresentacao nao tem frase propria (dec. 586). */
+  readonly textos?: {
+    readonly tituloServicos: string;
+    readonly tituloReputacao: string;
+    readonly modalidades: { readonly presencial: string; readonly online: string };
+  };
   readonly aviso?: string;
 }
 
@@ -51,8 +57,20 @@ export function construirTelaPerfil(entrada: EntradaTelaPerfil): TelaPerfil {
       const { perfil } = entrada;
       const base = {
         titulo: perfil.publicName,
-        selo: { rotulo: PUBLIC_PROFILE_TEXTS.rotuloSelo, limitacao: PUBLIC_PROFILE_TEXTS.textoLimitacaoSelo },
+        selo: {
+          rotulo: PUBLIC_PROFILE_TEXTS.rotuloSelo,
+          limitacao: PUBLIC_PROFILE_TEXTS.textoLimitacaoSelo,
+          rotuloLimites: PUBLIC_PROFILE_TEXTS.rotuloLimitesSelo,
+        },
         reputacao: { rotulo: rotuloReputacao(perfil.rating) },
+        textos: {
+          tituloServicos: PUBLIC_PROFILE_TEXTS.tituloServicos,
+          tituloReputacao: PUBLIC_PROFILE_TEXTS.tituloReputacao,
+          modalidades: {
+            presencial: PUBLIC_PROFILE_TEXTS.modalidadePresencial,
+            online: PUBLIC_PROFILE_TEXTS.modalidadeOnline,
+          },
+        },
       };
       if (perfil.services.length === 0) {
         return { tipo: 'perfil_sem_servicos', ...base, servicos: [], aviso: PUBLIC_PROFILE_TEXTS.servicosVazios };
