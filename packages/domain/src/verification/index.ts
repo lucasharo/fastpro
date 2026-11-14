@@ -7,3 +7,7 @@ export * from './ports.js';
 export * from './service.js';
 export * from './duplicate-retention.js';
 export * from './professional-status-message.js';
+export * from './professional-verification-state.js';
+export * from './professional-verification-texts.js';
+export * from './professional-verification-screen.js';
+export * from './professional-verification-port.js';
