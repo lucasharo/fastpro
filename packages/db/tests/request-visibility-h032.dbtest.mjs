@@ -4,6 +4,7 @@
 // Executar sozinho: node --test --test-concurrency=1 packages/db/tests/request-visibility-h032.dbtest.mjs
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { Buffer } from 'node:buffer';
 import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { connect } from '../scripts/lib/env.mjs';

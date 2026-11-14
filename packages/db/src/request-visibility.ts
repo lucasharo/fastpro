@@ -59,10 +59,6 @@ function instante(valor: unknown): string {
   return valor instanceof Date ? valor.toISOString() : texto(valor);
 }
 
-function inteiro(valor: unknown): number {
-  return typeof valor === 'number' ? valor : Number(valor ?? 0);
-}
-
 function bytes(valor: unknown): Uint8Array | null {
   if (valor === null || valor === undefined) return null;
   return valor instanceof Uint8Array ? valor : Buffer.from(texto(valor), 'utf8');
