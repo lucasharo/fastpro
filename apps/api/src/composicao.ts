@@ -77,6 +77,9 @@ import type { RequestDetailRouteOptions } from './requests/detail-route.js';
 // Issue 47 (H-034) | Lista do painel do cliente (GET /v1/requests): so monta com DATABASE_URL_APP_SYSTEM.
 import { montarListaPedidos } from './requests/list-composicao.js';
 import type { RequestListRouteOptions } from './requests/list-route.js';
+// Issue 68 (H-055) | Descoberta do profissional: so monta com DATABASE_URL_APP_SYSTEM e DISCOVERY_CURSOR_KEY.
+import { montarDescoberta } from './requests/discovery-composicao.js';
+import type { DiscoveryRouteOptions } from './requests/discovery-route.js';
 // Issue 46 (H-033) | Telefone e consentimento de contato: so monta com DATABASE_URL_APP_SYSTEM, SITE_URL e PHONE_ENC_KEY.
 import { montarContato } from './contact/contact-composicao.js';
 import type { ContactRouteOptions } from './contact/contact-route.js';
@@ -179,6 +182,10 @@ export interface Integracoes {
   readonly requestDetail: RequestDetailRouteOptions | undefined;
   /** Nomes (nunca valores) que impedem as rotas de leitura do pedido de ligar (H-032). */
   readonly pendenciasDetalhe: readonly string[];
+  /** Issue 68 (H-055): opcoes da descoberta do profissional (GET /v1/professional/discovery/requests), ou undefined (404). */
+  readonly requestDiscovery: DiscoveryRouteOptions | undefined;
+  /** Nomes (nunca valores) que impedem a descoberta do profissional de ligar (H-055). */
+  readonly pendenciasDescoberta: readonly string[];
   /** Issue 46 (H-033): rotas de telefone e consentimento, ou undefined (404). */
   readonly requestContact: ContactRouteOptions | undefined;
   /** Issue 56 (H-043): leitura publica do perfil por slug, ou undefined (404). */
@@ -293,6 +300,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   const detalhe = montarDetalhePedido(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
   // Issue 47 (H-034) | Lista do dono: so DATABASE_URL_APP_SYSTEM (sem chave de endereco e sem provedor de mapas).
   const lista = montarListaPedidos(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
+  // Issue 68 (H-055) | Descoberta do profissional: so DATABASE_URL_APP_SYSTEM e DISCOVERY_CURSOR_KEY (32+ caracteres).
+  const descoberta = montarDescoberta(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
 
   // Issue 46 (H-033): telefone e consentimento. Sem PHONE_ENC_KEY valida, as rotas nao ligam (404).
   const contato = montarContato(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
@@ -342,6 +351,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     pendenciasLista: lista.pendencias,
     requestDetail: detalhe.options,
     pendenciasDetalhe: detalhe.pendencias,
+    requestDiscovery: descoberta.options,
+    pendenciasDescoberta: descoberta.pendencias,
     requestContact: contato.options,
     publicProfile: perfilPublico,
     pendenciasContato: contato.pendencias,
