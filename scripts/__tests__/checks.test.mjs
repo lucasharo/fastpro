@@ -205,6 +205,38 @@ test('check-logs: aceita logger com allowlist, ids e testes', () => {
   }
 });
 
+test('check-logs: literal de rota com console no caminho passa (CA-149-04)', () => {
+  const ok = {
+    'apps/web/src/a.ts': "redirect('/console');\n",
+    'apps/web/src/b.tsx': 'revalidatePath(`/console/${t.id}`);\n',
+    'apps/web/src/c.ts': "import './admin-console-route.js';\n",
+    'apps/web/src/d.ts': "import x from '../console-state';\n",
+    'apps/web/src/e.ts': 'const u = new URL(`/console/verificacao?leitura=erro`, base);\n',
+  };
+  for (const [path, content] of Object.entries(ok)) check('check-logs.mjs', { [path]: content }, false);
+});
+
+test('check-logs: console real continua reprovado, inclusive em template e fora de literal (CA-149-04)', () => {
+  const bad = {
+    'apps/api/src/a.ts': ['console.log(x);\n', /a\.ts:1 uso de console/],
+    'apps/api/src/i.ts': ["console.log('x' + y);\n", /i\.ts:1 uso de console/],
+    'apps/api/src/b.ts': ['const c = console;\n', /b\.ts:1 uso de console/],
+    'apps/api/src/c.ts': ['const s = `${console.log(1)}`;\n', /c\.ts:1 uso de console/],
+    'apps/api/src/d.ts': ['const x = y ? 0 :-console.log(1);\n', /d\.ts:1 uso de console/],
+    'apps/api/src/e.ts': ['globalThis.console.log(1);\n', /e\.ts:1 uso de console/],
+    'apps/api/src/f.ts': ["const p = '/console/' + console.log(1);\n", /f\.ts:1 uso de console/],
+    'apps/api/src/g.ts': ["const z = `/console/${console.log(1)}`;\n", /g\.ts:1 uso de console/],
+    // Aspa dentro de regex: o trecho entre aspas tem espaco e ponto e virgula, nao e caminho.
+    'apps/api/src/h.ts': [
+      "const r = /'/; -console.log(1); const q = '-';\n",
+      /h\.ts:1 uso de console/,
+    ],
+  };
+  for (const [path, [content, match]] of Object.entries(bad)) {
+    check('check-logs.mjs', { [path]: content }, true, match);
+  }
+});
+
 test('check-typography: reprova fonte e peso fora do permitido', () => {
   check('check-typography.mjs', { 'apps/web/a.css': 'a { font-family: Arial; }\n' }, true, /Arial/);
   check('check-typography.mjs', { 'apps/web/a.css': 'a { font-weight: 600; }\n' }, true, /600/);

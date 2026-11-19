@@ -35,7 +35,7 @@ export default async function PaginaConsole() {
   return (
     <main className="console">
       <h1>Console administrativo</h1>
-      {/* Itens do menu sem link: as paginas de destino (/console/<id>) ainda nao existem.
+      {/* Itens do menu sem link: as paginas de destino (uma rota por item) ainda nao existem.
           Quando cada historia entregar a sua tela, este bloco vira navegacao. */}
       {estado.tipo === 'telas' ? (
         <ul className="console-telas">

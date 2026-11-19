@@ -34,6 +34,21 @@ function isSensitive(expr) {
 // Qualquer uso do identificador console (chamada, ["log"], ?., alias, desestruturacao) e global.console.
 const CONSOLE =
   /(?<![\w$.'"`])console\b|\b(?:globalThis|window|global|self)\s*(?:\??\.|\[)\s*['"`]?console\b/;
+// Literal com forma de caminho ou rota (ex.: '/console', '../console-state', `/console/${id}`):
+// texto estatico so com caracteres de caminho, sem espaco nem pontuacao de codigo, e sem
+// expressao ${...} que contenha console. Nesse caso a palavra "console" colada a "/" ou "-"
+// deixa de contar. Qualquer outro literal (ex.: com espaco, "(" ou ";") continua verificado.
+const PATH_LITERAL = /^[\w./\-:@~%?=&]*$/;
+const CONSOLE_IN_PATH = /(?<=[/-])console|console(?=[/-])/g;
+function semCaminhos(line) {
+  return line.replace(/'[^'\\]*'|"[^"\\]*"|`[^`\\]*`/g, (lit) => {
+    const expressoes = lit.match(/\$\{[^}]*\}/g) ?? [];
+    if (expressoes.some((e) => /console/.test(e))) return lit;
+    const estatico = lit.replace(/\$\{[^}]*\}/g, '').slice(1, -1);
+    if (!PATH_LITERAL.test(estatico)) return lit;
+    return lit.replace(CONSOLE_IN_PATH, '_');
+  });
+}
 // Escrita direta em stdout/stderr (so o sink padrao de @fastpro/observability pode).
 const STDIO = /\bprocess\s*(?:\??\s*\.\s*|\[\s*['"`])std(?:out|err)\b/;
 // A API do logger so tem estes metodos; log/trace/verbose/fatal... nao existem.
@@ -180,7 +195,7 @@ for (const file of listFiles(root)) {
       violations.push(`${file}:${i + 1} ${IGNORE_MARK} sem motivo (escreva o motivo depois)`);
     }
     if (/^\s*(?:\/\/|\*|\/\*)/.test(line)) return;
-    if (CONSOLE.test(line) && !ignored(i + 1)) {
+    if (CONSOLE.test(semCaminhos(line)) && !ignored(i + 1)) {
       violations.push(`${file}:${i + 1} uso de console em codigo de producao (use o logger)`);
     }
     if (!isObservability && STDIO.test(line) && !ignored(i + 1)) {
