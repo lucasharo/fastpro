@@ -106,15 +106,36 @@ export function emitirDocumento(entrada: EmitirEntrada, deps: IdentityDocService
     const espera = await barradoPor(deps.rate, pares);
     if (espera !== null) return resposta429(espera);
 
-    const r = await deps.store.issue({
-      userId: entrada.userId,
-      clientUploadId: entrada.corpo.clientUploadId,
-      declaredType: entrada.corpo.contentType,
-      declaredBytes: entrada.corpo.sizeBytes,
-      nowMs: agora,
-      globalBytesCap: deps.globalBytesCap ?? IDOC_GLOBAL_BYTES_CAP,
-    });
+    const cap = deps.globalBytesCap ?? IDOC_GLOBAL_BYTES_CAP;
+    // H-038: certificacao reserva pela funcao propria (cota e validacao de servico); identidade segue como na Issue 50.
+    const servico = entrada.corpo.kind === 'certificacao' ? entrada.corpo.serviceId : null;
+    const r =
+      servico !== null
+        ? await deps.store.issueCert({
+            userId: entrada.userId,
+            clientUploadId: entrada.corpo.clientUploadId,
+            serviceId: servico,
+            declaredType: entrada.corpo.contentType,
+            declaredBytes: entrada.corpo.sizeBytes,
+            nowMs: agora,
+            globalBytesCap: cap,
+          })
+        : await deps.store.issue({
+            userId: entrada.userId,
+            clientUploadId: entrada.corpo.clientUploadId,
+            declaredType: entrada.corpo.contentType,
+            declaredBytes: entrada.corpo.sizeBytes,
+            nowMs: agora,
+            globalBytesCap: cap,
+          });
     switch (r.code) {
+      // Servico invalido, nao regulamentado ou nao vinculado: a mesma resposta (sem enumeracao de catalogo).
+      case 'service_denied':
+        return erro(422, 'servico_invalido');
+      case 'limite_certificacao':
+        return erro(422, 'limite_certificacao');
+      case 'client_upload_em_uso':
+        return erro(409, 'upload_em_uso');
       case 'new':
       case 'replay': {
         if (r.id === null) return erro(503, 'servico_indisponivel');
@@ -162,12 +183,16 @@ export function listarDocumentos(
     return {
       status: 200,
       corpo: {
+        // Nunca stored_*, hash, caminho ou URL de leitura. documentKind/serviceId/analyzed sao H-038.
         documents: lista.documents.map((d) => ({
           id: d.id,
           kind: d.kind,
+          documentKind: d.documentKind,
+          serviceId: d.serviceId,
           status: d.status,
           receivedAt: d.receivedAt,
           deletable: d.deletable,
+          analyzed: d.analyzed,
         })),
         slotsRemaining: lista.slotsRemaining,
       },

@@ -1,7 +1,7 @@
 // H-037 (Issue #50) | Fakes dos documentos de identidade (sem banco e sem rede). A semantica segue 107 §4.2 e §6;
 // a prova do banco real e do dbtest (packages/db/tests/identity-docs-h037.dbtest.mjs). Nenhum fake faz I/O.
 import { randomUUID } from 'node:crypto';
-import { type IdentityDocConfirmBeginResult, type IdentityDocFinalPort, type IdentityDocIssueInput, type IdentityDocIssueResult, type IdentityDocListItem, type IdentityDocRateLimiterPort, type IdentityDocRatePolicy, type IdentityDocStagingPort, type IdentityDocStorePort, type IdentityDocSweepItem, type ReduceOutcome } from '@fastpro/domain';
+import { type IdentityDocConfirmBeginResult, type IdentityDocFinalPort, type IdentityDocIssueCertInput, type IdentityDocIssueInput, type IdentityDocIssueResult, type IdentityDocListItem, type IdentityDocRateLimiterPort, type IdentityDocRatePolicy, type IdentityDocStagingPort, type IdentityDocStorePort, type IdentityDocSweepItem, type ReduceOutcome } from '@fastpro/domain';
 import type { IdentityDocReduceGate } from '../src/identity-docs/identity-doc-service.js';
 
 export const T0 = Date.UTC(2026, 10, 13, 12, 0, 0);
@@ -20,6 +20,9 @@ interface LinhaDoc {
   readonly clientUploadId: string;
   readonly declaredType: string;
   readonly declaredBytes: number;
+  /** H-038: identidade (sem servico) ou certificacao (com servico). */
+  readonly documentKind: 'identidade' | 'certificacao';
+  readonly serviceId: string | null;
   status: 'pendente_envio' | 'recebido' | 'substituido';
   storedType: 'image/jpeg' | 'application/pdf' | null;
   storedBytes: number | null;
@@ -40,6 +43,8 @@ export class MemStore implements IdentityDocStorePort {
   /** Perfis com e-mail verificado; ausentes sao recusados em issue (email_unverified). */
   readonly emailVerificado = new Set<string>();
   readonly estadoProibido = new Set<string>();
+  /** H-038: vinculos `userId|serviceId` a servicos regulamentados (fixture de app.professional_service). */
+  readonly vinculosRegulados = new Set<string>();
 
   private vivos(userId: string): LinhaDoc[] {
     return [...this.linhas.values()].filter(
@@ -62,28 +67,90 @@ export class MemStore implements IdentityDocStorePort {
     for (const l of this.vivos(input.userId)) {
       if (l.status === 'pendente_envio' && l.pendingExpiresAt <= input.nowMs) l.purge = true;
     }
-    if (this.vivos(input.userId).length >= 5) return { code: 'doc_limit', id: null, status: null };
+    // H-038 (CA-H038-06): o limite de 5 conta so identidade.
+    if (this.vivos(input.userId).filter((l) => l.documentKind === 'identidade').length >= 5) {
+      return { code: 'doc_limit', id: null, status: null };
+    }
     const reserva = [...this.linhas.values()].filter((l) => l.status === 'pendente_envio' && !l.purge).length * 2_097_152;
     const usado = [...this.linhas.values()].reduce((s, l) => s + (l.storedBytes ?? 0), 0) + reserva;
     if (usado + 2_097_152 > input.globalBytesCap) return { code: 'cap', id: null, status: null };
     const id = randomUUID();
-    this.linhas.set(id, {
+    this.linhas.set(id, this.nova(id, input.userId, input.clientUploadId, input.declaredType, input.declaredBytes, 'identidade', null, input.nowMs));
+    return { code: 'new', id, status: 'em_envio' };
+  }
+
+  /** H-038: reserva de certificacao (private.idoc_issue_cert): servico vinculado, 1 pendente por servico, teto global. */
+  async issueCert(input: IdentityDocIssueCertInput): Promise<IdentityDocIssueResult> {
+    this.chamadas.push('issueCert');
+    if (!this.emailVerificado.has(input.userId)) return { code: 'email_unverified', id: null, status: null };
+    if (this.estadoProibido.has(input.userId)) return { code: 'state_denied', id: null, status: null };
+    if (!this.vinculosRegulados.has(`${input.userId}|${input.serviceId}`)) {
+      return { code: 'service_denied', id: null, status: null };
+    }
+    const igual = [...this.linhas.values()].find(
+      (l) => l.userId === input.userId && l.clientUploadId === input.clientUploadId,
+    );
+    if (igual !== undefined) {
+      if (igual.documentKind !== 'certificacao' || igual.serviceId !== input.serviceId) {
+        return { code: 'client_upload_em_uso', id: null, status: null };
+      }
+      return igual.status === 'recebido'
+        ? { code: 'replay_received', id: igual.id, status: 'recebido' }
+        : { code: 'replay', id: igual.id, status: 'em_envio' };
+    }
+    for (const l of this.vivos(input.userId)) {
+      if (l.status === 'pendente_envio' && l.pendingExpiresAt <= input.nowMs) l.purge = true;
+    }
+    const pendente = this.vivos(input.userId).some(
+      (l) => l.serviceId === input.serviceId && l.documentKind === 'certificacao' && l.status === 'pendente_envio',
+    );
+    if (pendente) return { code: 'limite_certificacao', id: null, status: null };
+    const reserva = [...this.linhas.values()].filter((l) => l.status === 'pendente_envio' && !l.purge).length * 2_097_152;
+    const usado = [...this.linhas.values()].reduce((s, l) => s + (l.storedBytes ?? 0), 0) + reserva;
+    if (usado + 2_097_152 > input.globalBytesCap) return { code: 'cap', id: null, status: null };
+    const id = randomUUID();
+    this.linhas.set(id, this.nova(id, input.userId, input.clientUploadId, input.declaredType, input.declaredBytes, 'certificacao', input.serviceId, input.nowMs));
+    return { code: 'new', id, status: 'em_envio' };
+  }
+
+  private nova(
+    id: string,
+    userId: string,
+    clientUploadId: string,
+    declaredType: string,
+    declaredBytes: number,
+    documentKind: 'identidade' | 'certificacao',
+    serviceId: string | null,
+    nowMs: number,
+  ): LinhaDoc {
+    return {
       id,
-      userId: input.userId,
-      clientUploadId: input.clientUploadId,
-      declaredType: input.declaredType,
-      declaredBytes: input.declaredBytes,
+      userId,
+      clientUploadId,
+      declaredType,
+      declaredBytes,
+      documentKind,
+      serviceId,
       status: 'pendente_envio',
       storedType: null,
       storedBytes: null,
-      pendingExpiresAt: input.nowMs + 30 * MIN,
+      pendingExpiresAt: nowMs + 30 * MIN,
       leaseUntil: 0,
       attempts: 0,
       receivedAt: null,
       analyzedAt: null,
       purge: false,
-    });
-    return { code: 'new', id, status: 'em_envio' };
+    };
+  }
+
+  /** Substituicao da certificacao (desenho 148 D-H038-A2): a anterior viva do mesmo servico vira substituido. */
+  private descartaAnterior(l: LinhaDoc): void {
+    if (l.documentKind !== 'certificacao') return;
+    for (const outra of this.linhas.values()) {
+      if (outra.id !== l.id && outra.userId === l.userId && outra.serviceId === l.serviceId && outra.status === 'recebido') {
+        outra.status = 'substituido';
+      }
+    }
   }
 
   async list(userId: string): Promise<{ readonly documents: readonly IdentityDocListItem[]; readonly slotsRemaining: number }> {
@@ -91,11 +158,15 @@ export class MemStore implements IdentityDocStorePort {
     const docs = this.vivos(userId).map((l) => ({
       id: l.id,
       kind: (l.storedType ?? l.declaredType) === 'application/pdf' ? ('pdf' as const) : ('imagem' as const),
+      documentKind: l.documentKind,
+      serviceId: l.serviceId,
       status: l.status === 'recebido' ? ('recebido' as const) : ('em_envio' as const),
       receivedAt: l.receivedAt === null ? null : new Date(l.receivedAt).toISOString(),
       deletable: l.analyzedAt === null,
+      analyzed: l.analyzedAt !== null,
     }));
-    return { documents: docs, slotsRemaining: Math.max(0, 5 - docs.length) };
+    const identidade = docs.filter((d) => d.documentKind === 'identidade').length;
+    return { documents: docs, slotsRemaining: Math.max(0, 5 - identidade) };
   }
 
   private dono(userId: string, id: string): LinhaDoc | undefined {
@@ -130,6 +201,7 @@ export class MemStore implements IdentityDocStorePort {
     if (l === undefined) return 'gone';
     if (l.attempts !== attempt || l.status !== 'pendente_envio') return 'lost';
     this.shas.set(id, sha256);
+    this.descartaAnterior(l);
     l.status = 'recebido';
     l.storedType = storedType;
     l.storedBytes = storedBytes;

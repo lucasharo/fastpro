@@ -14,8 +14,9 @@ const LEITOR = join(RAIZ, 'apps', 'api', 'src', 'verification', 'pg-identity-doc
 const PORTA_IDENTITY_DOCS = join(RAIZ, 'packages', 'domain', 'src', 'identity-docs', 'ports.ts');
 // SHA-256 de ports.ts no fechamento da Issue 50 (igual ao de antes de H-039; conferido com git diff).
 // Partido em duas metades: e um fingerprint publico, nao segredo; so evita o alarme do check:secrets.
+// atualizado pela Issue 51 (H-038), mudanca aditiva do desenho 148
 const HASH_PORTA_IDENTITY_DOCS =
-  '480567d7a4df3119a82067816bec2110' + '88228420e3a63db2c0877e755c0ed612';
+  'a5efcef82397ef16d2d7f418eaf4903d' + '7338e2ac51494f3820ee878caa776bd5';
 
 function arquivosTs(dir: string): string[] {
   return readdirSync(dir).flatMap((nome) => {
