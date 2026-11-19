@@ -78,18 +78,18 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #146 | [E15] db:test: T-H018-13 depende de semente ausente no DEV |
 | #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 
-## Arquitetura (1)
+## Arquitetura (0)
 
 | Issue | Título |
 |---|---|
-| #68 | [E6] Descoberta de pedidos elegíveis |
 
-## Desenvolvimento (2)
+## Desenvolvimento (3)
 
 | Issue | Título |
 |---|---|
 | #51 | [E4] Certificações para atividades regulamentadas |
 | #120 | [E13] Direitos do titular (dsr_case) |
+| #68 | [E6] Descoberta de pedidos elegíveis |
 
 ## Code Review (0)
 

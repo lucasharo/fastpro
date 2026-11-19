@@ -978,3 +978,10 @@ Adotadas como RECOMENDADAS pelo lider (o usuario pode vetar): **650** cidade/UF,
 
 ## Rodada 140 (conclusao pelo usuario, 2026-11-19)
 - **O usuario concluiu #54, #47, #56, #37 e #55 (decisao humana)**; o quadro local (`quadro-status.md`) ja reflete isso (Concluido 75). O orquestrador NAO devolve nenhuma delas a Aguardando aprovacao nem edita essas linhas. Pendencias dessas Issues (telas, parte B da #55, textos BK-5 etc.) seguem registradas nas Rodadas 138, e a parte B da #55 sera tratada nas Issues #68, #69 e #71.
+
+## Rodada 141 (execucao em paralelo, 2026-11-19)
+- **Limite de execucoes simultaneas elevado de 4 para 6 pelo usuario** (`execctl.py` com `MAX_SLOTS=6` e uma execucao ativa por Issue). QA e Code Review pelo agy seguem um por vez.
+- **#68 (H-055) Arquitetura entregue** (153-DESENHO-H055.md; perguntas 603 a 622 adotadas pelo lider) e Desenvolvimento em fatias: 7576f6d (dominio e cursor cifrado) e fc6cdc3 (adaptadores de projecao e limite de taxa); dominio 934 testes e db 14, saida 0. Desvio aceito: cursor em `packages/domain`. `has_more = (linhas == limit)` porque o banco recusa limite 201. Faltam servico, rota e testes de privacidade. #68 em Desenvolvimento.
+- **#51 (H-038)** banco entregue (fb6db92; estatico 29/29, dbtest 17/17). A migracao 20261113440000 estava aplicada no DEV com checksum de um rascunho; as 8 funcoes tinham corpo identico; o orquestrador reaplicou o arquivo final e atualizou o checksum (`db:status` sem problema). Falta dominio e API.
+- **#120 (H-111)** fatias 1 a 3 aplicadas e testadas (3bf55f0, 6618f91, 57584be; db:status 90 aplicadas, 0 pendentes; dbtests 13, 9 e 8 aprovados). Pendencia aceita: o guard de login precisa bloquear `em_eliminacao` e `anonimizado` antes da fatia 4; a constraint existente `app_user_anonimizado_consistente` aceita retention_state nulo (buraco da area de retencao, fica como pendencia).
+- Os agentes de Desenvolvimento usam o token da CLI (TOKEN_SUPABASE_FULL do .env.local, sem imprimir) para aplicar migracoes no DEV, como regra permanente do dono. Atribuicao: trailers dos commits dos agentes vieram como Claude Haiku 5.5; os novos prompts exigem Sonnet 5.5.
