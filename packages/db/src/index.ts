@@ -84,6 +84,10 @@ export * from './trial-activation.js';
 // H-046 (Issue 59) | Adaptador Pg de planos e precos (private.plan_price_at, somente leitura).
 export * from './plan-pricing.js';
 export * from './discovery-requests.js';
+// Issue 68 (H-055) | Adaptadores da lista do profissional: projecao, limite de taxa e fotos prontas (153 §5.2, §5.3).
+export * from './discovery-projection.js';
+export * from './discovery-rate-limit.js';
+export * from './discovery-photos.js';
 // Issue 37 (H-024) | Adaptador Pg da cobertura booleana (private.coverage_for_request, so com ou sem).
 export * from './coverage-requests.js';
 // Issue 46 (H-033) | Adaptador do telefone e do consentimento (docs/factory/129-DESENHO-H033.md, §5).
