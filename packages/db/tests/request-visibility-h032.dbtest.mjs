@@ -8,6 +8,7 @@ import { Buffer } from 'node:buffer';
 import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { connect } from '../scripts/lib/env.mjs';
+import { concederAcessoVigente } from './fixtures/professional-access.mjs';
 
 const MIG = new URL('../../../supabase/migrations/20261113230000_requests_expand_location_visibility.sql', import.meta.url);
 const MIG_CORRECAO = new URL('../../../supabase/migrations/20261113300000_requests_fix_owner_get_no_counter.sql', import.meta.url);
@@ -97,6 +98,7 @@ async function profissional(c, verificacao = 'aprovada') {
      values ($1, $2, $3, $3, $3)`,
     [u.id, verificacao, AGORA],
   );
+  await concederAcessoVigente(c, u.id, AGORA);
   return u.id;
 }
 

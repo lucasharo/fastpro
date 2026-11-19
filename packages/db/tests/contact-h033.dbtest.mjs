@@ -11,6 +11,7 @@ import { Buffer } from 'node:buffer';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { connect } from '../scripts/lib/env.mjs';
+import { concederAcessoVigente } from './fixtures/professional-access.mjs';
 
 const MIG = new URL('../../../supabase/migrations/20261113250000_contact_create_phone_consent.sql', import.meta.url);
 const MIG_CORRECAO = new URL('../../../supabase/migrations/20261113250100_contact_fix_available_volatile.sql', import.meta.url);
@@ -82,6 +83,7 @@ async function profissional() {
      values ($1, 'aprovada', $2, $2, $2)`,
     [id, AGORA],
   );
+  await concederAcessoVigente(client, id, AGORA);
   return id;
 }
 

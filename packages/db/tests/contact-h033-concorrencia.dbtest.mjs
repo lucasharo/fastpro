@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { connect } from '../scripts/lib/env.mjs';
+import { concederAcessoVigente } from './fixtures/professional-access.mjs';
 
 const N = 20;
 const MARCA = `h033c-${randomUUID().slice(0, 8)}`;
@@ -52,6 +53,7 @@ async function profissional() {
      values ($1, 'aprovada', now(), now(), now())`,
     [id],
   );
+  await concederAcessoVigente(admin, id, new Date());
   return id;
 }
 

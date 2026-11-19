@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { connect } from '../scripts/lib/env.mjs';
+import { concederAcessoVigente } from './fixtures/professional-access.mjs';
 
 const ARQ = (caminho) => new URL(`../../../${caminho}`, import.meta.url);
 const MIG = ARQ('supabase/migrations/20261113210000_geo_expand_discovery_requests.sql');
@@ -23,7 +24,7 @@ const M_POR_GRAU_LAT = 111195;
 const SQL_SCAN =
   'select out_request_id, out_cursor_group, out_cursor_key from private.discover_scan($1::uuid, $2::float8, $3::float8, $4::integer, $5::integer, $6::smallint, $7::integer, $8::uuid, $9::timestamptz)';
 const SQL_ENTRADA =
-  'select out_request_id, out_cursor_group, out_cursor_key from private.discover_requests($1::uuid, $2::integer, $3::smallint, $4::integer, $5::uuid)';
+  'select out_request_id, out_cursor_group, out_cursor_key from private.discover_requests($1::uuid, $2::integer, $3::smallint, $4::integer, $5::uuid, $6::timestamptz)';
 
 const sha = (s) => createHash('sha256').update(s).digest('hex');
 // Remove BEGIN/COMMIT/ROLLBACK do arquivo: o teste ja esta numa transacao.
@@ -97,6 +98,7 @@ async function profissional(c) {
      values ($1, 'aprovada', $2, $2, $2)`,
     [id, AGORA],
   );
+  await concederAcessoVigente(c, id, AGORA);
   return id;
 }
 
@@ -248,7 +250,7 @@ test('T-D04 online sem raio: aparece em qualquer UF, com e sem base (CA-05)', as
     await base(client, prof, SP, 5000);
     assert.deepEqual(new Set(ids(await varre(prof, SP, 5000))), new Set([sp, man, poa]));
     // Entrada publica (usa now(); prazo em 2099): mesmo resultado sem origem explicita.
-    const entrada = await client.query(SQL_ENTRADA, [prof, 50, null, null, null]);
+    const entrada = await client.query(SQL_ENTRADA, [prof, 50, null, null, null, AGORA]);
     assert.deepEqual(new Set(entrada.rows.map((r) => r.out_request_id)), new Set([sp, man, poa]));
   });
 });
@@ -300,8 +302,11 @@ test('T-D08/T-D09/T-D10 varreduras: assinatura fixa, sem exact_point, sem notice
     const r = await client.query(
       `select p.proname, pg_get_function_result(p.oid) as res, lower(p.prosrc) as corpo
          from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-        where n.nspname = 'private' and p.proname in ('discover_scan', 'discover_requests')`,
+        where n.nspname = 'private'
+          and (p.proname = 'discover_scan' or (p.proname = 'discover_requests' and p.pronargs = 6))`,
     );
+    // So a assinatura vigente da entrada (6 argumentos, Issue 55). A versao de 5 argumentos e recriada aqui
+    // pela reaplicacao da migracao historica (before) e nao existe no banco real apos 20261113420000.
     assert.equal(r.rows.length, 2);
     for (const f of r.rows) {
       assert.match(f.res, /out_request_id uuid, out_cursor_group smallint, out_cursor_key integer/, f.proname);
