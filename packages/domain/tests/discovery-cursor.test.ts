@@ -193,8 +193,8 @@ describe('tipos exatos do payload (cursor com tag valida e conteudo invalido)', 
     const cipher = createCipheriv('aes-256-gcm', chave, nonce);
     cipher.setAAD(Buffer.from(`cur1|${PRO_A}`, 'utf8'));
     const corpo = Buffer.concat([cipher.update(Buffer.from('{nao-json', 'utf8')), cipher.final()]);
-    const token = Buffer.concat([Buffer.from([1]), nonce, cipher.getAuthTag(), corpo]).toString('base64url');
-    expect(codigoDe(() => codec.open(token, PRO_A, NOW))).toBe('cursor_invalido');
+    const envelope = Buffer.concat([Buffer.from([1]), nonce, cipher.getAuthTag(), corpo]).toString('base64url');
+    expect(codigoDe(() => codec.open(envelope, PRO_A, NOW))).toBe('cursor_invalido');
   });
 });
 
