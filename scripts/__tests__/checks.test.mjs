@@ -448,6 +448,90 @@ test('check-secrets: usos legitimos nao sao falso positivo', () => {
   );
 });
 
+test('check-secrets: excecoes estreitas passam (CA-149-05)', () => {
+  const ok = (path, line) => check('check-secrets.mjs', { [path]: line }, false);
+  // service_role: prefixo packages/db/tests/ e arquivos exatos da API.
+  ok('packages/db/tests/a.dbtest.mjs', "select has_function_privilege('service_role', 'f', 'execute');\n");
+  ok('apps/api/src/professional-composicao.ts', "const k = env.SUPABASE_SECRET_KEY ?? '';\n");
+  ok('apps/api/tests/professional-composicao.test.ts', "const s = { SUPABASE_SECRET_KEY: 'dummy-x' };\n");
+  // Nomes de rota e regex com valor que comeca com barra.
+  ok('apps/api/src/rotas.ts', "export const PASSWORD_PATH = '/v1/a/password';\n");
+  ok('packages/email/src/x.ts', 'const TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;\n');
+  // Placeholders estruturais: undefined, null, geradores aleatorios e parametro SQL.
+  ok('apps/api/src/a.ts', 'const x = { PEPPER_IP_HMAC: undefined };\n');
+  ok('apps/api/src/a.ts', 'const y = { PEPPER_IP_HMAC: null };\n');
+  ok('packages/db/tests/a.dbtest.mjs', "const pepperEmail = randomBytes(24).toString('base64url');\n");
+  ok('packages/db/tests/a.dbtest.mjs', "await c.query('delete from t where key_hmac = any($1::text[])', [ips]);\n");
+  ok('packages/db/tests/a.dbtest.mjs', "assert.deepEqual(c, { dedupe_key: 'ops.purge:2099-01-01' });\n");
+  // Senha de exemplo "senha" em URL de banco.
+  ok('apps/api/tests/a.test.ts', "const u = 'postgres://usuario:senha@host/db';\n");
+});
+
+test('check-secrets: excecoes estreitas continuam reprovando (CA-149-05)', () => {
+  // service_role: fora do prefixo e fora do arquivo exato (nome parecido na mesma pasta).
+  check(
+    'check-secrets.mjs',
+    { 'apps/api/src/professional-composicao-x.ts': 'const r = "service_role";\n' },
+    true,
+    /service_role/,
+  );
+  check(
+    'check-secrets.mjs',
+    { 'apps/api/tests/outro.test.ts': 'const r = "service_role";\n' },
+    true,
+    /service_role/,
+  );
+  // Atribuicao de valor a SUPABASE_SECRET_KEY segue verificada em teste de banco.
+  check(
+    'check-secrets.mjs',
+    { 'packages/db/tests/a.dbtest.mjs': "const SUPABASE_SECRET_KEY = 'abcdef123456';\n" },
+    true,
+    /valor atribuido a SUPABASE_SECRET_KEY/,
+  );
+  // Sufixo de rota sem barra no valor continua reprovado (nome sensivel, para o valor ser lido).
+  check(
+    'check-secrets.mjs',
+    { 'apps/api/src/rotas.ts': "export const PASSWORD_PATH = 'abc12345secret';\n" },
+    true,
+    /valor atribuido a PASSWORD_PATH/,
+  );
+  check(
+    'check-secrets.mjs',
+    { 'apps/api/src/rotas.ts': "const TOKEN_RE = 'abc12345secret';\n" },
+    true,
+    /valor atribuido a TOKEN_RE/,
+  );
+  // Placeholder so vale na forma exata: undefined colado a texto continua verificado.
+  check(
+    'check-secrets.mjs',
+    { 'apps/api/src/a.ts': "const x = { PEPPER_IP_HMAC: 'undefinedsegredo12' };\n" },
+    true,
+    /PEPPER_IP_HMAC/,
+  );
+  // Chave de HMAC com valor literal (nao parametro SQL) continua reprovada.
+  check(
+    'check-secrets.mjs',
+    { 'apps/api/src/a.ts': "const key_hmac = 'Ab12cd34Ef56Gh78';\n" },
+    true,
+    /key_hmac/,
+  );
+  // Senha real em URL de banco continua reprovada; senha "senha" nao.
+  check(
+    'check-secrets.mjs',
+    { 'apps/api/tests/a.test.ts': "const u = 'postgres://u:s3cr3tReal@h/db';\n" },
+    true,
+    /banco/,
+  );
+  // Chaves reais continuam reprovadas (sb_secret_ e Bearer literal).
+  const body = 'A1b2C3d4E5f6';
+  check(
+    'check-secrets.mjs',
+    { 'apps/api/src/a.ts': `const s = "sb_secret_${body}${body}";\n` },
+    true,
+    /sb_secret_/,
+  );
+});
+
 test('check-secrets --history: falha de leitura do historico FALHA (nao vira ok)', () => {
   const dir = fixture({ 'a.txt': 'ok\n' });
   try {

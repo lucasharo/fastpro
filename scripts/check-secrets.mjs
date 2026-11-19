@@ -27,7 +27,17 @@ const SERVICE_ROLE_ALLOWED = [
   'apps/api/src/modules/media/',
   'apps/api/src/modules/identity/',
   'packages/config/',
+  // Testes de privilegio de papel no banco (decisao 803).
+  'packages/db/tests/',
 ];
+// Arquivos exatos da API que montam o segredo de servico (decisao 803). Comparacao por caminho
+// inteiro: um arquivo de nome parecido na mesma pasta continua reprovado.
+const SERVICE_ROLE_EXACT = new Set([
+  'apps/api/src/identity-docs/identity-doc-montagem.ts',
+  'apps/api/src/professional-composicao.ts',
+  'apps/api/tests/identity-docs-montagem.test.ts',
+  'apps/api/tests/professional-composicao.test.ts',
+]);
 
 // Excecao exata de um caminho: lista publica de senhas comuns, nao segredo (decisao do usuario,
 // 11/11, H-016). So a verificacao de atribuicao (assignments) e dispensada para este arquivo;
@@ -49,7 +59,7 @@ const SECRET_PATTERNS = [
   [/\bBearer\s+[A-Za-z0-9._~+/-]{20,}=*/, 'cabecalho Bearer com token'],
   [HEX_LONG, 'valor hexadecimal longo (>= 64 digitos)'],
   [
-    /\bpostgres(?:ql)?:\/\/[^:\s/@]+:(?![<$%{]|\s|your|password|xxx|changeme|\*+)[^@\s]{4,}@/i,
+    /\bpostgres(?:ql)?:\/\/[^:\s/@]+:(?![<$%{]|\s|your|password|xxx|changeme|\*+|senha@)[^@\s]{4,}@/i,
     'URL de banco com senha',
   ],
 ];
@@ -61,8 +71,15 @@ const SENSITIVE_NAME =
   /secret|token|passw(?:or)?d|pepper|hmac|api[_-]?key|private[_-]?key|service[_-]?role|enc[_-]?key|signing[_-]?key/i;
 const KEY_SUFFIX = /[a-z0-9]Key$|_KEY$|_key$/;
 // Valores que nao sao segredo: modelos, expressoes de leitura/validacao de env e referencias.
+// undefined/null, geradores aleatorios (randomBytes/randomUUID) e parametro SQL (any($1...)) nao
+// carregam segredo literal (decisao 805). Valores inteiros: "undefinedX" continua verificado.
 const PLACEHOLDER =
-  /^(?:<.*|\$.*|%.*|x{3,}|\*{3,}|changeme.*|your[-_].*|example.*|placeholder.*|dummy.*|\.{3}|z\..*|process\.env.*|import\.meta.*|env\..*|config\..*|secrets\..*)$/i;
+  /^(?:<.*|\$.*|%.*|x{3,}|\*{3,}|changeme.*|your[-_].*|example.*|placeholder.*|dummy.*|\.{3}|z\..*|process\.env.*|import\.meta.*|env\..*|config\..*|secrets\..*|undefined|null|random(?:Bytes|UUID)\(.*|any\(\$\d.*)$/i;
+// Nomes de rota e de expressao regular (X_PATH = '/v1/...', TOKEN_RE = /^.../): so nao sao
+// segredo quando o valor comeca com "/" (decisao 804). Sem barra, o valor segue verificado.
+const ROUTE_NAME = /_(?:PATH|ROUTE|RE|REGEX)$/i;
+// Chave de deduplicacao de fila (dedupe_key): identificador de idempotencia, nao segredo.
+const DEDUPE_NAME = /^dedupe_key$/i;
 
 function assignments(line) {
   const found = [];
@@ -70,6 +87,8 @@ function assignments(line) {
     const [, name, quote, value] = m;
     if (!(SENSITIVE_NAME.test(name) || KEY_SUFFIX.test(name))) continue;
     if (value === '' || PLACEHOLDER.test(value)) continue;
+    if (DEDUPE_NAME.test(name)) continue;
+    if (ROUTE_NAME.test(name) && value.startsWith('/')) continue;
     const upper = /^[A-Z][A-Z0-9_]*$/.test(name);
     const looksSecret = quote
       ? (value.length >= 12 && /\d/.test(value)) || value.length >= 20
@@ -89,7 +108,8 @@ function scanLine(path, line) {
   if (!PUBLIC_WORDLIST_EXEMPT.has(path)) found.push(...assignments(line));
   if (
     /service[_-]?role|SUPABASE_SECRET_KEY/i.test(line) &&
-    !startsWithAny(path, SERVICE_ROLE_ALLOWED)
+    !startsWithAny(path, SERVICE_ROLE_ALLOWED) &&
+    !SERVICE_ROLE_EXACT.has(path)
   ) {
     found.push('referencia a service_role fora de modulo permitido');
   }
