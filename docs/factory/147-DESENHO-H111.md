@@ -3,7 +3,8 @@
 - Workflow: WF-03, etapa Arquitetura (tentativa 2). EXEC-ID: EXEC-ARQ2-120-20261119.
 - Entrada: `144-REFINO-H111.md` (seções 3, 6, 7, 8, 9 e 11) e `09-MODELO-DADOS.md` (índice de tabelas).
 - Escopo desta etapa: somente desenho. Nenhum código, migração, banco ou quadro foi alterado. Sem Docker, Mapbox, e-mail real ou backup de dados.
-- Limitação declarada: por limite de turnos, não foram inspecionados no DEV os nomes físicos de colunas de chat, `service_request`, `review`, `billing.subscription`, `app_session` e `legal_hold.subject_ref`. Onde o nome físico é suposto, aparece "(confirmar no DEV)". O DEV deve confirmar antes de escrever a migração; isso não muda a arquitetura.
+- Limitação declarada: por limite de turnos, não foram inspecionados no DEV os nomes físicos de colunas de chat, `service_request` e `review`. Onde o nome físico é suposto, aparece "(confirmar no DEV)". O DEV deve confirmar antes de escrever a migração; isso não muda a arquitetura.
+Atualização 19/11/2026 (EXEC-DEV-120B-20261119, leitura somente): nomes físicos confirmados no DEV para as fatias 1 e 2, registrados em DV-6; demais itens seguem como estavam.
 
 ## 1. Decisões (todas as recomendações do PO adotadas, "adotada pelo líder")
 
@@ -11,7 +12,7 @@
 |---|---|---|
 | 663 | Prazo de 15 dias corridos; `ops.app_config` chave `privacy.dsr_deadline_days=15`; confirmação do recebimento imediata (e-mail de abertura). `[PENDENTE JURIDICO]` | `deadline_at = opened_at + (config) days`, calculado na função de abertura. |
 | 664 | Extrato em JSON canônico `fastpro-dsr-extrato-<protocolo>.json` + visualização simples na interface. | Sem PDF. Esquema versionado (`schema_version`). |
-| 665 | Step-up por link/código no e-mail cadastrado, token efêmero de 15 min, exigido na abertura de acesso e eliminação. | Tabela `app.step_up_grant` (ou reuso da existente, se H-005/H-017 já a tiverem; confirmar no DEV). |
+| 665 | Step-up por link/código no e-mail cadastrado, token efêmero de 15 min, exigido na abertura de acesso e eliminação. | Tabela `app.step_up_grant` (confirmado no DEV em 19/11: não existe; criada pela migração 470000. `app.auth_challenge` tem o step-up ligado à sessão e validade fixa, por isso não é reaproveitada). |
 | 666 | Mensagens de chat mantidas, autor exibido como "Usuário excluído", ponteiro de perfil desfeito. `[PENDENTE JURIDICO]` | Passo do `private.dsr_anonymize_subject`. |
 | 667 | Avaliações mantidas; só se rompe a ligação ao cadastro do autor. `[PENDENTE JURIDICO]` | Passo do expurgo. |
 | 668 | IP já guardado só como HMAC; registros de conexão ficam retidos 6 meses para obrigação legal; não são expurgados pelo DSR imediato. `[PENDENTE JURIDICO]` | `audit_event` e logs de conexão intocados; nenhum prazo novo é criado aqui. |
@@ -21,7 +22,7 @@
 | 672 | Link do extrato válido 7 dias (168 h); depois o arquivo é expurgado. | `expires_at` em `app.dsr_export`; job de expurgo. |
 | 673 | Abertura assistida pelo DPO/admin (`POST /v1/admin/privacy/dsr-cases`), com `opened_by_operator_id` e `channel='dpo_externo'`. `[PENDENTE JURIDICO]` | Colunas `channel` e `opened_by_operator_id`; função `app.dsr_open_assisted`. |
 | 674 | Conta suspensa cautelarmente ao abrir eliminação. | O refino diz `account_state`; no modelo real a coluna é `app_user.status` (`ativo|bloqueado`). Decisão: ampliar o CHECK com `em_eliminacao` e `anonimizado` (seção 3.3). |
-| 675 | Três e-mails (abertura, conclusão com link, conclusão/indeferimento fundamentado). | Via `email_outbox` com `dedupe_key` e tipos novos no enum de código. Envio já está habilitado no projeto; o limite de taxa existente vale (sem chave liga/desliga). Em testes: Mailpit/mock, nunca provedor real. |
+| 675 | Três e-mails (abertura, conclusão com link, conclusão/indeferimento fundamentado). | Via `ops.email_outbox` com `dedupe_key` e tipos novos no enum de código. Envio já está habilitado no projeto; o limite de taxa existente vale (sem chave liga/desliga). Em testes: Mailpit/mock, nunca provedor real. |
 | 676 | Papéis: `DPO/Encarregado` e `Superadmin` decidem; suporte só vê status; auditor somente leitura. | Novas permissões em `admin_permission` (seção 6.3). |
 | 677 | Autoatendimento com step-up dispensa dupla aprovação; abertura manual do admin/DPO exige dupla aprovação (`approval_request`) antes de anonimizar. | Função de anonimização checa `origin` do caso. |
 | 678 | Eliminar `exact_point` e `address_text_enc`; manter `match_point` e `public_label`. `[PENDENTE JURIDICO]` | Passo do expurgo de pedidos. |
@@ -91,18 +92,18 @@ Constraints extras:
 
 - **`app.dsr_case_event`** (linha do tempo visível ao titular, só estados e IDs): `id`, `case_id` FK, `at`, `event` (`opened|assigned|status_changed|extract_ready|correction_applied|anonymized|closed|rejected|cancelled`), `from_status`, `to_status`, `actor_ref` (uuid, nulo para sistema), `detail` jsonb (apenas códigos). Append-only (trigger bloqueia UPDATE/DELETE). Existe porque `audit_event` é interno e não deve ser exposto ao titular (RC-07).
 - **`app.dsr_export`**: `id`, `case_id` UNIQUE FK, `storage_bucket` (`dsr-exports`, privado), `storage_path`, `sha256`, `signature` (HMAC do payload canônico com chave do servidor, nunca em log), `schema_version`, `size_bytes`, `generated_at`, `expires_at` (= generated_at + 7 dias, por `app_config privacy.dsr_export_ttl_days`), `purged_at`, `download_count`, `last_download_at`.
-- **`app.step_up_grant`** (se não existir): `id`, `user_id`, `purpose` (`dsr_open`), `token_hash` (SHA-256, nunca o token), `created_at`, `expires_at` (15 min), `consumed_at`. Uso único: consumido na abertura. Limite de emissão por usuário (3 por hora).
+- **`app.step_up_grant`** (não existe no DEV; criada pela migração 470000): `id`, `user_id`, `purpose` (`dsr_open`), `token_hash` (SHA-256, nunca o token), `created_at`, `expires_at` (15 min), `consumed_at`. Uso único: consumido na abertura. Limite de emissão por usuário (3 por hora).
 - **`ops.app_config`** (chaves novas, valores `[PROPOSTA]`): `privacy.dsr_deadline_days=15`, `privacy.dsr_export_ttl_days=7`, `privacy.dsr_export_min_interval_days=30`, `privacy.dsr_step_up_minutes=15`.
 
 ### 3.3 Alterações em tabelas existentes
 
-- `app.app_user.status`: ampliar CHECK de `{ativo, bloqueado}` para `{ativo, bloqueado, em_eliminacao, anonimizado}`. `em_eliminacao` bloqueia novos pedidos, aceites, compras e chat novo, mas permite login e consulta ao próprio caso. `anonimizado` bloqueia qualquer login. Confirmar no DEV todos os pontos que hoje testam `status='ativo'` (guards de elegibilidade da H-042/H-043 e RLS) para tratarem os novos valores como não ativos (teste T-DB-18).
+- `app.app_user.status`: ampliar CHECK (`app_user_status_check`, confirmado no DEV) de `{ativo, bloqueado}` para `{ativo, bloqueado, em_eliminacao, anonimizado}`. `em_eliminacao` bloqueia novos pedidos, aceites, compras e chat novo, mas permite login e consulta ao próprio caso. `anonimizado` bloqueia qualquer login. Confirmar no DEV todos os pontos que hoje testam `status='ativo'` (guards de elegibilidade da H-042/H-043 e RLS) para tratarem os novos valores como não ativos (teste T-DB-18).
 - A trigger de unicidade de e-mail permanece; o e-mail anonimizado é único por construção (UUID aleatório).
 - Nenhuma tabela de histórico de fotos (`media_access_log`/`media_access_daily`) é referenciada (CA-H111-17).
 
 ## 4. Funções SQL
 
-Padrão comum: `SECURITY DEFINER`, `SET search_path = ''`, todos os objetos qualificados por schema, `REVOKE ALL ... FROM PUBLIC, anon, authenticated`, `GRANT EXECUTE ... TO app_system`. Todas gravam `audit.audit_append` na mesma transação, com `case_id`, `subject_user_id`, `kind` e `actor_ref` (nunca dado pessoal ou conteúdo do extrato). Funções privadas ficam em schema `private` e só são chamadas por funções `app.*`.
+Padrão comum: `SECURITY DEFINER`, `SET search_path = ''`, todos os objetos qualificados por schema, `REVOKE ALL ... FROM PUBLIC, anon, authenticated`, `GRANT EXECUTE ... TO app_system`. Todas gravam `private.audit_append` (nome físico confirmado no DEV; a assinatura tem `p_actor_ref`, `p_actor_role`, `p_action`, `p_object_type`, `p_object_id`, `p_before_state`, `p_after_state`, `p_reason_code` e `p_correlation_id`) na mesma transação, com `case_id`, `subject_user_id`, `kind` e `actor_ref` (nunca dado pessoal ou conteúdo do extrato). Funções privadas ficam em schema `private` e só são chamadas por funções `app.*`.
 
 ### 4.1 Titular
 
@@ -112,7 +113,7 @@ Padrão comum: `SECURITY DEFINER`, `SET search_path = ''`, todos os objetos qual
   3. Idempotência: mesma `p_idempotency_key` + sujeito devolve o caso já criado (`deduplicated=true`).
   4. Acesso: se houver exportação concluída nos últimos 30 dias (Q682), não cria caso; devolve o caso/extrato vigente (se `expires_at` futuro) ou `carencia_ate` (código `dsr_carencia`).
   5. Eliminação: verifica `legal_hold` ativo para o sujeito e pedidos em andamento (RN-H111-03/08). Se houver hold: cria o caso já em `indeferido_total` com `legal_basis_note` padrão de retenção legal (CA-H111-10), sem tocar o usuário. Se houver pedido em andamento: recusa com `pedido_em_andamento` sem criar caso (o titular precisa encerrar/cancelar antes).
-  6. Insere o caso (violação do índice único vira `dsr_em_andamento` com o protocolo existente), grava evento `opened` e auditoria `dsr.case_opened`, enfileira e-mail 1 no `email_outbox`.
+  6. Insere o caso (violação do índice único vira `dsr_em_andamento` com o protocolo existente), grava evento `opened` e auditoria `dsr.case_opened`, enfileira e-mail 1 no `ops.email_outbox`.
   7. Eliminação: define `app_user.status='em_eliminacao'` (Q674) e revoga os aceites pendentes.
 - **`app.dsr_cancel(p_case uuid, p_subject uuid)`**: só o dono; só em `aberto` (CA-H111-14); outcome `cancelado_pelo_titular`; se era eliminação, devolve `app_user.status` de `em_eliminacao` para `ativo` (somente se estava `em_eliminacao` por este caso).
 - **`app.dsr_list_own(p_subject uuid, p_limit int, p_cursor ...)`** e **`app.dsr_get_own(p_subject uuid, p_case uuid)`**: filtram por `subject_user_id`; caso inexistente ou de outro titular retorna o mesmo "não encontrado" (CA-H111-16). Devolvem apenas protocolo, kind, status, datas, outcome, linha do tempo de `dsr_case_event` e metadados do extrato (sem `legal_basis_note` interna? Decisão: o titular vê a fundamentação do indeferimento, pois é direito de resposta clara, Art. 19; não vê notas internas de operador, que ficam em `request_details.internal`, nunca devolvido).
@@ -143,11 +144,11 @@ Padrão comum: `SECURITY DEFINER`, `SET search_path = ''`, todos os objetos qual
   8. Consentimentos: `contact_consent` marcado revogado com motivo `encerramento_conta` e data; `contact_reveal_log` intocado (RC-10).
   9. Sessões: `app.app_session` do sujeito revogadas; rascunhos e fotos em quarentena do usuário descartados; desafios e `step_up_grant` abertos invalidados.
   10. Fecha caso: `concluido`, `outcome='conta_anonimizada'`, `closed_at`, `legal_basis_note` com o resumo das retenções (pagamentos, auditoria, consentimentos, registros de conexão).
-  11. `audit_append('dsr.subject_anonymized')` e e-mail 3 (ver nota de destino abaixo).
+  11. `private.audit_append(...)` com a ação `dsr.subject_anonymized` e e-mail 3 (ver nota de destino abaixo).
   Nunca faz UPDATE/DELETE em `audit.audit_event` (RN-H111-04).
-  Nota de e-mail: o aviso final precisa ir ao endereço original, que é substituído no passo 3. A função copia o endereço original para o `email_outbox` (destinatário já resolvido, uso único) na mesma transação antes do passo 3; depois do envio o `email_outbox` segue a retenção própria e não é exportado. Isso é exceção documentada; ver DV-5.
+  Nota de e-mail: o aviso final precisa ir ao endereço original, que é substituído no passo 3. A função copia o endereço original para o `ops.email_outbox` (destinatário já resolvido, uso único) na mesma transação antes do passo 3; depois do envio o `ops.email_outbox` segue a retenção própria e não é exportado. Isso é exceção documentada; ver DV-5.
 
-### 4.4 Jobs idempotentes (fila de jobs da H-005; nome físico a confirmar)
+### 4.4 Jobs idempotentes (fila `ops.job`, nome físico confirmado no DEV)
 
 - **`dsr_process_auto`**: pega casos de eliminação `aberto` com `channel='titular'` e `status` sem pendência, marca `em_analise`, defere e executa a anonimização (autoatendimento, 677). Falha vira retry com backoff (máx. 3 tentativas, regra do projeto) e, esgotado, o caso fica `em_analise` com alerta ao DPO; nunca avança parcial.
 - **`dsr_auth_cleanup`**: após `anonimizado` e commit, chama a Admin API do Supabase Auth para banir/excluir o `auth_user_id` e invalidar tokens. Idempotente. Mesmo que atrase, o acesso já está barrado no banco por `status='anonimizado'` (T-API-12).
@@ -200,7 +201,7 @@ Download do extrato pelo operador não existe: o conteúdo só chega ao titular.
 - LGPD: `[PENDENTE JURIDICO]` 663, 666, 667, 668, 669, 670, 673, 678, 681 seguem como `[PROPOSTA]` até validação jurídica; o código deve ler prazos e rótulos de configuração, não de constantes, para ajuste sem migração onde possível.
 
 ### 6.3 Papéis e permissões
-Novas linhas em `admin_permission` e `admin_role_permission`: `dsr.read` (DPO, Superadmin, Auditor, Suporte em modo reduzido), `dsr.decide` (DPO, Superadmin), `dsr.open_assisted` (DPO, Superadmin). Criar o papel `dpo` em `admin_role` se ainda não existir (confirmar no DEV; a semente do mapa de `54 §1` pode já cobrir). MFA/step-up administrativo do `admin_staff` ativo é pré-requisito. O próprio operador não pode decidir caso em que ele é o titular (checagem `subject_user_id <> p_actor`).
+Novas linhas em `admin_permission` e `admin_role_permission`: `dsr.read` (DPO, Superadmin, Auditor, Suporte em modo reduzido), `dsr.decide` (DPO, Superadmin), `dsr.open_assisted` (DPO, Superadmin). Criar a linha `dpo` em `app.admin_role` (a chave é `code`, não `id`; confirmado no DEV em 19/11: não existe. Já existem `auditor`, `financeiro`, `governanca_dados`, `moderador`, `superadmin`, `suporte` e `verificacao`). MFA/step-up administrativo do `admin_staff` ativo é pré-requisito. O próprio operador não pode decidir caso em que ele é o titular (checagem `subject_user_id <> p_actor`).
 
 ## 7. Matriz de testes
 
@@ -255,7 +256,7 @@ Camadas: `db` (testes SQL do `db:test`), `unit` (domínio/serviço), `api` (rota
 | T-API-11 | api | Eliminação fim a fim (autoatendimento): job processa, e-mail original não autentica, extrato não é gerado, auth cleanup chamado | CA-09 |
 | T-API-12 | api | Com `dsr_auth_cleanup` atrasado/falho, login ainda é barrado por `status='anonimizado'`; reexecução idempotente | D-A5 |
 | T-API-13 | api | Falha do provedor de pagamento no cancelamento não desfaz a anonimização e cria pendência | 4.4 |
-| T-API-14 | api | E-mails: abertura, conclusão com link e conclusão/indeferimento via `email_outbox` com `dedupe_key`; captura em Mailpit/mock; nenhum envio real | 675 |
+| T-API-14 | api | E-mails: abertura, conclusão com link e conclusão/indeferimento via `ops.email_outbox` com `dedupe_key`; captura em Mailpit/mock; nenhum envio real | 675 |
 | T-API-15 | api | Correção: campos fora da allowlist recusados; troca de e-mail só efetiva após revalidação; documento de profissional cria item na fila H-039 | 5.4 |
 | T-API-16 | api | Abertura assistida pelo DPO registra canal e operador; anonimização assistida exige dupla aprovação | 673/677 |
 | T-ST-01 | static | Nenhum símbolo `media_access_log`/`media_access_daily` nem rotina de backup/exportação de banco no código de H-111 | CA-17, RN-13/16 |
@@ -277,10 +278,11 @@ Prefixo livre depois de `20261113430000` (último existente: `20261113430000_req
 | 5 | `20261113480000_privacy_create_dsr_extract.sql` | `private.dsr_build_extract`, `dsr_generate_extract` |
 | 6 | `20261113490000_privacy_create_dsr_anonymize.sql` | `private.dsr_anonymize_subject`, passos de chat, avaliação, pedidos, consentimento, sessões |
 | 7 | `20261113500000_privacy_create_dsr_admin_functions.sql` | funções administrativas, permissões e papel `dpo` (seed idempotente) |
-| 8 | `20261113510000_privacy_create_dsr_jobs.sql` | registro dos jobs e tipos de e-mail no `email_outbox` |
+| 8 | `20261113510000_privacy_create_dsr_jobs.sql` | registro dos jobs e tipos de e-mail no `ops.email_outbox` |
 
 `.down.sql`: remove em ordem inversa; o `down` do passo 3 só é permitido se não houver usuário `anonimizado` (senão falha com mensagem clara, pois reverter perderia estado irreversível). Os testes de banco (`T-DB-*`) acompanham cada migração. Ordem de implementação sugerida: 1, 2, 3, 4 (com T-DB-01 a 14), 5, 6 (T-DB-15 a 26), 7, 8, depois API e interface do titular e do console.
 
+Prefixos já usados: passo 1 = `20261113460000` (fatia 1, aplicada no DEV); passo 2 = `20261113470000` (fatia 2, arquivo `supabase/migrations/20261113470000_privacy_create_step_up_and_export.sql`). Os passos seguintes seguem a ordem da tabela, com prefixos a partir de `20261113480000` (a tabela acima mostra o plano original).
 Se alguma migração de outra Issue ocupar um dos prefixos, renumerar a mais nova mantendo a ordem relativa. Nenhum dado de demonstração é criado; fixtures de teste ficam nos próprios testes.
 
 ## 9. Riscos
@@ -306,8 +308,8 @@ Nenhuma bloqueia o desenvolvimento em DEV; o líder adota a recomendação e seg
 - **DV-2 (técnica, líder adota).** Colisão de nomes: o refino usa `app_user.state`/`account_state`; o modelo real usa `status`. Adotado `status` (seção 3.3). Conferir também a lista de `kind` fora de escopo (`bloqueio`, `confirmacao`).
 - **DV-3 (decisão do líder, possível veto do dono).** Eliminação por autoatendimento sem prazo de arrependimento (PO). Alternativa: carência de 24 h com cancelamento por e-mail. Recomendação do arquiteto: manter sem carência em DEV e reavaliar antes de produção. Impacto: só segurança de uso real; reversível por configuração futura.
 - **DV-4 (técnica, líder adota).** Cancelamento no Mercado Pago é chamada externa de pagamento. Em DEV usa a chave de teste do `.env.local` já autorizada; nos testes automáticos é fake. Sem decisão pendente com o dono.
-- **DV-5 (técnica, líder adota).** O aviso final de eliminação vai ao endereço original, copiado para o `email_outbox` antes da anonimização (4.3). Alternativa: não enviar aviso final de eliminação e mostrar só na tela até a sessão cair. Recomendado: enviar uma única vez; o `email_outbox` não entra no extrato nem se reutiliza.
-- **DV-6 (técnica, DEV confirma).** Nomes físicos e existência de: tabela de step-up já existente, fila de jobs da H-005, `legal_hold.subject_ref` (formato), tabelas de chat, `review`, `billing.subscription` (campo de modo/cancelamento), papel `dpo`. Se H-033 (QA no quadro) ainda não estiver `Concluído` quando a H-111 for para QA, `contact_consent` e `contact_reveal_log` já existem no DEV (migração `20261113250000` aplicada), mas a aceitação de H-111 depende de H-033 não ser revertida.
+- **DV-5 (técnica, líder adota).** O aviso final de eliminação vai ao endereço original, copiado para o `ops.email_outbox` antes da anonimização (4.3). Alternativa: não enviar aviso final de eliminação e mostrar só na tela até a sessão cair. Recomendado: enviar uma única vez; o `ops.email_outbox` não entra no extrato nem se reutiliza.
+- **DV-6 (técnica, DEV confirma).** Resultado da confirmação no DEV em 19/11 (leitura somente): não havia tabela de step-up própria (criada na 470000); `app.auth_challenge` existe, mas o step-up dela é ligado à sessão; a fila de jobs é `ops.job` e o e-mail de saída é `ops.email_outbox`; `legal_hold` não tem `subject_ref`, e sim `subject_type` (`user` ou `request`) e `subject_id`; `app.app_session` existe; não há papel de banco `dpo` (é linha de `app.admin_role`, chave `code`); a função de auditoria é `private.audit_append`. Ainda por confirmar: tabelas de chat, `review`, `service_request` e o campo de cancelamento de `billing.subscription` (fatias 3 em diante). Se H-033 (QA no quadro) ainda não estiver `Concluído` quando a H-111 for para QA, `contact_consent` e `contact_reveal_log` já existem no DEV (migração `20261113250000` aplicada), mas a aceitação de H-111 depende de H-033 não ser revertida.
 - **DV-7 (negócio, líder adota).** Troca de e-mail por correção reaproveita o fluxo de verificação existente; se esse fluxo não existir como serviço reutilizável, a correção de e-mail vira `indeferido_parcial` com orientação e entra como débito registrado, não como expansão desta história.
 
 ## 11. Próxima etapa
