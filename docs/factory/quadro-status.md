@@ -1,6 +1,6 @@
 # Quadro da fábrica (fonte da verdade local)
 
-Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado de tempos em tempos (não a cada passo). Atualizado em 2026-11-13 12:30 UTC (local).
+Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado de tempos em tempos (não a cada passo). Atualizado em 2026-11-19 (local).
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
@@ -71,40 +71,35 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 | #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 
-## Product Owner (5)
+## Product Owner (3)
 
 | Issue | Título |
 |---|---|
-| #120 | [E13] Direitos do titular (dsr_case) |
 | #131 | [E14] App Expo base |
 | #123 | [E13] Runbook de incidente e reconciliação |
 | #68 | [E6] Descoberta de pedidos elegíveis |
+
+## Arquitetura (2)
+
+| Issue | Título |
+|---|---|
 | #51 | [E4] Certificações para atividades regulamentadas |
+| #120 | [E13] Direitos do titular (dsr_case) |
 
-## Arquitetura (0)
+## Desenvolvimento (0)
+
+| Issue | Título |
+|---|---|
+
+## Code Review (0)
 
 | Issue | Título |
 |---|---|
 
-## Desenvolvimento (1)
+## QA (0)
 
 | Issue | Título |
 |---|---|
-| #55 | [E4] Guarda de elegibilidade na API e no banco |
-
-## Code Review (1)
-
-| Issue | Título |
-|---|---|
-| #37 | [E2] Cobertura booleana sem contagem |
-
-## QA (3)
-
-| Issue | Título |
-|---|---|
-| #54 | [E4] Estado da verificação visível |
-| #47 | [E3] Painel do cliente na sessão do dono |
-| #56 | [E4] Perfil público e selo verificado |
 
 ## Concluído (70)
 
@@ -189,9 +184,14 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #128 | [E15] Teste de restauração de backup |
 | #145 | [E15] db:test: media_asset fora do backup sem decisão registrada |
 
-## Aguardando aprovação (0)
+## Aguardando aprovação (5)
 
 | Issue | Título |
 |---|---|
+| #54 | [E4] Estado da verificação visível |
+| #47 | [E3] Painel do cliente na sessão do dono |
+| #56 | [E4] Perfil público e selo verificado |
+| #37 | [E2] Cobertura booleana sem contagem |
+| #55 | [E4] Guarda de elegibilidade na API e no banco |
 
 ## Bloqueado (0)
