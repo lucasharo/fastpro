@@ -4,7 +4,7 @@ Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (62)
+## Backlog (59)
 
 | Issue | Título |
 |---|---|
@@ -67,19 +67,22 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #135 | [E6] Aviso “apenas conecta” nos termos |
 | #136 | [E7] Mensagem automática do aceite |
 | #137 | [E11] Canal “no site” |
-| #146 | [E15] db:test: T-H018-13 depende de semente ausente no DEV |
-| #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
-| #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 
-## Product Owner (3)
+## Product Owner (5)
 
 | Issue | Título |
 |---|---|
 | #131 | [E14] App Expo base |
 | #123 | [E13] Runbook de incidente e reconciliação |
-| #68 | [E6] Descoberta de pedidos elegíveis |
+| #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
+| #146 | [E15] db:test: T-H018-13 depende de semente ausente no DEV |
+| #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 
-## Arquitetura (0)
+## Arquitetura (1)
+
+| Issue | Título |
+|---|---|
+| #68 | [E6] Descoberta de pedidos elegíveis |
 
 ## Desenvolvimento (2)
 
