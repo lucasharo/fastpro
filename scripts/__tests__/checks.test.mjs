@@ -95,6 +95,36 @@ test('check-hex: aceita variaveis, transparent/currentColor e palavras que nao s
     check('check-hex.mjs', { [path]: content }, false);
 });
 
+test('check-hex: referencia numerica de 3 ou 4 digitos em comentario passa (CA-149-02)', () => {
+  const ok = {
+    'apps/web/src/a.ts': '// (#105)\n',
+    'apps/web/src/b.ts': '/** E3 (#141): limite de reducoes. */\n',
+    'apps/web/src/c.ts': '// Issue #1234\n',
+    'apps/web/src/d.ts': ' * continuacao de bloco comentado (#140)\n',
+    'apps/web/src/e.ts': 'const x = 1; /* ref (#118) */\n',
+  };
+  for (const [path, content] of Object.entries(ok))
+    check('check-hex.mjs', { [path]: content }, false);
+});
+
+test('check-hex: hex real continua reprovado, inclusive ao lado de comentario (CA-149-02)', () => {
+  const bad = {
+    'apps/web/src/a.css': ['a { color: #fff; }\n', /a\.css:1 cor literal \(hex\)/],
+    'apps/web/src/b.ts': ['// cor #a1b2c3\n', /b\.ts:1 cor literal \(hex\)/],
+    'apps/web/src/c.ts': ["const c = '#123';\n", /c\.ts:1 cor literal \(hex\)/],
+    'apps/web/src/d.ts': ['const c = "#12345678";\n', /d\.ts:1 cor literal \(hex\)/],
+    'apps/web/src/e.ts': ["const c = '#1234';\n", /e\.ts:1 cor literal \(hex\)/],
+    'apps/web/src/f.ts': ['// (#123456)\n', /f\.ts:1 cor literal \(hex\)/],
+    'apps/web/src/g.ts': ['const x = 1; // #123 e #fff\n', /g\.ts:1 cor literal \(hex\)/],
+    // Marcador dentro de string nao torna o resto um comentario.
+    'apps/web/src/h.ts': ["const u = 'https://x.io' + '#123';\n", /h\.ts:1 cor literal \(hex\)/],
+    'apps/web/src/i.ts': ["const s = '// #123';\n", /i\.ts:1 cor literal \(hex\)/],
+  };
+  for (const [path, [content, match]] of Object.entries(bad)) {
+    check('check-hex.mjs', { [path]: content }, true, match);
+  }
+});
+
 test('check-logs: reprova console.*, campos fora da allowlist e interpolacao sensivel', () => {
   const bad = [
     ["console.log('x');\n", /console/],
