@@ -3,7 +3,15 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/.next/**', '**/.turbo/**', '**/node_modules/**', '**/coverage/**'],
+    // Saida de cobertura gerada: so na raiz ou em apps/x e packages/x (nao em src/coverage).
+    ignores: [
+      '**/dist/**',
+      '**/.next/**',
+      '**/.turbo/**',
+      '**/node_modules/**',
+      'coverage/**',
+      '*/*/coverage/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
