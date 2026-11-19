@@ -14,8 +14,8 @@ import { PgChallengeStore, requestChallenge, challengeHmacHex } from '../dist/in
 const sha = (s) => createHash('sha256').update(s).digest('hex');
 const rnd = () => randomBytes(12).toString('hex');
 const iso = (ms) => new Date(ms).toISOString();
-const PEPPER_EMAIL = 'pepper-email-h13-' + rnd();
-const PEPPER_CODE = 'pepper-code-h13-' + rnd();
+const PEPPER_EMAIL = 'dummy-pepper-email-h13-' + rnd();
+const PEPPER_CODE = 'dummy-pepper-code-h13-' + rnd();
 const CODIGO = '654321';
 const SEGREDOS = { key: Buffer.alloc(32, 7), pepperEmail: PEPPER_EMAIL, pepperCode: PEPPER_CODE };
 const LIMITE = 50;

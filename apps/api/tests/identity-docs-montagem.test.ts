@@ -18,7 +18,7 @@ const COMPLETO: Record<string, string> = {
   IDENTITY_DOCS_ENABLED: '1',
   DATABASE_URL_APP_SYSTEM: 'postgres://usuario:senha@host/db',
   SUPABASE_URL: 'https://projeto-de-teste.supabase.co',
-  SUPABASE_SECRET_KEY: 'chave-de-servico-de-teste',
+  SUPABASE_SECRET_KEY: 'dummy-chave-de-servico-de-teste',
   DRAFT_IP_HMAC_KEY: 'k'.repeat(32),
   SITE_URL: 'https://fastpro.example',
 };

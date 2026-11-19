@@ -562,7 +562,7 @@ test('T-H018-13 conflito por nome: grupo manual com nome da semente (outra caixa
   // compartilhado, entao nada aqui depende de contagem global nem do conteudo da semente oficial.
   const hex = randomUUID().slice(0, 8);
   const tag = `T146-${hex}`;
-  const sok1Key = `g99-t146-${hex}-sok1`;
+  const idSok1 = `g99-t146-${hex}-sok1`;
   // Semente sintetica minima (2 grupos, 3 servicos), na forma aceita por private.catalog_seed_validate.
   // O grupo g98 entra em conflito de nome com o grupo manual; o grupo g99 nao tem conflito.
   const TEST_SEED = {
@@ -583,7 +583,7 @@ test('T-H018-13 conflito por nome: grupo manual com nome da semente (outra caixa
         synonyms: [],
       },
       {
-        key: sok1Key, group_key: 'g99', name: `Servico regular ${tag}`,
+        key: idSok1, group_key: 'g99', name: `Servico regular ${tag}`,
         modality: 'ambos', regulated: false, council_body: null, sensitive: false, active: true,
         synonyms: ['termo regular um', 'termo regular dois'],
       },
@@ -626,7 +626,7 @@ test('T-H018-13 conflito por nome: grupo manual com nome da semente (outra caixa
     const servicos = (
       await client.query('select seed_key from app.service where name ilike $1', [`%${tag}%`])
     ).rows.map((x) => x.seed_key);
-    assert.deepEqual(servicos, [sok1Key], 'so o servico sem conflito entra');
+    assert.deepEqual(servicos, [idSok1], 'so o servico sem conflito entra');
 
     const run = (
       await client.query('select audit_event_id from app.catalog_seed_run where id = $1', [r.run_id])

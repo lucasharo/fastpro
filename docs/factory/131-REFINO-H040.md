@@ -126,7 +126,7 @@ Testes de banco usam dados sintéticos com marcador único, em transação desfe
 - **CA-H040-01 (retenção).** Segundo cadastro com HMAC de perfil `pendente`, `em_revisao`, `aprovada` ou `suspensa` fica `retida_duplicidade`. Prova: dbtest com quatro originais.
 - **CA-H040-02 (recusado libera).** Cadastro com HMAC de perfil `recusada` fica `pendente`. Prova: dbtest.
 - **CA-H040-03 (primeiro intacto).** O perfil original mantém o status, `suspended_at` e o HMAC após a retenção. Prova: estado antes e depois.
-- **CA-H040-04 (corrida).** Dois cadastros simultâneos com o mesmo HMAC: exatamente um fica `pendente` (ou o original) e o outro `retida_duplicidade`; nenhum erro de servidor. Prova: teste de concorrência com duas conexões.
+- **CA-H040-04 (corrida).** Dois cadastros simultâneos com o mesmo HMAC, exatamente um fica `pendente` (ou o original) e o outro `retida_duplicidade`; nenhum erro de servidor. Prova: teste de concorrência com duas conexões.
 - **CA-H040-05 (aprovação com original vivo).** Aprovar um retido enquanto o original está vivo é recusado com erro uniforme; nenhum estado muda. Prova: dbtest (se pergunta 477 = a).
 - **CA-H040-06 (liberação motivada).** Retido vai a `aprovada` ou `recusada` só com motivo; a transição sem motivo é recusada. Prova: casos positivos e negativos.
 - **CA-H040-07 (sem efeito colateral).** Retenção não suspende, não bloqueia o perfil e não altera pedidos existentes. Prova: estado antes e depois (como CA-H039-13).

@@ -8,20 +8,20 @@ globalThis.fetch = () => {
 import { describe, expect, it } from 'vitest';
 import { montarProfissional, PROFISSIONAL_ENV_OBRIGATORIAS } from '../src/professional-composicao.js';
 
-const SEGREDO_SINTETICO = 'segredo-sintetico-nao-real-0123456789';
+const SEGREDO_SINTETICO = 'dummy-segredo-sintetico-0123456789';
 
 const ENV_COMPLETO: Record<string, string> = {
   DATABASE_URL_APP_SYSTEM: 'postgres://app_system:senha@127.0.0.1:1/teste',
   SUPABASE_URL: 'https://projeto-sintetico.example.test',
-  SUPABASE_SECRET_KEY: SEGREDO_SINTETICO,
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'publicavel-sintetica',
+  SUPABASE_SECRET_KEY: 'dummy-segredo-sintetico-0123456789',
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'dummy-publicavel-sintetica',
   PEPPER_EMAIL_HMAC: 'p'.repeat(32),
   PEPPER_IP_HMAC: 'i'.repeat(32),
   SITE_URL: 'https://app.example.test',
   APP_ENV: 'test',
   EMAIL_PROVIDER: 'resend',
   EMAIL_FROM: 'onboarding@resend.dev',
-  RESEND_API_KEY: 'chave-sintetica-nao-real',
+  RESEND_API_KEY: 'dummy-chave-sintetica',
   RESEND_ACCOUNT_RECIPIENT: 'conta.sintetica@example.test',
   RESEND_VERIFIED_DOMAIN: '',
 };

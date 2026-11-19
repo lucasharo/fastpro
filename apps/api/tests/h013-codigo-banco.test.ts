@@ -24,9 +24,9 @@ const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 const rnd = () => randomBytes(12).toString('hex');
 const SEGREDO = randomBytes(32).toString('base64url'); // cookie do rascunho (43 caracteres)
 const SEGREDO_IDENT = randomBytes(32).toString('base64url');
-const PEPPER_EMAIL = 'pepper-email-h13-http-' + rnd();
-const PEPPER_CODE = 'pepper-code-h13-http-' + rnd();
-const PEPPER_IP = 'pepper-ip-h13-http-' + rnd();
+const PEPPER_EMAIL = 'dummy-pepper-email-h13-http-' + rnd();
+const PEPPER_CODE = 'dummy-pepper-code-h13-http-' + rnd();
+const PEPPER_IP = 'dummy-pepper-ip-h13-http-' + rnd();
 const CODIGO = '123456';
 const EMAIL = `cliente-${rnd()}@example.test`;
 const IP_LOOPBACK = '127.0.0.1';

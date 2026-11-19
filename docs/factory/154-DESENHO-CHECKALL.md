@@ -94,10 +94,10 @@ G5a (verificador, `scripts/check-secrets.mjs`):
 
 G5b (código/arquivos, valores sentinela, sem mudar semântica do teste):
 - `apps/api/tests/h013-codigo-banco.test.ts:27-29` e `packages/db/tests/h013-provas-banco.dbtest.mjs:17-18`: prefixo `'pepper-...'` para `'dummy-pepper-...'`.
-- `apps/api/tests/h097-ca08-ponta-a-ponta.test.ts:87`: `RESEND_API_KEY: CHAVE_API` para valor literal `'dummy-chave-api'` (a constante é referência a identificador; o scanner não distingue de segredo sem `dummy`).
+- `apps/api/tests/h097-ca08-ponta-a-ponta.test.ts:87`: `RESEND_API_KEY` recebe hoje a constante `CHAVE_API`; trocar por valor literal `'dummy-chave-api'` (referência a identificador não é distinguida de segredo sem `dummy`).
 - `apps/api/tests/identity-docs-montagem.test.ts:21` e `professional-composicao.test.ts:16-17,24`: valores `dummy-...` (SUPABASE_SECRET_KEY, NEXT_PUBLIC_..._PUBLISHABLE_KEY, RESEND_API_KEY).
-- `packages/email/tests/professional-mail.test.ts:125,153`: chave para `dummy-chave-sintetica` e a asserção do cabeçalho passa a template `` `Bearer ${CHAVE}` `` (o literal `Bearer dummy-chave-sintetica` teria 21 caracteres e ainda dispararia a regra Bearer >= 20).
-- `docs/factory/131-REFINO-H040.md:129`: reescrever "com o mesmo HMAC: exatamente um" para "com o mesmo HMAC, exatamente um" (prosa com dois-pontos virou par chave/valor).
+- `packages/email/tests/professional-mail.test.ts:125,153`: chave para `dummy-chave-sintetica` e a asserção do cabeçalho passa a template `` `Bearer ${CHAVE}` `` (um literal com o cabeçalho inteiro teria mais de 20 caracteres e ainda dispararia a regra de cabeçalho Bearer).
+- `docs/factory/131-REFINO-H040.md:129`: trocar os dois-pontos depois de HMAC por vírgula no CA-H040-04 (o trecho virou par chave/valor).
 - `112-TRIAGEM...md:207` e `150-REFINO...md:306`: nenhuma edição (resolvidos por G5a item 5).
 
 ### G6 ESLint: C
@@ -143,7 +143,7 @@ Novos casos em `scripts/__tests__/checks.test.mjs` (padrão existente: `fixture(
 | CA-149-02 | hex | `// (#105)` e `/** E3 (#141): ... */` em `.ts`; `// Issue #1234` | `color: #fff`; `// cor #a1b2c3`; `const c = '#123'` (fora de comentário); `#12345678` |
 | CA-149-03 | boundaries | `packages/domain/tests/x.test.ts` com `import 'node:fs'` | `packages/domain/src/x.ts` com `node:fs`; `packages/domain/tests/x.test.ts` importando `apps/api` |
 | CA-149-04 | logs | `redirect('/console')`; `` `/console/${id}` ``; `import './admin-console-route.js'`; `'../console-state'` | `console.log(x)`; `const c = console`; `` `${console.log(1)}` ``; `x ? 0 :-console.log(1)`; `globalThis.console.log(1)` |
-| CA-149-05 | secrets | `service_role` em `packages/db/tests/a.dbtest.mjs` e nos 4 arquivos exatos; `X_PATH = '/v1/a/password'`; `TOKEN_RE = /^[a-z]{43}$/`; `key_hmac = any($1::text[])`; `dedupe_key = 'a-1'`; `P: undefined`; `postgres://usuario:senha@host/db`; valores `dummy-...` | `service_role` em `apps/api/src/outro.ts`; `SUPABASE_SECRET_KEY = 'abcdef123456'` em `packages/db/tests/`; `X_PATH = 'abc12345secret'` (sem `/`); `postgres://u:s3cr3tReal@h/db`; chave privada, JWT, `sb_secret_...`, `Bearer` com 20+ caracteres literais |
+| CA-149-05 | secrets | `service_role` em `packages/db/tests/a.dbtest.mjs` e nos 4 arquivos exatos; `PASSWORD_PATH = '/v1/a/password'`; `TOKEN_RE = /^[a-z]{43}$/`; `key_hmac = any($1::text[])`; `dedupe_key = 'a-1'`; `P: undefined`; `postgres://usuario:senha@host/db`; valores `dummy-...` | `service_role` em `apps/api/src/outro.ts`; `SUPABASE_SECRET_KEY` com valor fixo de 12 caracteres com digito em `packages/db/tests/`; `PASSWORD_PATH` com valor sem barra (12 caracteres com digito); URL de banco com senha real (usuario `u`, senha `s3cr3tReal`, host `h`); chave privada, JWT, `sb_secret_...`, `Bearer` com 20+ caracteres literais |
 | CA-149-01 | typography | `codigo.css` com tokens | `font-family: system-ui`; `font-weight: 600` (testes existentes preservados) |
 | CA-149-07 | eslint | `pnpm eslint packages/domain/src/coverage packages/domain/tests/coverage-*.test.ts` = 0 | pasta `apps/x/coverage/` gerada continua ignorada |
 | CA-149-06/08 | agregado | `corepack pnpm check:all` = 0; `pnpm test:scripts` = 0; `pnpm lint`; `pnpm typecheck` | |

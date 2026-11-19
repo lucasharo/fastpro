@@ -41,7 +41,6 @@ const T0 = Date.UTC(2099, 0, 1, 12);
 const CHAVE = Buffer.alloc(32, 5);
 const PIMENTA_EMAIL = randomBytes(24).toString('base64url');
 const PIMENTA_CODIGO = randomBytes(24).toString('base64url');
-const CHAVE_API = 'chave-ficticia-ca08-0001';
 
 /** Transporte HTTP falso: conta cada chamada a API do provedor e responde 200 com id. */
 class TransporteContado implements HttpTransport {
@@ -84,7 +83,7 @@ function envTeste(comConta: boolean): EmailEnv {
     APP_ENV: 'local',
     EMAIL_PROVIDER: 'resend',
     EMAIL_FROM: 'onboarding@resend.dev',
-    RESEND_API_KEY: CHAVE_API,
+    RESEND_API_KEY: 'dummy-chave-api',
     ...(comConta ? { RESEND_ACCOUNT_RECIPIENT: CONTA } : {}),
   };
 }

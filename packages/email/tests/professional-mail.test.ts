@@ -118,11 +118,13 @@ function transporteFalso(status = 200, corpo = JSON.stringify({ id: 'msg-sinteti
   };
 }
 
+const CHAVE = 'dummy-chave-sintetica';
+
 const ENV_TESTE = {
   APP_ENV: 'test',
   EMAIL_PROVIDER: 'resend',
   EMAIL_FROM: 'onboarding@resend.dev',
-  RESEND_API_KEY: 'chave-sintetica-nao-real',
+  RESEND_API_KEY: CHAVE,
   RESEND_ACCOUNT_RECIPIENT: 'conta.sintetica@example.test',
   RESEND_VERIFIED_DOMAIN: '',
 };
@@ -150,7 +152,7 @@ describe('envio pelo provedor do login (decisao 55 de 11-DECISOES.md)', () => {
     expect(eventos).toEqual([]);
     expect(pedidos).toHaveLength(1);
     expect(pedidos[0]?.url).toBe('https://api.resend.com/emails');
-    expect(pedidos[0]?.headers.Authorization).toBe('Bearer chave-sintetica-nao-real');
+    expect(pedidos[0]?.headers.Authorization).toBe(`Bearer ${CHAVE}`);
     const corpo = JSON.parse(pedidos[0]!.body) as { to: string; subject: string; text: string };
     expect(corpo.to).toBe('conta.sintetica@example.test');
     expect(corpo.subject).toBe('Confirme seu e-mail no FastPro');
