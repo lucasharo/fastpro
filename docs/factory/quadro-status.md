@@ -95,11 +95,10 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 |---|---|
 | #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 
-## QA (1)
+## QA (0)
 
 | Issue | Título |
 |---|---|
-| #51 | [E4] Certificações para atividades regulamentadas |
 
 ## Concluído (75)
 
@@ -189,6 +188,10 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #128 | [E15] Teste de restauração de backup |
 | #145 | [E15] db:test: media_asset fora do backup sem decisão registrada |
 
-## Aguardando aprovação (0)
+## Aguardando aprovação (1)
+
+| Issue | Título |
+|---|---|
+| #51 | [E4] Certificações para atividades regulamentadas |
 
 ## Bloqueado (0)
