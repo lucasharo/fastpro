@@ -98,6 +98,8 @@ Constraints extras:
 ### 3.3 Alterações em tabelas existentes
 
 - `app.app_user.status`: ampliar CHECK (`app_user_status_check`, confirmado no DEV) de `{ativo, bloqueado}` para `{ativo, bloqueado, em_eliminacao, anonimizado}`. `em_eliminacao` bloqueia novos pedidos, aceites, compras e chat novo, mas permite login e consulta ao próprio caso. `anonimizado` bloqueia qualquer login. Confirmar no DEV todos os pontos que hoje testam `status='ativo'` (guards de elegibilidade da H-042/H-043 e RLS) para tratarem os novos valores como não ativos (teste T-DB-18).
+Ajuste da fatia 3 (19/11, conferido no DEV; migração `20261113480000`): a constraint existente `app_user_anonimizado_consistente` (retenção) aceita `retention_state` nulo quando `anonymized_at` está preenchido, porque a expressão vira NULL e o CHECK passa. Sozinha, ela não garante a cadeia. Por isso o CHECK novo `app_user_status_anonimizado_consistente` exige, para `status = 'anonimizado'`, `anonymized_at` não nulo e `retention_state is not distinct from 'expurgado'`. A constraint existente não foi alterada (fora do escopo). A função de anonimização (fatia 6, §4.3 passo 3) deve gravar `status`, `anonymized_at` e `retention_state` na mesma instrução.
+Guards (conferido no DEV e no código): os de elegibilidade e RLS usam `status = 'ativo'` (forma positiva), então os valores novos contam como não ativos. Exceção encontrada: a verificação de login em `packages/db/src/challenge-consume.ts` (`conta.status === 'bloqueado'`, por negação) deixa passar `em_eliminacao` e `anonimizado`. Não é desta fatia (arquivo de outra área); precisa ser corrigida antes da fatia que grava `em_eliminacao` (fatia 4, `dsr_open`).
 - A trigger de unicidade de e-mail permanece; o e-mail anonimizado é único por construção (UUID aleatório).
 - Nenhuma tabela de histórico de fotos (`media_access_log`/`media_access_daily`) é referenciada (CA-H111-17).
 
@@ -282,7 +284,7 @@ Prefixo livre depois de `20261113430000` (último existente: `20261113430000_req
 
 `.down.sql`: remove em ordem inversa; o `down` do passo 3 só é permitido se não houver usuário `anonimizado` (senão falha com mensagem clara, pois reverter perderia estado irreversível). Os testes de banco (`T-DB-*`) acompanham cada migração. Ordem de implementação sugerida: 1, 2, 3, 4 (com T-DB-01 a 14), 5, 6 (T-DB-15 a 26), 7, 8, depois API e interface do titular e do console.
 
-Prefixos já usados: passo 1 = `20261113460000` (fatia 1, aplicada no DEV); passo 2 = `20261113470000` (fatia 2, arquivo `supabase/migrations/20261113470000_privacy_create_step_up_and_export.sql`). Os passos seguintes seguem a ordem da tabela, com prefixos a partir de `20261113480000` (a tabela acima mostra o plano original).
+Prefixos já usados: passo 1 = `20261113460000` (fatia 1, aplicada no DEV); passo 2 = `20261113470000` (fatia 2, aplicada no DEV); passo 3 = `20261113480000` (fatia 3, `supabase/migrations/20261113480000_privacy_expand_app_user_status.sql`, aplicada no DEV em 19/11 após ajuste do CHECK de coerência, ver §3.3). Os passos seguintes seguem a ordem da tabela, com prefixos a partir de `20261113480000` (a tabela acima mostra o plano original).
 Se alguma migração de outra Issue ocupar um dos prefixos, renumerar a mais nova mantendo a ordem relativa. Nenhum dado de demonstração é criado; fixtures de teste ficam nos próprios testes.
 
 ## 9. Riscos
