@@ -2,7 +2,7 @@
 // Storage: as implementacoes ficam em @fastpro/db (packages/db/src/identity-docs*.ts). Tres portas de Storage,
 // separadas por finalidade. A porta do bucket final NAO tem leitura (CA-06, CA-19). IdentityDocReaderPort so
 // existe como interface: a #52 cria a implementacao (CA-19).
-import type { IdentityDocDeclaredType, IdentityDocRatePolicy } from './constants.js';
+import type { IdentityDocDeclaredType, IdentityDocKind, IdentityDocRatePolicy } from './constants.js';
 
 /** Staging (`identity-incoming`, chave `s/<uuid>`). Nunca usado por rota de leitura. */
 export interface IdentityDocStagingPort {
@@ -38,7 +38,21 @@ export type IdentityDocIssueCode =
   | 'email_unverified'
   | 'state_denied'
   | 'doc_limit'
-  | 'cap';
+  | 'cap'
+  | 'service_denied'
+  | 'limite_certificacao'
+  | 'client_upload_em_uso';
+
+/** Emissao de certificacao (H-038): mesma cota e mesmo pipeline, com o servico regulamentado vinculado. */
+export interface IdentityDocIssueCertInput {
+  readonly userId: string;
+  readonly clientUploadId: string;
+  readonly serviceId: string;
+  readonly declaredType: IdentityDocDeclaredType;
+  readonly declaredBytes: number;
+  readonly nowMs: number;
+  readonly globalBytesCap: number;
+}
 
 export interface IdentityDocIssueInput {
   readonly userId: string;
@@ -68,10 +82,17 @@ export type IdentityDocDeleteCode = 'deleted' | 'not_found' | 'already_analyzed'
 
 export interface IdentityDocListItem {
   readonly id: string;
+  /** Tipo do arquivo (imagem ou pdf), como na Issue 50. */
   readonly kind: 'imagem' | 'pdf';
+  /** Tipo do documento (H-038): identidade ou certificacao. */
+  readonly documentKind: IdentityDocKind;
+  /** Servico da certificacao; null para identidade. */
+  readonly serviceId: string | null;
   readonly status: 'em_envio' | 'recebido';
   readonly receivedAt: string | null;
   readonly deletable: boolean;
+  /** Analisado pela Verificacao (derivado: o mesmo que impede a exclusao). */
+  readonly analyzed: boolean;
 }
 
 export interface IdentityDocSweepItem {
@@ -83,6 +104,8 @@ export interface IdentityDocSweepItem {
 /** Banco (`private.idoc_*`, executado como app_system). Assinaturas em 107 §4.2. */
 export interface IdentityDocStorePort {
   issue(input: IdentityDocIssueInput): Promise<IdentityDocIssueResult>;
+  /** H-038: reserva de certificacao (private.idoc_issue_cert). Nunca usa a cota de identidade. */
+  issueCert(input: IdentityDocIssueCertInput): Promise<IdentityDocIssueResult>;
   list(userId: string): Promise<{ readonly documents: readonly IdentityDocListItem[]; readonly slotsRemaining: number }>;
   confirmBegin(userId: string, id: string, nowMs: number, leaseS: number): Promise<IdentityDocConfirmBeginResult>;
   confirmDone(

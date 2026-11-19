@@ -138,14 +138,22 @@ describe('buckets e postura (T-07, T-21)', () => {
     assert.equal(api.rows[0].ok, false);
   });
 
-  test('catalogo de auditoria com as 3 acoes (chaves limpas)', async () => {
+  // H-038 (Issue 51) acrescenta identity.cert.* ao mesmo catalogo; verification.document.read e de outra Issue e fica fora.
+  test('catalogo de auditoria de identidade (identity.*): 3 acoes de identidade e 3 da certificacao (H-038)', async () => {
     const r = await client.query(
       `select action, state_keys from audit.action_catalog
-        where object_type = 'identity_document' order by action`,
+        where object_type = 'identity_document' and action like 'identity.%' order by action`,
     );
     assert.deepEqual(
       r.rows.map((x) => x.action),
-      ['identity.doc.deleted', 'identity.doc.received', 'identity.doc.refused'],
+      [
+        'identity.cert.deleted',
+        'identity.cert.received',
+        'identity.cert.replaced',
+        'identity.doc.deleted',
+        'identity.doc.received',
+        'identity.doc.refused',
+      ],
     );
   });
 });

@@ -15,6 +15,10 @@ export const IDOC_BODY_LIMIT_BYTES = 2048;
 export const IDOC_DECLARED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'] as const;
 export type IdentityDocDeclaredType = (typeof IDOC_DECLARED_TYPES)[number];
 
+/** Tipo do documento (desenho 148 §2): identidade (padrao, sem servico) ou certificacao (exige service_id). */
+export const IDOC_KINDS = ['identidade', 'certificacao'] as const;
+export type IdentityDocKind = (typeof IDOC_KINDS)[number];
+
 /** Tipos gravados no bucket final: imagens viram JPEG; PDF segue sem alteracao (CA-17). */
 export const IDOC_STORED_TYPES = ['image/jpeg', 'application/pdf'] as const;
 export type IdentityDocStoredType = (typeof IDOC_STORED_TYPES)[number];

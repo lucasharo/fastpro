@@ -1,11 +1,12 @@
 // H-037 (Issue #50) | Corpo de POST /v1/professional/documents/uploads (107-DESENHO-H037.md, §3; CA-03, CA-04, CA-10).
 // Ordem: tamanho -> vazio -> JSON -> chaves -> tipo (415) -> id -> tamanho (422 e 413). So as tres chaves; nenhum
 // nome de arquivo, caminho ou identificador de profissional. Erro sempre com codigo fixo: nada e ecoado.
-import { IDOC_BODY_LIMIT_BYTES, IDOC_DECLARED_TYPES, limiteEmissaoBytes } from './constants.js';
-import type { IdentityDocDeclaredType } from './constants.js';
+import { IDOC_BODY_LIMIT_BYTES, IDOC_DECLARED_TYPES, IDOC_KINDS, limiteEmissaoBytes } from './constants.js';
+import type { IdentityDocDeclaredType, IdentityDocKind } from './constants.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const CHAVES_CORPO: readonly string[] = ['client_upload_id', 'content_type', 'size_bytes'];
+// H-038 (Issue 51): kind e service_id sao opcionais; kind ausente = identidade (compatibilidade com a Issue 50).
+const CHAVES_CORPO: readonly string[] = ['client_upload_id', 'content_type', 'size_bytes', 'kind', 'service_id'];
 
 export type IdentityDocBodyErrorCode =
   | 'corpo_grande'
@@ -16,12 +17,23 @@ export type IdentityDocBodyErrorCode =
   | 'client_upload_id_invalido'
   | 'tamanho_invalido'
   | 'tipo_nao_aceito'
-  | 'arquivo_grande';
+  | 'arquivo_grande'
+  | 'kind_invalido'
+  | 'service_id_ausente'
+  | 'service_id_incoerente'
+  | 'service_id_invalido';
 
 export interface IdentityDocEmissaoCorpo {
   readonly clientUploadId: string;
   readonly contentType: IdentityDocDeclaredType;
   readonly sizeBytes: number;
+  readonly kind: IdentityDocKind;
+  /** Servico (uuid) quando kind = certificacao; null para identidade. */
+  readonly serviceId: string | null;
+}
+
+function ehKind(valor: unknown): valor is IdentityDocKind {
+  return typeof valor === 'string' && (IDOC_KINDS as readonly string[]).includes(valor);
 }
 
 export type IdentityDocBodyResult =
@@ -70,8 +82,21 @@ export function parseIdentityDocEmissaoBody(texto: string, byteLength: number): 
   }
   if (bytes > limiteEmissaoBytes(tipo)) return { ok: false, status: 413, code: 'arquivo_grande' };
 
+  // H-038: kind ausente = identidade; certificacao exige service_id (uuid); identidade nao aceita service_id.
+  const kindBruto = 'kind' in obj ? obj['kind'] : 'identidade';
+  if (!ehKind(kindBruto)) return { ok: false, status: 422, code: 'kind_invalido' };
+  const temServico = 'service_id' in obj;
+  if (kindBruto === 'identidade' && temServico) return { ok: false, status: 422, code: 'service_id_incoerente' };
+  if (kindBruto === 'certificacao' && !temServico) return { ok: false, status: 422, code: 'service_id_ausente' };
+  let servico: string | null = null;
+  if (kindBruto === 'certificacao') {
+    const bruto = obj['service_id'];
+    if (!ehIdentityDocUuid(bruto)) return { ok: false, status: 422, code: 'service_id_invalido' };
+    servico = bruto.toLowerCase();
+  }
+
   return {
     ok: true,
-    corpo: { clientUploadId: cuid.toLowerCase(), contentType: tipo, sizeBytes: bytes },
+    corpo: { clientUploadId: cuid.toLowerCase(), contentType: tipo, sizeBytes: bytes, kind: kindBruto, serviceId: servico },
   };
 }

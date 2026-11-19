@@ -11,6 +11,7 @@ import type {
   IdentityDocConfirmBeginResult,
   IdentityDocDeclaredType,
   IdentityDocDeleteCode,
+  IdentityDocIssueCertInput,
   IdentityDocIssueInput,
   IdentityDocIssueResult,
   IdentityDocListItem,
@@ -36,6 +37,9 @@ const ISSUE_CODES: ReadonlySet<string> = new Set([
   'state_denied',
   'doc_limit',
   'cap',
+  'service_denied',
+  'limite_certificacao',
+  'client_upload_em_uso',
 ]);
 const BEGIN_CODES: ReadonlySet<string> = new Set(['begin', 'replay', 'not_found', 'expired', 'busy', 'too_many']);
 const DONE_CODES: ReadonlySet<string> = new Set(['received', 'lost', 'gone']);
@@ -91,6 +95,31 @@ export class PgIdentityDocStore {
     };
   }
 
+  /** H-038 (desenho 148 §3.2): reserva de certificacao; os codigos seguem o mesmo contrato de issue. */
+  async issueCert(input: IdentityDocIssueCertInput): Promise<IdentityDocIssueResult> {
+    const linhas = await this.consulta(
+      'select out_code, out_id, out_status from private.idoc_issue_cert($1::uuid, $2::uuid, $3::uuid, $4::text, $5::integer, $6::timestamptz, $7::bigint)',
+      [
+        input.userId,
+        input.clientUploadId,
+        input.serviceId,
+        input.declaredType,
+        input.declaredBytes,
+        new Date(input.nowMs).toISOString(),
+        input.globalBytesCap,
+      ],
+    );
+    const linha = linhas[0];
+    const code = texto(linha?.['out_code']);
+    if (!ISSUE_CODES.has(code)) throw new IdentityDocStoreError();
+    const status = texto(linha?.['out_status']);
+    return {
+      code: code as IdentityDocIssueResult['code'],
+      id: linha?.['out_id'] ? texto(linha['out_id']) : null,
+      status: status === 'em_envio' || status === 'recebido' ? status : null,
+    };
+  }
+
   async list(userId: string): Promise<{ readonly documents: readonly IdentityDocListItem[]; readonly slotsRemaining: number }> {
     const linhas = await this.consulta('select * from private.idoc_list($1::uuid, $2::timestamptz)', [
       userId,
@@ -99,12 +128,16 @@ export class PgIdentityDocStore {
     const documents: IdentityDocListItem[] = linhas.map((l) => ({
       id: texto(l['out_id']),
       kind: texto(l['out_file_kind']) === 'pdf' ? 'pdf' : 'imagem',
+      documentKind: texto(l['out_kind']) === 'certificacao' ? 'certificacao' : 'identidade',
+      serviceId: l['out_service_id'] ? texto(l['out_service_id']) : null,
       status: texto(l['out_status']) === 'recebido' ? 'recebido' : 'em_envio',
       receivedAt: l['out_received_at'] ? new Date(texto(l['out_received_at'])).toISOString() : null,
       deletable: l['out_deletable'] === true,
+      analyzed: l['out_deletable'] !== true,
     }));
-    // Vagas restantes contadas sobre a lista do dono (o banco aplica o limite de 5 vivos no insert).
-    return { documents, slotsRemaining: Math.max(0, IDOC_MAX_VIVOS - documents.length) };
+    // Vagas restantes: so os documentos de identidade contam no limite de 5 (desenho 148 §2, item 7).
+    const identidade = documents.filter((d) => d.documentKind === 'identidade').length;
+    return { documents, slotsRemaining: Math.max(0, IDOC_MAX_VIVOS - identidade) };
   }
 
   async confirmBegin(userId: string, id: string, nowMs: number, leaseS: number): Promise<IdentityDocConfirmBeginResult> {

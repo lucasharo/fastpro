@@ -20,7 +20,8 @@ describe('H-037 | corpo de emissao: aceitos (CA-01, CA-02, CA-03)', () => {
     const r = parse({ client_upload_id: UUID.toUpperCase(), content_type: 'image/jpeg', size_bytes: 4 * MIB });
     expect(r).toEqual({
       ok: true,
-      corpo: { clientUploadId: UUID, contentType: 'image/jpeg', sizeBytes: 4 * MIB },
+      // H-038: kind ausente = identidade e service_id nulo (campos aditivos da certificacao).
+      corpo: { clientUploadId: UUID, contentType: 'image/jpeg', sizeBytes: 4 * MIB, kind: 'identidade', serviceId: null },
     });
   });
 

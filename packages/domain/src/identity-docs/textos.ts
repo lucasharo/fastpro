@@ -29,7 +29,11 @@ export type IdentityDocTextoCodigo =
   | 'rotulo_foto'
   | 'rotulo_pdf'
   | 'rotulo_documento'
-  | 'recebido_em';
+  | 'recebido_em'
+  | 'certificacao_exigida'
+  | 'servico_invalido'
+  | 'limite_certificacao'
+  | 'upload_em_uso';
 
 export const IDOC_TEXTOS: Readonly<Record<IdentityDocTextoCodigo, string>> = {
   vazio: 'Envie seu documento de identidade. Aceitos: foto JPG, PNG ou WebP de até 5 MB, ou PDF de até 2 MB.',
@@ -60,4 +64,9 @@ export const IDOC_TEXTOS: Readonly<Record<IdentityDocTextoCodigo, string>> = {
   rotulo_pdf: 'PDF',
   rotulo_documento: 'Documento',
   recebido_em: 'recebido em dd/mm/aaaa',
+  // H-038 (decisao 313): texto neutro da certificacao, aprovado para DEV. Sem promessa de conformidade.
+  certificacao_exigida: 'Esta atividade exige certificação. Envie o documento para continuar.',
+  servico_invalido: 'Não é possível enviar documento para este serviço. Escolha outro serviço.',
+  limite_certificacao: 'Já há um envio em andamento para este serviço. Termine o envio atual antes de enviar outro.',
+  upload_em_uso: 'Este envio já está sendo usado. Tente de novo com um novo envio.',
 };
