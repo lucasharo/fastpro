@@ -557,24 +557,93 @@ test('T-H018-12 preservacao: alteracoes do administrador sobrevivem a reaplicaca
     assert.deepEqual(c, { g: 25, s: SEED.services.length }, 'sem duplicatas');
   }));
 
-test('T-H018-13 conflito por nome: grupo criado a mao com nome da semente e pulado e contado, sem erro', () =>
-  inTx(async () => {
+test('T-H018-13 conflito por nome: grupo manual com nome da semente (outra caixa e acento) e pulado e contado, sem erro; sem residuos', async () => {
+  // Marcador unico por execucao: nomes, versao e chaves de servico levam o mesmo sufixo. O banco e
+  // compartilhado, entao nada aqui depende de contagem global nem do conteudo da semente oficial.
+  const hex = randomUUID().slice(0, 8);
+  const tag = `T146-${hex}`;
+  const sok1Key = `g99-t146-${hex}-sok1`;
+  // Semente sintetica minima (2 grupos, 3 servicos), na forma aceita por private.catalog_seed_validate.
+  // O grupo g98 entra em conflito de nome com o grupo manual; o grupo g99 nao tem conflito.
+  const TEST_SEED = {
+    version: tag,
+    groups: [
+      { key: 'g98', position: 9100, name: `Grupo Sintético Conflito ${tag}` },
+      { key: 'g99', position: 9101, name: `Grupo Sintético Regular ${tag}` },
+    ],
+    services: [
+      {
+        key: `g98-t146-${hex}-sc1`, group_key: 'g98', name: `Servico conflito um ${tag}`,
+        modality: 'online', regulated: false, council_body: null, sensitive: false, active: true,
+        synonyms: ['termo conflito um'],
+      },
+      {
+        key: `g98-t146-${hex}-sc2`, group_key: 'g98', name: `Servico conflito dois ${tag}`,
+        modality: 'presencial', regulated: false, council_body: null, sensitive: false, active: true,
+        synonyms: [],
+      },
+      {
+        key: sok1Key, group_key: 'g99', name: `Servico regular ${tag}`,
+        modality: 'ambos', regulated: false, council_body: null, sensitive: false, active: true,
+        synonyms: ['termo regular um', 'termo regular dois'],
+      },
+    ],
+  };
+
+  let auditId = null;
+  await inTx(async () => {
+    // Grupo criado a mao com o nome do grupo em conflito, em outra caixa e sem acento (normalizacao).
+    const manualName = `GRUPO SINTETICO CONFLITO ${tag.toUpperCase()}`;
     const manualId = randomUUID();
     await client.query(
-      `insert into app.service_group (id, name, position, active) values ($1, 'Reformas e construção', 500, false)`,
-      [manualId],
+      'insert into app.service_group (id, name, position, active) values ($1, $2, 500, false)',
+      [manualId, manualName],
     );
-    const r = await aplicarSemente(SEED);
-    const g01Services = SEED.services.filter((s) => s.group_key === 'g01').length;
-    assert.equal(r.status, 'aplicada');
-    assert.equal(r.groups_inserted, 24, 'o grupo g01 e pulado por conflito de nome');
-    assert.equal(r.skipped_conflict, 1 + g01Services, 'grupo pulado mais os servicos dele');
-    assert.equal(r.services_inserted, SEED.services.length - g01Services);
+    const r = await aplicarSemente(TEST_SEED);
+    assert.equal(r.status, 'aplicada', 'versao propria: nao pode responder ja_aplicada');
+    assert.equal(r.groups_inserted, 1, 'so o grupo sem conflito entra');
+    assert.equal(r.services_inserted, 1, 'so o servico do grupo sem conflito entra');
+    assert.equal(r.synonyms_inserted, 2, 'sinonimos do servico que entrou');
+    assert.equal(r.skipped_conflict, 3, 'grupo em conflito mais os 2 servicos dele');
 
     await client.query('reset role');
-    const manual = (await client.query('select seed_key, name from app.service_group where id = $1', [manualId])).rows[0];
+    const manual = (
+      await client.query('select seed_key, name, position, active from app.service_group where id = $1', [manualId])
+    ).rows[0];
     assert.equal(manual.seed_key, null, 'o item manual nao recebe chave da semente');
-    assert.equal(manual.name, 'Reformas e construção');
-    const total = (await client.query('select count(*)::int as n from app.service_group')).rows[0].n;
-    assert.equal(total, 25);
-  }));
+    assert.equal(manual.name, manualName, 'nome do item manual intacto');
+    assert.equal(manual.position, 500, 'posicao do item manual intacta');
+    assert.equal(manual.active, false, 'ativo do item manual intacto');
+
+    // Verificacao restrita as linhas do marcador deste teste (sem contagem global).
+    const grupos = (
+      await client.query(
+        'select seed_key from app.service_group where name ilike $1 order by seed_key nulls first',
+        [`%${tag}%`],
+      )
+    ).rows.map((x) => x.seed_key);
+    assert.deepEqual(grupos, [null, 'g99'], 'manual preservado e so o grupo sem conflito da semente');
+    const servicos = (
+      await client.query('select seed_key from app.service where name ilike $1', [`%${tag}%`])
+    ).rows.map((x) => x.seed_key);
+    assert.deepEqual(servicos, [sok1Key], 'so o servico sem conflito entra');
+
+    const run = (
+      await client.query('select audit_event_id from app.catalog_seed_run where id = $1', [r.run_id])
+    ).rows[0];
+    auditId = run.audit_event_id;
+  });
+
+  assert.ok(auditId, 'a execucao deveria ter gerado um evento de auditoria dentro da transacao');
+  // Sem residuos (CA-07): consulta fora da transacao, ja depois do rollback, pelo marcador do teste.
+  const resto = (
+    await client.query(
+      `select (select count(*)::int from app.service_group where name ilike $1) as grupos,
+              (select count(*)::int from app.service where name ilike $1) as servicos,
+              (select count(*)::int from app.catalog_seed_run where seed_version = $2) as execucoes,
+              (select count(*)::int from audit.audit_event where id = $3) as auditoria`,
+      [`%${tag}%`, TEST_SEED.version, auditId],
+    )
+  ).rows[0];
+  assert.deepEqual(resto, { grupos: 0, servicos: 0, execucoes: 0, auditoria: 0 }, 'o rollback deveria desfazer tudo');
+});
