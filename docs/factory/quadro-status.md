@@ -81,9 +81,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 ## Arquitetura (0)
 
-| Issue | Título |
-|---|---|
-
 ## Desenvolvimento (2)
 
 | Issue | Título |
@@ -93,15 +90,9 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 
 ## Code Review (0)
 
-| Issue | Título |
-|---|---|
-
 ## QA (0)
 
-| Issue | Título |
-|---|---|
-
-## Concluído (70)
+## Concluído (75)
 
 | Issue | Título |
 |---|---|
@@ -138,6 +129,8 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #33 | [E2] Autocomplete de endereço Mapbox temporário |
 | #34 | [E2] Coordenada permanente (uma chamada) |
 | #35 | [E2] Célula generalizada e match_point |
+| #36 | [E2] Descoberta por raio e online nacional |
+| #37 | [E2] Cobertura booleana sem contagem |
 | #38 | [E3] Rascunho de pedido sem conta |
 | #39 | [E3] Upload de fotos em quarentena |
 | #40 | [E3] Redução e reencode das fotos |
@@ -145,18 +138,20 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #42 | [E3] Pré-visualização e reordenação de fotos |
 | #43 | [E3] Revisão e confirmação expressa |
 | #44 | [E3] Publicação idempotente com 7 dias |
+| #45 | [E3] Visibilidade de localização |
+| #46 | [E3] Opt-in de telefone no pedido |
+| #47 | [E3] Painel do cliente na sessão do dono |
 | #48 | [E4] Cadastro profissional com CPF/CNPJ cifrado |
 | #49 | [E4] Perfil: serviços, base e raio |
-| #45 | [E3] Visibilidade de localização |
-| #53 | [E4] Retenção por duplicidade |
-| #46 | [E3] Opt-in de telefone no pedido |
-| #57 | [E5] Trial de 14 dias |
-| #52 | [E4] Fila de verificação |
-| #36 | [E2] Descoberta por raio e online nacional |
-| #151 | [E15] Remover backup, restauração e exportação de dados do escopo do projeto |
-| #59 | [E5] Planos e preços em centavos |
 | #50 | [E4] Documentos de identidade |
+| #52 | [E4] Fila de verificação |
+| #53 | [E4] Retenção por duplicidade |
+| #54 | [E4] Estado da verificação visível |
+| #55 | [E4] Guarda de elegibilidade na API e no banco |
+| #56 | [E4] Perfil público e selo verificado |
+| #57 | [E5] Trial de 14 dias |
 | #58 | [E5] Acesso comercial derivado |
+| #59 | [E5] Planos e preços em centavos |
 | #83 | [E7] Acesso excepcional a conversa |
 | #102 | [E11] Pipeline de notificações e cooldown |
 | #103 | [E11] EmailProviderPort: Mailpit e Resend |
@@ -175,6 +170,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 | #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
 | #150 | [E6] Remover o histórico de acesso às fotos (media_access_log e resumo diário) |
+| #151 | [E15] Remover backup, restauração e exportação de dados do escopo do projeto |
 
 ## Descartado (3)
 
@@ -184,14 +180,6 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #128 | [E15] Teste de restauração de backup |
 | #145 | [E15] db:test: media_asset fora do backup sem decisão registrada |
 
-## Aguardando aprovação (5)
-
-| Issue | Título |
-|---|---|
-| #54 | [E4] Estado da verificação visível |
-| #47 | [E3] Painel do cliente na sessão do dono |
-| #56 | [E4] Perfil público e selo verificado |
-| #37 | [E2] Cobertura booleana sem contagem |
-| #55 | [E4] Guarda de elegibilidade na API e no banco |
+## Aguardando aprovação (0)
 
 ## Bloqueado (0)
