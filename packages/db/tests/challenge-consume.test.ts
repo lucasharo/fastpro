@@ -202,6 +202,39 @@ describe('T-H012-05 conta do cliente', () => {
   });
 });
 
+describe('H-111 guard de login: so conta ativa abre a etapa', () => {
+  it.each(['em_eliminacao', 'anonimizado', 'bloqueado'])(
+    'resultado de conta com status %s nao abre etapa, sem cookie e com link_invalido',
+    async (status) => {
+      const { repo, accounts, stages, deps } = montar();
+      accounts.fallback = { status } as unknown as CustomerAccountResult;
+      repo.add(CONSUMED_TOKEN);
+      const r = await consumeChallenge(deps, CONSUMED_TOKEN);
+      expect(r).toMatchObject({ status: 400, body: { code: 'link_invalido' } });
+      expect('setCookie' in r).toBe(false);
+      expect(stages.inputs).toHaveLength(0);
+    },
+  );
+
+  it.each(['em_eliminacao', 'anonimizado'])(
+    'Pg: usuario com status %s vira bloqueado e nao chama o perfil de cliente',
+    async (status) => {
+      const sqls: string[] = [];
+      const client = {
+        async query(sql: string, _params: unknown[] = []) {
+          sqls.push(sql);
+          return { rows: [{ out_user_id: USER_ID, out_status: status }] };
+        },
+      };
+      const auth: AuthUserAdminPort = { createUser: async () => ({ status: 'ja_existe' }) };
+      expect(await new PgCustomerAccounts(client, auth).ensureCustomer(EMAIL, NOW)).toEqual({
+        status: 'bloqueado',
+      });
+      expect(sqls).toHaveLength(1);
+    },
+  );
+});
+
 describe('T-H012-06 falha da conta: ate 2 tentativas, depois 503', () => {
   it.each([
     ['resultado de falha', ['falha', 'falha'] as const],

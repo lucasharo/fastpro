@@ -169,10 +169,11 @@ export async function concluirAcesso(deps: AccessDeps, link: AccessLink, nowMs: 
   }
 
   const conta = await garantirConta(deps, email, nowMs);
-  if (conta.status === 'bloqueado') return { ok: false, codigo: 'conta_bloqueada' };
   if (conta.status === 'falha') {
     return { ok: false, codigo: 'consumo_falha_conta' };
   }
+  // H-111: so conta ativa ('ok') abre a etapa. Qualquer outro resultado (bloqueio, em_eliminacao, anonimizado) recusa.
+  if (conta.status !== 'ok') return { ok: false, codigo: 'conta_bloqueada' };
 
   const secret = deps.newSecret();
   const entrada: OpenStageInput = {
