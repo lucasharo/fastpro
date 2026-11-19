@@ -1,10 +1,10 @@
 # Quadro da fábrica (fonte da verdade local)
 
-Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado de tempos em tempos (não a cada passo). Atualizado em 2026-11-19 (local).
+Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado de tempos em tempos (não a cada passo). Atualizado em 2026-11-19 (local), apos a rodada 144.
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
-## Backlog (59)
+## Backlog (54)
 
 | Issue | Título |
 |---|---|
@@ -18,9 +18,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #65 | [E5] Cancelamento com acesso até o fim |
 | #66 | [E5] Reconciliação diária MP × livro |
 | #67 | [E5] Gate de cobrança real |
-| #69 | [E6] Fotos a elegíveis com marca d'água |
 | #70 | [E6] Limite de visualização e sinal de raspagem |
-| #71 | [E6] Aceitar trabalho idempotente |
 | #72 | [E6] Vagas 4+4 e teto de 8 |
 | #73 | [E6] Retirada do aceite |
 | #74 | [E6] Encerramento de aceites |
@@ -53,11 +51,9 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #105 | [E11] E-mail de aviso de aceite |
 | #106 | [E11] E-mail de mensagem não lida |
 | #108 | [E11] E-mails de seleção, cancelamento e desistência |
-| #109 | [E11] Lembretes de prazo, trial e ciclo |
 | #115 | [E12] Estorno e chargeback manual |
 | #121 | [E13] Consentimentos e trilha de revelação |
 | #122 | [E13] Termos, privacidade e DPO |
-| #124 | [E15] Autorização por recurso e paridade |
 | #126 | [E15] Suíte de concorrência e falha |
 | #127 | [E15] Acessibilidade WCAG 2.2 AA com evidência |
 | #130 | [E15] Gate de release do MVP web |
@@ -66,39 +62,43 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #134 | [E6] Botão “Chamar mais profissionais” |
 | #135 | [E6] Aviso “apenas conecta” nos termos |
 | #136 | [E7] Mensagem automática do aceite |
-| #137 | [E11] Canal “no site” |
 
-## Product Owner (2)
+## Product Owner (7)
 
 | Issue | Título |
 |---|---|
 | #131 | [E14] App Expo base |
 | #123 | [E13] Runbook de incidente e reconciliação |
+| #69 | [E6] Fotos a elegíveis com marca d'água |
+| #71 | [E6] Aceitar trabalho idempotente |
+| #109 | [E11] Lembretes de prazo, trial e ciclo |
+| #137 | [E11] Canal “no site” |
+| #124 | [E15] Autorização por recurso e paridade |
 
 ## Arquitetura (0)
 
 | Issue | Título |
 |---|---|
 
-## Desenvolvimento (4)
+## Desenvolvimento (1)
 
 | Issue | Título |
 |---|---|
 | #120 | [E13] Direitos do titular (dsr_case) |
-| #68 | [E6] Descoberta de pedidos elegíveis |
-| #146 | [E15] db:test: T-H018-13 depende de semente ausente no DEV |
-| #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 
-## Code Review (1)
+## Code Review (3)
 
 | Issue | Título |
 |---|---|
 | #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
+| #146 | [E15] db:test: T-H018-13 depende de semente ausente no DEV |
+| #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 
-## QA (0)
+## QA (1)
 
 | Issue | Título |
 |---|---|
+| #68 | [E6] Descoberta de pedidos elegíveis |
 
 ## Concluído (75)
 
