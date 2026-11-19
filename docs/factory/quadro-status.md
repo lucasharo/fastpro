@@ -75,25 +75,31 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #131 | [E14] App Expo base |
 | #123 | [E13] Runbook de incidente e reconciliação |
 
-## Arquitetura (3)
+## Arquitetura (0)
 
 | Issue | Título |
 |---|---|
-| #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
+
+## Desenvolvimento (4)
+
+| Issue | Título |
+|---|---|
+| #120 | [E13] Direitos do titular (dsr_case) |
+| #68 | [E6] Descoberta de pedidos elegíveis |
 | #146 | [E15] db:test: T-H018-13 depende de semente ausente no DEV |
+| #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
+
+## Code Review (1)
+
+| Issue | Título |
+|---|---|
 | #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 
-## Desenvolvimento (3)
+## QA (1)
 
 | Issue | Título |
 |---|---|
 | #51 | [E4] Certificações para atividades regulamentadas |
-| #120 | [E13] Direitos do titular (dsr_case) |
-| #68 | [E6] Descoberta de pedidos elegíveis |
-
-## Code Review (0)
-
-## QA (0)
 
 ## Concluído (75)
 
