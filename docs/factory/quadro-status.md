@@ -68,20 +68,20 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #136 | [E7] Mensagem automática do aceite |
 | #137 | [E11] Canal “no site” |
 
-## Product Owner (5)
+## Product Owner (2)
 
 | Issue | Título |
 |---|---|
 | #131 | [E14] App Expo base |
 | #123 | [E13] Runbook de incidente e reconciliação |
-| #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
-| #146 | [E15] db:test: T-H018-13 depende de semente ausente no DEV |
-| #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 
-## Arquitetura (0)
+## Arquitetura (3)
 
 | Issue | Título |
 |---|---|
+| #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
+| #146 | [E15] db:test: T-H018-13 depende de semente ausente no DEV |
+| #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 
 ## Desenvolvimento (3)
 
