@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -255,6 +255,29 @@ test('check-module-boundaries: import profundo, billing e packages -> apps', () 
   );
 });
 
+test('check-module-boundaries: I/O liberado em packages/domain/tests, proibido em src (CA-149-03)', () => {
+  // Teste de dominio pode usar I/O (ex.: fixture de arquivo).
+  check(
+    'check-module-boundaries.mjs',
+    { 'packages/domain/tests/x.test.ts': "import fs from 'node:fs';\n" },
+    false,
+  );
+  // Codigo de producao do dominio continua proibido de I/O.
+  check(
+    'check-module-boundaries.mjs',
+    { 'packages/domain/src/x.ts': "import fs from 'node:fs';\n" },
+    true,
+    /packages\/domain nao pode importar I\/O/,
+  );
+  // Teste de dominio continua proibido de importar apps/*.
+  check(
+    'check-module-boundaries.mjs',
+    { 'packages/domain/tests/x.test.ts': "import { x } from '@fastpro/api';\n" },
+    true,
+    /nao pode importar apps/,
+  );
+});
+
 test('check-no-attachments: reprova anexo de chat', () => {
   const bucket = ['chat', 'attachments'].join('-');
   check(
@@ -439,4 +462,3 @@ test('check-secrets --history: acha segredo removido depois', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
-
