@@ -4,7 +4,7 @@ body {
   background: var(--color-background);
   color: var(--color-text-primary);
   font-size: 16px;
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-family);
 }
 
 .codigo-pagina {
@@ -27,7 +27,7 @@ body {
 .codigo-campo label {
   display: block;
   margin-bottom: var(--space-2);
-  font-weight: 600;
+  font-weight: var(--font-weight-medium);
 }
 
 .codigo-campo input {
