@@ -172,7 +172,7 @@ Glossário curto:
 
 ---
 
-## 7. R-MP — Reconciliação Mercado Pago × livro `[PENDENTE fatia S6]`
+## 7. R-MP — Reconciliação Mercado Pago × livro `[EXECUTADO fatia S6]`
 
 - **Gatilho.** Execução diária, ou sob demanda após suspeita de divergência.
 - **Quem.** Operador (execução) e Financeiro (decisão).
@@ -192,7 +192,7 @@ Glossário curto:
 - **Passos.** Executar o batimento sobre os dados da janela, gerar o relatório e encaminhar os achados ao Financeiro.
 - **Verificação.** Relatório com contagem por tipo e achados mascarados.
 - **Auditoria.** Um evento com a janela e as contagens.
-- **Exercício sintético** `[PENDENTE fatia S6]`: três divergências intencionais geram três achados; a entrada permanece idêntica; nenhuma tabela de cobrança é escrita.
+- **Exercício sintético** `[EXECUTADO fatia S6]`: função `reconciliarMercadoPagoComLivro` em `packages/db/scripts/lib/runbook-h114-rmp.mjs`, provada por `packages/db/tests/runbook-h114-rmp.test.mjs` (offline, 19 testes). Três divergências intencionais (T1, T2 e T3) geram três achados; controles dentro da tolerância de 2 h e pagamento correto não geram achado; a entrada permanece idêntica (cópia profunda e proxy somente leitura); o módulo não contém escrita nem referência às tabelas do livro. Persistência do relatório (`ops.reconciliation_report`) fica para a #66.
 - **Registro de evidência.** Contagens por tipo e o teste de imutabilidade.
 
 ---
