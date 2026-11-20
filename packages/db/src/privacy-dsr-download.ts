@@ -136,7 +136,9 @@ export class ServicoDownloadExtrato {
   }
 
   /** Consome o token (uso unico), le o arquivo e confere sha256 e HMAC antes de devolver. */
-  async baixar(token: string): Promise<{ conteudo: Uint8Array; sha256: string; caseId: string; expiresAt: string }> {
+  async baixar(
+    token: string,
+  ): Promise<{ conteudo: Uint8Array; sha256: string; caseId: string; subjectUserId: string; expiresAt: string }> {
     // Formato errado nao chega ao banco: a recusa e a mesma de token desconhecido.
     if (typeof token !== 'string' || !TOKEN_RE.test(token)) throw new DsrDownloadRecusado('dsr_token_invalido');
     const registro = await this.deps.sql.consumir(sha256Hex(token));
@@ -146,7 +148,13 @@ export class ServicoDownloadExtrato {
     if (sha !== registro.sha256 || !hexIgual(assinatura, registro.signature)) {
       throw new DsrExtratoIntegridadeFalha();
     }
-    return { conteudo, sha256: sha, caseId: registro.caseId, expiresAt: registro.expiresAt };
+    return {
+      conteudo,
+      sha256: sha,
+      caseId: registro.caseId,
+      subjectUserId: registro.subjectUserId,
+      expiresAt: registro.expiresAt,
+    };
   }
 }
 

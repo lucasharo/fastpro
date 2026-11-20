@@ -139,15 +139,17 @@ function dtoResumo(linha: Record<string, unknown>): Record<string, unknown> {
   };
 }
 
-function dtoDetalhe(linha: Record<string, unknown>): Record<string, unknown> {
+function dtoDetalhe(linha: Record<string, unknown>, downloadUrl: string | null): Record<string, unknown> {
   const status = String(linha.out_status);
   return {
     ...dtoResumo(linha),
     // Fundamentacao visivel ao titular apenas em indeferimento (desenho §4.1). Notas internas nunca saem daqui.
     fundamentacao: status.startsWith('indeferido') ? (linha.out_legal_basis_note ?? null) : null,
     linha_do_tempo: linha.out_timeline ?? [],
-    // Download do extrato: a URL assinada e a rota de consumo ficam fora desta entrega (ver pendencias).
-    extrato: linha.out_extract_expires_at ? { expires_at: linha.out_extract_expires_at } : null,
+    // Download do extrato (P-A): URL de uso unico de 5 min, gerada a cada leitura (147 D-A6). Nulo sem extrato ou sem servico.
+    extrato: linha.out_extract_expires_at
+      ? { expires_at: linha.out_extract_expires_at, download_url: downloadUrl }
+      : null,
   };
 }
 
@@ -162,8 +164,26 @@ export interface RespostaServico {
   readonly corpo: Record<string, unknown>;
 }
 
+/** Porta de download do extrato (ServicoDownloadExtrato.emitir). Opcional: sem ela, download_url vem nulo. */
+export interface DownloadEmissor {
+  emitir(sujeito: string, caso: string): Promise<{ readonly token: string }>;
+}
+
 export class ServicoDsrTitular {
-  constructor(private readonly sql: DsrTitularSql) {}
+  constructor(
+    private readonly sql: DsrTitularSql,
+    private readonly download?: DownloadEmissor,
+  ) {}
+
+  private async urlDownload(sujeito: string, caso: string): Promise<string | null> {
+    if (this.download === undefined) return null;
+    try {
+      const { token } = await this.download.emitir(sujeito, caso);
+      return `/v1/privacy/dsr-downloads/${token}`;
+    } catch {
+      return null;
+    }
+  }
 
   async abrir(sujeito: string, entrada: EntradaAbertura, chave: string): Promise<RespostaServico> {
     try {
@@ -223,7 +243,8 @@ export class ServicoDsrTitular {
     try {
       const linha = await this.sql.obter(sujeito, caso);
       if (linha === undefined) throw new DsrTitularErro(404, { code: 'nao_encontrado' });
-      return { status: 200, corpo: dtoDetalhe(linha) };
+      const downloadUrl = linha.out_extract_expires_at ? await this.urlDownload(sujeito, caso) : null;
+      return { status: 200, corpo: dtoDetalhe(linha, downloadUrl) };
     } catch (erro) {
       throw traduzirErroBanco(erro) ?? erro;
     }

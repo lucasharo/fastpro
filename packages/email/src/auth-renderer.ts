@@ -76,12 +76,33 @@ export function renderStepUpEmail(params: Readonly<Record<string, unknown>>): Re
   };
 }
 
+/** H-111 (147-DESENHO-H111 §5.1): codigo do step-up do titular. Mesmo corpo minimo (so o codigo e os minutos). */
+export const DSR_STEPUP_TEMPLATE = 'dsr_stepup';
+export const DSR_STEPUP_SUBJECT = 'Codigo para confirmar seu pedido sobre seus dados no FastPro';
+
+export function renderDsrStepUpEmail(params: Readonly<Record<string, unknown>>): RenderedEmail {
+  // Valida codigo e minutos (lanca AuthRenderError se invalidos) antes de montar o corpo.
+  renderStepUpEmail(params);
+  const { code, minutos } = params as { code: string; minutos: number };
+  return {
+    subject: DSR_STEPUP_SUBJECT,
+    text: [
+      'Use o codigo abaixo para confirmar o pedido sobre seus dados no FastPro.',
+      '',
+      `Codigo (valido por ${minutos} minutos, uso unico): ${code}`,
+      '',
+      'Se voce nao pediu esta confirmacao, ignore esta mensagem.',
+    ].join('\n'),
+  };
+}
+
 /** Envolve o renderizador base: acesso_login e acesso_stepup tem texto proprio; os demais seguem o base. */
 export function createAuthAwareRenderer(base: EmailRenderer): EmailRenderer {
   return {
     render(templateKey, params) {
       if (templateKey === ACCESS_TEMPLATE) return renderAccessEmail(params);
       if (templateKey === STEPUP_TEMPLATE) return renderStepUpEmail(params);
+      if (templateKey === DSR_STEPUP_TEMPLATE) return renderDsrStepUpEmail(params);
       return base.render(templateKey, params);
     },
   };

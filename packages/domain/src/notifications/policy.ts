@@ -66,6 +66,8 @@ export const EMAIL_TYPE_POLICY: Readonly<Record<string, EmailTypePolicy>> = Obje
   acesso_login: { category: 'acesso', mailClass: 'auth', params: ['challenge_ref'] },
   // H-014 (52 §4.3): codigo de step-up. Classe auth (prioridade maxima); so a referencia do desafio.
   acesso_stepup: { category: 'acesso', mailClass: 'auth', params: ['challenge_ref'] },
+  // H-111 (147-DESENHO-H111 §5.1, P-A): codigo do step-up do titular. Classe auth; so a referencia do codigo.
+  dsr_stepup: { category: 'acesso', mailClass: 'auth', params: ['challenge_ref'] },
   acesso_conta:{ category: 'acesso', mailClass: 'auth', params: [] },
   acesso_trial: { category: 'acesso', mailClass: 'lembrete', params: [] },
   acesso_ciclo: { category: 'acesso', mailClass: 'lembrete', params: [] },

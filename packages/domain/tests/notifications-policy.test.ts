@@ -72,8 +72,9 @@ describe('T-H92-01 politica por categoria', () => {
   it('resumo de aceite e de mensagem tem tipo proprio', () => {
     expect(summaryTypeFor('aceite')).toBe('aceite_resumo');
     expect(summaryTypeFor('mensagem')).toBe('mensagem_resumo');
-    // 15 desde H-014 (acesso_stepup, 52 §4.3); 17 desde H-099 (acesso_trial_t3d e acesso_trial_t0, desenho 163 §3.3).
-    expect(Object.keys(EMAIL_TYPE_POLICY)).toHaveLength(17);
+    // 15 desde H-014 (acesso_stepup, 52 §4.3); 17 desde H-099 (acesso_trial_t3d e acesso_trial_t0, desenho 163 §3.3);
+    // 18 desde H-111 (dsr_stepup, desenho 147 §5.1).
+    expect(Object.keys(EMAIL_TYPE_POLICY)).toHaveLength(18);
   });
 });
 
