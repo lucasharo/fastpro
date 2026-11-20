@@ -122,6 +122,8 @@ import { handleRequestDetailRoute, isRequestDetailRoute, type RequestDetailRoute
 import { handleRequestListRoute, isRequestListRoute, type RequestListRouteOptions } from './requests/list-route.js';
 // Issue 68 (H-055) | Lista de pedidos elegiveis do profissional (GET /v1/professional/discovery/requests).
 import { handleDiscoveryRoute, isDiscoveryRoute, type DiscoveryRouteOptions } from './requests/discovery-route.js';
+// Issue 71 (H-058) | Aceite idempotente do trabalho (POST /v1/requests/:id/acceptances).
+import { handleAcceptanceRoute, isAcceptanceRoute, type AcceptanceRouteOptions } from './requests/acceptance-route.js';
 // Issue 46 (H-033) | Telefone e consentimento de contato (dono e profissional).
 import { handleContactRoute, isContactRoute, type ContactRouteOptions } from './contact/contact-route.js';
 // Issue 56 (H-043) | Perfil publico por slug (GET /v1/public/professionals/:slug): sem sessao e sem Set-Cookie.
@@ -216,6 +218,8 @@ export interface AppOptions {
   readonly requestList?: RequestListRouteOptions;
   /** Issue 68 (H-055): lista de descoberta do profissional. Sem a montagem completa, o mesmo 404 uniforme do rascunho. */
   readonly requestDiscovery?: DiscoveryRouteOptions;
+  /** Issue 71 (H-058): aceite idempotente. Sem a montagem completa, o mesmo 404 uniforme do rascunho. */
+  readonly requestAcceptance?: AcceptanceRouteOptions;
   /** Issue 46 (H-033): telefone e consentimento de contato. Sem esta opcao as rotas respondem 404 uniforme. */
   readonly requestContact?: ContactRouteOptions;
   /** Issue 56 (H-043): perfil publico por slug. Sem esta opcao a rota nao existe (404). */
@@ -411,6 +415,14 @@ export async function handleRequest(
   // Issue 68 (H-055): descoberta do profissional. Sem a montagem completa (chave ou banco), o mesmo 404 uniforme do rascunho.
   if (isDiscoveryRoute(path)) {
     if (opts.requestDiscovery) return handleDiscoveryRoute(req, res, opts.requestDiscovery);
+    const r = draftNotFound();
+    res.writeHead(r.status, r.headers);
+    res.end(r.body);
+    return;
+  }
+  // Issue 71 (H-058): aceite do trabalho. Sem a montagem completa (chave, banco ou conexao), o mesmo 404 uniforme do rascunho.
+  if (isAcceptanceRoute(req.method ?? '', path)) {
+    if (opts.requestAcceptance) return handleAcceptanceRoute(req, res, path, opts.requestAcceptance);
     const r = draftNotFound();
     res.writeHead(r.status, r.headers);
     res.end(r.body);
