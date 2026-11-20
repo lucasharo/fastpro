@@ -3,7 +3,7 @@
 - **Issue:** #123 `[E13] Runbook de incidente e reconciliação` · **História:** H-114 · **Workflow:** WF-03 · **Etapa:** Desenvolvimento · **EXEC-ID:** EXEC-DEV-123-20261120.
 - **Desenho de origem:** `165-DESENHO-H114.md` (seções 3 e 4). **Refino:** `146-REFINO-H114.md` (perguntas 703 a 722, adotadas pelo líder).
 - **Local deste arquivo:** `147` já era ocupado por outro desenho (`147-DESENHO-H111.md`); o próximo prefixo livre é `149`, registrado aqui como decisão de implementação (A-1 do desenho).
-- **Situação:** versão S1 (esqueleto). Seções 0 a 11 presentes. D-04 e D-05 completos. Os demais procedimentos têm o molde completo, com o conteúdo do desenho; o que ainda não foi provado está marcado como `[PENDENTE fatia Sx]`.
+- **Situação:** versões S1 a S3 (D-06a e D-06b parciais, com lacunas L-1 e L-2). Seções 0 a 11 presentes. D-04 e D-05 completos. Os demais procedimentos têm o molde completo, com o conteúdo do desenho; o que ainda não foi provado está marcado como `[PENDENTE fatia Sx]`.
 - **Ambiente:** somente DEV (projeto Supabase de desenvolvimento, branch `release/*` para DEV/TST). Nenhum procedimento aqui é executado em produção.
 
 Etiquetas usadas neste documento:
@@ -93,24 +93,24 @@ Glossário curto:
 
 ## 4. D-06 — Rotação de segredos
 
-### 4.1 D-06a — Chave de envelope `[PENDENTE fatia S3]`
+### 4.1 D-06a — Chave de envelope `[PARCIAL fatia S3: lacuna L-1]`
 
 - **Gatilho.** Suspeita de vazamento da chave de cifra, ou rotação planejada.
 - **Quem.** Operador.
 - **Pré-condições.** Acesso ao segredo do ambiente DEV (`.env.local` ou segredo do ambiente). Nunca em chat ou commit.
 - **Passos** `[PROPOSTA]`.
   1. Gerar chave nova de 32 bytes e guardá-la no segredo do ambiente.
-  2. Configurar a nova como escrita e a anterior como leitura. O formato com identificador de versão é confirmado em `apps/api/src/requests/address-crypto.ts` e `apps/api/src/contact/phone-crypto.ts` (fatia S3).
+  2. Configurar a nova como escrita e a anterior como leitura. Lacuna L-1 (verificada na S3): o byte de versão existe (`VERSION = 1`), mas o leitor aceita só a versão 1 e o formato não tem identificador de chave. Logo, a leitura dupla de chave **não existe** hoje (`apps/api/src/requests/address-crypto.ts`, `apps/api/src/contact/phone-crypto.ts`). Esta rotação exige cartão separado de expansão do formato; a S3 não altera o formato.
   3. Implantar leitura dupla. Novos registros saem só com a chave nova.
   4. Recifrar em lotes, de forma retomável e idempotente.
   5. Consultar a contagem por versão. Só remover a chave anterior com **zero** registros na versão antiga.
   6. Falha de decifragem em registro antigo gera alerta e **não** apaga dado.
 - **Verificação.** Contagem por versão igual a zero antes de remover a chave anterior.
 - **Auditoria.** Um evento por lote recifrado, com contagem e versão.
-- **Exercício sintético.** `[PENDENTE fatia S3]`: cifra com V1, leitura com V1 e V2, gravação com V2, contagem de V1 chegando a zero.
+- **Exercício sintético.** `[PARCIAL fatia S3]`: provado que V1 sela e abre, e que V2 e chave anterior são recusadas (L-1). A recifragem em lote e a contagem de V1 chegando a zero dependem da expansão do formato (cartão separado).
 - **Registro de evidência.** Contagens por versão antes e depois.
 
-### 4.2 D-06b — Token de provedor `[PENDENTE fatia S3]`
+### 4.2 D-06b — Token de provedor `[PARCIAL fatia S3: lacuna L-2]`
 
 - **Gatilho.** Suspeita de vazamento de token do Gateway ou do Resend, ou rotação planejada.
 - **Quem.** Operador.
@@ -120,10 +120,10 @@ Glossário curto:
   2. Trocar a variável no segredo do ambiente.
   3. Rodar teste sintético de aceitação, sem chamada real de cobrança ou de envio.
   4. Revogar o token antigo em até 1 hora.
-  5. Durante a troca, webhooks pendentes continuam aceitos: a assinatura aceita o par atual e o anterior por janela curta. O Operador confirma como `webhook-signature.ts` trata isso (fatia S3).
+  5. Durante a troca, webhooks pendentes continuam aceitos: a assinatura aceita o par atual e o anterior por janela curta. Lacuna L-2 (verificada na S3): `verificarAssinaturaMercadoPago` aceita um único segredo (`apps/api/src/billing/webhook-signature.ts`); a janela de dois segredos **não existe** e exige cartão separado.
 - **Verificação.** Teste sintético de aceitação com resultado de sucesso e token antigo recusado.
 - **Auditoria.** Um evento com o nome da variável trocada (nunca o valor).
-- **Exercício sintético.** `[PENDENTE fatia S3]`: troca de segredo de assinatura com fake de provedor, aceitando par atual e anterior.
+- **Exercício sintético.** `[PARCIAL fatia S3]`: provado que o segredo atual é aceito e o anterior recusado (L-2). A aceitação do par durante a troca depende de cartão separado.
 - **Registro de evidência.** Resultado do teste sintético e confirmação de revogação (manual, no painel).
 
 ### 4.3 D-06c — Pepper de documento e segredos de sessão `[PENDENTE fatia S3]`
