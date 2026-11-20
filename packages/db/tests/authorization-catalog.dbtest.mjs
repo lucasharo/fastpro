@@ -12,12 +12,9 @@ const PRODUCT_SCHEMAS = ['app', 'billing', 'ops', 'audit', 'private', 'public'];
 const DOMAIN_TABLES = ['app.service_request', 'app.acceptance'];
 const DOMAIN_BUCKETS = ['request-photos', 'identity-docs'];
 
-// CAT-06: funcoes de private executaveis por PUBLIC/anon/authenticated que NAO sao gatilho e ficam
-// fora do escopo da migracao 20261120300000 (que revogou so as funcoes dsr_* de gatilho). Lista
-// explicita revisada: cada item precisa de decisao do lider (ver o documento da fatia F2).
-const CAT06_EXCECOES = new Map([
-  ['dsr_case_transition_allowed', 'funcao pura boolean (transicao de caso DSR), sem leitura de dados; pendencia do lider (revogar ou manter)'],
-]);
+// CAT-06: nenhuma excecao. A migracao 20261120300000 revogou as funcoes dsr_* de gatilho e a
+// 20261120430000 revogou dsr_case_transition_allowed (decisao 1 do lider). Lista vazia = sem excecao.
+const CAT06_EXCECOES = new Map();
 
 // Funcoes administrativas e de sessao (6.4) cujo acesso depende de sessao admin com aal2.
 const ADMIN_NAME = /^(admin_|verification_|access_case_|approval_|idoc_review|audit_query|retention_policy|dsr_admin)/;
@@ -51,7 +48,7 @@ const PRODUCT_RELATIONS = `
                       where d.classid = 'pg_class'::regclass and d.objid = c.oid and d.deptype = 'e')
    order by 1, 2`;
 
-test('CAT-01: toda tabela de produto tem RLS habilitada e forcada (esquemas por consulta)', async (t) => {
+test('[CP-25] CAT-01: toda tabela de produto tem RLS habilitada e forcada (esquemas por consulta)', async (t) => {
   const { rows } = await client.query(PRODUCT_RELATIONS, [PRODUCT_SCHEMAS]);
   const tabelas = rows.filter((r) => r.tipo === 'r' || r.tipo === 'p');
   assert.ok(tabelas.length > 0, 'deveria haver tabelas de produto');
@@ -124,7 +121,7 @@ test('CAT-03: papeis da API sem BYPASSRLS nem superusuario; nenhum papel de logi
   }
 });
 
-test('CAT-04: toda funcao SECURITY DEFINER de produto tem search_path vazio', async () => {
+test('[CP-26] CAT-04: toda funcao SECURITY DEFINER de produto tem search_path vazio', async () => {
   const { rows } = await client.query(
     `select n.nspname||'.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')' as fn
        from pg_proc p
@@ -176,7 +173,7 @@ test('CAT-06: EXECUTE de funcoes private.* negado a PUBLIC, anon e authenticated
   assert.deepEqual(trigger.rows.map((r) => r.nome), [], 'funcao de gatilho dsr_* voltou a ser executavel');
 });
 
-test('CAT-07: buckets sensiveis privados e nenhuma politica permissiva de leitura para anon/public em storage.objects', async (t) => {
+test('[CP-17] CAT-07: buckets sensiveis privados e nenhuma politica permissiva de leitura para anon/public em storage.objects', async (t) => {
   const buckets = await client.query('select id, public from storage.buckets where id = any($1) order by id', [DOMAIN_BUCKETS]);
   assert.equal(buckets.rows.length, DOMAIN_BUCKETS.length, 'buckets de foto e documento deveriam existir');
   assert.deepEqual(buckets.rows.filter((r) => r.public).map((r) => r.id), [], 'bucket sensivel marcado como publico');
