@@ -88,6 +88,9 @@ export * from './discovery-requests.js';
 export * from './discovery-projection.js';
 export * from './discovery-rate-limit.js';
 export * from './discovery-photos.js';
+// Issue 71 (H-058) | Adaptador Pg do aceite idempotente (transacao unica, 162-DESENHO-H058 §4.4, §8 fatia 4) e limite de 20 por minuto.
+export * from './acceptance.js';
+export * from './acceptance-rate-limit.js';
 // Issue 37 (H-024) | Adaptador Pg da cobertura booleana (private.coverage_for_request, so com ou sem).
 export * from './coverage-requests.js';
 // Issue 46 (H-033) | Adaptador do telefone e do consentimento (docs/factory/129-DESENHO-H033.md, §5).
