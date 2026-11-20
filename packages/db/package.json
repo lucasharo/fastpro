@@ -19,9 +19,10 @@
     "test": "vitest run --passWithNoTests"
   },
   "devDependencies": {
+    "@fastpro/access-matrix": "workspace:*",
     "@fastpro/config": "workspace:*",
-    "pg": "8.23.1",
     "@fastpro/domain": "workspace:*",
-    "@fastpro/testkit": "workspace:*"
+    "@fastpro/testkit": "workspace:*",
+    "pg": "8.23.1"
   }
 }

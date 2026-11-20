@@ -126,6 +126,9 @@ importers:
 
   packages/db:
     devDependencies:
+      '@fastpro/access-matrix':
+        specifier: workspace:*
+        version: link:../access-matrix
       '@fastpro/config':
         specifier: workspace:*
         version: link:../config

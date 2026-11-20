@@ -55,7 +55,7 @@ export const ACCESS_MATRIX: readonly AccessCase[] = Object.freeze([
     id: 'CP-03', resource: 'request', action: 'read', principal: 'anonymous',
     condition: 'sem sessao de autenticacao',
     criteria: CA(3), invariants: [], layers: ['api', 'db'],
-    route: GET_REQUEST, http: { status: 401, code: 'sessao_necessaria' }, db: DENIED,
+    route: GET_REQUEST, http: { status: 401, code: 'sessao_necessaria' }, db: { kind: 'exception', sqlstate: '22023' }, // F4 [AJUSTE]: request_owner_get(null) levanta 22023 (guarda 'if p_user is null'), observado no DEV
     probe: { kind: 'function_call', fn: 'private.request_owner_get', args: ['null', '$request.own_published'] },
     status: 'active',
   },
