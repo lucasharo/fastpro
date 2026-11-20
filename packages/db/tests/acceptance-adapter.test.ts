@@ -2,11 +2,7 @@
 // Cobre T-H058-08 (replay), T-H058-10 (chave reutilizada), T-H058-34 (limite 20/min), T-H058-35 (55P03) na parte
 // de ordem de transacao e mapa de erros. A concorrencia real no banco e a fatia 6.
 import { describe, expect, it } from 'vitest';
-import {
-  ACCEPTANCE_RATE_KEY_PREFIX,
-  ACCEPTANCE_RATE_LIMIT,
-  PgAcceptanceRateLimit,
-} from '../src/acceptance-rate-limit.js';
+import { ACCEPTANCE_RATE_LIMIT, PgAcceptanceRateLimit } from '../src/acceptance-rate-limit.js';
 import {
   ACCEPTANCE_BANCO_INDISPONIVEL,
   PgAcceptanceStore,
@@ -194,7 +190,7 @@ describe('PgAcceptanceStore | desfechos de idempotencia e de negocio', () => {
 });
 
 describe('PgAcceptanceRateLimit | limite de 20 por minuto (T-H058-34)', () => {
-  it('usa o prefixo accept: e a janela de 20 por minuto; devolve Retry-After limitado', async () => {
+  it('passa ao banco o HMAC puro (sem prefixo, 64 hex) e a janela de 20 por minuto; devolve Retry-After limitado', async () => {
     const sqls: unknown[][] = [];
     const client = {
       query: async (sql: string, p?: unknown[]) => {
@@ -208,14 +204,14 @@ describe('PgAcceptanceRateLimit | limite de 20 por minuto (T-H058-34)', () => {
     expect(d).toEqual({ decision: 'barrado', retryAfterSeconds: expect.any(Number) });
     if (d.decision === 'barrado') expect(d.retryAfterSeconds).toBeLessThanOrEqual(86400);
     expect(sqls[0]?.[1]).toEqual([
-      `${ACCEPTANCE_RATE_KEY_PREFIX}hmac-1111`,
+      `hmac-1111`,
       ACCEPTANCE_RATE_LIMIT.spanSeconds,
       ACCEPTANCE_RATE_LIMIT.bucketSeconds,
       20,
       AGORA.toISOString(),
     ]);
     await rl.record(PROF, AGORA.getTime());
-    expect(sqls[1]?.[1]).toEqual([`${ACCEPTANCE_RATE_KEY_PREFIX}hmac-1111`, 60, AGORA.toISOString()]);
+    expect(sqls[1]?.[1]).toEqual([`hmac-1111`, 60, AGORA.toISOString()]);
   });
 
   it('permitido quando o banco devolve out_ok verdadeiro', async () => {

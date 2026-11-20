@@ -1,13 +1,14 @@
 // H-058 (Issue #71) | Limite de taxa do aceite por profissional (docs/factory/162-DESENHO-H058.md, §3.4, decisao 869).
 // 20 requisicoes por minuto, sobre private.rl_check e private.rl_hit (ja existentes; sem migracao).
-// A chave chega em HMAC pela composicao, com o prefixo "accept:": o id do profissional nunca vai em claro
-// ao banco nem aparece em log. Erro do banco segue o caminho do SqlClient (sem texto de driver aqui).
+// A chave chega ao banco como o HMAC puro do id do profissional (64 hex, exigido por ops.rate_counter.key_hmac).
+// O dominio do aceite fica separado da descoberta pelo rotulo HKDF proprio da composicao, nao por prefixo
+// (um prefixo quebraria a restricao de 64 hex). O id nunca vai em claro ao banco nem aparece em log.
+// Erro do banco segue o caminho do SqlClient (sem texto de driver aqui).
 import { clampRetryAfter, type RateWindowDecision } from '@fastpro/domain';
 import type { SqlClient } from './jobs-tick.js';
 
 /** 20 por minuto (decisao 869). Janela e bucket de 60 s. */
 export const ACCEPTANCE_RATE_LIMIT = { limit: 20, spanSeconds: 60, bucketSeconds: 60 } as const;
-export const ACCEPTANCE_RATE_KEY_PREFIX = 'accept:';
 
 const SQL_CHECK =
   'select out_ok, out_retry_after from private.rl_check($1::text, $2::int, $3::int, $4::int, $5::timestamptz)';
@@ -47,6 +48,6 @@ export class PgAcceptanceRateLimit {
   }
 
   private chave(professionalId: string): string {
-    return `${ACCEPTANCE_RATE_KEY_PREFIX}${this.deps.chaveDoProfissional(professionalId)}`;
+    return this.deps.chaveDoProfissional(professionalId);
   }
 }
