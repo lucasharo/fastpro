@@ -14,6 +14,15 @@ import type { VisibilityStorePort } from '../src/requests/detail-service.js';
 import { createAddressVault } from '../src/requests/address-crypto.js';
 import { handleDiscoveryRoute, type DiscoveryRouteOptions } from '../src/requests/discovery-route.js';
 import type { DiscoveryServiceDeps } from '../src/requests/discovery-service.js';
+import { handleAdminVerificationRoute } from '../src/admin-verification-route.js';
+import { handleAdminDualApprovalRoute, type AdminDualApprovalRouteOptions } from '../src/admin-dual-approval-route.js';
+import { handleAdminAuditQuery, type AdminAuditRouteOptions } from '../src/admin-audit-route.js';
+import {
+  ADMIN_AUDIT_QUERY_PATH,
+  ADMIN_REFUND_APPROVALS_PATH,
+  ADMIN_SESSION_COOKIE,
+  type AdminGuardRecord,
+} from '@fastpro/domain';
 
 const DONO = '11111111-1111-4111-8111-111111111111';
 const OUTRO = '22222222-2222-4222-8222-222222222222';
@@ -119,6 +128,37 @@ const discoveryOpts: DiscoveryRouteOptions = {
   service: discoveryService,
 };
 
+// Administracao (F6): guarda por segredo do cookie __Host-fp_admin. Portas de banco que lancam se forem tocadas:
+// a guarda ou a permissao devem recusar antes de qualquer leitura da fila, da aprovacao ou da trilha.
+const ADMIN_BASE = 'https://admin.fastpro.test';
+const ADMIN_ID = '77777777-7777-4777-8777-777777777777';
+const APROVACAO = '99999999-9999-4999-8999-999999999999';
+const SEG_ADM_SEM_MFA = ['admin', 'sem-mfa', 'h115', '0000000000000000000000000000'].join('-');
+const SEG_ADM_SUPER = ['admin', 'superadmin', 'h115', '0000000000000000000000000000'].join('-');
+const SEG_ADM_AUDITOR = ['admin', 'auditor', 'h115', '0000000000000000000000000000'].join('-');
+const sessaoAdmin = (permissions: string[], roles: string[], aal2: boolean): AdminGuardRecord => ({
+  userId: ADMIN_ID, roles, permissions, aal2, active: true, expiresAtMs: AGORA + 8 * 3600 * 1000, totpAtMs: AGORA,
+});
+const registrosAdmin = new Map<string, AdminGuardRecord>([
+  [SEG_ADM_SEM_MFA, sessaoAdmin(['verification.review'], ['verificacao'], false)],
+  [SEG_ADM_SUPER, sessaoAdmin(['admin.role.manage', 'catalog.manage'], ['superadmin'], true)],
+  [SEG_ADM_AUDITOR, sessaoAdmin(['audit.read'], ['auditor'], true)],
+]);
+const guardaAdmin = async (segredo: string): Promise<AdminGuardRecord | null> => registrosAdmin.get(segredo) ?? null;
+const naoDeveTocar = new Proxy({}, {
+  get: () => {
+    throw new Error('porta de banco tocada: a guarda deveria recusar antes');
+  },
+}) as never;
+const adminVerificacaoOpts = { guard: guardaAdmin, baseUrl: ADMIN_BASE, clock: { nowMs: () => AGORA }, casos: naoDeveTocar, leitor: naoDeveTocar };
+const adminDualOpts: AdminDualApprovalRouteOptions = { guard: guardaAdmin, deps: naoDeveTocar, baseUrl: ADMIN_BASE, clock: { nowMs: () => AGORA } };
+const adminAuditOpts: AdminAuditRouteOptions = {
+  guard: guardaAdmin,
+  deps: { query: { query: async () => ({ consulta_id: '66666666-6666-4666-8666-666666666666', eventos: [], tem_mais: false, proximo_cursor: null }) }, limits: { take: async () => true } },
+  baseUrl: ADMIN_BASE,
+  clock: { nowMs: () => AGORA },
+};
+
 let servidor: Server;
 let base: string;
 
@@ -127,6 +167,12 @@ beforeAll(async () => {
     const caminho = (req.url ?? '/').split('?')[0] ?? '/';
     if (caminho === '/v1/professional/discovery/requests') {
       void handleDiscoveryRoute(req, res, discoveryOpts);
+    } else if (caminho === '/v1/admin/verificacao/casos') {
+      void handleAdminVerificationRoute(req, res, adminVerificacaoOpts, caminho);
+    } else if (caminho.startsWith(`${ADMIN_REFUND_APPROVALS_PATH}/`)) {
+      void handleAdminDualApprovalRoute(req, res, adminDualOpts, caminho);
+    } else if (caminho === ADMIN_AUDIT_QUERY_PATH) {
+      void handleAdminAuditQuery(req, res, adminAuditOpts);
     } else {
       void handleRequestDetailRoute(req, res, caminho, detailOpts);
     }
@@ -149,6 +195,19 @@ async function chamar(caminho: string, segredo?: string): Promise<Resposta> {
   const cabecalhos: Record<string, string> = {};
   if (segredo !== undefined) cabecalhos.cookie = `${SESSION_COOKIE_NAME}=${segredo}`;
   const r = await fetch(`${base}${caminho}`, { headers: cabecalhos });
+  const raw = await r.text();
+  return { status: r.status, raw, json: raw.length > 0 ? JSON.parse(raw) : null };
+}
+
+/** Chamada admin: cookie __Host-fp_admin; mutacoes com Origin e Sec-Fetch-Site da propria console (54 §3). */
+async function chamarAdmin(metodo: 'GET' | 'POST', caminho: string, segredo: string, corpo?: unknown): Promise<Resposta> {
+  const cabecalhos: Record<string, string> = { cookie: `${ADMIN_SESSION_COOKIE}=${segredo}` };
+  if (metodo === 'POST') {
+    cabecalhos['content-type'] = 'application/json';
+    cabecalhos.origin = ADMIN_BASE;
+    cabecalhos['sec-fetch-site'] = 'same-origin';
+  }
+  const r = await fetch(`${base}${caminho}`, { method: metodo, headers: cabecalhos, body: corpo === undefined ? undefined : JSON.stringify(corpo) });
   const raw = await r.text();
   return { status: r.status, raw, json: raw.length > 0 ? JSON.parse(raw) : null };
 }
@@ -241,5 +300,25 @@ describe('H-115 F3: executor de API da matriz de acesso (rotas reais, portas em 
   it('[CP-14] descoberta: assinatura expirada recebe lista vazia (silencio financeiro)', async () => {
     const c = caso('CP-14');
     verificar(c, await chamar('/v1/professional/discovery/requests', SEG_EXPIRADO));
+  });
+
+  it('[CP-21] admin sem segundo fator (aal1) abre a fila de verificacao: 404 uniforme, sem tocar no banco', async () => {
+    const c = caso('CP-21');
+    verificar(c, await chamarAdmin('GET', '/v1/admin/verificacao/casos', SEG_ADM_SEM_MFA));
+  });
+
+  it('[CP-22] superadmin tenta votar o estorno: 403 permission_denied antes de qualquer porta de aprovacao', async () => {
+    const c = caso('CP-22');
+    verificar(c, await chamarAdmin('POST', `${ADMIN_REFUND_APPROVALS_PATH}/${APROVACAO}/vote`, SEG_ADM_SUPER, {}));
+  });
+
+  it('[CP-23] auditor consulta a trilha no periodo: 200 com lista de eventos', async () => {
+    const c = caso('CP-23');
+    const r = await chamarAdmin('POST', ADMIN_AUDIT_QUERY_PATH, SEG_ADM_AUDITOR, {
+      from: '2099-08-01T00:00:00.000Z',
+      to: '2099-08-02T00:00:00.000Z',
+    });
+    verificar(c, r);
+    expect(Array.isArray((r.json as { eventos?: unknown }).eventos), 'CP-23: lista de eventos').toBe(true);
   });
 });

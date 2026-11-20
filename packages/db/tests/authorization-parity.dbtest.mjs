@@ -9,6 +9,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
+import { Buffer } from 'node:buffer';
 import { ACCESS_MATRIX, deferredCases } from '@fastpro/access-matrix';
 import { connect } from '../scripts/lib/env.mjs';
 import { concederAcessoVigente } from './fixtures/professional-access.mjs';
@@ -27,10 +28,85 @@ const SQL_RASCUNHO = 'select * from private.draft_get($1::text, $2::timestamptz)
 const SQL_PRIVILEGIO_UPDATE = `select r.role, has_table_privilege(r.role, 'audit.audit_event', 'UPDATE') as update_ok,
   has_table_privilege(r.role, 'audit.audit_event', 'DELETE') as delete_ok
   from (values ('app_api'), ('app_system'), ('anon'), ('authenticated')) as r(role)`;
+// Administracao e fotos (F6): mesmas assinaturas usadas pelas suites de verificacao, auditoria e dupla aprovacao.
+const SQL_ATRIBUIR = 'select * from private.verification_case_assign($1,$2,$3,$4,$5)';
+const SQL_IDOC = 'select * from private.idoc_review_target($1::uuid, $2::text, $3::uuid, $4::uuid, $5::text, $6::timestamptz)';
+const SQL_GUARDA = 'select * from private.admin_guard($1::text, $2::timestamptz)';
+const SQL_APROVACAO = 'select * from private.approval_dual_vote($1::uuid, $2::text, $3::text, $4::uuid, $5::timestamptz)';
+const SQL_AUDITORIA = `select * from private.audit_query($1::uuid, $2::text, $3::timestamptz, $4::timestamptz,
+  null, null, null, 0, 50, $5::timestamptz)`;
 
 let client;
 const ctx = {};
 const resultados = [];
+
+// Fixtures da administracao (F6). Seguem as suites existentes (verification-case-regras, audit-query, approval-dual):
+// staff com papel, sessao aberta pelo fluxo de login (admin_session_open), documento levado a 'recebido' pelo UPDATE.
+async function novoUsuario() {
+  const id = randomUUID();
+  await client.query(
+    `insert into app.app_user (id, email, auth_user_id, status, email_verified_at, created_at)
+     values ($1, $2, $3, 'ativo', now(), now())`,
+    [id, `${MARCA}-${id.slice(0, 8)}@example.test`, randomUUID()],
+  );
+  return id;
+}
+
+async function staffComPapel(role) {
+  const id = await novoUsuario();
+  await client.query(
+    `insert into app.admin_staff (user_id, status, origin, invited_by, mfa_enrolled_at, created_at, status_changed_at)
+     values ($1, 'ativo', 'bootstrap', null, now(), now(), now())`,
+    [id],
+  );
+  await client.query(
+    `insert into app.admin_user_role (id, user_id, role_code, granted_by, grant_origin, granted_at, approval_request_id)
+     values (gen_random_uuid(), $1, $2, null, 'bootstrap', now(), null)`,
+    [id, role],
+  );
+  return id;
+}
+
+/** Sessao admin aberta em AGORA (com segundo fator). Devolve o segredo em hash, como a API envia ao banco. */
+async function sessaoAdmin(userId) {
+  const segredo = sha(`sessao-admin-${randomUUID()}`);
+  const { rows } = await client.query('select private.admin_session_open($1, $2, $3, $4) as ok', [randomUUID(), userId, segredo, AGORA]);
+  assert.equal(rows[0].ok, true, 'sessao admin de teste aberta');
+  return segredo;
+}
+
+/** Profissional pendente com um documento recebido: o trigger de fila abre o caso de verificacao. */
+async function casoDeVerificacao() {
+  const prof = await novoUsuario();
+  await client.query(
+    `insert into app.professional_profile (user_id, verification_status, created_at, updated_at)
+     values ($1, 'pendente', now(), now())`,
+    [prof],
+  );
+  const doc = randomUUID();
+  await client.query(
+    `insert into app.identity_document (id, professional_id, client_upload_id, declared_type, declared_bytes, status, pending_expires_at)
+     values ($1, $2, $3, 'image/jpeg', 1000, 'pendente_envio', now() + interval '30 minutes')`,
+    [doc, prof, randomUUID()],
+  );
+  await client.query(
+    `update app.identity_document set status = 'recebido', stored_type = 'image/jpeg', stored_bytes = 16,
+       content_sha256 = $2, received_at = $3 where id = $1`,
+    [doc, Buffer.alloc(32, 7), AGORA],
+  );
+  const { rows } = await client.query('select id, version from app.verification_case where professional_id = $1', [prof]);
+  return { prof, doc, cs: rows[0] };
+}
+
+/** Caso atribuido ao verificador v1 (em_revisao), com sessao admin aberta. */
+async function cenarioAtribuido() {
+  const cen = await casoDeVerificacao();
+  const v1 = await staffComPapel('verificacao');
+  const s1 = await sessaoAdmin(v1);
+  const a = await sonda(SQL_ATRIBUIR, [v1, s1, cen.cs.id, cen.cs.version, AGORA]);
+  assert.equal(a.kind, 'rows', 'atribuicao do caso de teste');
+  return { ...cen, v1, s1 };
+}
 
 function caso(id) {
   const c = ACCESS_MATRIX.find((x) => x.id === id);
@@ -238,6 +314,61 @@ test('[CP-15] rascunho so e lido com o proprio nonce: nonce alheio nao devolve r
   const controle = await sonda(SQL_RASCUNHO, [ctx.rascunhoHash, AGORA]);
   assert.equal(controle.kind, 'rows');
   assert.equal(controle.rows.length, 1, 'CP-15: controle positivo deveria devolver o rascunho');
+});
+
+test('[CP-18] profissional dono do documento tenta le-lo: negado (sem papel de verificacao)', async () => {
+  const c = caso('CP-18');
+  const cen = await casoDeVerificacao();
+  registrar(c.id, confere(c.db, await sonda(SQL_IDOC, [cen.prof, sha('sessao-do-proprio-profissional'), cen.cs.id, cen.doc, 'analise_inicial', AGORA])));
+});
+
+test('[CP-19] verificador com tarefa atribuida le o documento do caso: uma linha', async () => {
+  const c = caso('CP-19');
+  const cen = await cenarioAtribuido();
+  registrar(c.id, confere(c.db, await sonda(SQL_IDOC, [cen.v1, cen.s1, cen.cs.id, cen.doc, 'analise_inicial', AGORA])));
+});
+
+test('[CP-20] administrador financeiro (sem verificacao) tenta ler o documento de um caso: negado', async () => {
+  const c = caso('CP-20');
+  const cen = await cenarioAtribuido();
+  const fin = await staffComPapel('financeiro');
+  const sf = await sessaoAdmin(fin);
+  registrar(c.id, confere(c.db, await sonda(SQL_IDOC, [fin, sf, cen.cs.id, cen.doc, 'analise_inicial', AGORA])));
+});
+
+test('[CP-21] admin sem segundo fator nao passa na guarda: zero linhas; com MFA, a mesma guarda devolve a sessao', async () => {
+  const c = caso('CP-21');
+  const adm = await staffComPapel('verificacao');
+  // Controle positivo: com sessao aal2 a guarda devolve uma linha; sem ela (estado sem MFA) nao ha sessao, so o segredo.
+  const com = await sessaoAdmin(adm);
+  const ok = await sonda(SQL_GUARDA, [com, AGORA]);
+  assert.equal(ok.kind, 'rows');
+  assert.equal(ok.rows.length, 1, 'CP-21: controle positivo deveria devolver a sessao aal2');
+  // A tabela de sessao exige aal2_at (not null): o estado aal1 nao existe como linha, so o segredo sem sessao.
+  registrar(c.id, confere(c.db, await sonda(SQL_GUARDA, [sha(`sem-mfa-${randomUUID()}`), AGORA])));
+});
+
+test('[CP-22] superadmin nao aprova estorno: sem a permissao de aprovacao, negado antes de qualquer voto', async () => {
+  const c = caso('CP-22');
+  const sup = await staffComPapel('superadmin');
+  const ss = await sessaoAdmin(sup);
+  // A permissao e checada antes da leitura do pedido: id sintetico basta para provar a recusa.
+  registrar(c.id, confere(c.db, await sonda(SQL_APROVACAO, [sup, ss, 'estorno', randomUUID(), AGORA])));
+});
+
+test('[CP-23] auditor consulta a trilha no periodo: consulta aceita (pode vir vazia)', async () => {
+  const c = caso('CP-23');
+  const aud = await staffComPapel('auditor');
+  const sa = await sessaoAdmin(aud);
+  registrar(c.id, confere(c.db, await sonda(SQL_AUDITORIA, [aud, sa, '2099-08-01T00:00:00.000Z', '2099-08-02T00:00:00.000Z', AGORA])));
+});
+
+test('[CP-27] verificador sem caso atribuido a ele (caso de outro analista): leitura negada', async () => {
+  const c = caso('CP-27');
+  const cen = await cenarioAtribuido();
+  const v2 = await staffComPapel('verificacao');
+  const s2 = await sessaoAdmin(v2);
+  registrar(c.id, confere(c.db, await sonda(SQL_IDOC, [v2, s2, cen.cs.id, cen.doc, 'analise_inicial', AGORA])));
 });
 
 test('[CP-24] papeis da API e anon/authenticated nao tem UPDATE nem DELETE em audit.audit_event (grant efetivo)', async () => {

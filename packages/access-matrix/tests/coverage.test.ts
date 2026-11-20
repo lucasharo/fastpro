@@ -18,18 +18,8 @@ const ARQUIVOS: Record<'api' | 'db' | 'catalog', string> = {
  * teste existir (a guarda falha se a pendencia ja estiver coberta). Nao e' permissao para pular: e' divida registrada.
  */
 const PENDENCIAS: ReadonlyMap<string, string> = new Map([
-  ['CP-16:db', 'foto para profissional elegivel: exige fixture de midia (private.media_get)'],
+  ['CP-16:db', 'foto para profissional elegivel sem aceite: request_photo_list devolve so linha vazia (sem id); regra a decidir (ver relatorio F6)'],
   ['CP-17:db', 'visitante e foto: exige fixture de midia (a parte de catalogo, CAT-07, ja esta coberta)'],
-  ['CP-18:db', 'documento de identidade do proprio profissional: exige caso de verificacao; assinatura de private.idoc_review_target a mapear'],
-  ['CP-19:db', 'verificador com tarefa atribuida: exige caso de verificacao e sessao admin'],
-  ['CP-20:db', 'admin financeiro sem permissao de verificacao: exige sessao admin; SQLSTATE P0001 nao verificado'],
-  ['CP-21:api', 'verificacao admin sem MFA: exige o harness da guarda admin (cookie e aal) em admin-verification-route'],
-  ['CP-21:db', 'private.admin_guard com aal1: exige sessao admin no banco'],
-  ['CP-22:api', 'dupla aprovacao de estorno (rota de aprovacoes): harness nao montado'],
-  ['CP-22:db', 'private.approval_dual_vote: exige sessao admin e estorno pendente; SQLSTATE nao verificado'],
-  ['CP-23:api', 'auditoria admin (POST /v1/admin/audit/query): harness de handleAdminAuditQuery nao montado'],
-  ['CP-23:db', 'private.audit_query: exige sessao de auditor'],
-  ['CP-27:db', 'verificador sem caso aberto: exige sessao admin e caso de verificacao'],
   ['CP-28:db', 'area de outro profissional: private.professional_area_get le so o proprio principal; caso a redefinir'],
 ]);
 
@@ -83,7 +73,7 @@ describe('H-115 F5: guarda de cobertura por titulo', () => {
 
   it('resumo de cobertura por camada (linha H115 PARIDADE)', () => {
     const pendentes = [...PENDENCIAS.keys()].sort();
-    const cobertos = ativos.filter((c) => (c.layers as string[]).every((l) => l === 'api' || l === 'db' || l === 'catalog')).length;
+    const cobertos = ativos.filter((c) => (c.layers as string[]).every((l) => (l === 'api' || l === 'db' || l === 'catalog') && citadosPorCamada[l].has(c.id))).length;
     console.log(
       `H115 PARIDADE camada=cobertura ativos=${ativos.length} casos_com_todas_camadas=${cobertos} pendencias=${pendentes.length} [${pendentes.join(',')}]`,
     );

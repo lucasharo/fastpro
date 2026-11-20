@@ -29,7 +29,7 @@ const GET_REQUEST = { method: 'GET', path: '/v1/requests/:id' } as const;
 const GET_PRO_REQUEST = { method: 'GET', path: '/v1/professional/requests/:id' } as const;
 const GET_DISCOVERY = { method: 'GET', path: '/v1/professional/discovery/requests' } as const;
 const GET_VERIFICATION_CASES = { method: 'GET', path: '/v1/admin/verificacao/casos' } as const;
-const POST_AUDIT_QUERY = { method: 'POST', path: '/v1/admin/audit/query' } as const;
+const POST_AUDIT_QUERY = { method: 'POST', path: '/v1/admin/audit/queries' } as const; // [AJUSTE F6] rota real (domain ADMIN_AUDIT_QUERY_PATH)
 
 const CA = (...n: number[]): string[] => n.map((i) => `CA-H115-${String(i).padStart(2, '0')}`);
 
@@ -164,7 +164,7 @@ export const ACCESS_MATRIX: readonly AccessCase[] = Object.freeze([
     id: 'CP-16', resource: 'request_media', action: 'read', principal: 'pro_eligible',
     condition: 'foto para profissional elegivel: acesso so pela API',
     criteria: CA(9), invariants: [], layers: ['db'],
-    probe: { kind: 'function_call', fn: 'private.media_get', args: ['$principal.id', '$media.eligible'] },
+    probe: { kind: 'function_call', fn: 'private.request_photo_list', args: ['$principal.id', '$request.in_radius'] }, // [AJUSTE F6] media_get e do dono do rascunho; a foto do profissional e request_photo_list
     db: { kind: 'rows', minRows: 1 },
     status: 'active',
   },
@@ -182,7 +182,7 @@ export const ACCESS_MATRIX: readonly AccessCase[] = Object.freeze([
     condition: 'profissional tentando baixar o proprio documento (decisao 170)',
     criteria: CA(10), invariants: [], layers: ['db'],
     probe: { kind: 'function_call', fn: 'private.idoc_review_target', args: ['$principal.id', '$document.own'] },
-    db: NO_ROWS,
+    db: DENIED, // [AJUSTE F6] observado: permissao_negada (42501) antes de qualquer linha; nega o mesmo acesso
     status: 'active',
   },
   {
@@ -198,7 +198,7 @@ export const ACCESS_MATRIX: readonly AccessCase[] = Object.freeze([
     condition: 'papel administrativo sem permissao de verificacao',
     criteria: CA(14), invariants: [], layers: ['db'],
     probe: { kind: 'function_call', fn: 'private.idoc_review_target', args: ['$principal.id', '$document.assigned'] },
-    db: { kind: 'exception', sqlstate: 'P0001' }, // [NAO VERIFICADO] SQLSTATE real: confirmar na F4
+    db: DENIED, // [AJUSTE F6] observado 42501 (permissao_negada, sem verification.review), nao P0001
     status: 'active',
   },
   // --- Admin: MFA, aprovacao e auditoria ---
@@ -206,7 +206,7 @@ export const ACCESS_MATRIX: readonly AccessCase[] = Object.freeze([
     id: 'CP-21', resource: 'verification_case', action: 'list', principal: 'admin_no_mfa',
     condition: 'sessao admin sem MFA (aal1)',
     criteria: CA(15), invariants: [], layers: ['api', 'db'],
-    route: GET_VERIFICATION_CASES, http: { status: 403, code: 'mfa_obrigatorio' }, db: DENIED,
+    route: GET_VERIFICATION_CASES, http: { status: 404 }, db: NO_ROWS, // [AJUSTE F6] sem aal2 a guarda nega com 404 uniforme (nao existe codigo mfa_obrigatorio); banco: zero linhas
     probe: { kind: 'function_call', fn: 'private.admin_guard', args: ['$principal.id', 'aal1'] },
     status: 'active',
   },
@@ -215,8 +215,8 @@ export const ACCESS_MATRIX: readonly AccessCase[] = Object.freeze([
     condition: 'superadmin tentando aprovar estorno (segregacao)',
     criteria: CA(17), invariants: [], layers: ['api', 'db'],
     route: { method: 'POST', path: '/v1/admin/approvals/:id/vote' },
-    http: { status: 403, code: 'permissao_insuficiente' },
-    db: { kind: 'exception', sqlstate: 'P0001' }, // [NAO VERIFICADO] SQLSTATE real: confirmar na F4
+    http: { status: 403, code: 'permission_denied' }, // [AJUSTE F6] codigo real da guarda admin
+    db: DENIED, // [AJUSTE F6] observado 42501 (permissao_negada): superadmin sem finance.refund.approve
     probe: { kind: 'function_call', fn: 'private.approval_dual_vote', args: ['$principal.id', '$approval.refund'] },
     status: 'active',
   },
@@ -255,7 +255,7 @@ export const ACCESS_MATRIX: readonly AccessCase[] = Object.freeze([
     condition: 'verificador sem caso aberto: leitura negada',
     criteria: CA(16), invariants: [], layers: ['db'],
     probe: { kind: 'function_call', fn: 'private.idoc_review_target', args: ['$principal.id', '$document.no_case'] },
-    db: NO_ROWS,
+    db: DENIED, // [AJUSTE F6] observado 42501 (permissao_negada): caso de outro analista
     status: 'active',
   },
   {

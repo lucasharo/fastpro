@@ -16,7 +16,7 @@ export type HttpExpectation =
       readonly mustNotHaveKeys: readonly string[];
       readonly emptyItems?: boolean;
     }
-  | { readonly status: 401 | 403 | 404; readonly code: string };
+  | { readonly status: 401 | 403 | 404; readonly code?: string }; // F6: 404 uniforme da guarda admin nao tem codigo
 
 export type DbExpectation =
   | { readonly kind: 'rows'; readonly minRows: number; readonly columns?: readonly string[]; readonly forbiddenColumns?: readonly string[] }
