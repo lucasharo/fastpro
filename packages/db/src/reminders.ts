@@ -1,5 +1,11 @@
 // H-099 (Issue 109) | Handlers dos lembretes no tick (docs/factory/163-DESENHO-H099.md §4.3). Nenhum e-mail sai daqui:
 // reminder.fire so emite o evento de outbox; o despacho e o envio seguem o pipeline existente. Relogio injetado.
+import type {
+  ReminderSourcePort,
+  RequestReminderView,
+  TrialEstado,
+  TrialReminderView,
+} from '@fastpro/domain';
 import {
   registerJobHandler,
   type JobContext,
@@ -110,4 +116,82 @@ export interface ReminderHandlerDeps {
 export function registerReminderHandlers(registry: JobRegistry, deps: ReminderHandlerDeps): void {
   registerJobHandler(registry, REMINDER_SCAN_KIND, new ReminderScanHandler(deps.client, deps.now));
   registerJobHandler(registry, REMINDER_FIRE_KIND, new ReminderFireHandler(deps.client));
+}
+
+const STATUS_PEDIDO = ['publicado', 'selecionado', 'concluido', 'cancelado'] as const;
+const STATUS_CLIENTE = ['ativo', 'bloqueado', 'em_eliminacao', 'anonimizado'] as const;
+const STATUS_CONCESSAO = ['ativa', 'revogada'] as const;
+const ESTADOS_TRIAL: readonly TrialEstado[] = [
+  'trial_ativo',
+  'trial_expirado',
+  'ativa',
+  'em_carencia',
+  'cancelada_com_acesso_ate_fim_do_periodo',
+  'expirada',
+  'sem_acesso',
+];
+
+/** Erro com codigo fixo: a visao veio fora do contrato. Falha fechada (nenhum lembrete sai). */
+export class ReminderViewError extends Error {
+  readonly code = 'visao_invalida';
+  constructor() {
+    super('visao_invalida');
+    this.name = 'ReminderViewError';
+  }
+}
+
+function instante(valor: unknown): string {
+  const ms = valor instanceof Date ? valor.getTime() : typeof valor === 'string' ? Date.parse(valor) : Number.NaN;
+  if (Number.isNaN(ms)) throw new ReminderViewError();
+  return new Date(ms).toISOString();
+}
+
+function escolha<T extends string>(valor: unknown, lista: readonly T[]): T {
+  if (typeof valor === 'string' && (lista as readonly string[]).includes(valor)) return valor as T;
+  throw new ReminderViewError();
+}
+
+/**
+ * Porta de leitura dos lembretes sobre as funcoes SQL minimas (163 §4.2, A-5). Le so as colunas do contrato:
+ * nada de e-mail, endereco, descricao ou identidade de documento. Valores fora do contrato geram erro fixo.
+ */
+export class PgReminderSource implements ReminderSourcePort {
+  constructor(private readonly client: SqlClient) {}
+
+  async requestView(requestId: string): Promise<RequestReminderView | null> {
+    const r = await this.client.query(
+      'select request_id, customer_user_id, request_status, acceptance_deadline_at, customer_status ' +
+        'from private.reminder_request_view(::uuid)',
+      [requestId],
+    );
+    const row = r.rows[0];
+    if (row === undefined) return null;
+    return {
+      requestId: String(row['request_id']),
+      customerUserId: String(row['customer_user_id']),
+      status: escolha(row['request_status'], STATUS_PEDIDO),
+      acceptanceDeadlineAt: instante(row['acceptance_deadline_at']),
+      customerStatus: escolha(row['customer_status'], STATUS_CLIENTE),
+    };
+  }
+
+  async trialView(grantId: string, nowIso: string): Promise<TrialReminderView | null> {
+    const r = await this.client.query(
+      'select grant_id, professional_user_id, grant_status, ends_at, estado, user_status ' +
+        'from private.reminder_trial_view(::uuid, ::timestamptz)',
+      [grantId, nowIso],
+    );
+    const row = r.rows[0];
+    if (row === undefined) return null;
+    // Sem estado derivado (commercial_access sem linha): nenhum lembrete. Fail-closed.
+    if (row['estado'] === null || row['estado'] === undefined) return null;
+    return {
+      grantId: String(row['grant_id']),
+      professionalUserId: String(row['professional_user_id']),
+      grantStatus: escolha(row['grant_status'], STATUS_CONCESSAO),
+      endsAt: instante(row['ends_at']),
+      estado: escolha(row['estado'], ESTADOS_TRIAL),
+      userStatus: escolha(row['user_status'], STATUS_CLIENTE),
+    };
+  }
 }
