@@ -5,7 +5,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { metric, waitUntil } from '@vercel/functions';
 import { handleRequest } from './app.js';
 import { montarIntegracoes, montarRetencaoAdmin } from './composicao.js';
-import { abrirClienteSql } from './sql-pool.js';
+import { abrirClienteSql, abrirConexaoDedicadaSql } from './sql-pool.js';
 import { criarFabricaCatalogo } from './catalog/fabrica-pg.js';
 import { abrirPoolCatalogo } from './catalog/pool-pg.js';
 import { criarFabricaRascunho } from './drafts/compose.js';
@@ -39,7 +39,7 @@ export default async function vercelHandler(
 ): Promise<void> {
   try {
     // H-073: o pool do papel app_system so e aberto quando DATABASE_URL_APP_SYSTEM e ADMIN_BASE_URL existem.
-    const integracoes = montarIntegracoes(process.env, { abrirClienteSql, abrirClienteApi, fabricaCatalogo, fabricaRascunho, reducaoMidia, abrirClienteSistema });
+    const integracoes = montarIntegracoes(process.env, { abrirClienteSql, abrirClienteApi, fabricaCatalogo, fabricaRascunho, reducaoMidia, abrirClienteSistema, abrirConexaoDedicada: abrirConexaoDedicadaSql });
     // H-107: gestao do catalogo admin; so monta com DATABASE_URL_APP_SYSTEM e ADMIN_BASE_URL (sem eles, 404).
     const adminCatalog = montarCatalogoAdmin(process.env, { abrirCliente: abrirClienteSql });
     // H-105: dupla aprovacao de estorno e suspensao; so monta com DATABASE_URL_APP_SYSTEM e ADMIN_BASE_URL (sem eles, 404).
@@ -92,6 +92,7 @@ export default async function vercelHandler(
       ...(integracoes.requestDiscovery !== undefined ? { requestDiscovery: integracoes.requestDiscovery } : {}),
       ...(integracoes.privacyTitular !== undefined ? { privacyTitular: integracoes.privacyTitular } : {}),
       ...(integracoes.privacyDpo !== undefined ? { privacyDpo: integracoes.privacyDpo } : {}),
+      ...(integracoes.requestAcceptance !== undefined ? { requestAcceptance: integracoes.requestAcceptance } : {}),
     });
   } catch {
     // Sem detalhe de erro na resposta nem no log (ADR-013: sem dado sensivel).

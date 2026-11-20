@@ -86,6 +86,9 @@ import type { RequestListRouteOptions } from './requests/list-route.js';
 // Issue 68 (H-055) | Descoberta do profissional: so monta com DATABASE_URL_APP_SYSTEM e DISCOVERY_CURSOR_KEY.
 import { montarDescoberta } from './requests/discovery-composicao.js';
 import type { DiscoveryRouteOptions } from './requests/discovery-route.js';
+// Issue 71 (H-058) | Aceite de trabalho: so liga com DATABASE_URL_APP_SYSTEM, SITE_URL, DISCOVERY_CURSOR_KEY (32+) e as duas fabricas da borda.
+import { montarAceite, type AceiteOpcoes } from './requests/acceptance-composicao.js';
+import type { AcceptanceRouteOptions } from './requests/acceptance-route.js';
 // Issue 46 (H-033) | Telefone e consentimento de contato: so monta com DATABASE_URL_APP_SYSTEM, SITE_URL e PHONE_ENC_KEY.
 import { montarContato } from './contact/contact-composicao.js';
 import type { ContactRouteOptions } from './contact/contact-route.js';
@@ -134,6 +137,8 @@ export interface ComposicaoOpcoes {
   readonly abrirClienteApi?: (connectionString: string) => SqlClient;
   /** Limite de reducoes e contadores da instancia da midia (singletons de modulo na borda). */
   readonly reducaoMidia?: { readonly gate: ReduceGate; readonly contadores: ReduceCounters };
+  /** Issue 71 (H-058): fabrica da conexao dedicada da transacao do aceite (uma por transacao). Sem ela, a rota nao liga (404). */
+  readonly abrirConexaoDedicada?: NonNullable<AceiteOpcoes['abrirConexaoDedicada']>;
 }
 
 export interface Integracoes {
@@ -206,6 +211,10 @@ export interface Integracoes {
   readonly publicProfile: PublicProfileRouteOptions | undefined;
   /** Nomes (nunca valores) que impedem as rotas de contato de ligar. */
   readonly pendenciasContato: readonly string[];
+  /** Issue 71 (H-058): rota do aceite (POST /v1/requests/:id/acceptances), ou undefined (404). */
+  readonly requestAcceptance: AcceptanceRouteOptions | undefined;
+  /** Nomes (nunca valores) que impedem a rota do aceite de ligar (H-058). */
+  readonly pendenciasAceite: readonly string[];
 }
 
 const RELOGIO_PADRAO: ClockPort = {
@@ -320,6 +329,12 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   const lista = montarListaPedidos(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
   // Issue 68 (H-055) | Descoberta do profissional: so DATABASE_URL_APP_SYSTEM e DISCOVERY_CURSOR_KEY (32+ caracteres).
   const descoberta = montarDescoberta(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
+  // Issue 71 (H-058) | Aceite: so DATABASE_URL_APP_SYSTEM, SITE_URL, DISCOVERY_CURSOR_KEY (32+) e as duas fabricas da borda.
+  const aceite = montarAceite(env, {
+    abrirCliente: opcoes.abrirClienteSistema,
+    abrirConexaoDedicada: opcoes.abrirConexaoDedicada,
+    relogio: opcoes.clock,
+  });
 
   // Issue 46 (H-033): telefone e consentimento. Sem PHONE_ENC_KEY valida, as rotas nao ligam (404).
   const contato = montarContato(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
@@ -378,6 +393,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     requestContact: contato.options,
     publicProfile: perfilPublico,
     pendenciasContato: contato.pendencias,
+    requestAcceptance: aceite.options,
+    pendenciasAceite: aceite.pendencias,
   };
 }
 
