@@ -3,7 +3,7 @@
 - **Issue:** #123 `[E13] Runbook de incidente e reconciliação` · **História:** H-114 · **Workflow:** WF-03 · **Etapa:** Desenvolvimento · **EXEC-ID:** EXEC-DEV-123-20261120.
 - **Desenho de origem:** `165-DESENHO-H114.md` (seções 3 e 4). **Refino:** `146-REFINO-H114.md` (perguntas 703 a 722, adotadas pelo líder).
 - **Local deste arquivo:** `147` já era ocupado por outro desenho (`147-DESENHO-H111.md`); o próximo prefixo livre é `149`, registrado aqui como decisão de implementação (A-1 do desenho).
-- **Situação:** versões S1 a S3 (D-06a e D-06b parciais, com lacunas L-1 e L-2). Seções 0 a 11 presentes. D-04 e D-05 completos. Os demais procedimentos têm o molde completo, com o conteúdo do desenho; o que ainda não foi provado está marcado como `[PENDENTE fatia Sx]`.
+- **Situação (fatias S1 a S8, 2026-11-20):** seções 0 a 11 presentes. Executados: D-04 (parcial, sem `cron.job`), D-05, D-07 (com lacunas L-3 e L-4), D-09 (parcial, lacuna L-5), R-MP, R-EMAIL e R-AUTH (funções puras, offline), e o exercício integrado da S8. D-06a e D-06b parciais, com lacunas L-1 e L-2; D-06c segue `[PENDENTE fatia S3]`. Lacunas L-1 a L-5 e a pendência 6 da seção 11 são pendências declaradas para cartões separados.
 - **Ambiente:** somente DEV (projeto Supabase de desenvolvimento, branch `release/*` para DEV/TST). Nenhum procedimento aqui é executado em produção.
 
 Etiquetas usadas neste documento:
@@ -246,8 +246,8 @@ Glossário curto:
 | CA-11 a CA-12 | R-MP | Testes unitários sobre fixtures | S6 |
 | CA-13 a CA-16 | R-EMAIL e R-AUTH | Testes unitários | S7 |
 | CA-17 | Todo | Teste unitário: nenhuma saída com e-mail, telefone ou CPF em claro | S2 |
-| CA-18 | Todo | Teste de banco: cada exercício grava evento em `audit.audit_event` | S8 |
-| CA-19 | Todo | Suíte offline com `now` injetado | S8 |
+| CA-18 | Todo | Teste de banco: cada exercício grava evento em `audit.audit_event` (ação `runbook.exercicio.executado`, migração `20261120420000`) | S8 (executado: `packages/db/tests/runbook-h114-exercicio.dbtest.mjs`, 4 testes, 0 pulados) |
+| CA-19 | Todo | Suíte offline com `now` injetado, rede bloqueada e execução repetida | S8 (executado: `packages/db/tests/runbook-h114-exercicio.test.mjs`, 6 testes) |
 
 ---
 
