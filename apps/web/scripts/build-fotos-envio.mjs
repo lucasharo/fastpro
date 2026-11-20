@@ -6,6 +6,7 @@ import { build } from 'esbuild';
 import { existsSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { conteudoStubNodeCrypto } from './stub-node-crypto.mjs';
 
 const aqui = dirname(fileURLToPath(import.meta.url));
 const raizWeb = join(aqui, '..');
@@ -18,14 +19,16 @@ if (!existsSync(distDominio)) {
   process.exit(1);
 }
 
-// H-031 (#44): o dominio exporta a publicacao do pedido, que usa node:crypto (so no servidor). O bundle do navegador
-// usa so a reducao de foto e nunca chama essas funcoes: node:crypto vira um stub que falha se for usado.
+// H-031 (#44) e Issue 152: o dominio exporta a publicacao do pedido e o cursor de descoberta, que usam node:crypto
+// (so no servidor). O bundle do navegador usa so a reducao de foto e nunca chama essas funcoes: node:crypto vira um
+// stub que falha se for usado. A lista de nomes e o texto do stub ficam em stub-node-crypto.mjs (fonte unica, tambem
+// lida pelo teste de regressao).
 const semNodeCrypto = {
   name: 'sem-node-crypto',
   setup(construtor) {
     construtor.onResolve({ filter: /^node:crypto$/ }, () => ({ path: 'node:crypto', namespace: 'stub-node-crypto' }));
     construtor.onLoad({ filter: /.*/, namespace: 'stub-node-crypto' }, () => ({
-      contents: 'const falha = () => { throw new Error("node:crypto indisponivel no navegador"); };\nexport const createHash = falha;\nexport const createHmac = falha;\nexport const timingSafeEqual = falha;\n',
+      contents: conteudoStubNodeCrypto(),
       loader: 'js',
     }));
   },
