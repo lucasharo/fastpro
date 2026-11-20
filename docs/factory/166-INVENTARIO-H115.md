@@ -95,6 +95,8 @@ Os casos ativos da matriz são os que têm função de produção acima. Os `def
 | A-5 | Grants de coluna em `app.service`, `app.service_group`, `app.service_synonym` citados nas migrações não estão ativos no DEV. | `app_api` não lê essas tabelas direto. | Nenhum. Só nota |
 | A-6 | Oito funções `private.dsr_*` (trigger) com `EXECUTE` para `PUBLIC`, `anon`, `authenticated`. | Violação de CAT-06. | F2 reprova. Migração reservada se confirmado (§2.1) |
 | A-7 | Papel `app_backup_reader` existe com `LOGIN` e `BYPASSRLS`, apesar de #151 ter tirado backup do escopo. | Fora de H-115. | Pendência para o líder |
+| A-8 | Nomes de relação do desenho divergem do DEV: pedido é `app.service_request` (não `app.request`); caso admin é `app.access_case` (não `app.admin_access_case`); trilha é `audit.audit_event` (não `ops.audit_event`). `app.conversation`, `app.address_share`, `app.acceptance` não existem. | Relações erradas quebrariam o guarda de relação. | F1 usa os nomes reais. `app.acceptance` é o nome provisório do aceite (#71), ainda inexistente |
+| A-9 | O desenho fala em 19 principais; a lista tem 20 (inclui `app_system`). | Contagem apenas. | F1 usa 20 |
 
 ## 7. Saídas da F0 e critérios para F1
 
