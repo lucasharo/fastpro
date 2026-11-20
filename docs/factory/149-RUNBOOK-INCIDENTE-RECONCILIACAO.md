@@ -145,14 +145,14 @@ Glossário curto:
 - **Quem.** Operador e segundo aprovador (outra identidade distinta).
 - **Pré-condições.** Identidade do administrador afetado conhecida.
 - **Passos** `[PROPOSTA]`.
-  1. **T0 a T+5 min.** Revogar as sessões de `app.admin_session` do operador afetado e bloquear o `app.app_user` correspondente. Só essa conta é afetada; os demais administradores permanecem.
-  2. Confirmar que o token antigo recebe 401 ou 403.
-  3. **T+5 a T+30 min.** Redefinição de segundo fator só por dupla aprovação de duas identidades distintas, sem autoaprovação, reutilizando `app.approval_request` e `app.approval_vote` (H-105).
+  1. **T0 a T+5 min.** Revogar as sessões do operador afetado em `app.admin_session` (função `private.admin_session_revoke`, pelo hash do segredo da sessão) e bloquear a conta em `app.app_user` (`status = 'bloqueado'`, valor aceito pela restrição verificada no DEV). Só essa conta é afetada; os demais administradores permanecem.
+  2. Confirmar que o token antigo não abre mais a área administrativa: `private.admin_guard` devolve vazio para o hash revogado (a API responde 401 ou 403).
+  3. **T+5 a T+30 min.** Redefinição de segundo fator (`mfa_reenroll`) pelo pedido de aprovação do H-102 (`private.admin_approval_open` e `private.admin_approval_vote`). O solicitante não pode votar no próprio pedido. **Lacuna L-3:** hoje um único voto de outro Superadmin conclui o pedido; o critério CA-08 pede dois aprovadores distintos. Até a decisão sobre L-3, este passo só pode ser executado com o registro dessa limitação na evidência.
   4. **T+30 min a T+2 h.** Consultar `audit.audit_event` pelo ator no intervalo: visualizações excepcionais, mudança de papel e acesso a caso. Acesso indevido comprovado aciona D-09.
 - **Verificação.** Passo 2 e a consulta do passo 4 com resultado registrado.
-- **Auditoria.** Cada ação gera evento. Os nomes de ação (`admin.session.revoked` e similares) só valem se existirem em `audit.action_catalog`. Essa conferência é feita na fatia S4.
-- **Exercício sintético** `[PENDENTE fatia S4]`: sessão revogada nega acesso; reset de MFA exige dois aprovadores distintos e nega autoaprovação.
-- **Registro de evidência.** Eventos gravados e resultado do teste de dupla aprovação.
+- **Auditoria.** O evento de revogação usa a ação `admin.session.revoked`, verificada no catálogo `audit.action_catalog` pela migração `20261120400000_audit_add_runbook_actions` (S4). **Lacuna L-4:** `private.admin_session_revoke` não grava evento por conta própria; quem executa o passo 1 grava `admin.session.revoked` com motivo (código, por exemplo `d07_contencao`) na mesma sequência de ações.
+- **Exercício sintético** `[EXECUTADO fatia S4]`: `packages/db/tests/runbook-h114-d07.dbtest.mjs`. Verificado: sessão revogada nega acesso; revogação de um operador não afeta os demais; `bloqueado` é valor aceito; catálogo fechado recusa ação desconhecida; reset de MFA recusa autoaprovação; um voto basta (caracterização de L-3). Os testes de catálogo e de evento ficam pulados enquanto a migração não estiver aplicada no DEV, com o motivo registrado no próprio teste.
+- **Registro de evidência.** Comando, contagem e saída do teste D-07, e o identificador dos eventos `admin.session.revoked` gravados no exercício.
 
 ---
 
