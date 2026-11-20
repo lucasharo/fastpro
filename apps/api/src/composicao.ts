@@ -77,6 +77,9 @@ import type { RequestDetailRouteOptions } from './requests/detail-route.js';
 // Issue 120 (H-111) | Rotas do titular para direitos: liga so com DATABASE_URL_APP_SYSTEM e a fabrica do cliente SQL.
 import { montarPrivacidadeTitular } from './privacy/privacy-composicao.js';
 import type { PrivacyTitularRouteOptions } from './privacy/titular-route.js';
+// Issue 120 (H-111) | Painel do DPO sobre direitos do titular: liga so com DATABASE_URL_APP_SYSTEM e ADMIN_BASE_URL.
+import { montarPrivacidadeDpo } from './privacy/dpo-composicao.js';
+import type { PrivacyDpoRouteOptions } from './privacy/dpo-route.js';
 // Issue 47 (H-034) | Lista do painel do cliente (GET /v1/requests): so monta com DATABASE_URL_APP_SYSTEM.
 import { montarListaPedidos } from './requests/list-composicao.js';
 import type { RequestListRouteOptions } from './requests/list-route.js';
@@ -187,6 +190,10 @@ export interface Integracoes {
   readonly privacyTitular?: PrivacyTitularRouteOptions;
   /** Nomes (nunca valores) que impedem as rotas do titular para direitos de ligar (H-111). */
   readonly pendenciasPrivacidade?: readonly string[];
+  /** Issue 120 (H-111): painel do DPO, ou undefined (404 vazio). */
+  readonly privacyDpo?: PrivacyDpoRouteOptions;
+  /** Nomes (nunca valores) que impedem o painel do DPO de ligar (H-111). */
+  readonly pendenciasPrivacidadeDpo?: readonly string[];
   /** Nomes (nunca valores) que impedem as rotas de leitura do pedido de ligar (H-032). */
   readonly pendenciasDetalhe: readonly string[];
   /** Issue 68 (H-055): opcoes da descoberta do profissional (GET /v1/professional/discovery/requests), ou undefined (404). */
@@ -307,6 +314,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   const detalhe = montarDetalhePedido(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
   // Issue 120 (H-111): direitos do titular sobre o papel app_system; sem banco ou fabrica, as rotas nao ligam (404).
   const privacidade = montarPrivacidadeTitular(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
+  // Issue 120 (H-111): painel do DPO; sem banco app_system ou ADMIN_BASE_URL, as rotas nao ligam (404 vazio).
+  const privacidadeDpo = montarPrivacidadeDpo(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
   // Issue 47 (H-034) | Lista do dono: so DATABASE_URL_APP_SYSTEM (sem chave de endereco e sem provedor de mapas).
   const lista = montarListaPedidos(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
   // Issue 68 (H-055) | Descoberta do profissional: so DATABASE_URL_APP_SYSTEM e DISCOVERY_CURSOR_KEY (32+ caracteres).
@@ -362,6 +371,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     pendenciasDetalhe: detalhe.pendencias,
     privacyTitular: privacidade.options,
     pendenciasPrivacidade: privacidade.pendencias,
+    privacyDpo: privacidadeDpo.options,
+    pendenciasPrivacidadeDpo: privacidadeDpo.pendencias,
     requestDiscovery: descoberta.options,
     pendenciasDescoberta: descoberta.pendencias,
     requestContact: contato.options,

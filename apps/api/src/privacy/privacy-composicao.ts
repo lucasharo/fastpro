@@ -24,7 +24,8 @@ export interface PrivacidadeTitularMontagem {
 
 const clientes = new Map<string, SqlClient>();
 
-function clienteDe(url: string, abrirCliente: (connectionString: string) => SqlClient): SqlClient {
+/** Um cliente por URL do papel app_system, compartilhado pelas rotas do titular e do DPO. */
+export function clienteDe(url: string, abrirCliente: (connectionString: string) => SqlClient): SqlClient {
   let cliente = clientes.get(url);
   if (cliente === undefined) {
     cliente = abrirCliente(url);

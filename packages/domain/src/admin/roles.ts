@@ -31,6 +31,10 @@ export const ADMIN_PERMISSIONS = [
   // H-109 (82 §5): politica de retencao e hold. Papel governanca_dados.
   'retention.policy.manage',
   'retention.hold.manage',
+  // H-111 (Issue 120, 147 §6.3): direitos do titular. Papel dpo (e superadmin) decide; suporte so le (campos reduzidos).
+  'dsr.read',
+  'dsr.decide',
+  'dsr.open_assisted',
 ] as const;
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
 

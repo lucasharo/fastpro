@@ -124,6 +124,8 @@ import {
   isPrivacyTitularRoute,
   type PrivacyTitularRouteOptions,
 } from './privacy/titular-route.js';
+// Issue 120 (H-111) | Painel do DPO: abertura assistida, listagem, detalhe e decisao (/v1/admin/privacy/dsr-cases).
+import { handlePrivacyDpoRoute, isPrivacyDpoRoute, type PrivacyDpoRouteOptions } from './privacy/dpo-route.js';
 // Issue 47 (H-034): lista do dono (GET /v1/requests); a publicacao (POST) segue na mesma URL.
 import { handleRequestListRoute, isRequestListRoute, type RequestListRouteOptions } from './requests/list-route.js';
 // Issue 68 (H-055) | Lista de pedidos elegiveis do profissional (GET /v1/professional/discovery/requests).
@@ -222,6 +224,8 @@ export interface AppOptions {
   readonly requestDetail?: RequestDetailRouteOptions;
   /** Issue 120 (H-111): direitos do titular. Sem esta opcao as rotas /v1/privacy/dsr-requests respondem 404 uniforme. */
   readonly privacyTitular?: PrivacyTitularRouteOptions;
+  /** Issue 120 (H-111): painel do DPO. Sem esta opcao, /v1/admin/privacy/dsr-cases responde 404 vazio. */
+  readonly privacyDpo?: PrivacyDpoRouteOptions;
   /** Issue 47 (H-034): lista do dono. Sem a montagem, o mesmo 404 uniforme do rascunho. */
   readonly requestList?: RequestListRouteOptions;
   /** Issue 68 (H-055): lista de descoberta do profissional. Sem a montagem completa, o mesmo 404 uniforme do rascunho. */
@@ -413,6 +417,13 @@ export async function handleRequest(
     return;
   }
   // Issue 120 (H-111): direitos do titular. Sem a montagem (banco app_system), o mesmo 404 uniforme do rascunho.
+  // Issue 120 (H-111): painel do DPO. Sem a montagem (banco app_system e ADMIN_BASE_URL), 404 vazio como a rota admin.
+  if (isPrivacyDpoRoute(path)) {
+    if (opts.privacyDpo) return handlePrivacyDpoRoute(req, res, path, opts.privacyDpo);
+    res.writeHead(404, { 'Cache-Control': 'no-store' });
+    res.end();
+    return;
+  }
   if (isPrivacyTitularRoute(path)) {
     if (opts.privacyTitular) return handlePrivacyTitularRoute(req, res, path, opts.privacyTitular);
     const r = draftNotFound();
