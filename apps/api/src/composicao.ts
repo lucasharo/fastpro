@@ -74,6 +74,9 @@ import type { PublishRouteOptions } from './requests/publish-route.js';
 // Issue 45 (H-032) | Leitura do pedido por papel: liga so com ADDRESS_ENC_KEY e a fabrica do papel app_system.
 import { montarDetalhePedido } from './requests/detail-composicao.js';
 import type { RequestDetailRouteOptions } from './requests/detail-route.js';
+// Issue 120 (H-111) | Rotas do titular para direitos: liga so com DATABASE_URL_APP_SYSTEM e a fabrica do cliente SQL.
+import { montarPrivacidadeTitular } from './privacy/privacy-composicao.js';
+import type { PrivacyTitularRouteOptions } from './privacy/titular-route.js';
 // Issue 47 (H-034) | Lista do painel do cliente (GET /v1/requests): so monta com DATABASE_URL_APP_SYSTEM.
 import { montarListaPedidos } from './requests/list-composicao.js';
 import type { RequestListRouteOptions } from './requests/list-route.js';
@@ -180,6 +183,10 @@ export interface Integracoes {
   /** Nomes (nunca valores) que impedem a lista do dono de ligar (H-034). */
   readonly pendenciasLista: readonly string[];
   readonly requestDetail: RequestDetailRouteOptions | undefined;
+  /** Issue 120 (H-111): rotas do titular para direitos, ou undefined (404 uniforme). */
+  readonly privacyTitular?: PrivacyTitularRouteOptions;
+  /** Nomes (nunca valores) que impedem as rotas do titular para direitos de ligar (H-111). */
+  readonly pendenciasPrivacidade?: readonly string[];
   /** Nomes (nunca valores) que impedem as rotas de leitura do pedido de ligar (H-032). */
   readonly pendenciasDetalhe: readonly string[];
   /** Issue 68 (H-055): opcoes da descoberta do profissional (GET /v1/professional/discovery/requests), ou undefined (404). */
@@ -298,6 +305,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
 
   // Issue 45 (H-032): leitura do pedido (dono e profissional). Sem ADDRESS_ENC_KEY ou banco, as rotas nao ligam (404).
   const detalhe = montarDetalhePedido(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
+  // Issue 120 (H-111): direitos do titular sobre o papel app_system; sem banco ou fabrica, as rotas nao ligam (404).
+  const privacidade = montarPrivacidadeTitular(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
   // Issue 47 (H-034) | Lista do dono: so DATABASE_URL_APP_SYSTEM (sem chave de endereco e sem provedor de mapas).
   const lista = montarListaPedidos(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
   // Issue 68 (H-055) | Descoberta do profissional: so DATABASE_URL_APP_SYSTEM e DISCOVERY_CURSOR_KEY (32+ caracteres).
@@ -334,7 +343,7 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     drafts,
     professionalProfile: perfil.options,
     professionalVerification: verificacao,
-    professionalTrial: trial.options,
+    professionalTrial: trial.options,
     pendencias,
     pendenciasCaso,
     pendenciasRascunho,
@@ -351,6 +360,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     pendenciasLista: lista.pendencias,
     requestDetail: detalhe.options,
     pendenciasDetalhe: detalhe.pendencias,
+    privacyTitular: privacidade.options,
+    pendenciasPrivacidade: privacidade.pendencias,
     requestDiscovery: descoberta.options,
     pendenciasDescoberta: descoberta.pendencias,
     requestContact: contato.options,

@@ -118,6 +118,12 @@ import { handleIdentityDocRoute, isIdentityDocRoute, type IdentityDocRouteOption
 import { handleRequestPublishRoute, REQUEST_PUBLISH_PATH, type PublishRouteOptions } from './requests/publish-route.js';
 // Issue 45 (H-032) | Leitura do pedido: dono (GET /v1/requests/:id) e profissional elegivel (GET /v1/professional/requests/:id).
 import { handleRequestDetailRoute, isRequestDetailRoute, type RequestDetailRouteOptions } from './requests/detail-route.js';
+// Issue 120 (H-111) | Direitos do titular: POST/GET /v1/privacy/dsr-requests e detalhe/cancelamento do proprio caso.
+import {
+  handlePrivacyTitularRoute,
+  isPrivacyTitularRoute,
+  type PrivacyTitularRouteOptions,
+} from './privacy/titular-route.js';
 // Issue 47 (H-034): lista do dono (GET /v1/requests); a publicacao (POST) segue na mesma URL.
 import { handleRequestListRoute, isRequestListRoute, type RequestListRouteOptions } from './requests/list-route.js';
 // Issue 68 (H-055) | Lista de pedidos elegiveis do profissional (GET /v1/professional/discovery/requests).
@@ -214,6 +220,8 @@ export interface AppOptions {
   readonly requestPublish?: PublishRouteOptions;
   /** Issue 45 (H-032): leitura do pedido pelo dono e pelo profissional. Sem esta opcao as rotas respondem 404 uniforme. */
   readonly requestDetail?: RequestDetailRouteOptions;
+  /** Issue 120 (H-111): direitos do titular. Sem esta opcao as rotas /v1/privacy/dsr-requests respondem 404 uniforme. */
+  readonly privacyTitular?: PrivacyTitularRouteOptions;
   /** Issue 47 (H-034): lista do dono. Sem a montagem, o mesmo 404 uniforme do rascunho. */
   readonly requestList?: RequestListRouteOptions;
   /** Issue 68 (H-055): lista de descoberta do profissional. Sem a montagem completa, o mesmo 404 uniforme do rascunho. */
@@ -399,6 +407,14 @@ export async function handleRequest(
   // H-031 (#44): publicacao do pedido. Sem a montagem completa, o mesmo 404 uniforme do rascunho.
   if (path === REQUEST_PUBLISH_PATH) {
     if (opts.requestPublish) return handleRequestPublishRoute(req, res, path, opts.requestPublish);
+    const r = draftNotFound();
+    res.writeHead(r.status, r.headers);
+    res.end(r.body);
+    return;
+  }
+  // Issue 120 (H-111): direitos do titular. Sem a montagem (banco app_system), o mesmo 404 uniforme do rascunho.
+  if (isPrivacyTitularRoute(path)) {
+    if (opts.privacyTitular) return handlePrivacyTitularRoute(req, res, path, opts.privacyTitular);
     const r = draftNotFound();
     res.writeHead(r.status, r.headers);
     res.end(r.body);
