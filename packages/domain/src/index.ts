@@ -33,3 +33,5 @@ export * from './contact/index.js';
 export * from './eligibility/index.js';
 // Issue 56 (H-043) | Perfil publico e selo verificado: regras puras, textos, tela e porta (143-DESENHO-H043.md, §6.1).
 export * from './public-profile/index.js';
+// H-058 (Issue #71) | Aceite idempotente: regras puras, corpo vazio, chave, hash, mapa HTTP (162-DESENHO-H058.md).
+export * from './acceptance/index.js';
