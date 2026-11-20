@@ -98,3 +98,4 @@ export * from './professional-access.js';
 export * from './request-list.js';
 export * from './privacy-dsr-jobs.js';
 export * from './privacy-dsr-extrato.js';
+export * from './privacy-dsr-download.js';

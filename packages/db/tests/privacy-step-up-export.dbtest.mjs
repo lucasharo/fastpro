@@ -298,7 +298,9 @@ test('T-DB-02 | extrato: identidade do arquivo imutavel; expurgo gravado uma vez
     const apagar = await erroDe('delete from app.dsr_export where id = $1', [id]);
     assert.match(apagar.message, /dsr_registro_nao_deletavel/, 'extrato nao pode ser excluido');
     const truncar = await erroDe('truncate app.dsr_export');
-    assert.match(truncar.message, /dsr_registro_nao_deletavel/, 'extrato nao pode ser truncado');
+    // Desde a migracao 20261120000000 a tabela de tokens referencia o extrato (FK restrict): o Postgres recusa o
+    // TRUNCATE pela chave estrangeira antes do gatilho. A protecao continua valendo; aceita-se a mensagem da FK.
+    assert.match(truncar.message, /dsr_registro_nao_deletavel|cannot truncate a table referenced in a foreign key constraint/, 'extrato nao pode ser truncado');
   });
 });
 

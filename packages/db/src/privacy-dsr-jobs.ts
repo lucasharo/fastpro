@@ -138,6 +138,15 @@ export class SupabaseStorageExtratos implements DsrExtratosArquivosPort {
     if (!res.ok) throw new DsrExtratoStorageFalha();
   }
 
+  /** Le o conteudo de um extrato (download pela API). Caminho invalido ou falha do Storage viram codigo fixo. */
+  async ler(caminho: string): Promise<Uint8Array> {
+    const url = this.urlDoObjeto(caminho);
+    const http = this.opcoes.fetch ?? fetch;
+    const res = await http(url, { method: 'GET', headers: this.cabecalhos() });
+    if (!res.ok) throw new DsrExtratoStorageFalha();
+    return new Uint8Array(await res.arrayBuffer());
+  }
+
   async remover(caminho: string): Promise<void> {
     const url = this.urlDoObjeto(caminho);
     const http = this.opcoes.fetch ?? fetch;
