@@ -106,3 +106,17 @@ Ainda não como Issue completa. As rotas do titular e do DPO estão prontas em n
 
 - As permissões `dsr.*` foram adicionadas à lista do domínio. O mapa `ADMIN_ROLE_PERMISSIONS` não foi alterado, porque a autoridade de permissão é a tabela `app.admin_role_permission` (já semeada na migração 520000).
 - As colunas `out_*` das funções SQL do DPO são publicadas sem o prefixo. Para listar, a lista devolve o cursor com `opened_at` e `case_id` da última linha.
+
+## 9. Continuação 6 (EXEC-DEV6-120-20261120, 2026-11-20)
+
+- **Commit f296980**: migração 20261120600000 (step-up: tabela de códigos, emissão, confirmação, blob selado), serviço e ponte SQL no pacote db, modelo de e-mail `dsr_stepup`, policy de domínio (18 tipos), composição do step-up e do download no `privacy-composicao.ts`. Typecheck da API voltou a verde nesta fatia (o `dist` dos pacotes estava defasado e o `auth-renderer.ts` tinha um `join` quebrado, corrigido).
+- **Commit deste registro**: migração corretiva **20261120620000** (com rollback). O guarda `private.dsr_step_up_code_guard` proibia gravar `outbox_id`, e a emissão grava esse campo logo após inserir o código. Toda emissão falhava com `dsr_step_up_code_imutavel`. A correção permite preencher `outbox_id` uma vez (nulo para valor) e mantém o resto da regra. Aplicada no DEV via `corepack pnpm db:migrate` (111 aplicadas, 0 pendentes). A migração 20261120600000 já aplicada não foi editada.
+- **Testes desta continuação**:
+  - `packages/db/tests/privacy-dsr-step-up.test.ts` (unitário, ida e volta do código, HMAC, hash do token, decorador de envio): 10 testes, passando.
+  - `packages/db/tests/privacy-dsr-step-up-migration.test.mjs` (estático): 11 testes, passando.
+  - `apps/api/src/privacy/titular-stepup-route.test.ts` (rotas POST /v1/privacy/step-up e /step-up/confirm): 11 testes, passando.
+  - `packages/db/tests/privacy-dsr-step-up.dbtest.mjs` (banco DEV, transacional, com rollback): 9 testes, passando.
+  - `packages/db/tests/authorization-catalog.dbtest.mjs` (CAT-01 a CAT-08, inclusive CAT-06): 11 testes, passando após a migração corretiva.
+- **Pendência P-C (aberta, não resolvida nesta continuação)**: o `DsrStepUpEmailProvider` (decorador que troca a referência do e-mail pelo código no instante do envio) ainda não está ligado a nenhum consumidor. O despacho genérico de `ops.email_outbox` (`registerNotificationHandlers`) não é montado em `apps/api`. Logo, o código é gerado e enfileirado, mas o envio real depende dessa composição. Nenhum e-mail foi enviado.
+- **Pendência P-D**: o typecheck da API está vermelho por arquivos **não commitados de outra fatia** (`apps/api/src/requests/photo-view-*.ts` e `packages/db/src/photo-view-store.ts`, que não está exportado pelo `index.ts`). Não são desta Issue e não foram tocados.
+- **Não feito**: `check:all` e `db:test` completos (não solicitados). Os testes desta continuação foram rodados por arquivo.
