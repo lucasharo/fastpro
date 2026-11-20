@@ -62,3 +62,47 @@ Parcialmente. As fatias 1 a 10 (banco e serviços TypeScript) podem ser revisada
 ## 7. Trailers de commit
 
 As tarefas pediram `Co-Authored-By: Claude Sonnet 5.5`. Os commits desta sessão usam `Claude Haiku 5.5`, que é o modelo deste agente e o indicado pela regra de atribuição do sistema. Não atribuí a um modelo que não foi usado.
+
+## 8. Continuação 4 (EXEC-DEV4-120-20261120)
+
+Modelo real deste agente: Claude Haiku 5.5 (`claude-haiku-5-5`). Trailer usado: `Co-Authored-By: Claude Haiku 5.5`.
+
+### 8.1 Commits
+
+| Commit | Conteúdo |
+|---|---|
+| `c9319da` | Rotas do titular (P-A parcial): `POST` e `GET /v1/privacy/dsr-requests`, `GET /:id` (sem `download_url`), `POST /:id/cancel`. Montagem em `privacy-composicao.ts`, ligação em `app.ts` e `composicao.ts`, testes em `titular-route.test.ts`. |
+| `6cda75a` | Painel do DPO (P-B em nível de contrato): `GET` e `POST /v1/admin/privacy/dsr-cases`, `GET /:id`, `POST /:id/assign`, `/:id/process`, `/:id/reject`. Serviço `dpo-service.ts`, rota `dpo-route.ts` (guarda admin, permissão da rota, Origin e JSON nas mutações), montagem `dpo-composicao.ts`, testes `dpo-route.test.ts`. Permissões `dsr.read`, `dsr.decide` e `dsr.open_assisted` entram em `packages/domain/src/admin/roles.ts` (`ADMIN_PERMISSIONS`); o `dist` do domínio foi reconstruído. |
+
+### 8.2 Testes (rodados localmente)
+
+| Comando | Resultado |
+|---|---|
+| `npx vitest run src/privacy tests/app.test.ts` (em `apps/api`) | 3 arquivos, 48 testes, saída 0 |
+| `npx tsc -p tsconfig.json --noEmit` (em `apps/api`) | saída 0 |
+| `npx eslint src/privacy src/app.ts src/composicao.ts` (em `apps/api`) | saída 0 |
+| `npx vitest run` (em `packages/domain`) | saída 0 |
+
+Não executados nesta sessão: `check:all`, `db:test` completo (fora do escopo, conforme instrução). Nenhuma migração nova foi criada nesta sessão.
+
+### 8.3 Pendências
+
+- **P-A, step-up (`POST /v1/privacy/step-up` e `/step-up/confirm`): NÃO implementado.** `app.step_up_grant` existe, mas não há função SQL para emitir o código de 6 dígitos (com tentativas e bloqueio) nem para trocar o código pelo token de uso único. `private.step_up_request` e `private.step_up_verify` são ligados à sessão de identidade e não servem ao titular. Exige migração nova, função de emissão, enfileiramento do e-mail em `ops.email_outbox` com modelo, e testes de banco. Sem isso, o titular não consegue abrir acesso nem eliminação: a API responde 403 `step_up_obrigatorio` sempre.
+- **P-A, `download_url` em `GET /:id`: NÃO implementado.** `ServicoDownloadExtrato.emitir` existe em `packages/db`, mas faltam a rota de consumo do link, a composição do Storage e a URL assinada de 5 minutos.
+- **P-B, processar caso de acesso:** responde 409 `dsr_acesso_usa_extrato`. A geração do extrato (`app.dsr_admin_generate_extract` mais `GeradorExtratoDsr`, que grava no bucket `dsr-exports`) não está composta na API.
+- **P-B, dupla aprovação da eliminação assistida:** o SQL confere `approval_request`; a rota não cria nem consulta a aprovação.
+- **P-F, limites de emissão (5 aberturas por dia, 3 step-ups por hora, 1 extrato por 30 dias na API):** não implementado. O limite de extrato já é recusado pelo SQL (`dsr_carencia`).
+- **P-H, testes:** cobertos em nível de contrato T-API-01, 02, 03, 07, 08 e 16 (parcial). Faltam T-API-05 (download de uso único), T-API-10 (rate limit), testes do step-up e teste de montagem (`dpo-composicao.ts`).
+- **Ligação na Vercel, bloqueio para as rotas funcionarem em DEV:** `apps/api/src/vercel.ts` NÃO foi tocado (alteração alheia, não commitada). Sem as linhas `privacyTitular: integracoes.privacyTitular` e `privacyDpo: integracoes.privacyDpo` nesse arquivo, as rotas do titular e do DPO não sobem na função da Vercel e respondem 404 vazio. É preciso registrar isso para quem é dono do arquivo.
+- **P-C, P-D e P-E (processar, vigia de prazo e abertura assistida):** a migração `20261120410000` existe no repositório (commit `a51b061`). A aplicação no banco de DEV não foi verificada nesta sessão.
+- **P-I, ticker de jobs:** não verificado.
+- **P-J, pendências jurídicas:** fora do escopo até produção.
+
+### 8.4 Pode ir a Code Review?
+
+Ainda não como Issue completa. As rotas do titular e do DPO estão prontas em nível de contrato e de testes unitários de API, mas o step-up (P-A) e o download não existem, e a ligação na Vercel depende de arquivo alheio. O cartão da Issue #120 continua em Desenvolvimento. Os commits podem ser revisados como entrega parcial (fatias de API desta sessão).
+
+### 8.5 Decisões tomadas nesta sessão (para o líder registrar)
+
+- As permissões `dsr.*` foram adicionadas à lista do domínio. O mapa `ADMIN_ROLE_PERMISSIONS` não foi alterado, porque a autoridade de permissão é a tabela `app.admin_role_permission` (já semeada na migração 520000).
+- As colunas `out_*` das funções SQL do DPO são publicadas sem o prefixo. Para listar, a lista devolve o cursor com `opened_at` e `case_id` da última linha.
