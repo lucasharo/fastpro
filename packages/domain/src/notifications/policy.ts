@@ -69,6 +69,9 @@ export const EMAIL_TYPE_POLICY: Readonly<Record<string, EmailTypePolicy>> = Obje
   acesso_conta:{ category: 'acesso', mailClass: 'auth', params: [] },
   acesso_trial: { category: 'acesso', mailClass: 'lembrete', params: [] },
   acesso_ciclo: { category: 'acesso', mailClass: 'lembrete', params: [] },
+  // H-099 (desenho 163 §3.3): lembretes de trial. Aditivo; acesso_trial e acesso_ciclo genericos ficam (R-08).
+  acesso_trial_t3d: { category: 'acesso', mailClass: 'lembrete', params: [] },
+  acesso_trial_t0: { category: 'acesso', mailClass: 'lembrete', params: [] },
 });
 
 /** Politica de um email_type. Tipo nao listado (inclui a categoria 'outro') e recusado. */
