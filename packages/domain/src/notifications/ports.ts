@@ -48,4 +48,12 @@ export interface ConfigPort {
   readConfig(key: string): Promise<unknown>;
 }
 
+// H-099 | Leitura minima dos recursos dos lembretes (desenho 163 §3.1 e A-5). Sem e-mail, sem texto livre.
+import type { RequestReminderView, TrialReminderView } from './reminders.js';
+
+export interface ReminderSourcePort {
+  requestView(requestId: string, nowIso: string): Promise<RequestReminderView | null>;
+  trialView(grantId: string, nowIso: string): Promise<TrialReminderView | null>;
+}
+
 export type { DigestCategory };

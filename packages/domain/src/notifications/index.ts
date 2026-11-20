@@ -7,3 +7,4 @@ export * from './rules.js';
 export * from './ports.js';
 // H-099 | Lembretes de prazo e trial (desenho 163 §3.1 e §3.2).
 export * from './reminders.js';
+export * from './reminder-rules.js';
