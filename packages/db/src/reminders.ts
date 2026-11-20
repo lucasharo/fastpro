@@ -161,7 +161,7 @@ export class PgReminderSource implements ReminderSourcePort {
   async requestView(requestId: string): Promise<RequestReminderView | null> {
     const r = await this.client.query(
       'select request_id, customer_user_id, request_status, acceptance_deadline_at, customer_status ' +
-        'from private.reminder_request_view(::uuid)',
+        'from private.reminder_request_view($1::uuid)',
       [requestId],
     );
     const row = r.rows[0];
@@ -178,7 +178,7 @@ export class PgReminderSource implements ReminderSourcePort {
   async trialView(grantId: string, nowIso: string): Promise<TrialReminderView | null> {
     const r = await this.client.query(
       'select grant_id, professional_user_id, grant_status, ends_at, estado, user_status ' +
-        'from private.reminder_trial_view(::uuid, ::timestamptz)',
+        'from private.reminder_trial_view($1::uuid, $2::timestamptz)',
       [grantId, nowIso],
     );
     const row = r.rows[0];
