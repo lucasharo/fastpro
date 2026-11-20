@@ -115,18 +115,33 @@ export interface SupabaseStorageExtratosOpcoes {
 export class SupabaseStorageExtratos implements DsrExtratosArquivosPort {
   constructor(private readonly opcoes: SupabaseStorageExtratosOpcoes) {}
 
-  async remover(caminho: string): Promise<void> {
+  private urlDoObjeto(caminho: string): string {
     if (!CAMINHO_RE.test(caminho) || caminho.includes('..')) throw new DsrExtratoCaminhoInvalido();
     const base = this.opcoes.url.replace(/\/+$/, '');
-    const http = this.opcoes.fetch ?? fetch;
     const alvo = caminho.split('/').map(encodeURIComponent).join('/');
-    const res = await http(`${base}/storage/v1/object/${DSR_EXTRATOS_BUCKET}/${alvo}`, {
-      method: 'DELETE',
-      headers: {
-        apikey: this.opcoes.secretKey,
-        Authorization: `Bearer ${this.opcoes.secretKey}`,
-      },
+    return `${base}/storage/v1/object/${DSR_EXTRATOS_BUCKET}/${alvo}`;
+  }
+
+  private cabecalhos(): Record<string, string> {
+    return { apikey: this.opcoes.secretKey, Authorization: `Bearer ${this.opcoes.secretKey}` };
+  }
+
+  /** Grava o extrato sem sobrescrever (x-upsert falso): caminho ja existente e falha. */
+  async gravar(caminho: string, conteudo: Uint8Array): Promise<void> {
+    const url = this.urlDoObjeto(caminho);
+    const http = this.opcoes.fetch ?? fetch;
+    const res = await http(url, {
+      method: 'POST',
+      headers: { ...this.cabecalhos(), 'Content-Type': 'application/json', 'x-upsert': 'false' },
+      body: conteudo as unknown as RequestInit['body'],
     });
+    if (!res.ok) throw new DsrExtratoStorageFalha();
+  }
+
+  async remover(caminho: string): Promise<void> {
+    const url = this.urlDoObjeto(caminho);
+    const http = this.opcoes.fetch ?? fetch;
+    const res = await http(url, { method: 'DELETE', headers: this.cabecalhos() });
     // 404 significa que o objeto ja nao existe: a remocao e idempotente.
     if (!res.ok && res.status !== 404) throw new DsrExtratoStorageFalha();
   }
