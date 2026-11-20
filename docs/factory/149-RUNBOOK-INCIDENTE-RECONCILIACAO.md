@@ -167,7 +167,7 @@ Glossário curto:
   3. **Comunicação.** Minutas para a ANPD e para os titulares são `[PENDENTE JURIDICO]` e rodam como `[PROPOSTA]`. Uso real só após validação do Encarregado. Nada é enviado em DEV.
 - **Verificação.** Chave de degradação gravada e resposta 503 constante na rota de teste.
 - **Auditoria.** Um evento por passo, com ator, motivo e instante.
-- **Exercício sintético** `[PENDENTE fatia S5]`: a chave em `ops.app_config` muda a resposta de uma rota de teste para 503 constante, sem redeploy; o formulário de relatório tem os quatro campos obrigatórios.
+- **Exercício sintético** `[PARCIAL fatia S5]`: `packages/db/tests/runbook-h114-d09.dbtest.mjs` prova gravar, ler, desligar a chave (`degradacao.rota.<nome>`, com sublinhado no lugar de hífen) e recusar nome fora do padrão. **Lacuna L-5:** a API ainda não lê essa chave; a resposta 503 da rota não está provada e fica como cartão próprio. O formulário de relatório da apuração (item 2) traz título, instante UTC, rota ou vetor, contagem de titulares, classes de dado e estado da contenção; a minuta de comunicação segue marcada como `[PENDENTE JURIDICO]`.
 - **Registro de evidência.** Relatório preenchido com valores redigidos.
 
 ---
