@@ -96,3 +96,4 @@ export * from './contact-consent.js';
 export * from './professional-access.js';
 // Issue 47 (H-034) | Adaptador Pg da lista do painel do cliente.
 export * from './request-list.js';
+export * from './privacy-dsr-jobs.js';
