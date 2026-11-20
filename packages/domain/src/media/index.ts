@@ -6,3 +6,4 @@ export * from './reduce.js';
 // H-028 (Issue #41) | Tipo da imagem pelo conteudo (assinatura JPEG, PNG e WebP; 96-DESENHO-H028 §2.2).
 export * from './image-type.js';
 export * from './gallery.js';
+export * from './watermark.js';
