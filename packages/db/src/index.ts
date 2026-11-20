@@ -99,3 +99,6 @@ export * from './request-list.js';
 export * from './privacy-dsr-jobs.js';
 export * from './privacy-dsr-extrato.js';
 export * from './privacy-dsr-download.js';
+
+// H-099 (Issue 109) | Handlers dos lembretes no tick (reminder.scan e reminder.fire) e adaptador de leitura. Composicao em apps/api fica para a Issue do tick.
+export * from './reminders.js';
