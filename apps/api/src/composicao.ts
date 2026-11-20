@@ -85,6 +85,9 @@ import { montarListaPedidos } from './requests/list-composicao.js';
 import type { RequestListRouteOptions } from './requests/list-route.js';
 // Issue 68 (H-055) | Descoberta do profissional: so monta com DATABASE_URL_APP_SYSTEM e DISCOVERY_CURSOR_KEY.
 import { montarDescoberta } from './requests/discovery-composicao.js';
+// H-056 (Issue 69) | Fotos elegiveis: so DATABASE_URL_APP_SYSTEM e os segredos WATERMARK_TOKEN_SECRET e WATERMARK_ID_SALT (32+).
+import { montarFotosPedido } from './requests/photo-view-composicao.js';
+import type { PhotoViewRouteOptions } from './requests/photo-view-route.js';
 import type { DiscoveryRouteOptions } from './requests/discovery-route.js';
 // Issue 71 (H-058) | Aceite de trabalho: so liga com DATABASE_URL_APP_SYSTEM, SITE_URL, DISCOVERY_CURSOR_KEY (32+) e as duas fabricas da borda.
 import { montarAceite, type AceiteOpcoes } from './requests/acceptance-composicao.js';
@@ -205,6 +208,10 @@ export interface Integracoes {
   readonly requestDiscovery: DiscoveryRouteOptions | undefined;
   /** Nomes (nunca valores) que impedem a descoberta do profissional de ligar (H-055). */
   readonly pendenciasDescoberta: readonly string[];
+  /** H-056 (#69): rotas das fotos elegiveis (lista e link), ou undefined (404). */
+  readonly photoView?: PhotoViewRouteOptions;
+  /** Nomes (nunca valores) que impedem as fotos elegiveis de ligar (H-056). */
+  readonly pendenciasFotos?: readonly string[];
   /** Issue 46 (H-033): rotas de telefone e consentimento, ou undefined (404). */
   readonly requestContact: ContactRouteOptions | undefined;
   /** Issue 56 (H-043): leitura publica do perfil por slug, ou undefined (404). */
@@ -329,6 +336,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   const lista = montarListaPedidos(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
   // Issue 68 (H-055) | Descoberta do profissional: so DATABASE_URL_APP_SYSTEM e DISCOVERY_CURSOR_KEY (32+ caracteres).
   const descoberta = montarDescoberta(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
+  // H-056 (#69) | Fotos elegiveis: so DATABASE_URL_APP_SYSTEM e os segredos WATERMARK_* (32+ caracteres).
+  const fotosPedido = montarFotosPedido(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
   // Issue 71 (H-058) | Aceite: so DATABASE_URL_APP_SYSTEM, SITE_URL, DISCOVERY_CURSOR_KEY (32+) e as duas fabricas da borda.
   const aceite = montarAceite(env, {
     abrirCliente: opcoes.abrirClienteSistema,
@@ -389,6 +398,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     privacyDpo: privacidadeDpo.options,
     pendenciasPrivacidadeDpo: privacidadeDpo.pendencias,
     requestDiscovery: descoberta.options,
+    photoView: fotosPedido.options,
+    pendenciasFotos: fotosPedido.pendencias,
     pendenciasDescoberta: descoberta.pendencias,
     requestContact: contato.options,
     publicProfile: perfilPublico,

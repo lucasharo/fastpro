@@ -151,7 +151,7 @@ export interface PhotoTarget {
   readonly height: number;
 }
 
-/** Porta de acesso (implementada em packages/db, so com app_system). Null = erro interno, nunca serve. */
+/** Porta de acesso (packages/db, so app_system). Lista e alvo: null = negado (404 uniforme); lista vazia = autorizado sem foto; lancar = erro interno (503). */
 export interface PhotoViewStorePort {
   list(professionalId: string, requestId: string, nowMs: number): Promise<readonly PhotoViewRow[] | null>;
   target(professionalId: string, requestId: string, photoId: string, nowMs: number): Promise<PhotoTarget | null>;

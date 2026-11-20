@@ -7,6 +7,16 @@ import type { SqlClient } from './jobs-tick.js';
 
 /** 60 por minuto (decisao 610). Janela e bucket de 60 s. */
 export const DISCOVERY_RATE_LIMIT = { limit: 60, spanSeconds: 60, bucketSeconds: 60 } as const;
+/** H-056 (#69): forma de uma politica de limite de taxa (janela e balde em segundos). */
+export interface RatePolitica {
+  readonly limit: number;
+  readonly spanSeconds: number;
+  readonly bucketSeconds: number;
+}
+/** H-056 (#69): lista e link de foto do profissional e do dono, 60 por minuto, balde proprio (A-10). */
+export const PHOTO_VIEW_RATE_LIMIT: RatePolitica = { limit: 60, spanSeconds: 60, bucketSeconds: 60 };
+/** H-056 (#69): entrega da imagem marcada, 120 por minuto por usuario do token (A-10). */
+export const PHOTO_DELIVER_RATE_LIMIT: RatePolitica = { limit: 120, spanSeconds: 60, bucketSeconds: 60 };
 const PREFIXO_CHAVE = 'discovery:';
 
 const SQL_CHECK =
@@ -17,6 +27,9 @@ export interface PgDiscoveryRateLimitDeps {
   readonly client: SqlClient;
   /** Devolve o HMAC (hex) do profissional, calculado pela composicao com a chave propria da taxa. */
   readonly chaveDoProfissional: (professionalId: string) => string;
+  /** H-056 (#69): politica e prefixo proprios da lista e do link de foto; padrao = descoberta (#68). */
+  readonly politica?: RatePolitica;
+  readonly prefixo?: string;
 }
 
 export class PgDiscoveryRateLimit {
@@ -26,9 +39,9 @@ export class PgDiscoveryRateLimit {
   async check(professionalId: string, nowMs: number): Promise<RateWindowDecision> {
     const res = await this.deps.client.query(SQL_CHECK, [
       this.chave(professionalId),
-      DISCOVERY_RATE_LIMIT.spanSeconds,
-      DISCOVERY_RATE_LIMIT.bucketSeconds,
-      DISCOVERY_RATE_LIMIT.limit,
+      this.politica.spanSeconds,
+      this.politica.bucketSeconds,
+      this.politica.limit,
       new Date(nowMs).toISOString(),
     ]);
     const linha = res.rows[0] as { out_ok?: unknown; out_retry_after?: unknown } | undefined;
@@ -41,12 +54,16 @@ export class PgDiscoveryRateLimit {
   async record(professionalId: string, nowMs: number): Promise<void> {
     await this.deps.client.query(SQL_HIT, [
       this.chave(professionalId),
-      DISCOVERY_RATE_LIMIT.bucketSeconds,
+      this.politica.bucketSeconds,
       new Date(nowMs).toISOString(),
     ]);
   }
 
+  private get politica(): RatePolitica {
+    return this.deps.politica ?? DISCOVERY_RATE_LIMIT;
+  }
+
   private chave(professionalId: string): string {
-    return `${PREFIXO_CHAVE}${this.deps.chaveDoProfissional(professionalId)}`;
+    return `${this.deps.prefixo ?? PREFIXO_CHAVE}${this.deps.chaveDoProfissional(professionalId)}`;
   }
 }

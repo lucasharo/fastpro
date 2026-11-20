@@ -93,6 +93,7 @@ export default async function vercelHandler(
       ...(integracoes.privacyTitular !== undefined ? { privacyTitular: integracoes.privacyTitular } : {}),
       ...(integracoes.privacyDpo !== undefined ? { privacyDpo: integracoes.privacyDpo } : {}),
       ...(integracoes.requestAcceptance !== undefined ? { requestAcceptance: integracoes.requestAcceptance } : {}),
+      ...(integracoes.photoView !== undefined ? { photoView: integracoes.photoView } : {}),
     });
   } catch {
     // Sem detalhe de erro na resposta nem no log (ADR-013: sem dado sensivel).

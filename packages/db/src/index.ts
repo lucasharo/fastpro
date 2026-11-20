@@ -88,6 +88,7 @@ export * from './discovery-requests.js';
 export * from './discovery-projection.js';
 export * from './discovery-rate-limit.js';
 export * from './discovery-photos.js';
+export * from './photo-view-store.js';
 // Issue 71 (H-058) | Adaptador Pg do aceite idempotente (transacao unica, 162-DESENHO-H058 §4.4, §8 fatia 4) e limite de 20 por minuto.
 export * from './acceptance.js';
 export * from './acceptance-rate-limit.js';

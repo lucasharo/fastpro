@@ -130,6 +130,8 @@ import { handlePrivacyDpoRoute, isPrivacyDpoRoute, type PrivacyDpoRouteOptions }
 import { handleRequestListRoute, isRequestListRoute, type RequestListRouteOptions } from './requests/list-route.js';
 // Issue 68 (H-055) | Lista de pedidos elegiveis do profissional (GET /v1/professional/discovery/requests).
 import { handleDiscoveryRoute, isDiscoveryRoute, type DiscoveryRouteOptions } from './requests/discovery-route.js';
+// H-056 (Issue 69) | Fotos elegiveis: lista e link de visualizacao do profissional e do dono.
+import { handlePhotoViewRoute, isPhotoViewRoute, type PhotoViewRouteOptions } from './requests/photo-view-route.js';
 // Issue 71 (H-058) | Aceite idempotente do trabalho (POST /v1/requests/:id/acceptances).
 import { handleAcceptanceRoute, isAcceptanceRoute, type AcceptanceRouteOptions } from './requests/acceptance-route.js';
 // Issue 46 (H-033) | Telefone e consentimento de contato (dono e profissional).
@@ -230,6 +232,8 @@ export interface AppOptions {
   readonly requestList?: RequestListRouteOptions;
   /** Issue 68 (H-055): lista de descoberta do profissional. Sem a montagem completa, o mesmo 404 uniforme do rascunho. */
   readonly requestDiscovery?: DiscoveryRouteOptions;
+  /** H-056 (#69): fotos elegiveis (lista e link), ou ausente (404 uniforme do rascunho). */
+  readonly photoView?: PhotoViewRouteOptions;
   /** Issue 71 (H-058): aceite idempotente. Sem a montagem completa, o mesmo 404 uniforme do rascunho. */
   readonly requestAcceptance?: AcceptanceRouteOptions;
   /** Issue 46 (H-033): telefone e consentimento de contato. Sem esta opcao as rotas respondem 404 uniforme. */
@@ -426,6 +430,14 @@ export async function handleRequest(
   }
   if (isPrivacyTitularRoute(path)) {
     if (opts.privacyTitular) return handlePrivacyTitularRoute(req, res, path, opts.privacyTitular);
+    const r = draftNotFound();
+    res.writeHead(r.status, r.headers);
+    res.end(r.body);
+    return;
+  }
+  // H-056 (Issue 69): fotos elegiveis do profissional e do dono. Sem a montagem, o mesmo 404 uniforme do rascunho.
+  if (isPhotoViewRoute(path)) {
+    if (opts.photoView) return handlePhotoViewRoute(req, res, path, opts.photoView);
     const r = draftNotFound();
     res.writeHead(r.status, r.headers);
     res.end(r.body);
