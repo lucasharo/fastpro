@@ -87,8 +87,11 @@ export default async function vercelHandler(
       ...(integracoes.requestPublish !== undefined ? { requestPublish: integracoes.requestPublish } : {}),
       ...(integracoes.requestContact !== undefined ? { requestContact: integracoes.requestContact } : {}),
       ...(integracoes.requestDetail !== undefined ? { requestDetail: integracoes.requestDetail } : {}),
-      ...(integracoes.requestList !== undefined ? { requestList: integracoes.requestList } : {}),
       ...(integracoes.publicProfile !== undefined ? { publicProfile: integracoes.publicProfile } : {}),
+      ...(integracoes.requestList !== undefined ? { requestList: integracoes.requestList } : {}),
+      ...(integracoes.requestDiscovery !== undefined ? { requestDiscovery: integracoes.requestDiscovery } : {}),
+      ...(integracoes.privacyTitular !== undefined ? { privacyTitular: integracoes.privacyTitular } : {}),
+      ...(integracoes.privacyDpo !== undefined ? { privacyDpo: integracoes.privacyDpo } : {}),
     });
   } catch {
     // Sem detalhe de erro na resposta nem no log (ADR-013: sem dado sensivel).
