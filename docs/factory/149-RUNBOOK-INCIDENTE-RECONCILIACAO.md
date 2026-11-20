@@ -197,27 +197,27 @@ Glossário curto:
 
 ---
 
-## 8. R-EMAIL — Cota e fila de e-mail `[PENDENTE fatia S7]`
+## 8. R-EMAIL — Cota e fila de e-mail `[EXECUTADO fatia S7]`
 
 - **Gatilho.** Alerta de cota ou execução diária na virada do dia UTC.
 - **Quem.** Operador.
 - **Pré-condições.** Linha de `ops.external_quota` do serviço do provedor de e-mail.
-- **Limiares** `[PROPOSTA]` sobre `ops.external_quota`:
-  - 70% gera alerta 1;
-  - 85% gera alerta 2;
-  - 90% corta as classes não críticas (resumo, lembrete e marketing);
-  - reserva de 10% só para o Auth (100 por dia, 3.000 por mês).
-- **Delta do Auth** `[PROPOSTA]`: a rotina compara o uso informado pelo provedor com `used` e ajusta `used` pelo delta positivo. Em DEV, a leitura do provedor é uma porta com fake; nenhuma chamada real é feita.
-- **Fila** `[PROPOSTA]`: itens `adiado_cota` são reavaliados na virada do dia UTC. Obsoletos viram `descartado_obsoleto`. Zero reenvio retroativo. O vocabulário real de status de `ops.email_outbox` é conferido na fatia S7.
+- **Limiares** (fonte única: `QUOTA_CUTS`, `PROVIDER_LIMITS` e `ALERT_THRESHOLDS_PCT` de `@fastpro/domain`, H-092 e H-094):
+  - 70% do limite gera alerta 1; 85% gera alerta 2;
+  - corte por classe, nesta ordem de parada: lembrete a partir de 70 no dia (2.100 no mês); digest a partir de 85 (2.550 no mês); crítico a partir de 90 (2.700 no mês);
+  - auth passa até o teto (100 por dia, 3.000 por mês): é a reserva de 10% do limite diário.
+  - Divergência registrada: a proposta original deste item cortava "resumo, lembrete e marketing" em 90%. O domínio não tem a classe marketing e o código fixa o crítico em 90. Adotado o código; ver pendência 6 na seção 11.
+- **Delta do Auth** (`aplicarDeltaProvedor`): a rotina compara o uso informado pelo provedor com `used` e soma só o delta positivo, sem passar de `hard_limit`. Em DEV, a leitura do provedor é uma porta com fake; nenhuma chamada real é feita.
+- **Fila** (`decidirItemFila`): itens `adiado_cota` são reavaliados na virada do dia UTC. Obsoletos (fato com mais de 12 h ou pedido de aceite não aberto) são descartados: no banco, o estado é `descartado` com motivo `obsoleto` (o nome `descartado_obsoleto` do desenho não existe em `ops.email_outbox`). Zero reenvio retroativo: itens enviados, falhos, suprimidos ou em envio nunca voltam a sair. Vocabulário conferido em `ops.email_outbox` (migração `20261111120000`).
 - **Passos.** Ler a cota, aplicar a regra de limiar, reavaliar a fila e registrar o resultado.
 - **Verificação.** Alerta correto para 70, 85 e 90 mensagens; `auth` passa até 100.
 - **Auditoria.** Um evento por mudança de nível de alerta.
-- **Exercício sintético** `[PENDENTE fatia S7]`.
+- **Exercício sintético** `[EXECUTADO fatia S7]`: `packages/db/tests/runbook-h114-email-auth.test.mjs` (offline, 25 testes, com o bloco R-AUTH). Prova alerta 1 em 70, alerta 2 em 85, corte de lembrete, digest e crítico em 70, 85 e 90; auth até 100; delta do provedor sem passar do teto; obsoletos descartados; zero reenvio; e deriva zero em relação ao domínio.
 - **Registro de evidência.** Contagens e níveis antes e depois.
 
 ---
 
-## 9. R-AUTH — Órfãos entre Auth e perfil de aplicação `[PENDENTE fatia S7]`
+## 9. R-AUTH — Órfãos entre Auth e perfil de aplicação `[EXECUTADO fatia S7]`
 
 - **Gatilho.** Execução periódica ou sob demanda.
 - **Quem.** Operador.
@@ -225,7 +225,7 @@ Glossário curto:
 - **Passos** `[PROPOSTA]`. A função pura recebe as duas listas e o instante `now`, e devolve as contas sem par com idade acima de 15 min. A função só **classifica** (`orfao_expirado`). A exclusão em Auth é ação manual no console, em DEV, com dupla conferência.
 - **Verificação.** Lista de órfãos classificados com idade registrada.
 - **Auditoria.** Um evento por conta sinalizada, sem e-mail em claro.
-- **Exercício sintético** `[PENDENTE fatia S7]`: órfão com mais de 15 min é sinalizado; com menos, não.
+- **Exercício sintético** `[EXECUTADO fatia S7]`: função `classificarOrfaosAuth` em `packages/db/scripts/lib/runbook-h114-email-auth.mjs`. Órfão com mais de 15 min é sinalizado (`orfao_expirado`); com menos, não; exatamente 15 min não é sinalizado; conta com perfil é pareada; a saída não traz e-mail nem o identificador inteiro (CA-17).
 - **Registro de evidência.** Contagem de órfãos e de sinalizados.
 
 ---
@@ -258,3 +258,4 @@ Glossário curto:
 3. Prazo de 72 h para a ANPD e critérios de gravidade. `[PENDENTE JURIDICO]`.
 4. Confirmar com o Encarregado a redação do formulário de relatório de incidente.
 5. Achado de DEV: nenhum job `concluido` em `ops.job` em 2026-11-20 (ver D-04).
+6. Cortes de cota por classe (R-EMAIL, seção 8). O desenho previa cortar "resumo, lembrete e marketing" em 90%; o código (`QUOTA_CUTS`) corta lembrete em 70, digest em 85 e crítico em 90, e não existe classe marketing. Adotado o código, por ser a fonte única. Decisão do líder: confirmar ou ajustar o desenho. Não há ação em DEV.
