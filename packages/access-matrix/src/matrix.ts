@@ -23,7 +23,7 @@ const http200 = (mustHaveKeys: readonly string[], mustNotHaveKeys: readonly stri
   mustHaveKeys,
   mustNotHaveKeys,
 });
-const http404 = (code = 'recurso_nao_encontrado'): HttpExpectation => ({ status: 404, code });
+const http404 = (code = 'pedido_nao_encontrado'): HttpExpectation => ({ status: 404, code }); // F3: codigo real das rotas de pedido (detail-service)
 
 const GET_REQUEST = { method: 'GET', path: '/v1/requests/:id' } as const;
 const GET_PRO_REQUEST = { method: 'GET', path: '/v1/professional/requests/:id' } as const;

@@ -85,6 +85,9 @@ importers:
         specifier: 0.35.5
         version: 0.35.5(@types/node@22.20.5)
     devDependencies:
+      '@fastpro/access-matrix':
+        specifier: workspace:*
+        version: link:../../packages/access-matrix
       '@fastpro/config':
         specifier: workspace:*
         version: link:../../packages/config
