@@ -19,6 +19,7 @@
     "db:status": "node packages/db/scripts/db.mjs status",
     "db:test": "node --test --test-concurrency=1 \"packages/db/tests/*.dbtest.mjs\"",
     "db:seed:catalog": "node packages/db/scripts/catalog-seed.mjs",
+    "db:dev:logins": "node packages/db/scripts/dev-logins.mjs",
     "db:demo:load": "node packages/db/scripts/demo-load.mjs",
     "db:demo:remove": "node packages/db/scripts/demo-load.mjs --remove",
     "db:backup": "node packages/db/scripts/backup.mjs",
