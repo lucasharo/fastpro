@@ -127,3 +127,37 @@ Ainda não como Issue completa. As rotas do titular e do DPO estão prontas em n
 - Ligação: `montarPrivacidadeTitular` recebe `email` e `waitUntil`; `composicao.ts` passa o provedor de e-mail já montado; `vercel.ts` passa `waitUntil`. **Pendente de commit:** as linhas desses dois arquivos misturam alterações não commitadas do H-056 (`watermarkedPhoto`), então não foram commitadas por este agente.
 - Testes: `apps/api/src/privacy/dsr-stepup-envio.test.ts` (5 testes, cliente SQL falso, sem rede). Demais: `src/privacy` 4 arquivos, 48 testes, saída 0; `packages/db/tests/privacy-dsr-step-up.test.ts` 11 testes, saída 0. `tsc` da API e do pacote db: saída 0. ESLint nos arquivos tocados: saída 0.
 - **Não feito nesta continuação:** teste ponta a ponta de API com banco (exige sessão real e extrato para o `download_url`; a fixação do papel app_system no banco de DEV e a sessão ainda não estão montadas no teste); composição da geração do extrato no caso de acesso (P-B 3); limites de 5 aberturas por dia e 3 step-ups por hora na API (P-F). Nenhuma migração nova nesta continuação. Nenhum e-mail real foi enviado.
+
+## 11. Continuação 8 (EXEC-DEV8-120-20261121, 2026-11-21)
+
+Modelo real deste agente: Claude Haiku 5.5 (`claude-haiku-5-5`). Trailer: `Co-Authored-By: Claude Haiku 5.5` (o pedido citava Sonnet 5.5; registrado o modelo que de fato executou).
+
+### 11.1 Fatias entregues
+
+| Fatia | Conteúdo |
+|---|---|
+| P-B 3 (extrato no caso de acesso) | `ServicoDsrDpo.processar` (dpo-service.ts): quando `app.dsr_process` recusa com `dsr_acesso_usa_extrato` (antes de qualquer efeito), chama `GeradorExtratoDsr.gerar` (app.dsr_admin_generate_extract, Storage `dsr-exports`, app.dsr_register_extract). Responde 200 `{id, status: concluido, outcome: extrato_disponibilizado, expires_at}`. Sem gerador, segue 409. Falha do gerador não vira sucesso (503 pela rota). `montarGeradorExtrato` (privacy-composicao.ts) liga o gerador com SUPABASE_URL, SUPABASE_SECRET_KEY e DSR_EXTRATO_CHAVE_ASSINATURA (só os nomes). `dpo-composicao.ts` passa o gerador ao serviço. |
+| P-F (limites da API, §6.1) | `montarLimitesTitular` (privacy-composicao.ts) usa `PgDiscoveryRateLimit` (rl_check/rl_hit, sem migração) com politicas `DSR_ABERTURA_POLITICA` (5 por 24 h, bucket 1 h) e `DSR_STEPUP_POLITICA` (3 por 1 h, bucket 60 s). Chave do banco = HMAC do id do titular com rótulo por politica (`dsr-abertura:` e `dsr-stepup:`), 64 hex, sem prefixo e sem id em claro. Segredo: nome `DISCOVERY_CURSOR_KEY` (mesmo das demais taxas), derivado por HKDF com rótulo próprio (`fastpro-privacy-rate-v1`). `titular-route.ts`: `POST /v1/privacy/dsr-requests` barra com 429 `dsr_limite_diario` (retry_after) e conta só 201 (repetição 200 não gasta); `POST /v1/privacy/step-up` barra com 429 `step_up_limite` e conta 202. |
+
+### 11.2 Testes (rodados localmente em `apps/api`)
+
+| Comando | Resultado |
+|---|---|
+| `npx vitest run src/privacy/dpo-processar-acesso.test.ts src/privacy/titular-limites.test.ts` | 2 arquivos, 13 testes, saída 0 |
+| `npx vitest run src/privacy` (suíte inteira da privacidade da API) | 6 arquivos, 61 testes, saída 0 |
+| `npx tsc -p tsconfig.json --noEmit` | saída 0 |
+| `npx eslint` nos arquivos tocados (dpo-service, dpo-composicao, privacy-composicao, titular-route e os dois testes novos) | saída 0 |
+
+Não executados: `check:all`, `db:test` completo (fora do escopo desta continuação). Nenhuma migração nova; nenhuma função SQL nova; nenhuma chamada ao banco de DEV nesta continuação. Nenhum e-mail enviado.
+
+### 11.3 Pendências
+
+- **Teste ponta a ponta de API (não feito):** o fluxo emitir código -> confirmar -> abrir acesso -> processar pelo DPO -> baixar uma vez (segunda recusada) não foi escrito. Depende de montar fakes das portas SQL do step-up e do download, o emissor de e-mail e o Storage em memória, ou de sessão real no banco de DEV. Fica como próxima fatia.
+- **Verificação no banco de DEV (não feita nesta continuação):** confirmar que `app.dsr_admin_generate_extract`, `app.dsr_register_extract` e `app.dsr_process` estão aplicadas no DEV (`npx supabase`/`db:migrate`, sem MCP). O caminho de acesso só funciona se estiverem.
+- **Configuração de ambiente (nomes):** para o extrato de acesso ligar, precisam existir `SUPABASE_URL`, `SUPABASE_SECRET_KEY` e `DSR_EXTRATO_CHAVE_ASSINATURA`. Sem elas, o DPO continua recebendo 409. Para os limites da API, `DISCOVERY_CURSOR_KEY`; sem ela, só o SQL limita (dsr_limite_diario e step_up_limite). Não li valores; confirmar só os nomes no ambiente de DEV.
+- **P-I (ticker de jobs):** não verificado nesta continuação (já pendente desde 8.3).
+- **P-J:** pendências jurídicas, fora do escopo até produção.
+
+### 11.4 Pode ir a Code Review?
+
+Ainda não como Issue completa. As fatias P-B 3 e P-F estão prontas e testadas em nível de unidade e de contrato, mas falta o teste ponta a ponta de API (item 11.3) e a verificação de migrações no DEV. O cartão da Issue #120 segue em Desenvolvimento. Os commits podem ir a revisão como entrega parcial.

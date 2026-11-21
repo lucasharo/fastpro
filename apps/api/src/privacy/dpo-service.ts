@@ -171,8 +171,19 @@ export interface RespostaDpo {
   readonly corpo: unknown;
 }
 
+/** Porta do extrato de acesso (GeradorExtratoDsr.gerar). Opcional: sem ela, o caso de acesso segue recusado (409). */
+export interface GeradorExtratoPort {
+  gerar(ator: string, caso: string): Promise<{ readonly expiresAt: string }>;
+}
+
+/** Erro do banco que indica caso de acesso: o extrato (e nao o app.dsr_process) encerra esse caso (147 §4.3). */
+const ERRO_ACESSO_USA_EXTRATO = 'dsr_acesso_usa_extrato';
+
 export class ServicoDsrDpo {
-  constructor(private readonly sql: DsrDpoSql) {}
+  constructor(
+    private readonly sql: DsrDpoSql,
+    private readonly extrato?: GeradorExtratoPort,
+  ) {}
 
   async listar(
     actor: string,
@@ -235,6 +246,11 @@ export class ServicoDsrDpo {
       const linha = semPrefixo(await this.sql.processar(actor, caso));
       return { status: 200, corpo: { id: linha.case_id, status: linha.status, outcome: linha.outcome } };
     } catch (erro) {
+      // Caso de acesso: app.dsr_process recusa antes de qualquer efeito; o extrato gerado pela API encerra o caso.
+      const extrato = this.extrato;
+      if (extrato !== undefined && mensagemDe(erro) === ERRO_ACESSO_USA_EXTRATO) {
+        return processarAcesso(extrato, actor, caso);
+      }
       throw traduzirErroDpo(erro) ?? erro;
     }
   }
@@ -250,5 +266,23 @@ export class ServicoDsrDpo {
     } catch (erro) {
       throw traduzirErroDpo(erro) ?? erro;
     }
+  }
+}
+
+function mensagemDe(erro: unknown): string {
+  const e = erro as { message?: unknown } | null;
+  return typeof e?.message === 'string' ? e.message : '';
+}
+
+/** Gera, grava e registra o extrato (app.dsr_admin_generate_extract + Storage + app.dsr_register_extract). */
+async function processarAcesso(extrato: GeradorExtratoPort, actor: string, caso: string): Promise<RespostaDpo> {
+  try {
+    const gerado = await extrato.gerar(actor, caso);
+    return {
+      status: 200,
+      corpo: { id: caso, status: 'concluido', outcome: 'extrato_disponibilizado', expires_at: gerado.expiresAt },
+    };
+  } catch (erro) {
+    throw traduzirErroDpo(erro) ?? erro;
   }
 }

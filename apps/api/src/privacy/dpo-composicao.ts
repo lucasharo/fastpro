@@ -3,8 +3,8 @@
 // Sem eles, as rotas /v1/admin/privacy/dsr-cases nao ligam (404 vazio). Nunca le, grava nem registra valores.
 import { PgAdminSessionRepository, type SqlClient } from '@fastpro/db';
 import type { PrivacyDpoRouteOptions } from './dpo-route.js';
-import { PgDsrDpoSql, ServicoDsrDpo } from './dpo-service.js';
-import { clienteDe } from './privacy-composicao.js';
+import { PgDsrDpoSql, ServicoDsrDpo, type GeradorExtratoPort } from './dpo-service.js';
+import { clienteDe, montarGeradorExtrato } from './privacy-composicao.js';
 
 export const DPO_PRIVACIDADE_ENV_OBRIGATORIAS = ['DATABASE_URL_APP_SYSTEM', 'ADMIN_BASE_URL'] as const;
 
@@ -33,10 +33,12 @@ export function montarPrivacidadeDpo(env: Ambiente, opcoes: PrivacidadeDpoOpcoes
   const relogio = opcoes.relogio ?? { nowMs: () => Date.now() };
   const cliente = clienteDe(url, opcoes.abrirCliente);
   const sessao = new PgAdminSessionRepository(cliente);
+  // P-B 3: o caso de acesso e encerrado pelo extrato gerado aqui. Sem as variaveis do extrato, segue 409 (sem extrato).
+  const extrato: GeradorExtratoPort | undefined = montarGeradorExtrato(env, cliente);
   return {
     options: {
       guard: (segredo, nowMs) => sessao.guard(segredo, nowMs),
-      service: new ServicoDsrDpo(new PgDsrDpoSql(cliente)),
+      service: new ServicoDsrDpo(new PgDsrDpoSql(cliente), extrato),
       baseUrl,
       clock: relogio,
     },

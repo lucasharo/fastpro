@@ -6,7 +6,7 @@
 // Ordem fixa: caminho/metodo (404 uniforme) -> cookie de sessao (ausente = 401) -> sessao no banco (nula = 401)
 // -> cabecalho Idempotency-Key -> corpo (limite de 4 KB, chaves exatas) -> servico. Sem CORS. Sem log de corpo.
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { SESSION_COOKIE_NAME, cookieValue } from '@fastpro/domain';
+import { SESSION_COOKIE_NAME, cookieValue, type RateWindowDecision } from '@fastpro/domain';
 import {
   DsrDownloadRecusado,
   DsrExtratoIntegridadeFalha,
@@ -50,6 +50,14 @@ export interface PrivacyTitularRouteOptions {
   readonly stepUp?: Pick<ServicoDsrStepUp, 'emitir' | 'confirmar'>;
   /** Download do extrato (P-A). Sem esta opcao, a rota de download responde 404 uniforme. */
   readonly download?: Pick<ServicoDownloadExtrato, 'baixar'>;
+  /** Limites da API (147 §6.1): aberturas por dia e step-ups por hora. Sem esta opcao, so o SQL limita. */
+  readonly limites?: { readonly abertura: LimiteTaxaTitular; readonly stepUp: LimiteTaxaTitular };
+}
+
+/** Limite de taxa por titular (chave ja e o HMAC do id, calculada pela composicao). */
+export interface LimiteTaxaTitular {
+  check(titular: string, nowMs: number): Promise<RateWindowDecision>;
+  record(titular: string, nowMs: number): Promise<void>;
 }
 
 export type RotaTitular =
@@ -195,7 +203,16 @@ async function criar(
   if (entrada.stepUpToken === null && (entrada.kind === 'acesso' || entrada.kind === 'eliminacao')) {
     return enviar(res, 403, { code: 'step_up_obrigatorio' });
   }
+  const limite = opts.limites?.abertura;
+  if (limite !== undefined) {
+    const decisao = await limite.check(sujeito, opts.relogio.nowMs());
+    if (decisao.decision === 'barrado') {
+      return enviar(res, 429, { code: 'dsr_limite_diario', retry_after: decisao.retryAfterSeconds });
+    }
+  }
   const r = await opts.service.abrir(sujeito, entrada, chave);
+  // So conta a abertura nova (201): repeticao com a mesma chave (200) nao gasta o limite do dia.
+  if (limite !== undefined && r.status === 201) await limite.record(sujeito, opts.relogio.nowMs());
   return enviar(res, r.status, r.corpo);
 }
 
@@ -231,8 +248,18 @@ async function stepUpRota(
 
   if (acao === 'stepup') {
     if (!validarCorpoStepUp(json)) return enviar(res, 422, { code: 'corpo_invalido' });
+    const limite = opts.limites?.stepUp;
+    if (limite !== undefined) {
+      const decisao = await limite.check(sujeito, opts.relogio.nowMs());
+      if (decisao.decision === 'barrado') {
+        return enviar(res, 429, { code: 'step_up_limite', retry_after: decisao.retryAfterSeconds });
+      }
+    }
     const r: DsrStepUpEmissao = await opts.stepUp.emitir(sujeito);
-    if (r.resultado === 'criado' || r.resultado === 'negado') return enviar(res, 202, {});
+    if (r.resultado === 'criado' || r.resultado === 'negado') {
+      if (limite !== undefined) await limite.record(sujeito, opts.relogio.nowMs());
+      return enviar(res, 202, {});
+    }
     return enviar(res, 429, {
       code: r.resultado === 'limite' ? 'step_up_limite' : 'step_up_bloqueado',
       retry_after: r.retryAfter,
