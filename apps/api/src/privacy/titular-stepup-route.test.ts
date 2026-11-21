@@ -28,7 +28,7 @@ function stepUpFalso(sobrescrita: Partial<Pick<StepUpFalso, 'emitir' | 'confirma
       emitido.push(usuario);
       return { resultado: 'criado', outboxId: '55555555-5555-4555-8555-555555555555' };
     },
-    confirmar: async () => ({ resultado: 'ok', token: 'token-sintetico-stepup-120-0123456789', expiresAt: '2026-11-20T12:15:00.000Z' }),
+    confirmar: async () => ({ resultado: 'ok', token: 'dummy-token-sintetico-stepup-120-0123456789', expiresAt: '2026-11-20T12:15:00.000Z' }),
     ...sobrescrita,
   };
 }
@@ -133,7 +133,7 @@ describe('step-up: confirmacao (POST /v1/privacy/step-up/confirm)', () => {
     const r = await chamar('POST', '/v1/privacy/step-up/confirm', opcoes(stepUpFalso()), { corpo: { code: '123456' } });
     expect(r.status).toBe(200);
     expect(r.corpo).toEqual({
-      step_up_token: 'token-sintetico-stepup-120-0123456789',
+      step_up_token: 'dummy-token-sintetico-stepup-120-0123456789',
       expires_at: '2026-11-20T12:15:00.000Z',
     });
   });

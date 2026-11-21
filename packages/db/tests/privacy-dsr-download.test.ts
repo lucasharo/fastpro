@@ -19,7 +19,7 @@ const CHAVE = 'chave-de-teste-sintetica-com-trinta-e-dois-chars';
 const CONTEUDO = Buffer.from(JSON.stringify({ schema_version: 1, dados: 'sinteticos@example.test' }), 'utf8');
 const SHA = createHash('sha256').update(CONTEUDO).digest('hex');
 const ASSINATURA = createHmac('sha256', Buffer.from(CHAVE, 'utf8')).update(CONTEUDO).digest('hex');
-const SEGREDO_STORAGE = 'sb_secret_TESTE_NAO_REAL_987654';
+const SEGREDO_STORAGE = 'dummy-secret-TESTE_NAO_REAL_987654';
 
 /** Banco falso em memoria: guarda so hashes, como o banco real, e recusa uso repetido. */
 function sqlFalso(opcoes: { sha?: string; assinatura?: string } = {}) {

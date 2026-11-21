@@ -20,7 +20,7 @@ const ATOR = '11111111-2222-4333-8444-555555555555';
 const CASO = '6f1f0c52-0d7a-4c8e-9a3b-2f4d5e6a7b8c';
 const CHAVE = 'chave-de-teste-sintetica-com-trinta-e-dois-chars';
 const CONTEUDO = JSON.stringify({ schema_version: 1, dados: 'sinteticos@example.test' });
-const SEGREDO_STORAGE = 'sb_secret_TESTE_NAO_REAL_987654';
+const SEGREDO_STORAGE = 'dummy-secret-TESTE_NAO_REAL_987654';
 
 interface Estado {
   ordem: string[];

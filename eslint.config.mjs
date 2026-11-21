@@ -11,6 +11,9 @@ export default tseslint.config(
       '**/node_modules/**',
       'coverage/**',
       '*/*/coverage/**',
+      // Bundles gerados de apps/web/public (saida de build, nao codigo fonte).
+      'apps/web/public/fotos-envio.js',
+      'apps/web/public/situacao-bundle.js',
     ],
   },
   js.configs.recommended,
@@ -28,7 +31,15 @@ export default tseslint.config(
   {
     files: ['**/*.mjs', '**/*.js'],
     languageOptions: {
-      globals: { console: 'readonly', process: 'readonly', URL: 'readonly' },
+      // Globais do Node usadas por testes e scripts .mjs.
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        URL: 'readonly',
+        Buffer: 'readonly',
+        performance: 'readonly',
+        setTimeout: 'readonly',
+      },
     },
   },
 );

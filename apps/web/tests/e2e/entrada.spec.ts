@@ -14,7 +14,7 @@ const TIPOS: Record<string, string> = {
   '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
 };
-const TOKEN = 'tok-sintetico_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456';
+const TOKEN = 'dummy-tok-sintetico_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456';
 
 /** Telas novas e as ajustadas da #154. */
 const TELAS = [

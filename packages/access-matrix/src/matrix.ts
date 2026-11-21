@@ -279,7 +279,7 @@ export const ACCESS_MATRIX: readonly AccessCase[] = Object.freeze([
     id: 'CP-30', resource: 'message', action: 'create', principal: 'pro_participant',
     condition: 'mensagem em conversa de pedido com aceite (par legitimo)',
     criteria: CA(7), invariants: ['I-12'], layers: ['db'],
-    requiresRelation: 'app.message', deferredBy: ['#77', '#136'],
+    requiresRelation: 'app.message', deferredBy: ['#77', 'Issue 136'],
     status: 'deferred',
     probe: { kind: 'table_write', relation: 'app.message', verb: 'insert' },
     db: { kind: 'rows', minRows: 1 },

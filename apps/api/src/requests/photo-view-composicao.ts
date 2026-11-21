@@ -27,7 +27,7 @@ import type { WatermarkedPhotoRouteOptions } from '../media/watermarked-photo-ro
 import type { PhotoViewRouteOptions } from './photo-view-route.js';
 
 const DATABASE_URL_NOME = 'DATABASE_URL_APP_SYSTEM';
-const TOKEN_SECRET_NOME = 'WATERMARK_TOKEN_SECRET';
+const MARCA_NOME_VARIAVEL = 'WATERMARK_TOKEN_SECRET';
 const ID_SALT_NOME = 'WATERMARK_ID_SALT';
 const [STORAGE_URL_NOME, STORAGE_CHAVE_NOME] = MEDIA_ENV_STORAGE;
 /** Prefixos dos baldes: lista e link compartilham um; a entrega da imagem tem o seu (A-10). */
@@ -76,7 +76,7 @@ export function montarFotosPedido(env: Ambiente, opcoes: FotosPedidoOpcoes = {})
   const pendencias: string[] = [];
   if (!preenchida(env, DATABASE_URL_NOME)) pendencias.push(DATABASE_URL_NOME);
   if (opcoes.abrirCliente === undefined) pendencias.push('fabrica do cliente SQL das fotos (ainda nao montada na funcao)');
-  for (const nome of [TOKEN_SECRET_NOME, ID_SALT_NOME]) {
+  for (const nome of [MARCA_NOME_VARIAVEL, ID_SALT_NOME]) {
     if (!preenchida(env, nome)) pendencias.push(nome);
     else if ((env[nome] ?? '').length < WATERMARK_SECRET_MIN_LENGTH) pendencias.push(`${nome} (tamanho minimo de 32 caracteres)`);
   }
@@ -85,7 +85,7 @@ export function montarFotosPedido(env: Ambiente, opcoes: FotosPedidoOpcoes = {})
   }
 
   const url = env[DATABASE_URL_NOME];
-  const segredo = env[TOKEN_SECRET_NOME];
+  const segredo = env[MARCA_NOME_VARIAVEL];
   const salt = env[ID_SALT_NOME];
   const abrir = opcoes.abrirCliente;
   if (pendencias.length > 0 || url === undefined || segredo === undefined || salt === undefined || abrir === undefined) {

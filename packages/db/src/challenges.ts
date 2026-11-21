@@ -467,7 +467,7 @@ export async function requestChallenge(
     // H-013 (91 §1.1): o nonce vem antes do envio. Falha aqui nao muda a resposta (202) e nada e anexado
     // depois (fecha para o lado seguro). Sem cookie (nonce nulo), nada e gravado.
     if (ctx.browserNonceHash) {
-      let vinculado = false;
+      let vinculado: boolean;
       try {
         vinculado = (await deps.store.bindNonce?.(result.challengeId, ctx.browserNonceHash, deps.clock.nowMs())) === true;
       } catch {

@@ -454,7 +454,7 @@ test('D-10 aplicar a migracao duas vezes deixa o mesmo estado da primeira aplica
         'funcoes', (select jsonb_agg(jsonb_build_object('a', p.oid::regprocedure::text, 'acl', p.proacl::text,
                       'corpo', md5(pg_get_functiondef(p.oid))) order by p.oid::regprocedure::text)
                       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-                     where n.nspname = 'private' and p.proname like 'draft\_%')
+                     where n.nspname = 'private' and p.proname like 'draft_%')
       ) as e`);
     return rows[0].e;
   };

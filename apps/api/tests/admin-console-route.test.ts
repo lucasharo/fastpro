@@ -18,7 +18,6 @@ import {
 import { handleRequest } from '../src/app.js';
 import type { AdminConsoleRouteOptions } from '../src/admin-console-route.js';
 
-const BASE = 'https://admin.fastpro.example.test';
 const T0 = Date.UTC(2099, 0, 1, 12);
 const HORA = 60 * 60 * 1000;
 const SEG_SUPERADMIN = 'example-admin-secret-superadmin-0000000000';

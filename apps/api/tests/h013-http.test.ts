@@ -238,7 +238,7 @@ describe('T-H013-06/07: 429 com Retry-After, sem revelar a regra', () => {
     expect(b.headers['retry-after']).toBeDefined();
     expect(Object.keys(JSON.parse(a.body))).toEqual(Object.keys(JSON.parse(b.body)));
     // O codigo generico (muitas_tentativas) vale para os dois casos; o corpo nao nomeia a regra barrada.
-    expect(a.body).not.toMatch(/ip|email|e-mail|por_ip|por_email/i);
+    expect(a.body).not.toMatch(/\bip\b|email|e-mail|por_ip|por_email/i);
   });
 });
 

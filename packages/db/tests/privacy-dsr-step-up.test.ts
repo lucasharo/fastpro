@@ -14,7 +14,7 @@ import {
 } from '../src/privacy-dsr-step-up.js';
 
 const USUARIO = '11111111-1111-4111-8111-111111111111';
-const PEPPER = 'pepper-sintetico-dsr-step-up-120';
+const PEPPER = 'dummy-pepper-sintetico-dsr-step-up-120';
 const OUTBOX = '33333333-3333-4333-8333-333333333333';
 
 interface Captura {

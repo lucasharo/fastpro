@@ -221,7 +221,7 @@ describe('H-111 guard de login: so conta ativa abre a etapa', () => {
     async (status) => {
       const sqls: string[] = [];
       const client = {
-        async query(sql: string, _params: unknown[] = []) {
+        async query(sql: string) {
           sqls.push(sql);
           return { rows: [{ out_user_id: USER_ID, out_status: status }] };
         },

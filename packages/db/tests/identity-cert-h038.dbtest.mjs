@@ -15,7 +15,6 @@ const CAP = 250000000;
 const AGORA = '2026-11-12T12:00:00Z';
 const MAIS_31_MIN = '2026-11-12T12:31:00Z';
 const JPEG = 'image/jpeg';
-const PDF = 'application/pdf';
 const SHA = Buffer.alloc(32, 7);
 
 let client;

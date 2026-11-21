@@ -17,7 +17,7 @@ import { DsrTitularErro, ServicoDsrTitular, type DsrTitularSql } from './titular
 const SUJEITO = '11111111-1111-4111-8111-111111111111';
 const CASO = '22222222-2222-4222-8222-222222222222';
 const CHAVE = 'idem-chave-120-aaaa';
-const TOKEN = 'token-stepup-sintetico-0123456789';
+const TOKEN = 'dummy-token-stepup-sintetico-0123456789';
 
 interface Resposta {
   status: number;

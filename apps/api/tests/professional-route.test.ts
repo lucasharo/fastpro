@@ -104,7 +104,7 @@ class PortaMemoria implements ProfessionalAuthPort {
     this.contadores.delete(email);
   }
 
-  async openSession(_credential: ProfessionalCredential): Promise<{ secret: string }> {
+  async openSession(): Promise<{ secret: string }> {
     const secret = novoSegredo();
     this.sessoes.push(secret);
     return { secret };
@@ -152,7 +152,6 @@ interface Resposta {
 }
 
 let server: Server | undefined;
-let base = '';
 const porta = new PortaMemoria();
 const limites = new LimitesMemoria();
 let agora = T0;
@@ -191,7 +190,6 @@ async function iniciar(): Promise<void> {
     });
   });
   await new Promise<void>((ok) => server?.listen(0, '127.0.0.1', ok));
-  base = `http://127.0.0.1:${(server?.address() as AddressInfo).port}`;
 }
 
 afterAll(async () => {

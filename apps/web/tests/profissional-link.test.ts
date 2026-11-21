@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import { carregarPagina, documentoFalso, resposta, type RespostaFalsa } from './entrada-dom-falso';
 
-const TOKEN = 'tok-sintetico_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456';
+const TOKEN = 'dummy-tok-sintetico_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456';
 const HASH = `#t=${TOKEN}`;
 const CAMINHO_CONFIRMAR = '/api/v1/auth/professional/verification/confirm';
 const CAMINHO_REENVIO = '/api/v1/auth/professional/verification/resend';

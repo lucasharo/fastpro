@@ -608,3 +608,18 @@ test('check-secrets --history: acha segredo removido depois', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('check-secrets: derivacao PBKDF2 e chave de deduplicacao (camel e snake) passam (ajuste estreito)', () => {
+  const ok = (path, line) => check('check-secrets.mjs', { [path]: line }, false);
+  ok('packages/db/scripts/dev-logins.mjs', "const saltedPassword = pbkdf2Sync(senha, salt, iteracoes, 32, 'sha256');\n");
+  ok('packages/domain/tests/a.test.ts', "dedupeKey: 'req:prazo_t24:abc',\n");
+  ok('docs/a.md', "1. `ops.job.dedupe_key = 'reminder:assunto:marco:id'`\n");
+  // Excecao exata: o arquivo de composicao do extrato (Storage) pode ler a chave; o vizinho nao.
+  ok('apps/api/src/privacy/privacy-composicao.ts', "const secretKey = env.SUPABASE_SECRET_KEY ?? '';\n");
+});
+
+test('check-secrets: a excecao de derivacao e de dedupe nao esconde literal sensivel (ajuste estreito)', () => {
+  check('check-secrets.mjs', { 'packages/db/scripts/dev-logins.mjs': "const saltedPassword = 'abc123def456';\n" }, true, /valor atribuido a saltedPassword/);
+  check('check-secrets.mjs', { 'packages/domain/tests/a.test.ts': "dedupeKey: 'sb_secret_TESTE_NAO_REAL_987654',\n" }, true, /chave Supabase/);
+  check('check-secrets.mjs', { 'apps/api/src/privacy/outro.ts': 'const k = env.SUPABASE_SECRET_KEY;\n' }, true, /service_role/);
+});

@@ -88,7 +88,7 @@ function provedorFalso(enviadas: EmailMessage[]): EmailProviderPort {
 
 function montar(cenario: Cenario, enviadas: EmailMessage[], chamadas: string[], agendadas: Promise<unknown>[]) {
   const sql = sqlStepUp(cenario);
-  const servico = new ServicoDsrStepUp({ sql, chave: Buffer.alloc(32, 7), pepperCodigo: 'pepper-de-teste-0123456789' });
+  const servico = new ServicoDsrStepUp({ sql, chave: Buffer.alloc(32, 7), pepperCodigo: 'dummy-pepper-de-teste-0123456789' });
   const envio = comEnvioStepUp(servico, {
     client: clienteFalso(cenario, chamadas, () => sql.codigoId),
     email: provedorFalso(enviadas),
@@ -153,7 +153,7 @@ describe('envio do codigo do step-up (P-C)', () => {
     const enviadas: EmailMessage[] = [];
     const chamadas: string[] = [];
     const sql = sqlStepUp({});
-    const servico = new ServicoDsrStepUp({ sql, chave: Buffer.alloc(32, 7), pepperCodigo: 'pepper-de-teste-0123456789' });
+    const servico = new ServicoDsrStepUp({ sql, chave: Buffer.alloc(32, 7), pepperCodigo: 'dummy-pepper-de-teste-0123456789' });
     const envio = comEnvioStepUp(servico, { client: clienteFalso({}, chamadas, () => sql.codigoId), email: provedorFalso(enviadas), relogio });
 
     const r = await envio.emitir(TITULAR);

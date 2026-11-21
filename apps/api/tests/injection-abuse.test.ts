@@ -181,7 +181,7 @@ describe('T-10 redirecionamento aberto: nao aplicavel hoje (nenhuma rota le para
 
 describe('T-10 texto livre: a carga chega ao provedor intacta e a resposta e JSON', () => {
   it('busca de endereco envia SQL e XSS sem alterar e devolve status 200 de dados', async () => {
-    const suggest = vi.fn(async (_q: string) => ({ ok: true as const, features: [] }));
+    const suggest = vi.fn(async () => ({ ok: true as const, features: [] }));
     const provider: GeocodingTempPort = { suggest };
     const deps = {
       gate: { async check() { return { status: 'ok' as const, principal: 'rascunho-sintetico' }; } } as DraftGatePort,

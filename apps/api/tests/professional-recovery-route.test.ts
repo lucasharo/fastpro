@@ -7,7 +7,7 @@ globalThis.fetch = () => {
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { createServer, request, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import type { ProfessionalSendLimitPort, ProfessionalSendRuleSpec, RateWindowDecision } from '@fastpro/domain';
+import type { ProfessionalSendLimitPort, RateWindowDecision } from '@fastpro/domain';
 import {
   handlePasswordRecovery,
   handlePasswordReset,
@@ -54,7 +54,7 @@ const porta: ProfessionalRecoveryPort = {
 };
 
 const limites: ProfessionalSendLimitPort = {
-  async check(_spec: ProfessionalSendRuleSpec, _now: number): Promise<RateWindowDecision> {
+  async check(): Promise<RateWindowDecision> {
     return barrado ? { decision: 'barrado', retryAfterSeconds: 120 } : { decision: 'permitido' };
   },
   async record() {},

@@ -118,7 +118,7 @@ function pedir(
       res.on('data', (c: Buffer) => partes.push(c));
       res.on('end', () => {
         const text = Buffer.concat(partes).toString('utf8');
-        let json: Record<string, unknown> | null = null;
+        let json: Record<string, unknown> | null;
         try {
           json = text === '' ? null : (JSON.parse(text) as Record<string, unknown>);
         } catch {

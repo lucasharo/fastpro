@@ -35,6 +35,8 @@ const SERVICE_ROLE_ALLOWED = [
 const SERVICE_ROLE_EXACT = new Set([
   'apps/api/src/identity-docs/identity-doc-montagem.ts',
   'apps/api/src/professional-composicao.ts',
+  // Composicao do download do extrato de direitos do titular (leitura do Storage; decisao 803).
+  'apps/api/src/privacy/privacy-composicao.ts',
   'apps/api/tests/identity-docs-montagem.test.ts',
   'apps/api/tests/professional-composicao.test.ts',
 ]);
@@ -78,8 +80,10 @@ const PLACEHOLDER =
 // Nomes de rota e de expressao regular (X_PATH = '/v1/...', TOKEN_RE = /^.../): so nao sao
 // segredo quando o valor comeca com "/" (decisao 804). Sem barra, o valor segue verificado.
 const ROUTE_NAME = /_(?:PATH|ROUTE|RE|REGEX)$/i;
-// Chave de deduplicacao de fila (dedupe_key): identificador de idempotencia, nao segredo.
-const DEDUPE_NAME = /^dedupe_key$/i;
+// Chave de deduplicacao de fila (dedupe_key, dedupeKey, ops.job.dedupe_key): identificador de idempotencia, nao segredo. So o nome; padroes de token seguem valendo no valor.
+const DEDUPE_NAME = /(?:^|\.)dedupe_?key$/i;
+// Derivacao de chave (PBKDF2/scrypt, ex.: verificador SCRAM no dev-logins): o valor e chamada de funcao, nao literal.
+const KDF_CALL = /^(?:pbkdf2(?:Sync)?|scrypt(?:Sync)?)\(/;
 
 function assignments(line) {
   const found = [];
@@ -88,6 +92,7 @@ function assignments(line) {
     if (!(SENSITIVE_NAME.test(name) || KEY_SUFFIX.test(name))) continue;
     if (value === '' || PLACEHOLDER.test(value)) continue;
     if (DEDUPE_NAME.test(name)) continue;
+    if (KDF_CALL.test(value)) continue;
     if (ROUTE_NAME.test(name) && value.startsWith('/')) continue;
     const upper = /^[A-Z][A-Z0-9_]*$/.test(name);
     const looksSecret = quote

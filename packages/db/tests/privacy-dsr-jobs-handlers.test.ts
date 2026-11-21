@@ -30,7 +30,7 @@ import {
 const CASO = '6f1f0c52-0d7a-4c8e-9a3b-2f4d5e6a7b8c';
 const USUARIO = '0b9e8d7c-6a5b-4c3d-8e2f-1a0b9c8d7e6f';
 const AUTH = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
-const SEGREDO = 'sb_secret_TESTE_NAO_REAL_123456';
+const SEGREDO = 'dummy-secret-TESTE_NAO_REAL_123456';
 const CAMINHO = '3f2e1d0c-9b8a-4786-8594-a3b2c1d0e9f8.json';
 
 function job(kind: string, payload: string | null): JobContext {

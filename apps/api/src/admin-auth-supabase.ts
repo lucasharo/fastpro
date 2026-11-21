@@ -62,7 +62,7 @@ export function criarAuthAdminSupabase(opcoes: SupabaseAuthOpcoes): Porta {
       throw new ProvedorIndisponivel();
     }
     if (res.status >= 500) throw new ProvedorIndisponivel();
-    let json: Record<string, unknown> | null = null;
+    let json: Record<string, unknown> | null;
     try {
       json = oDicionario(await res.json());
     } catch {

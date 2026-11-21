@@ -20,7 +20,7 @@ const SITE = 'https://fastpro.example.test';
 const AMBIENTE_COMPLETO = {
   DATABASE_URL_APP_SYSTEM: URL_SINTETICA,
   SITE_URL: SITE,
-  DISCOVERY_CURSOR_KEY: CHAVE_SINTETICA,
+  DISCOVERY_CURSOR_KEY: 'dummy-' + CHAVE_SINTETICA,
 };
 
 const PENDENCIA_CLIENTE = 'fabrica do cliente SQL do aceite (ainda nao montada na funcao)';
@@ -73,7 +73,7 @@ describe('Issue 71 (H-058) montagem da rota de aceite', () => {
   it('chave do cursor curta: a pendencia leva so o nome, nunca o valor', () => {
     const f = fabricasFalsas();
     const r = montarAceite(
-      { ...AMBIENTE_COMPLETO, DISCOVERY_CURSOR_KEY: CHAVE_CURTA },
+      { ...AMBIENTE_COMPLETO, DISCOVERY_CURSOR_KEY: 'dummy-' + CHAVE_CURTA },
       { abrirCliente: f.abrirCliente, abrirConexaoDedicada: f.abrirConexaoDedicada },
     );
     expect(r.options).toBeUndefined();

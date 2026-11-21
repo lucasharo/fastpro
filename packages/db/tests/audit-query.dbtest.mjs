@@ -429,7 +429,7 @@ test('T-H104-25 autoridade no banco: sessao inexistente, vencida, revogada, pape
 test('T-H104-26 validacao no banco (ADM31): nada e lido nem gravado', async () => {
   await tx(async () => {
     const now = Date.now();
-    const win = await janela();
+    await janela();
     const ator = await staffComPapel('auditor');
     const seg = await sessao(ator, now);
     const sql = 'select private.audit_query($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) as r';

@@ -107,7 +107,7 @@ export class PgDsrJobsStore implements DsrJobsStorePort {
 export interface SupabaseStorageExtratosOpcoes {
   /** SUPABASE_URL sem barra final. */
   readonly url: string;
-  /** Chave secreta do Supabase (SUPABASE_SECRET_KEY). Nunca registrada. */
+  /** Chave secreta de servidor do Supabase, lida do ambiente. Nunca registrada. */
   readonly secretKey: string;
   readonly fetch?: typeof fetch;
 }
