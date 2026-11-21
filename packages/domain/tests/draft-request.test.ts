@@ -299,7 +299,7 @@ describe('forma da resposta e 404 uniforme (R2, R3, D-03)', () => {
     };
     const v = toDraftView(reg) as unknown as Record<string, unknown>;
     expect(Object.keys(v).sort()).toEqual(
-      ['address_text', 'description', 'expires_at', 'id', 'service_id', 'status', 'updated_at', 'urgency'].sort(),
+      ['address_text', 'description', 'expires_at', 'id', 'service_id', 'service_name', 'status', 'updated_at', 'urgency'].sort(),
     );
     expect(Object.keys(v)).not.toEqual(expect.arrayContaining(['browser_nonce_hash', 'ip_hmac', 'email', 'first_name']));
   });

@@ -13,6 +13,7 @@ export interface DraftRecord {
   readonly id: string;
   readonly status: DraftStatus;
   readonly serviceId: string | null;
+  readonly serviceName: string | null;
   readonly addressText: string | null;
   readonly urgency: DraftUrgency | null;
   readonly description: string | null;
@@ -78,6 +79,7 @@ export function toDraftView(record: DraftRecord): DraftView {
     id: record.id,
     status: record.status,
     service_id: record.serviceId,
+    service_name: record.serviceName,
     address_text: record.addressText,
     urgency: record.urgency,
     description: record.description,

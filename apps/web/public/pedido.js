@@ -2,7 +2,7 @@
 // pedido-logica.js e desenha o estado que eles devolvem. Sem innerHTML (so textContent), sem armazenamento do navegador,
 // sem envio de e-mail nesta etapa: o link e pedido pela rota de identificacao (#26). O clique em "Revisar pedido" e o
 // unico gatilho do envio de identificacao; depois dele a pessoa segue para /fotos e, em seguida, para a revisao em /pedido/revisao.
-import { mountAddressField, apiRequest } from '/address-field.js';
+import { mountAddressField, apiRequest } from './address-field.js';
 import {
   PEDIDO_TEXTOS,
   PEDIDO_ROTULOS,
@@ -13,7 +13,7 @@ import {
   faltandoParaRevisao,
   interpretarRevisao,
   PEDIDO_DESCRICAO_MAX,
-} from '/pedido-logica.js';
+} from './pedido-logica.js';
 
 const CAMINHOS = Object.freeze({
   rascunho: '/api/v1/drafts',
@@ -250,7 +250,7 @@ function mostrarEspera(email) {
   emailAtual = email;
   el('secao-formulario').hidden = true;
   el('secao-email').hidden = false;
-  el('email-texto').textContent = `Enviamos o link para ${email}.`;
+  el('email-texto').textContent = `Se ${email} estiver correto, o código de 6 dígitos chega em alguns minutos. Confira também a caixa de spam.`;
   el('titulo-email').focus();
   espera.iniciar();
 }
@@ -293,7 +293,7 @@ const espera = criarControladorEspera({
 async function enviarDesafio(email) {
   const resposta = await chamar(CAMINHOS.desafio, {
     method: 'POST',
-    body: JSON.stringify({ email, purpose: 'login' }),
+    body: JSON.stringify({ email, purpose: 'publish' }),
   });
   if (resposta.status >= 200 && resposta.status < 300) {
     mostrarEspera(email);
@@ -312,7 +312,7 @@ async function validarCodigo() {
   }
   const resposta = await chamar(CAMINHOS.verifica, {
     method: 'POST',
-    body: JSON.stringify({ email: emailAtual, code: codigo, purpose: 'login' }),
+    body: JSON.stringify({ email: emailAtual, code: codigo, purpose: 'publish' }),
   });
   if (resposta.status >= 200 && resposta.status < 300) {
     espera.consultarAgora();

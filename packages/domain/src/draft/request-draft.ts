@@ -228,6 +228,7 @@ export interface DraftView {
   readonly id: string;
   readonly status: DraftStatus;
   readonly service_id: string | null;
+  readonly service_name: string | null;
   readonly address_text: string | null;
   readonly urgency: DraftUrgency | null;
   readonly description: string | null;

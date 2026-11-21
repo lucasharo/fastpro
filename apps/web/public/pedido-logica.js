@@ -57,7 +57,7 @@ export const PEDIDO_TEXTOS = Object.freeze({
   falhaConfirmar: 'Não foi possível confirmar agora. Seus dados continuam salvos. Tente de novo.',
   confirmado: 'Pedido confirmado. Ainda não foi publicado.',
   confiraEmail: 'Confira seu e-mail',
-  confiraEmailTexto: 'Enviamos um link para o seu e-mail. Abra o link e volte a esta página.',
+  confiraEmailTexto: 'Pedimos o envio do código para o seu e-mail. Digite o código de 6 dígitos abaixo ou abra o link do e-mail e volte a esta página.',
   jaConfirmei: 'Já confirmei meu e-mail',
   corrigirEmail: 'Corrigir e-mail',
   reenviar: 'Reenviar',

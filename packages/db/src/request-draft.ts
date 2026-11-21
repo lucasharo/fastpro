@@ -42,6 +42,7 @@ export const SQL_DRAFT_IDENTITY_SET =
   'select * from private.draft_identity_set($1, $2::timestamptz, $3, $4, $5)';
 /** H-030 (90 §2.1, §2.2): revisao (so leitura) e confirmacao expressa, papel app_api. */
 export const SQL_DRAFT_REVIEW_GET = 'select * from private.draft_review_get($1, $2::timestamptz)';
+export const SQL_SERVICE_PUBLIC_NAME = 'select private.service_public_name($1::uuid) as name';
 export const SQL_DRAFT_CONFIRM =
   'select * from private.draft_confirm($1, $2::timestamptz, $3::integer, $4::integer)';
 
@@ -75,6 +76,7 @@ function paraRegistro(row: Record<string, unknown>): DraftRecord {
     id: l.out_id,
     status: l.out_status,
     serviceId: l.out_service_id,
+    serviceName: null,
     addressText: l.out_address_text,
     urgency: l.out_urgency as DraftUrgency | null,
     description: l.out_description,
@@ -229,7 +231,7 @@ export class PgDraftStore implements DraftStorePort, DraftIdentityStorePort, Dra
   async find(secretHash: string, nowMs: number): Promise<DraftRecord | null> {
     const res = await this.client.query(SQL_DRAFT_GET, [secretHash, iso(nowMs)]);
     const row = res.rows[0];
-    return row === undefined ? null : paraRegistro(row);
+    return row === undefined ? null : await this.comNome(paraRegistro(row));
   }
 
   async create(input: DraftCreateInput): Promise<DraftWriteResult> {
@@ -262,6 +264,20 @@ export class PgDraftStore implements DraftStorePort, DraftIdentityStorePort, Dra
   }
 
   /**
+   * Nome publico do servico (Issue 159, D-ARQ-159-5). Falha da consulta degrada para null: o nome e cosmetico.
+   */
+  private async comNome(registro: DraftRecord): Promise<DraftRecord> {
+    if (registro.serviceId === null) return registro;
+    try {
+      const res = await this.client.query(SQL_SERVICE_PUBLIC_NAME, [registro.serviceId]);
+      const nome = res.rows[0]?.['name'];
+      return { ...registro, serviceName: typeof nome === 'string' ? nome : null };
+    } catch {
+      return registro;
+    }
+  }
+
+  /**
    * Executa uma funcao de escrita. Sem linha: 'nao_encontrado' quando a ausencia e esperada (patch);
    * em criacao, sem linha e erro interno. 'servico_invalido' vira codigo; o resto sobe.
    */
@@ -279,7 +295,7 @@ export class PgDraftStore implements DraftStorePort, DraftIdentityStorePort, Dra
       if (ausenciaEhNaoEncontrado) return { ok: false, code: 'nao_encontrado' };
       throw new Error('rascunho_criacao_sem_linha');
     }
-    return { ok: true, draft: paraRegistro(row) };
+    return { ok: true, draft: await this.comNome(paraRegistro(row)) };
   }
 }
 

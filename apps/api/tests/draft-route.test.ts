@@ -273,7 +273,7 @@ describe('D-01 e CA-01/CA-03: criacao sem conta', () => {
     );
     const corpo = JSON.parse(r.body) as Record<string, unknown>;
     expect(Object.keys(corpo).sort()).toEqual(
-      ['address_text', 'description', 'expires_at', 'id', 'service_id', 'status', 'updated_at', 'urgency'].sort(),
+      ['address_text', 'description', 'expires_at', 'id', 'service_id', 'service_name', 'status', 'updated_at', 'urgency'].sort(),
     );
     expect(corpo['status']).toBe('aberto');
     expect(r.headers['cache-control']).toBe('no-store');
