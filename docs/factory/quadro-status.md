@@ -75,12 +75,10 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | Issue | Título |
 |---|---|
 
-## Desenvolvimento (4)
+## Desenvolvimento (2)
 
 | Issue | Título |
 |---|---|
-| #154 | [E16] Telas de entrada: cliente (link/código) e profissional (cadastro e login) (QA reprovado: ajuste dos testes após o cabeçalho/rodapé da #155) |
-| #155 | [E16] Navegação ligando as telas existentes num fluxo a partir da inicial |
 | #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 | #120 | [E13] Direitos do titular (dsr_case) |
 
@@ -186,10 +184,12 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #128 | [E15] Teste de restauração de backup |
 | #145 | [E15] db:test: media_asset fora do backup sem decisão registrada |
 
-## Aguardando aprovação (8)
+## Aguardando aprovação (10)
 
 | Issue | Título |
 |---|---|
+| #155 | [E16] Navegação ligando as telas existentes num fluxo a partir da inicial (prova com a API real pendente) |
+| #154 | [E16] Telas de entrada: cliente (link/código) e profissional (cadastro e login) (prova com a API real pendente) |
 | #156 | [E0] Ambiente DEV executável: papéis de login da API, chaves DEV, script dev local e rotas respondendo (preview Vercel da API, F8, pendente) |
 | #153 | [E16] Página inicial com busca de serviço e endereço que leva ao pedido (Playwright/axe e prova com a API real pendentes) |
 | #69 | [E6] Fotos a elegíveis com marca d'água (entrega real contra o Storage de DEV fica para a #156) |
