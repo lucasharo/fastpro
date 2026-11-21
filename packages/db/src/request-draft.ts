@@ -34,8 +34,8 @@ export const SQL_DRAFT_CREATE =
 export const SQL_DRAFT_PATCH = 'select * from private.draft_patch($1, $2::timestamptz, $3::integer, $4::jsonb)';
 export const SQL_DRAFT_DISCARD = 'select private.draft_discard($1, $2::timestamptz) as ok';
 export const SQL_DRAFT_RL_CHECK =
-  'select out_ok, out_retry_after from private.rl_check($1, $2, $3, $4, $5::timestamptz)';
-export const SQL_DRAFT_RL_HIT = 'select private.rl_hit($1, $2, $3::timestamptz)';
+  'select out_ok, out_retry_after from private.draft_rate_check($1, $2, $3, $4, $5::timestamptz)';
+export const SQL_DRAFT_RL_HIT = 'select private.draft_rate_hit($1, $2, $3::timestamptz)';
 /** H-013 (91 §2.5): identificacao do rascunho vivo, papel app_api. */
 export const SQL_DRAFT_IDENTITY_GET = 'select * from private.draft_identity_get($1, $2::timestamptz)';
 export const SQL_DRAFT_IDENTITY_SET =
