@@ -41,6 +41,7 @@ const TEXTO = Object.freeze({
   codigoErro: 'Código inválido ou vencido. Confira e tente de novo.',
   codigoFormato: 'Digite os 6 dígitos do código.',
   escolhido: 'Serviço já escolhido. Para trocar, pesquise outro.',
+  servicoSemNome: 'Serviço escolhido',
   campoObrigatorio: 'Preencha este campo.',
   identidadeFalhou: 'Confira o nome e o e-mail e tente de novo.',
   contadorSufixo: `de ${PEDIDO_DESCRICAO_MAX} caracteres`,
@@ -55,6 +56,8 @@ const tempo = {
 
 let servicoId = null;
 let criado = false;
+// Issue 159 (D-ARQ-159-2): controlador do endereco; liberado quando o rascunho passa a existir.
+let campoEndereco = null;
 let emailAtual = '';
 
 function setEstado(texto) {
@@ -130,7 +133,10 @@ const salvador = criarControladorSalvamento({
     const metodo = criado ? 'PATCH' : 'POST';
     const caminho = criado ? CAMINHOS.atual : CAMINHOS.rascunho;
     const resposta = await chamar(caminho, { method: metodo, body: JSON.stringify(parcial) });
-    if (resposta.status >= 200 && resposta.status < 300) criado = true;
+    if (resposta.status >= 200 && resposta.status < 300) {
+      criado = true;
+      campoEndereco?.liberar();
+    }
     return { status: resposta.status };
   },
   agendar: tempo.agendar,
@@ -201,6 +207,8 @@ function atualizarContador() {
 function preencher(view) {
   servicoId = view.service_id ?? null;
   el('servico-aviso').textContent = servicoId ? TEXTO.escolhido : '';
+  // Issue 159 (CA-159-08, D-ARQ-159-6): o campo mostra o nome do servico vindo do rascunho; sem nome, texto de apoio.
+  el('servico').value = servicoId ? (view.service_name ?? TEXTO.servicoSemNome) : '';
   el('endereco').value = view.address_text ?? '';
   if (view.urgency) el('urgencia').value = view.urgency;
   else el('urgencia').selectedIndex = -1;
@@ -221,6 +229,7 @@ async function carregar() {
     if (atual.status === 200) {
       preencher(atual.corpo);
       criado = true;
+      campoEndereco?.liberar();
     } else if (atual.status === 404) {
       criado = false;
     } else {
@@ -381,7 +390,7 @@ function ligar() {
     busca.digitar(el('servico').value);
   });
 
-  mountAddressField({
+  campoEndereco = mountAddressField({
     input: el('endereco'),
     list: el('endereco-lista'),
     aviso: el('endereco-aviso'),
@@ -389,6 +398,7 @@ function ligar() {
     request: apiRequest((...args) => globalThis.fetch(...args)),
     timers: { setTimeout: tempo.agendar, clearTimeout: tempo.cancelar },
     now: () => Date.now(),
+    podeConsultar: () => criado,
   });
   const salvarEndereco = () => salvador.alterar({ address_text: textoOuNulo(el('endereco').value) });
   el('endereco').addEventListener('input', salvarEndereco);
