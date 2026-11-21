@@ -1,4 +1,4 @@
-// Issue #159 (F0, reproducao) | Pagina /pedido: defeito 1 (sugestao antes do primeiro salvamento, sem rascunho)
+// Issue Issue 159 (F0, reproducao) | Pagina /pedido: defeito 1 (sugestao antes do primeiro salvamento, sem rascunho)
 // e defeito 2 (servico escolhido aparece vazio). DOM minimo montado a partir de public/pedido.html, fetch com
 // estado (porta de rascunho imitada) e relogio falso (vi.useFakeTimers). Sem rede real e sem navegador.
 import { readFileSync } from 'node:fs';
@@ -161,7 +161,7 @@ async function abrirPedido(comRascunho: boolean) {
   return { el, porta };
 }
 
-describe('defeitos #159 em /pedido (CA-159-02, CA-159-08)', () => {
+describe('defeitos Issue 159 em /pedido (CA-159-02, CA-159-08)', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });

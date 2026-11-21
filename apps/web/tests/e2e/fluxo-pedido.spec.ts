@@ -91,6 +91,7 @@ test.describe('fluxo do cliente (S4 e S7, caminho feliz)', () => {
         return { status: 201, corpo: { id: 'd-1' } };
       },
       'POST /api/v1/catalog/service-search': { status: 200, corpo: { status: 'ok', items: [{ service_id: 'svc-1', service_name: 'Eletricista' }] } },
+      'PATCH /api/v1/drafts/current': { status: 200, corpo: RASCUNHO },
       'GET /api/v1/drafts/current/identity': { status: 200, corpo: { first_name: 'Ana', email: 'ana@exemplo.test' } },
       'PUT /api/v1/drafts/current/identity': { status: 200, corpo: {} },
       'POST /api/v1/auth/challenges': { status: 200, corpo: {} },

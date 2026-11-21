@@ -1,4 +1,4 @@
-// Issue #159 (F0, reproducao) | Defeito 1 na inicial: a porta de rascunho responde 403 `not_draft` sem cookie.
+// Issue Issue 159 (F0, reproducao) | Defeito 1 na inicial: a porta de rascunho responde 403 `not_draft` sem cookie.
 // O fake imita a porta: sem cookie, sugestao 403; POST /drafts cria o cookie; com cookie, sugestao 200.
 import { describe, it, expect } from 'vitest';
 import { ADDRESS_NEUTRAL_MESSAGE } from '../public/address-field.js';
@@ -47,7 +47,7 @@ function portaDeRascunho159() {
   return { porta, roteador };
 }
 
-describe('defeito #159 na inicial: sugestao de endereco na primeira visita (CA-159-00, CA-159-01)', () => {
+describe('defeito Issue 159 na inicial: sugestao de endereco na primeira visita (CA-159-00, CA-159-01)', () => {
   it('primeira visita: escolher o servico e digitar o endereco nao mostra falha nem recebe 403', async () => {
     const { porta, roteador } = portaDeRascunho159();
     const ctx = criarJanela(roteador);
