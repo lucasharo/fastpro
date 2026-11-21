@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>FastPro - Criar nova senha</title>
+    <link rel="stylesheet" href="/tokens.css" />
+    <link rel="stylesheet" href="/entrada.css" />
+  </head>
+  <body data-pagina="redefinir">
+    <!-- fp:cabecalho -->
+    <!-- /fp:cabecalho -->
+    <main id="conteudo" class="entrada-pagina">
+      <h1>Criar nova senha</h1>
+      <p class="entrada-apoio">Escolha uma senha nova para entrar.</p>
+      <p id="erro-geral" class="entrada-erro" role="alert"></p>
+      <form id="formulario" method="post" novalidate>
+        <div class="entrada-campo">
+          <label for="senha">Nova senha</label>
+          <input id="senha" name="senha" type="password" autocomplete="new-password" aria-describedby="regra-senha erro-senha" />
+          <p id="regra-senha" class="entrada-ajuda">Mínimo de 8 caracteres.</p>
+          <p id="erro-senha" class="entrada-erro" role="alert"></p>
+          <p class="entrada-acoes">
+            <button id="alternar-senha" class="entrada-botao entrada-botao-secundario" type="button" aria-pressed="false">Mostrar senha</button>
+          </p>
+        </div>
+        <p class="entrada-acoes">
+          <button id="enviar" class="entrada-botao" type="submit">Salvar nova senha</button>
+        </p>
+      </form>
+      <section id="trocada" hidden>
+        <p id="aviso" class="entrada-status" role="status"></p>
+        <p class="entrada-lista-links">
+          <a class="entrada-link" href="/profissional/entrar">Entrar</a>
+        </p>
+      </section>
+      <p id="novo-link" class="entrada-lista-links" hidden>
+        <a class="entrada-link" href="/profissional/recuperar">Pedir nova redefinição</a>
+      </p>
+    </main>
+    <!-- fp:rodape -->
+    <!-- /fp:rodape -->
+    <script src="/entrada-comum.js"></script>
+    <script src="/profissional-link.js"></script>
+  </body>
+</html>

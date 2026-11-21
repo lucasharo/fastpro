@@ -211,3 +211,137 @@ describe('verificar: pedir novo link (S5; AD-154-01)', () => {
     expect(m.redirecionamentos).toEqual([]);
   });
 });
+
+// ---- S6: redefinicao de senha pelo link (/profissional/redefinir) ----
+const CAMINHO_REDEFINIR = '/api/v1/auth/password/reset';
+const CAMINHO_PAGINA_REDEFINIR = '/profissional/redefinir';
+const NOVA_SENHA = 'nova-senha-sintetica-456';
+const SENHA_COMUM = 'Erro: Esta senha é comum demais. Escolha outra mais difícil de adivinhar.';
+const SENHA_CURTA_REDEFINIR = 'Erro: A senha precisa ter pelo menos 8 caracteres.';
+const SENHA_VAZIA = 'Erro: Informe sua senha.';
+const TROCADA = 'Senha trocada. Agora você pode entrar com a nova senha.';
+const REDEFINIR_INDISPONIVEL = 'Erro: Não foi possível trocar a senha agora. Tente de novo em instantes.';
+const LINK_REDEFINICAO_INVALIDO = 'Erro: Este link não pode mais ser usado. Peça uma nova redefinição.';
+const REDEFINIR_SEM_LINK = 'Erro: Este link não está completo. Peça uma nova redefinição de senha.';
+const IDS_REDEFINIR = ['formulario', 'senha', 'erro-senha', 'erro-geral', 'alternar-senha', 'enviar', 'trocada', 'aviso', 'novo-link'];
+
+function montarRedefinir(responder: Responder, hash = HASH) {
+  const doc = documentoFalso(IDS_REDEFINIR, 'redefinir');
+  const estado = carregarPagina(['entrada-comum.js', 'profissional-link.js'], doc, responder, hash);
+  return {
+    ...estado,
+    formulario: doc.el('formulario'),
+    senha: doc.el('senha'),
+    erroSenha: doc.el('erro-senha'),
+    erroGeral: doc.el('erro-geral'),
+    botao: doc.el('enviar'),
+    trocada: doc.el('trocada'),
+    aviso: doc.el('aviso'),
+    novoLink: doc.el('novo-link'),
+  };
+}
+type MundoRedefinir = ReturnType<typeof montarRedefinir>;
+
+function enviarSenha(m: MundoRedefinir, senha: string) {
+  m.senha.value = senha;
+  m.formulario.disparar('submit');
+}
+
+describe('redefinir: troca de senha pelo link (S6; CA-154-17)', () => {
+  it('o token sai da barra na carga e nenhuma chamada sai antes do envio', () => {
+    const m = montarRedefinir(async () => resposta(204));
+    expect(m.trocas).toEqual([CAMINHO_PAGINA_REDEFINIR]);
+    expect(m.chamadas).toHaveLength(0);
+    expect(m.timers).toHaveLength(0);
+    expect(m.armazenou).toEqual([]);
+  });
+
+  it('204 troca a senha, nao abre sessao nem redireciona e apaga a senha do campo', async () => {
+    const m = montarRedefinir(async () => resposta(204));
+    enviarSenha(m, NOVA_SENHA);
+    await m.esperar();
+    expect(m.chamadas).toHaveLength(1);
+    expect(m.chamadas[0][0]).toBe(CAMINHO_REDEFINIR);
+    expect(JSON.parse(String(m.chamadas[0][1].body))).toEqual({ token: TOKEN, new_password: NOVA_SENHA });
+    expect(m.trocada.hidden).toBe(false);
+    expect(m.aviso.textContent).toBe(TROCADA);
+    expect(m.formulario.hidden).toBe(true);
+    expect(m.senha.value).toBe('');
+    expect(m.redirecionamentos).toEqual([]);
+    expect(m.armazenou).toEqual([]);
+  });
+
+  it('senha vazia ou curta nao sai na rede e leva o foco ao campo', () => {
+    const vazia = montarRedefinir(async () => resposta(204));
+    enviarSenha(vazia, '');
+    expect(vazia.chamadas).toHaveLength(0);
+    expect(vazia.erroSenha.textContent).toBe(SENHA_VAZIA);
+    expect(vazia.senha.focos).toBe(1);
+
+    const curta = montarRedefinir(async () => resposta(204));
+    enviarSenha(curta, 'curta');
+    expect(curta.chamadas).toHaveLength(0);
+    expect(curta.erroSenha.textContent).toBe(SENHA_CURTA_REDEFINIR);
+  });
+
+  it('422 mostra o motivo, mantem a senha no campo e reenvia com o mesmo token (link continua valido)', async () => {
+    const m = montarRedefinir(async () => resposta(422, { code: 'campo_invalido', campo: 'password', motivo: 'comum' }));
+    enviarSenha(m, NOVA_SENHA);
+    await m.esperar();
+    expect(m.erroSenha.textContent).toBe(SENHA_COMUM);
+    expect(m.senha.value).toBe(NOVA_SENHA);
+    expect(m.novoLink.hidden).toBe(true);
+    enviarSenha(m, 'outra-senha-sintetica-789');
+    await m.esperar();
+    expect(m.chamadas).toHaveLength(2);
+    expect(JSON.parse(String(m.chamadas[1][1].body)).token).toBe(TOKEN);
+  });
+
+  it('410 mostra link invalido, oferece pedir nova redefinicao e apaga a senha', async () => {
+    const m = montarRedefinir(async () => resposta(410, { code: 'link_invalid' }));
+    enviarSenha(m, NOVA_SENHA);
+    await m.esperar();
+    expect(m.erroGeral.textContent).toBe(LINK_REDEFINICAO_INVALIDO);
+    expect(m.novoLink.hidden).toBe(false);
+    expect(m.senha.value).toBe('');
+    expect(m.botao.disabled).toBe(true);
+  });
+
+  it('503 e falha de rede mostram indisponivel, apagam a senha e deixam tentar de novo com o mesmo link', async () => {
+    const m = montarRedefinir(async () => resposta(503, { code: 'service_unavailable' }));
+    enviarSenha(m, NOVA_SENHA);
+    await m.esperar();
+    expect(m.erroGeral.textContent).toBe(REDEFINIR_INDISPONIVEL);
+    expect(m.senha.value).toBe('');
+    expect(m.botao.disabled).toBe(false);
+
+    const rede = montarRedefinir(() => Promise.reject(new Error('rede_simulada')) as never);
+    enviarSenha(rede, NOVA_SENHA);
+    await rede.esperar();
+    expect(rede.erroGeral.textContent).toBe(REDEFINIR_INDISPONIVEL);
+    expect(rede.senha.value).toBe('');
+  });
+
+  it('sem fragmento: nao chama a rede e oferece pedir nova redefinicao', () => {
+    const m = montarRedefinir(async () => resposta(204), '');
+    expect(m.erroGeral.textContent).toBe(REDEFINIR_SEM_LINK);
+    expect(m.novoLink.hidden).toBe(false);
+    expect(m.botao.disabled).toBe(true);
+    expect(m.chamadas).toHaveLength(0);
+  });
+
+  it('duplo envio enquanto pendente nao repete a troca (CA-154-04)', async () => {
+    let liberar!: (r: RespostaFalsa) => void;
+    const pendente = new Promise<RespostaFalsa>((r) => {
+      liberar = r;
+    });
+    const m = montarRedefinir(() => pendente);
+    enviarSenha(m, NOVA_SENHA);
+    enviarSenha(m, NOVA_SENHA);
+    await m.esperar();
+    expect(m.chamadas).toHaveLength(1);
+    liberar(resposta(204));
+    await m.esperar();
+    expect(m.trocada.hidden).toBe(false);
+  });
+});

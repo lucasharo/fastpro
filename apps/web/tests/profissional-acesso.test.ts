@@ -226,3 +226,69 @@ describe('entrada do profissional (S4; CA-154-14, AD-154-03)', () => {
     expect(m.resultado.textContent).toBe(REENVIADO);
   });
 });
+
+// ---- S6: "Esqueci minha senha" (/profissional/recuperar; CA-154-17) ----
+describe('recuperar: pedido do link de redefinicao (S6; CA-154-17, decisao 953)', () => {
+  const CAMINHO_RECUPERAR = '/api/v1/auth/password/recovery';
+  const RECUPERAR_ENVIADO = 'Se este e-mail puder ser usado, enviamos um link para criar uma nova senha.';
+  const RECUPERAR_INDISPONIVEL = 'Erro: Não foi possível enviar agora. Tente de novo em instantes.';
+  const IDS_RECUPERAR = ['formulario', 'email', 'erro-email', 'enviar', 'resultado'];
+
+  function montarRecuperar(responder: Responder) {
+    const doc = documentoFalso(IDS_RECUPERAR, 'recuperar');
+    const estado = carregarPagina(['entrada-comum.js', 'profissional-acesso.js'], doc, responder);
+    return {
+      ...estado,
+      formulario: doc.el('formulario'),
+      email: doc.el('email'),
+      erroEmail: doc.el('erro-email'),
+      enviar: doc.el('enviar'),
+      resultado: doc.el('resultado'),
+    };
+  }
+
+  it('202 mostra o mesmo texto para e-mail cadastrado ou nao e nao leva o e-mail a URL', async () => {
+    const existente = montarRecuperar(async () => resposta(202, {}));
+    const novo = montarRecuperar(async () => resposta(202, {}));
+    existente.email.value = 'ja-cadastrada@exemplo.com';
+    novo.email.value = 'nova-pessoa@exemplo.com';
+    existente.formulario.disparar('submit');
+    novo.formulario.disparar('submit');
+    await existente.esperar();
+    await novo.esperar();
+    expect(existente.chamadas[0][0]).toBe(CAMINHO_RECUPERAR);
+    expect(JSON.parse(String(existente.chamadas[0][1].body))).toEqual({ email: 'ja-cadastrada@exemplo.com' });
+    expect(existente.resultado.textContent).toBe(RECUPERAR_ENVIADO);
+    expect(novo.resultado.textContent).toBe(RECUPERAR_ENVIADO);
+    expect(existente.trocas).toEqual([]);
+    expect(existente.armazenou).toEqual([]);
+  });
+
+  it('e-mail invalido nao sai na rede', () => {
+    const m = montarRecuperar(async () => resposta(202, {}));
+    m.email.value = 'sem-arroba';
+    m.formulario.disparar('submit');
+    expect(m.chamadas).toHaveLength(0);
+    expect(m.erroEmail.textContent).toBe('Erro: Informe um e-mail válido.');
+    expect(m.email.focos).toBe(1);
+  });
+
+  it('429 mostra limite e segura o botao pelo tempo do cabecalho', async () => {
+    const m = montarRecuperar(async () => resposta(429, {}, '60'));
+    m.email.value = 'pessoa@exemplo.com';
+    m.formulario.disparar('submit');
+    await m.esperar();
+    expect(m.resultado.textContent).toBe('Erro: Muitas tentativas. Aguarde alguns minutos e tente de novo.');
+    expect(m.enviar.disabled).toBe(true);
+    expect(m.timers[0][1]).toBe(60_000);
+  });
+
+  it('503 e falha de rede mostram indisponivel e mantem o e-mail', async () => {
+    const m = montarRecuperar(async () => resposta(503, {}));
+    m.email.value = 'pessoa@exemplo.com';
+    m.formulario.disparar('submit');
+    await m.esperar();
+    expect(m.resultado.textContent).toBe(RECUPERAR_INDISPONIVEL);
+    expect(m.email.value).toBe('pessoa@exemplo.com');
+  });
+});

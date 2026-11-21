@@ -1,6 +1,6 @@
-// #154 (desenho 176 §4.4, §4.5, §5.1; S3 e S4) | Telas do profissional: cadastro e entrada com e-mail e senha.
-// O modo vem do data-pagina do body: "cadastro" (/profissional/cadastro) ou "entrar" (/profissional/entrar).
-// A recuperacao de senha entra na fatia S6 neste mesmo arquivo. Senha so no campo, nunca em URL, armazenamento
+// #154 (desenho 176 §4.4, §4.5, §5.1; S3, S4 e S6) | Telas do profissional: cadastro, entrada e pedido de recuperacao.
+// O modo vem do data-pagina do body: "cadastro" (/profissional/cadastro), "entrar" (/profissional/entrar) ou
+// "recuperar" (/profissional/recuperar). Senha so no campo, nunca em URL, armazenamento
 // ou mensagem. E-mail fica so na memoria da pagina. Usa window.FastProEntrada (entrada-comum.js).
 (function (janela) {
   'use strict';
@@ -8,6 +8,7 @@
   var CAMINHO_CADASTRO = '/api/v1/auth/professional/register';
   var CAMINHO_ENTRADA = '/api/v1/auth/professional/login';
   var CAMINHO_REENVIO = '/api/v1/auth/professional/verification/resend';
+  var CAMINHO_RECUPERACAO = '/api/v1/auth/password/recovery';
   var SENHA_MINIMA = 8;
 
   /** Mostrar ou ocultar a senha: botao com aria-pressed; colar continua liberado (WCAG 3.3.8). */
@@ -237,6 +238,46 @@
     });
   }
 
+  /** "Esqueci minha senha" (S6): pede o link. A resposta e sempre a mesma, exista ou nao a conta (202). */
+  function iniciarRecuperar(doc, buscar, agendar) {
+    var E = janela.FastProEntrada;
+    var T = E.TEXTOS;
+    var formulario = doc.getElementById('formulario');
+    var campoEmail = doc.getElementById('email');
+    var erroEmail = doc.getElementById('erro-email');
+    var botao = doc.getElementById('enviar');
+    var resultado = doc.getElementById('resultado');
+    var enviar = criarEnvio(E, buscar, botao);
+
+    formulario.addEventListener('submit', function (evento) {
+      evento.preventDefault();
+      resultado.textContent = '';
+      E.limparErro(campoEmail, erroEmail);
+
+      var email = campoEmail.value.trim();
+      if (!E.emailValido(email)) {
+        E.mostrarErro(campoEmail, erroEmail, T.emailInvalido);
+        campoEmail.focus();
+        return;
+      }
+
+      var pedido = enviar(CAMINHO_RECUPERACAO, { email: email });
+      if (!pedido) return;
+      pedido.then(function (r) {
+        if (r.status === 202) {
+          resultado.textContent = T.recuperarEnviado;
+          return;
+        }
+        if (r.status === 429) {
+          resultado.textContent = T.erroPrefixo + T.limiteGeral;
+          E.esperarLiberar(botao, E.esperaLimite(r.retryAfter), agendar);
+          return;
+        }
+        resultado.textContent = T.erroPrefixo + T.recuperarIndisponivel;
+      });
+    });
+  }
+
   var doc = janela.document;
   var agendar = function (fn, ms) {
     janela.setTimeout(fn, ms);
@@ -247,4 +288,5 @@
   var pagina = doc.body.dataset.pagina;
   if (pagina === 'cadastro') iniciarCadastro(doc, buscar, agendar);
   else if (pagina === 'entrar') iniciarEntrar(doc, buscar, agendar);
+  else if (pagina === 'recuperar') iniciarRecuperar(doc, buscar, agendar);
 })(globalThis);

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>FastPro - Esqueci minha senha</title>
+    <link rel="stylesheet" href="/tokens.css" />
+    <link rel="stylesheet" href="/entrada.css" />
+  </head>
+  <body data-pagina="recuperar">
+    <!-- fp:cabecalho -->
+    <!-- /fp:cabecalho -->
+    <main id="conteudo" class="entrada-pagina">
+      <h1>Esqueci minha senha</h1>
+      <p class="entrada-apoio">Informe o e-mail do cadastro. Enviamos um link para criar uma nova senha.</p>
+      <form id="formulario" method="post" novalidate>
+        <div class="entrada-campo">
+          <label for="email">E-mail</label>
+          <input id="email" name="email" type="email" autocomplete="email" aria-describedby="erro-email" />
+          <p id="erro-email" class="entrada-erro" role="alert"></p>
+        </div>
+        <p class="entrada-acoes">
+          <button id="enviar" class="entrada-botao" type="submit">Enviar link</button>
+        </p>
+        <p id="resultado" class="entrada-status" role="status"></p>
+      </form>
+      <p class="entrada-lista-links">
+        <a class="entrada-link" href="/profissional/entrar">Voltar para entrar</a>
+      </p>
+    </main>
+    <!-- fp:rodape -->
+    <!-- /fp:rodape -->
+    <script src="/entrada-comum.js"></script>
+    <script src="/profissional-acesso.js"></script>
+  </body>
+</html>
