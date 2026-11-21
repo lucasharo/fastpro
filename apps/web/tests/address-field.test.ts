@@ -401,3 +401,102 @@ describe('T-H020-U7 visao: combobox, rotulos como texto e escolha (CA-03, CA-04)
     expect(list.filhos).toHaveLength(0);
   });
 });
+
+// ---------- Issue 159: portao de rascunho (D-ARQ-159-2 e D-ARQ-159-3) ----------
+describe('Issue 159: portao de rascunho (sem rascunho, sem consulta e sem mensagem)', () => {
+  async function assentar(): Promise<void> {
+    for (let i = 0; i < 20; i++) await Promise.resolve();
+  }
+
+  function montar(respostas: Array<{ status: number; corpo: unknown }>) {
+    const relogio = relogioFalso();
+    const chamadas: unknown[] = [];
+    const portao = { aberto: false };
+    const request = async (body: unknown) => {
+      chamadas.push(body);
+      const r = respostas.shift() ?? { status: 200, corpo: { mode: 'ok', items: [{ label: 'Rua das Flores, 10' }] } };
+      return { ok: r.status < 400, status: r.status, json: async () => r.corpo };
+    };
+    const controle = createSuggestController({
+      context: 'request_draft',
+      request,
+      timers: relogio.timers,
+      now: relogio.now,
+      onState: () => undefined,
+      podeConsultar: () => portao.aberto,
+    });
+    return { controle, relogio, chamadas, portao };
+  }
+
+  it('portao fechado: nenhuma requisicao e texto livre sem mensagem', async () => {
+    const { controle, relogio, chamadas } = montar([]);
+    controle.input('Rua das Flores');
+    relogio.avancar(ADDRESS_DEBOUNCE_MS * 3);
+    await assentar();
+    expect(chamadas).toHaveLength(0);
+    expect(controle.getState().status).toBe('texto_livre');
+    expect(controle.getState().mensagem).toBe('');
+  });
+
+  it('liberar() com texto pendente faz exatamente uma consulta', async () => {
+    const { controle, relogio, chamadas, portao } = montar([]);
+    controle.input('Rua das Flores');
+    portao.aberto = true;
+    controle.liberar();
+    relogio.avancar(ADDRESS_DEBOUNCE_MS);
+    await assentar();
+    expect(chamadas).toHaveLength(1);
+    expect(controle.getState().status).toBe('lista');
+  });
+
+  it('liberar() sem texto pendente nao consulta (rascunho carregado com endereco salvo)', async () => {
+    const { controle, relogio, chamadas, portao } = montar([]);
+    portao.aberto = true;
+    controle.liberar();
+    relogio.avancar(ADDRESS_DEBOUNCE_MS * 3);
+    await assentar();
+    expect(chamadas).toHaveLength(0);
+  });
+
+  it('403 not_draft: sem mensagem, uma chamada, e digitar de novo nao consulta de novo (sem laco)', async () => {
+    const { controle, relogio, chamadas, portao } = montar([{ status: 403, corpo: { code: 'not_draft' } }]);
+    portao.aberto = true;
+    controle.input('Rua das Flores');
+    relogio.avancar(ADDRESS_DEBOUNCE_MS);
+    await assentar();
+    expect(chamadas).toHaveLength(1);
+    expect(controle.getState().status).toBe('texto_livre');
+    expect(controle.getState().mensagem).toBe('');
+    controle.input('Rua das Flores, 10');
+    relogio.avancar(ADDRESS_DEBOUNCE_MS * 3);
+    await assentar();
+    expect(chamadas).toHaveLength(1);
+  });
+
+  it('depois do 403, liberar() reabre a consulta do texto digitado', async () => {
+    const { controle, relogio, chamadas, portao } = montar([
+      { status: 403, corpo: { code: 'not_draft' } },
+      { status: 200, corpo: { mode: 'ok', items: [{ label: 'Rua das Flores, 10' }] } },
+    ]);
+    portao.aberto = true;
+    controle.input('Rua das Flores');
+    relogio.avancar(ADDRESS_DEBOUNCE_MS);
+    await assentar();
+    controle.liberar();
+    relogio.avancar(ADDRESS_DEBOUNCE_MS);
+    await assentar();
+    expect(chamadas).toHaveLength(2);
+    expect(controle.getState().status).toBe('lista');
+  });
+
+  it('falha 503 com portao aberto mostra a mensagem neutra uma vez, sem nova tentativa', async () => {
+    const { controle, relogio, chamadas, portao } = montar([{ status: 503, corpo: {} }]);
+    portao.aberto = true;
+    controle.input('Rua das Flores');
+    relogio.avancar(ADDRESS_DEBOUNCE_MS);
+    await assentar();
+    expect(chamadas).toHaveLength(1);
+    expect(controle.getState().status).toBe('falha');
+    expect(controle.getState().mensagem).toBe(ADDRESS_NEUTRAL_MESSAGE);
+  });
+});

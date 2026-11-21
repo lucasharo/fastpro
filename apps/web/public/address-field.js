@@ -31,13 +31,16 @@ function contarCaracteres(texto) {
  * Controlador puro. `request(body, signal)` devolve uma resposta com `ok`, `status` e `json()`.
  * `timers` = { setTimeout, clearTimeout }. `now()` devolve epoca em ms. `onState(estado)` recebe cada mudanca.
  */
-export function createSuggestController({ context, request, timers, now, onState }) {
+export function createSuggestController({ context, request, timers, now, onState, podeConsultar = () => true }) {
   let valor = '';
   let temporizador = null;
   let geracao = 0;
   let abortador = null;
   let bloqueadoAte = 0;
   let desligadoNestaPagina = false;
+  // Issue 159 (D-ARQ-159-2 e D-ARQ-159-3): sem rascunho vivo a consulta fica fechada; `pendente` guarda o texto a consultar depois.
+  let semRascunho = false;
+  let pendente = false;
   let estado = { status: 'vazio', items: [], ativo: -1, mensagem: '' };
 
   const emitir = (mudanca) => {
@@ -79,6 +82,13 @@ export function createSuggestController({ context, request, timers, now, onState
   }
 
   function tratarResposta(corpo) {
+    if (corpo && (corpo.code === 'not_draft' || corpo.code === 'no_principal')) {
+      // Issue 159 (D-ARQ-159-3): ainda nao ha rascunho. Estado esperado: sem mensagem e sem nova consulta.
+      semRascunho = true;
+      pendente = true;
+      emitir({ status: 'texto_livre', items: [], ativo: -1, mensagem: '' });
+      return;
+    }
     if (corpo && corpo.mode === 'ok' && Array.isArray(corpo.items)) {
       const labels = corpo.items
         .map((item) => (item && typeof item.label === 'string' ? item.label : null))
@@ -108,7 +118,7 @@ export function createSuggestController({ context, request, timers, now, onState
     emitir({ status: 'falha', items: [], ativo: -1, mensagem: ADDRESS_NEUTRAL_MESSAGE });
   }
 
-  return {
+  const controle = {
     /** Texto atual do campo (e o unico dado que vai ao formulario). */
     getValue() {
       return valor;
@@ -130,6 +140,13 @@ export function createSuggestController({ context, request, timers, now, onState
         emitir({ status: 'vazio', items: [], ativo: -1, mensagem: '' });
         return;
       }
+      if (semRascunho || !podeConsultar()) {
+        // Issue 159 (D-ARQ-159-2): portao fechado: sem timer e sem requisicao; liberar() consulta depois.
+        pendente = true;
+        emitir({ status: 'texto_livre', items: [], ativo: -1, mensagem: '' });
+        return;
+      }
+      pendente = false;
       if (desligadoNestaPagina || now() < bloqueadoAte) {
         emitir({ status: 'texto_livre', items: [], ativo: -1, mensagem: '' });
         return;
@@ -144,6 +161,7 @@ export function createSuggestController({ context, request, timers, now, onState
       const rotulo = estado.items[indice];
       if (typeof rotulo !== 'string') return null;
       cancelar();
+      pendente = false;
       valor = rotulo;
       emitir({ status: 'vazio', items: [], ativo: -1, mensagem: '' });
       return rotulo;
@@ -151,6 +169,7 @@ export function createSuggestController({ context, request, timers, now, onState
     /** Esc, perda de foco e campo limpo: descartam a lista (CA-05). */
     discard() {
       cancelar();
+      pendente = false;
       emitir({ status: 'vazio', items: [], ativo: -1, mensagem: '' });
     },
     /** Movimento do teclado dentro da lista (aria-activedescendant). */
@@ -160,7 +179,13 @@ export function createSuggestController({ context, request, timers, now, onState
       const atual = estado.ativo < 0 ? (delta > 0 ? -1 : 0) : estado.ativo;
       emitir({ ativo: (atual + delta + total) % total });
     },
+    /** Issue 159 (D-ARQ-159-2): o rascunho passou a existir. Reabre o portao; consulta so o texto que ficou pendente. */
+    liberar() {
+      semRascunho = false;
+      if (pendente) controle.input(valor);
+    },
   };
+  return controle;
 }
 
 /**
@@ -168,7 +193,7 @@ export function createSuggestController({ context, request, timers, now, onState
  * do DOM. Os rotulos entram sempre por textContent (nunca HTML). Padrao combobox: role, aria-controls,
  * aria-activedescendant. Retorna o controlador para quem chama (o formulario le getValue()).
  */
-export function mountAddressField({ input, list, aviso, context, request, timers, now }) {
+export function mountAddressField({ input, list, aviso, context, request, timers, now, podeConsultar }) {
   const doc = list.ownerDocument;
   list.setAttribute('role', 'listbox');
   input.setAttribute('role', 'combobox');
@@ -184,6 +209,7 @@ export function mountAddressField({ input, list, aviso, context, request, timers
     timers,
     now,
     onState: (estado) => render(estado),
+    podeConsultar,
   });
 
   function render(estado) {
