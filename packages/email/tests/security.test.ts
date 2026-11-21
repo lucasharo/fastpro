@@ -111,17 +111,20 @@ describe('varredura: Resend nao vaza destino, chave ou corpo fora da lista', () 
 });
 
 describe('varredura: ambiente de desenvolvimento usa o Resend com as mesmas travas', () => {
-  it('destino fora da conta e recusado antes da API, em local', async () => {
-    const http = new FakeHttp();
+  // ATUALIZADO na Issue 160 (decisao 1000 do dono): antes este caso era recusado em local. Agora o
+  // destino fora da conta e redirecionado para a conta em local e test (desenho 188, D-188-03).
+  it('destino fora da conta e redirecionado para a conta, em local (Issue 160)', async () => {
+    const http = new FakeHttp().queue(response(200, JSON.stringify({ id: 're_dev_redirect' })));
     const provider = createEmailProvider(DEV_RESEND_ENV, {
       http,
       renderer: createMinimalRenderer(),
       clock: new FakeClock(),
     });
     const res = await provider.send(message('outra.pessoa@fastpro.test'));
-    expect(res).toEqual({ kind: 'recusa_permanente', code: 'destinatario_nao_permitido' });
+    expect(res).toEqual({ kind: 'aceito', providerMessageId: 're_dev_redirect' });
+    expect(http.requests).toHaveLength(1);
+    expect(JSON.parse(http.requests[0]?.body ?? '{}').to).toBe(ACCOUNT);
     expect(JSON.stringify(res)).not.toContain('outra.pessoa');
-    expect(http.requests).toHaveLength(0);
   });
 
   it('sem chave, a conta de teste falha fechada antes da API, em local', async () => {

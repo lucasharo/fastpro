@@ -167,15 +167,22 @@ describe('envio pelo provedor do login (decisao 55 de 11-DECISOES.md)', () => {
     expect(pedidos[0]?.headers['Idempotency-Key']).toBe(pedidos[1]?.headers['Idempotency-Key']);
   });
 
-  it('destinatario fora da conta registrada: recusado pelo provedor, sem chamada HTTP e so um evento', async () => {
+  // ATUALIZADO na Issue 160 (decisao 1000 do dono): em test, o destino fora da conta agora e
+  // redirecionado para a conta (desenho 188, D-188-03). Antes era recusado sem chamada HTTP.
+  it('destinatario fora da conta registrada: redirecionado para a conta em test, com marcador (Issue 160)', async () => {
     const { prov, pedidos } = provedor();
     const eventos: { nome: string; motivo: string }[] = [];
     const sink = providerSink(prov, (nome, motivo) => eventos.push({ nome, motivo }));
     await expect(
       createProfessionalMailAdapter({ renderer, sink, baseUrl: BASE }).passwordChangedNotice('outra.pessoa@example.test'),
     ).resolves.toBeUndefined();
-    expect(pedidos).toEqual([]);
-    expect(eventos).toEqual([{ nome: 'professional_envio_nao_aceito', motivo: 'destinatario_nao_permitido' }]);
+    expect(pedidos).toHaveLength(1);
+    const corpo = JSON.parse(pedidos[0]!.body) as { to: string; subject: string; text: string };
+    expect(corpo.to).toBe('conta.sintetica@example.test');
+    expect(corpo.subject.startsWith('[Teste] ')).toBe(true);
+    expect(corpo.subject).not.toContain('outra.pessoa');
+    expect(corpo.text).toContain('outra.pessoa@example.test');
+    expect(eventos).toEqual([]);
   });
 
   it('falha do provedor (HTTP 500): vira evento sem o link e a operacao nao lanca', async () => {
