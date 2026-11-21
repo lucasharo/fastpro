@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>FastPro - Confirmar e-mail</title>
+    <link rel="stylesheet" href="/tokens.css" />
+    <link rel="stylesheet" href="/entrada.css" />
+  </head>
+  <body data-pagina="verificar">
+    <!-- fp:cabecalho -->
+    <!-- /fp:cabecalho -->
+    <main id="conteudo" class="entrada-pagina">
+      <h1>Confirmar e-mail</h1>
+      <p class="entrada-apoio">Confirme que este e-mail é seu para continuar.</p>
+      <p id="erro-geral" class="entrada-erro" role="alert"></p>
+      <p id="aviso" class="entrada-status" role="status"></p>
+      <p class="entrada-acoes">
+        <button id="confirmar" class="entrada-botao" type="button" disabled>Confirmar e-mail</button>
+      </p>
+      <section id="proximo" aria-labelledby="proximo-titulo" hidden>
+        <h2 id="proximo-titulo">Próximo passo</h2>
+        <p class="entrada-acoes">
+          <a id="continuar" class="entrada-botao" href="/profissional-documentos">Continuar</a>
+        </p>
+        <p class="entrada-lista-links">
+          <a class="entrada-link" href="/profissional/entrar">Entrar</a>
+        </p>
+      </section>
+      <section id="novo-link" aria-labelledby="novo-link-titulo" hidden>
+        <h2 id="novo-link-titulo">Pedir novo link</h2>
+        <p class="entrada-apoio">Informe o e-mail do seu cadastro. Enviamos um novo link para confirmar.</p>
+        <form id="formulario-novo" method="post" novalidate>
+          <div class="entrada-campo">
+            <label for="email">E-mail</label>
+            <input id="email" name="email" type="email" autocomplete="email" aria-describedby="erro-email" />
+            <p id="erro-email" class="entrada-erro" role="alert"></p>
+          </div>
+          <p class="entrada-acoes">
+            <button id="reenviar" class="entrada-botao entrada-botao-secundario" type="submit">Pedir novo link</button>
+          </p>
+          <p id="resultado" class="entrada-status" role="status"></p>
+        </form>
+      </section>
+    </main>
+    <!-- fp:rodape -->
+    <!-- /fp:rodape -->
+    <script src="/entrada-comum.js"></script>
+    <script src="/profissional-link.js"></script>
+  </body>
+</html>
