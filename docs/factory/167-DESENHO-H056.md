@@ -282,3 +282,25 @@ Pendências registradas (não são tarefas desta Issue): ferramenta de reversão
 ## 12. Perguntas ao líder
 
 Nenhuma bloqueante. Pontos vetáveis (adotados pela recomendação deste desenho, para o registro em `11-DECISOES.md` pelo líder): A-1 (status `publicado/selecionado` para participante), A-4 (CT-16 reinterpretado), A-9 (CORP `same-site`), A-11 (404 uniforme também para token inválido/expirado).
+
+---
+
+## 13. Estado da implementação (fatias 1 a 5, registro do DEV)
+
+| Fatia | Commit | Conteúdo |
+|---|---|---|
+| 1 | 588baa9 | Migrações `20261120500000` e `20261120510000` (grant a `app_system`), testes S1 a S12 no banco de desenvolvimento. |
+| 2 | 5457982 | Domínio `watermark.ts` (codec, `watermarkIdOf`, SVG) e compositor sharp. |
+| 3 | 2812cfc | `PgPhotoViewStore`, rotas de lista e de link (profissional e dono), composição `photo-view-composicao.ts`. |
+| 4 | f6d7761 | Entrega `GET /v1/media/watermarked-photos/:token` (`photo-watermark-service.ts`, `watermarked-photo-route.ts`). |
+| 5 | (este commit) | Testes negativos de persistência e privacidade (`photo-watermark-privacidade.test.ts`) e este registro. |
+
+**Ambiente (só nomes):** `DATABASE_URL_APP_SYSTEM`, `WATERMARK_TOKEN_SECRET` e `WATERMARK_ID_SALT` (32 caracteres ou mais), `SUPABASE_URL` e a chave secreta do Storage (nome em `MEDIA_ENV_STORAGE`). Sem qualquer um deles as rotas de foto não existem (404 uniforme) e a pendência lista só os nomes. A entrega não depende do flag da mídia.
+
+**Limites de taxa:** `photo_view` (60 por minuto por profissional, compartilhado entre lista e link) e `photo_deliver` (120 por minuto por usuário do token, aplicado só depois da validação do token).
+
+**Gate e teto:** duas renderizações por instância, espera de 1 s, teto de 5 s (`RENDER_TIMEOUT_MS`). Desvio de A-7: a vaga só volta quando a renderização realmente termina, mesmo depois do teto, porque o sharp não interrompe a conta no meio; liberar no estouro permitiria mais de duas renderizações em paralelo.
+
+**Contadores operacionais (nomes fixos, sem identificador):** `foto_ok`, `foto_404`, `foto_429`, `foto_503_gate`, `foto_503_timeout`, `foto_503_render`, `foto_503_indisponivel`, `leitura_divergente`, `token_invalido`.
+
+**Privacidade verificada:** nenhuma tabela de log criada; nenhum código de escrita no caminho da entrega; o leitor do Storage só faz `GET` em `p/<uuid>`; respostas de erro trazem só o código; nenhum `console` por foto; JPEG sem EXIF e sem perfil de cor.
