@@ -1,6 +1,7 @@
 // Issue 120 (H-111) | Montagem das rotas do titular a partir do ambiente (147-DESENHO-H111 §3, §5.1).
 // Liga so com DATABASE_URL_APP_SYSTEM (papel app_system) e a fabrica do cliente SQL. Sem eles, a rota nao e montada
 // (404 uniforme). Nunca le, grava nem registra o valor da URL: a pendencia leva so o nome.
+import type { ClockPort, EmailProviderPort } from '@fastpro/domain';
 import {
   loadChallengeKey,
   PgDsrDownloadSql,
@@ -11,6 +12,8 @@ import {
   SupabaseStorageExtratos,
   type SqlClient,
 } from '@fastpro/db';
+import type { WaitUntil } from '../challenge-dispatch.js';
+import { comEnvioStepUp, type EnvioStepUpOpcoes } from './dsr-stepup-envio.js';
 import type { PrivacyTitularRouteOptions } from './titular-route.js';
 import { PgDsrTitularSql, ServicoDsrTitular } from './titular-service.js';
 
@@ -23,6 +26,10 @@ export interface PrivacidadeTitularOpcoes {
   readonly abrirCliente?: (connectionString: string) => SqlClient;
   /** Relogio das rotas. Padrao: relogio do sistema. */
   readonly relogio?: { nowMs(): number };
+  /** Provedor de e-mail real do codigo do step-up (P-C). Sem ele, a linha de saida fica pendente. */
+  readonly email?: EmailProviderPort;
+  /** Primitiva pos-resposta da plataforma para o envio do codigo (sem ela, nada e agendado). */
+  readonly waitUntil?: WaitUntil;
 }
 
 export interface PrivacidadeTitularMontagem {
@@ -57,7 +64,15 @@ export function montarPrivacidadeTitular(
   const relogio = opcoes.relogio ?? { nowMs: () => Date.now() };
   const cliente = clienteDe(url, opcoes.abrirCliente);
   // P-A: step-up e download sao opcionais. Sem as variaveis, as rotas novas respondem 404 e as demais seguem.
-  const stepUp = montarStepUp(env, cliente);
+  const envioCodigo =
+    opcoes.email === undefined
+      ? undefined
+      : {
+          email: opcoes.email,
+          relogio: { nowMs: () => relogio.nowMs(), sleep: (ms: number) => new Promise<void>((r) => setTimeout(r, ms)) } satisfies ClockPort,
+          ...(opcoes.waitUntil !== undefined ? { waitUntil: opcoes.waitUntil } : {}),
+        };
+  const stepUp = montarStepUp(env, cliente, envioCodigo);
   const download = montarDownload(env, cliente);
   return {
     options: {
@@ -72,18 +87,25 @@ export function montarPrivacidadeTitular(
 }
 
 /** Step-up do titular: exige AUTH_CHALLENGE_KEY (32 bytes) e PEPPER_CODE_HMAC. Sem eles, nao e montado. */
-export function montarStepUp(env: Ambiente, cliente: SqlClient): ServicoDsrStepUp | undefined {
+export function montarStepUp(
+  env: Ambiente,
+  cliente: SqlClient,
+  envio?: Omit<EnvioStepUpOpcoes, 'client' | 'metrica'>,
+): Pick<ServicoDsrStepUp, 'emitir' | 'confirmar'> | undefined {
   let chave: Buffer;
   try {
     chave = loadChallengeKey(env);
   } catch {
     return undefined;
   }
+  let servico: ServicoDsrStepUp;
   try {
-    return new ServicoDsrStepUp({ sql: new PgDsrStepUpSql(cliente), chave, pepperCodigo: env.PEPPER_CODE_HMAC ?? '' });
+    servico = new ServicoDsrStepUp({ sql: new PgDsrStepUpSql(cliente), chave, pepperCodigo: env.PEPPER_CODE_HMAC ?? '' });
   } catch {
     return undefined;
   }
+  // P-C: com provedor de e-mail, a emissao agenda o envio do codigo pelo pipeline; sem ele, a linha fica pendente.
+  return envio === undefined ? servico : comEnvioStepUp(servico, { client: cliente, ...envio });
 }
 
 /** Download do extrato: exige SUPABASE_URL, SUPABASE_SECRET_KEY e DSR_EXTRATO_CHAVE_ASSINATURA (mesma do gerador). */

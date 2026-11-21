@@ -5,7 +5,13 @@
 // Envio: o decorador DsrStepUpEmailProvider troca a referencia do e-mail pelo codigo em memoria, no instante do envio.
 // Nada e logado: codigo, token e pepper nunca saem deste modulo em texto de erro ou registro.
 import { randomUUID } from 'node:crypto';
-import type { EmailMessage, EmailProviderPort, SendResult } from '@fastpro/domain';
+import type {
+  EmailMessage,
+  EmailProviderPort,
+  RecipientDirectoryPort,
+  RecipientResolution,
+  SendResult,
+} from '@fastpro/domain';
 import { type SqlClient } from './jobs-tick.js';
 import { DsrPayloadInvalido } from './privacy-dsr-jobs.js';
 import {
@@ -183,5 +189,23 @@ export class DsrStepUpEmailProvider implements EmailProviderPort {
     const codigo = await this.servico.codigoParaEnvio(id);
     if (codigo === null) return { kind: 'recusa_permanente', code: 'segredo_indisponivel' };
     return this.inner.send({ ...message, params: { code: codigo, minutos: this.minutos } });
+  }
+}
+
+/**
+ * Diretorio do titular para o envio dsr_stepup (P-C). O destinatario e o proprio titular: o e-mail cadastrado
+ * (app.app_user) e lido so no instante do envio, em memoria, e nunca gravado fora da tabela de usuarios.
+ * Conta bloqueada nao recebe (suprimido); usuario inexistente ou id mal formado vira inexistente.
+ */
+export class PgDsrTitularDirectory implements RecipientDirectoryPort {
+  constructor(private readonly client: SqlClient) {}
+
+  async resolve(usuario: string): Promise<RecipientResolution> {
+    if (!UUID_RE.test(usuario)) return { status: 'inexistente' };
+    const res = await this.client.query('select email, status from app.app_user where id = $1::uuid', [usuario]);
+    const linha = res.rows[0] as { email?: unknown; status?: unknown } | undefined;
+    if (linha === undefined || typeof linha.email !== 'string') return { status: 'inexistente' };
+    if (linha.status !== 'ativo') return { status: 'suprimido' };
+    return { status: 'ok', email: linha.email };
   }
 }
