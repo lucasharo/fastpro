@@ -1,6 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
+  "framework": null,
+  "regions": ["gru1"],
+  "buildCommand": "cd ../.. && npx turbo run build --filter=@fastpro/web...",
+  "outputDirectory": "public",
+  "functions": {
+    "api/**/*.ts": { "maxDuration": 300 }
+  },
   "headers": [
     {
       "source": "/(.*)",
