@@ -70,23 +70,27 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #131 | [E14] App Expo base |
 | #137 | [E11] Canal “no site” |
 
-## Arquitetura (0)
+## Arquitetura (1)
 
 | Issue | Título |
 |---|---|
+| #155 | [E16] Navegação ligando as telas existentes num fluxo a partir da inicial |
 
-## Desenvolvimento (3)
+## Desenvolvimento (4)
 
 | Issue | Título |
 |---|---|
+| #156 | [E0] Ambiente DEV executável: papéis de login da API, chaves DEV, script dev local e rotas respondendo |
+| #154 | [E16] Telas de entrada: cliente (link/código) e profissional (cadastro e login) |
 | #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
-| #69 | [E6] Fotos a elegíveis com marca d'água |
 | #120 | [E13] Direitos do titular (dsr_case) |
 
-## Code Review (0)
+## Code Review (2)
 
 | Issue | Título |
 |---|---|
+| #153 | [E16] Página inicial com busca de serviço e endereço que leva ao pedido |
+| #69 | [E6] Fotos a elegíveis com marca d'água |
 
 ## QA (0)
 
