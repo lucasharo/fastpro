@@ -22,8 +22,20 @@ test('primeira execucao gera o grupo rotas-minimas e literais de ambiente', () =
     'PEPPER_IP_HMAC',
     'SESSION_COOKIE_SECRET',
     'JOBS_TICK_SECRET',
+    'DRAFT_IP_HMAC_KEY',
+    'ADDRESS_HASH_KEY',
+    'ADDRESS_ENC_KEY',
+    'PHONE_ENC_KEY',
+    'REQUEST_PUBLISH_HMAC_KEY',
+    'DISCOVERY_CURSOR_KEY',
+    'PROFILE_RATE_HMAC_KEY',
+    'DATA_ENC_KEY_V1',
+    'DOCUMENT_HMAC_KEY',
     'APP_ENV',
     'APP_BASE_URL',
+    'DATA_ENC_KEY_ACTIVE_VERSION',
+    'MAPBOX_TEMP_SOFT_LIMIT',
+    'MAPBOX_TEMP_HARD_LIMIT',
   ]);
   assert.deepEqual(r.curtas, []);
 });
@@ -73,7 +85,7 @@ test('executar grava, a segunda execucao gera zero e a saida nunca traz valor ge
     writeFileSync(caminho, `CATALOG_RATE_HMAC_KEY=${CHAVE_LONGA}\nSITE_URL=http://127.0.0.1:3000\n`, 'utf8');
     const primeira = executar({ caminho, gerar: gerarFixo });
     assert.equal(primeira.codigo, 0);
-    assert.equal(primeira.geradas.length, 7);
+    assert.equal(primeira.geradas.length, 19);
     const gravado = readFileSync(caminho, 'utf8');
     const valorGerado = /^PEPPER_EMAIL_HMAC=(.*)$/m.exec(gravado)[1];
     assert.equal(primeira.linhas.join('\n').includes(valorGerado), false);
@@ -83,5 +95,30 @@ test('executar grava, a segunda execucao gera zero e a saida nunca traz valor ge
     assert.equal(lerEstado(readFileSync(caminho, 'utf8')).get('PEPPER_EMAIL_HMAC').hash, hashDoValor(valorGerado));
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('copia MAPBOX_ACCESS_TOKEN do nome de servidor ja existente e nunca sobrescreve', () => {
+  const r = planejar(`MAPBOX_ACCESS_TOKEN_SERVER=${'t'.repeat(20)}
+`, 'rotas-minimas', gerarFixo);
+  assert.ok(r.geradas.includes('MAPBOX_ACCESS_TOKEN'));
+  assert.match(r.texto, /^MAPBOX_ACCESS_TOKEN=t{20}$/m);
+  const r2 = planejar(
+    `MAPBOX_ACCESS_TOKEN_SERVER=${'t'.repeat(20)}
+MAPBOX_ACCESS_TOKEN=${'u'.repeat(20)}
+`,
+    'rotas-minimas',
+    gerarFixo,
+  );
+  assert.equal(r2.geradas.includes('MAPBOX_ACCESS_TOKEN'), false);
+  assert.match(r2.texto, /^MAPBOX_ACCESS_TOKEN=u{20}$/m);
+});
+
+test('chaves de cifra saem em base64 de 32 bytes (formato lido pelo codigo)', () => {
+  const r = planejar('', 'rotas-minimas', gerarFixo);
+  for (const nome of ['DATA_ENC_KEY_V1', 'DOCUMENT_HMAC_KEY']) {
+    const linha = r.texto.split(/\r?\n/).find((l) => l.startsWith(`${nome}=`));
+    const valor = linha.slice(nome.length + 1);
+    assert.equal(Buffer.from(valor, 'base64').length, 32, nome);
   }
 });
