@@ -47,20 +47,27 @@ const enviar = (ctx: ReturnType<typeof criarJanela>) => ctx.documento.getElement
 const cruas = (ctx: ReturnType<typeof criarJanela>) => ctx.chamadas.filter((c) => c.url !== '/api/v1/catalog/service-search');
 const corpoDe = (c: Chamada | undefined) => JSON.parse(c?.body ?? '{}') as Record<string, unknown>;
 
-describe('Continuar: criar quando nao ha rascunho (CA-W06, CA-W07)', () => {
-  it('404 da API -> POST /api/v1/drafts com exatamente {service_id, address_text}, depois /pedido', async () => {
+describe('Continuar: criar quando nao ha rascunho (CA-W06, CA-W07; Issue 159, D-ARQ-159-4)', () => {
+  it('escolher o servico cria o rascunho so com service_id; Continuar grava o endereco (PATCH) e vai a /pedido', async () => {
+    let leituras = 0;
     const ctx = await preenchida({
-      atual: () => SEM_RASCUNHO,
+      atual: () => {
+        leituras += 1;
+        return leituras === 1 ? SEM_RASCUNHO : { status: 200, corpo: { service_id: 'svc-1', description: null, urgency: null } };
+      },
       criar: () => ({ status: 201, corpo: { service_id: 'svc-1' } }),
+      atualizar: () => ({ status: 200, corpo: {} }),
     });
+    await esperar();
+    const criacao = cruas(ctx).find((c) => c.method === 'POST');
+    expect(criacao?.url).toBe(CRIAR);
+    expect(Object.keys(corpoDe(criacao))).toEqual(['service_id']);
     enviar(ctx);
     await esperar();
-    const post = cruas(ctx).find((c) => c.method === 'POST');
-    expect(post?.url).toBe(CRIAR);
-    expect(post?.headers?.['Content-Type']).toBe('application/json');
-    expect(post?.credentials).toBe('same-origin');
-    expect(Object.keys(corpoDe(post)).sort()).toEqual(['address_text', 'service_id']);
-    expect(corpoDe(post)).toEqual({ service_id: 'svc-1', address_text: 'Rua das Flores, 10' });
+    const atualizacao = cruas(ctx).find((c) => c.method === 'PATCH');
+    expect(Object.keys(corpoDe(atualizacao)).sort()).toEqual(['address_text', 'service_id']);
+    expect(corpoDe(atualizacao)).toEqual({ service_id: 'svc-1', address_text: 'Rua das Flores, 10' });
+    expect(cruas(ctx).filter((c) => c.method === 'POST')).toHaveLength(1);
     expect(ctx.navegou).toEqual(['/pedido']);
   });
 });
@@ -181,10 +188,17 @@ describe('Continuar: envio em curso (CA-W08)', () => {
     const pendente = new Promise<Desfecho>((resolver) => {
       liberar = resolver;
     });
+    let leituras = 0;
     const ctx = await preenchida({
-      atual: () => pendente,
+      atual: () => {
+        leituras += 1;
+        return leituras === 1 ? SEM_RASCUNHO : pendente;
+      },
       criar: () => ({ status: 201, corpo: {} }),
+      atualizar: () => ({ status: 200, corpo: {} }),
     });
+    await esperar();
+    const leiturasDaEscolha = leituras;
     enviar(ctx);
     enviar(ctx);
     await esperar();
@@ -192,9 +206,10 @@ describe('Continuar: envio em curso (CA-W08)', () => {
     expect(botao.disabled).toBe(true);
     expect(botao.textContent).toBe('Aguarde…');
     expect(ctx.documento.getElementById('inicio-raiz').getAttribute('aria-busy')).toBe('true');
-    expect(cruas(ctx).filter((c) => c.method === 'GET')).toHaveLength(1);
-    liberar(SEM_RASCUNHO);
+    expect(leituras - leiturasDaEscolha).toBe(1);
+    liberar({ status: 200, corpo: { service_id: 'svc-1', description: null, urgency: null } });
     await esperar();
+    expect(cruas(ctx).filter((c) => c.method === 'PATCH')).toHaveLength(1);
     expect(cruas(ctx).filter((c) => c.method === 'POST')).toHaveLength(1);
     expect(ctx.navegou).toEqual(['/pedido']);
   });

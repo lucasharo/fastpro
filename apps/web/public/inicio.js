@@ -41,6 +41,9 @@ export function ligarPagina(janela) {
   let ativo = -1;
   let ocupado = false;
   let corpoPendente = null;
+  // Issue 159 (D-ARQ-159-4): rascunhoVivo libera a sugestao de endereco; criandoRascunho trava a tentativa unica.
+  let rascunhoVivo = false;
+  let criandoRascunho = false;
 
   /** Chamada a propria API (mesma origem, sem cache, sem redirecionamento). Devolve status e corpo JSON ou null. */
   async function chamar(caminho, opc = {}) {
@@ -160,6 +163,7 @@ export function ligarPagina(janela) {
     limparLista();
     el('servico-aviso').textContent = INICIO_TEXTOS.servicoEscolhido;
     erroCampo(INICIO_CAMPOS.servico, '');
+    void garantirRascunho();
   }
 
   function teclarServico(evento) {
@@ -183,7 +187,8 @@ export function ligarPagina(janela) {
 
   // ---------- endereco (componente compartilhado, contexto do rascunho) ----------
 
-  mountAddressField({
+  // Issue 159 (D-ARQ-159-4): a sugestao so consulta depois que o rascunho existe (criado na escolha do servico).
+  const campoEndereco = mountAddressField({
     input: el('endereco'),
     list: el('endereco-lista'),
     aviso: el('endereco-aviso'),
@@ -191,7 +196,33 @@ export function ligarPagina(janela) {
     request: apiRequest(fetchImpl),
     timers: tempo,
     now: () => Date.now(),
+    podeConsultar: () => rascunhoVivo,
   });
+
+  /**
+   * Issue 159 (D-ARQ-159-4): ao escolher o servico, garante o rascunho (GET; se nao houver, POST so com service_id)
+   * e so entao libera a sugestao de endereco. Uma tentativa por vez; falha e silenciosa (o Continuar repete a regra normal).
+   * Nao troca o servico de um rascunho existente: essa troca continua so em "Continuar" (decisao 941).
+   */
+  async function garantirRascunho() {
+    if (rascunhoVivo || criandoRascunho || servicoId === null) return;
+    criandoRascunho = true;
+    try {
+      const resposta = await chamar(CAMINHOS.atual);
+      const atual = interpretarRascunhoAtual(resposta.status, resposta.corpo);
+      if (atual.tipo === 'rascunho') {
+        rascunhoVivo = true;
+      } else if (atual.tipo === 'sem_rascunho') {
+        const escrita = await gravar('POST', { service_id: servicoId });
+        rascunhoVivo = escrita.tipo === 'ok';
+      }
+    } catch {
+      // Silencioso: sem rascunho a sugestao segue fechada e o Continuar trata o erro.
+    } finally {
+      criandoRascunho = false;
+    }
+    if (rascunhoVivo) campoEndereco.liberar();
+  }
 
   // ---------- "Continuar" (ramos da decisao 941) ----------
 

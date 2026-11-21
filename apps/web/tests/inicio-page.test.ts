@@ -13,6 +13,7 @@ import {
   escolherPrimeiroServico,
   rotaComBusca,
   teclar,
+  type Desfecho,
 } from './inicio-dom-simulado';
 
 function montar(roteador = rotaComBusca(() => undefined)) {
@@ -22,6 +23,16 @@ function montar(roteador = rotaComBusca(() => undefined)) {
 }
 
 const SEM_ROTA = () => undefined;
+
+/** Issue 159: na escolha do servico o rascunho ainda nao existe (GET 404, POST 201); a sugestao responde como sugestao. */
+function rotaDeRascunho(sugestao: () => Desfecho) {
+  return rotaComBusca((url, chamada) => {
+    if (url === '/api/v1/drafts/current' && chamada.method === 'GET') return { status: 404, corpo: { code: 'nao_encontrado' } };
+    if (url === '/api/v1/drafts' && chamada.method === 'POST') return { status: 201, corpo: {} };
+    if (url === '/api/v1/geo/address-suggest') return sugestao();
+    return undefined;
+  });
+}
 
 describe('marcacao da inicial (CA-W01, CA-W21)', () => {
   it('traz titulo, frase de apoio e os rotulos aprovados', () => {
@@ -118,8 +129,10 @@ describe('busca de servico (CA-W02, CA-W03)', () => {
 });
 
 describe('endereco (CA-W10, CA-W12)', () => {
-  it('a sugestao usa o contexto do rascunho e so a propria API', async () => {
-    const ctx = montar(() => ({ status: 200, corpo: { mode: 'ok', items: [{ label: 'Rua das Flores, 10' }] } }));
+  it('a sugestao usa o contexto do rascunho e so a propria API (depois que o rascunho existe)', async () => {
+    const ctx = montar(rotaDeRascunho(() => ({ status: 200, corpo: { mode: 'ok', items: [{ label: 'Rua das Flores, 10' }] } })));
+    await escolherPrimeiroServico(ctx);
+    await esperar();
     digitar(ctx.documento.getElementById('endereco'), 'Rua das');
     ctx.rodarTimers();
     await esperar();
@@ -130,7 +143,9 @@ describe('endereco (CA-W10, CA-W12)', () => {
   });
 
   it('falha da sugestao nao bloqueia o texto livre', async () => {
-    const ctx = montar(() => 'rede');
+    const ctx = montar(rotaDeRascunho(() => 'rede'));
+    await escolherPrimeiroServico(ctx);
+    await esperar();
     const endereco = ctx.documento.getElementById('endereco');
     digitar(endereco, 'Rua das Flores');
     ctx.rodarTimers();
@@ -138,7 +153,7 @@ describe('endereco (CA-W10, CA-W12)', () => {
     expect(ctx.documento.getElementById('endereco-aviso').textContent).toBe(ADDRESS_NEUTRAL_MESSAGE);
     expect(endereco.value).toBe('Rua das Flores');
   });
-});
+  });
 
 describe('Continuar sem dados validos (CA-W04, CA-W13)', () => {
   it('sem servico: E-01 no campo, foco no servico e nenhuma requisicao de criacao', () => {
@@ -150,16 +165,18 @@ describe('Continuar sem dados validos (CA-W04, CA-W13)', () => {
     expect(ctx.chamadas).toHaveLength(0);
   });
 
-  it('com servico e endereco curto: E-02 no endereco, foco nele e sem criar rascunho', async () => {
-    const ctx = montar();
+  it('com servico e endereco curto: E-02 no endereco, foco nele e sem rascunho novo na validacao', async () => {
+    const ctx = montar(rotaDeRascunho(() => ({ status: 200, corpo: { mode: 'ok', items: [] } })));
     await escolherPrimeiroServico(ctx);
+    await esperar();
+    const antes = ctx.chamadas.filter((c) => c.url.startsWith('/api/v1/drafts')).length;
     digitar(ctx.documento.getElementById('endereco'), 'ab');
     ctx.documento.getElementById('formulario').disparar('submit');
     expect(ctx.documento.getElementById('endereco-erro').textContent).toBe(
       'Preencha o endereço com pelo menos 3 caracteres.',
     );
     expect(ctx.documento.activeElement?.id).toBe('endereco');
-    expect(ctx.chamadas.filter((c) => c.url.startsWith('/api/v1/drafts'))).toHaveLength(0);
+    expect(ctx.chamadas.filter((c) => c.url.startsWith('/api/v1/drafts')).length).toBe(antes);
   });
 
   it('Enter sem opcao ativa nao escolhe nada nem chama a API', () => {
