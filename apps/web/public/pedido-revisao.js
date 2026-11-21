@@ -167,6 +167,7 @@ function aoEstadoPublicacao(estado) {
   if (estado.tipo === 'publicado') {
     el('resultado-publicacao').textContent = `${PUBLICACAO_TEXTOS.publicado} ${PUBLICACAO_TEXTOS.aceitesAte(estado.acceptanceDeadlineAt)}`;
     el('resultado-publicacao').hidden = false;
+    el('depois-publicar').hidden = false;
     botao.hidden = true;
     el('confirmado').hidden = true;
     el('editar-pedido').hidden = true;

@@ -378,7 +378,7 @@ export const PUBLICACAO_TEXTOS = Object.freeze({
   publicarMesmoAssim: 'Publicar mesmo assim',
   duplicidade: 'Você já tem um pedido parecido publicado recentemente.',
   conteudoAlterado: 'Seu pedido mudou. Confira de novo antes de publicar.',
-  sessao: 'Entre de novo para publicar.',
+  sessao: 'Sua sessão terminou. Entre de novo para publicar. Seu pedido continua guardado.',
   limite: 'Muitas tentativas. Tente de novo mais tarde.',
   enderecoNaoEncontrado: 'Não encontramos esse endereço. Corrija e tente de novo.',
   limiteEnderecos: 'Este pedido já usou o número máximo de endereços. Mantenha o endereço atual.',

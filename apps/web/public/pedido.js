@@ -1,7 +1,7 @@
 // H-030 (Issue #43) | Pagina /pedido (docs/factory/90-DESENHO-H030.md, §5.1 e §5.3). Visao: liga o DOM aos controladores de
 // pedido-logica.js e desenha o estado que eles devolvem. Sem innerHTML (so textContent), sem armazenamento do navegador,
 // sem envio de e-mail nesta etapa: o link e pedido pela rota de identificacao (#26). O clique em "Revisar pedido" e o
-// unico gatilho do envio de identificacao; a revisao e a confirmacao ficam em /pedido/revisao.
+// unico gatilho do envio de identificacao; depois dele a pessoa segue para /fotos e, em seguida, para a revisao em /pedido/revisao.
 import { mountAddressField, apiRequest } from '/address-field.js';
 import {
   PEDIDO_TEXTOS,
@@ -23,7 +23,7 @@ const CAMINHOS = Object.freeze({
   busca: '/api/v1/catalog/service-search',
   desafio: '/api/v1/auth/challenges',
   verifica: '/api/v1/auth/challenges/verify',
-  paginaRevisao: '/pedido/revisao',
+  paginaFotos: '/fotos',
 });
 
 /** Campo da tela para cada campo da revisao (o id do erro e id + "-erro", exceto os de identificacao). */
@@ -262,7 +262,7 @@ async function consultarRevisao() {
 
 function aoFimDaEspera(estado) {
   if (estado.tipo === 'pronto') {
-    globalThis.location.assign(CAMINHOS.paginaRevisao);
+    globalThis.location.assign(CAMINHOS.paginaFotos);
     return;
   }
   if (estado.tipo === 'campos') {

@@ -33,6 +33,12 @@
         <button id="carregar-de-novo" class="pedido-botao pedido-botao-secundario" type="button" hidden>Tentar de novo</button>
       </p>
 
+      <nav class="fp-sub" aria-label="Passos do pedido">
+        <ul class="fp-menu">
+          <li><a href="/fotos">Voltar às fotos</a></li>
+        </ul>
+      </nav>
+
       <section id="secao-revisao" aria-labelledby="titulo" hidden>
         <section class="pedido-revisao-bloco" aria-labelledby="t-servico">
           <h2 id="t-servico">Serviço</h2>
@@ -70,8 +76,13 @@
           <button id="publicar" class="pedido-botao" type="button" hidden>Publicar pedido</button>
         </p>
         <p id="resultado-publicacao" class="pedido-aviso" role="status" tabindex="-1" hidden></p>
+        <section id="depois-publicar" aria-labelledby="titulo-depois" hidden>
+          <h2 id="titulo-depois">Próximo passo</h2>
+          <p>Volte ao FastPro para ver as respostas dos profissionais.</p>
+          <p><a class="pedido-link" href="/painel">Ver meus pedidos</a></p>
+        </section>
         <p id="publicar-erro" class="pedido-erro" role="alert"></p>
-        <p><a id="publicar-acesso" class="pedido-link" href="/acesso" hidden>Entrar de novo</a></p>
+        <p><a id="publicar-acesso" class="pedido-link" href="/entrar?voltar=%2Fpedido%2Frevisao" hidden>Entrar de novo</a></p>
         <section id="secao-duplicidade" class="pedido-aviso" role="alert" hidden>
           <p>Você já tem um pedido parecido publicado recentemente.</p>
           <p>

@@ -239,7 +239,7 @@ test.describe('/pedido (T-E02, T-E03, T-E04 essenciais)', () => {
     expect(contar(registro, DESAFIO)).toBe(0);
   });
 
-  test('fluxo com API simulada: revisar, espera do e-mail e a aba vai sozinha para a revisao (T-E04)', async ({
+  test('fluxo com API simulada: revisar, espera do e-mail e a aba vai sozinha para as fotos (T-E04; desenho 178 S4)', async ({
     page,
   }) => {
     const registro = await simular(page, {
@@ -255,8 +255,8 @@ test.describe('/pedido (T-E02, T-E03, T-E04 essenciais)', () => {
     await page.goto(`${BASE}/pedido`);
     await expect(page.locator('#nome')).toHaveValue('Ana');
     await page.getByRole('button', { name: 'Revisar pedido' }).click();
-    await expect(page).toHaveURL(/\/pedido\/revisao$/, { timeout: 15_000 });
-    await expect(page.locator('#titulo')).toBeFocused();
+    await expect(page).toHaveURL(/\/fotos$/, { timeout: 15_000 });
+    await expect(page.getByRole('link', { name: 'Continuar para revisão' })).toBeVisible();
     expect(contar(registro, DESAFIO)).toBe(1);
     expect(contar(registro, CONFIRMA)).toBe(0);
     expect(registro.externas).toEqual([]);

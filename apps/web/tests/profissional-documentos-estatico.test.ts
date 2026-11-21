@@ -21,9 +21,9 @@ const semComentario = (texto: string) =>
 describe('postura da pagina (sem script ou estilo em linha)', () => {
   const html = ler(HTML);
 
-  it('o unico script e um modulo externo da mesma origem', () => {
+  it('os scripts sao modulos externos da mesma origem (guarda de sessao e documentos)', () => {
     const scripts = [...html.matchAll(/<script\b[^>]*>/gi)].map((m) => m[0]);
-    expect(scripts).toEqual(['<script type="module" src="/profissional-documentos.js">']);
+    expect(scripts).toEqual(['<script type="module" src="/guarda-sessao.js">', '<script type="module" src="/profissional-documentos.js">']);
   });
 
   it('sem atributo style, sem bloco style e sem manipulador de evento em linha', () => {
