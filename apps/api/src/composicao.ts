@@ -76,6 +76,7 @@ import { montarDetalhePedido } from './requests/detail-composicao.js';
 import type { RequestDetailRouteOptions } from './requests/detail-route.js';
 // Issue 120 (H-111) | Rotas do titular para direitos: liga so com DATABASE_URL_APP_SYSTEM e a fabrica do cliente SQL.
 import { montarPrivacidadeTitular } from './privacy/privacy-composicao.js';
+import type { WaitUntil } from './challenge-dispatch.js';
 import type { PrivacyTitularRouteOptions } from './privacy/titular-route.js';
 // Issue 120 (H-111) | Painel do DPO sobre direitos do titular: liga so com DATABASE_URL_APP_SYSTEM e ADMIN_BASE_URL.
 import { montarPrivacidadeDpo } from './privacy/dpo-composicao.js';
@@ -88,6 +89,7 @@ import { montarDescoberta } from './requests/discovery-composicao.js';
 // H-056 (Issue 69) | Fotos elegiveis: so DATABASE_URL_APP_SYSTEM e os segredos WATERMARK_TOKEN_SECRET e WATERMARK_ID_SALT (32+).
 import { montarFotosPedido } from './requests/photo-view-composicao.js';
 import type { PhotoViewRouteOptions } from './requests/photo-view-route.js';
+import type { WatermarkedPhotoRouteOptions } from './media/watermarked-photo-route.js';
 import type { DiscoveryRouteOptions } from './requests/discovery-route.js';
 // Issue 71 (H-058) | Aceite de trabalho: so liga com DATABASE_URL_APP_SYSTEM, SITE_URL, DISCOVERY_CURSOR_KEY (32+) e as duas fabricas da borda.
 import { montarAceite, type AceiteOpcoes } from './requests/acceptance-composicao.js';
@@ -126,6 +128,8 @@ export interface ComposicaoOpcoes {
   readonly fabricaCatalogo?: CatalogPortsFactory;
   /** Relogio do provedor de e-mail. Padrao: relogio do sistema. */
   readonly clock?: ClockPort;
+  /** Primitiva pos-resposta da plataforma (P-C): agenda o envio do codigo do step-up do titular. */
+  readonly waitUntil?: WaitUntil;
   /** Fabrica do cliente SQL do papel app_system (H-073). Sem ela, as rotas do caso nao ligam (404). */
   readonly abrirClienteSql?: (connectionString: string) => SqlClient;
   /** Fabrica do cliente SQL do papel app_system para os documentos de identidade (H-037). Sem ela, as rotas nao ligam (404). */
@@ -212,6 +216,8 @@ export interface Integracoes {
   readonly photoView?: PhotoViewRouteOptions;
   /** Nomes (nunca valores) que impedem as fotos elegiveis de ligar (H-056). */
   readonly pendenciasFotos?: readonly string[];
+  /** H-056 (#69): entrega da foto com marca (GET /v1/media/watermarked-photos/:token), ou undefined (404). */
+  readonly watermarkedPhoto?: WatermarkedPhotoRouteOptions;
   /** Issue 46 (H-033): rotas de telefone e consentimento, ou undefined (404). */
   readonly requestContact: ContactRouteOptions | undefined;
   /** Issue 56 (H-043): leitura publica do perfil por slug, ou undefined (404). */
@@ -329,7 +335,7 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   // Issue 45 (H-032): leitura do pedido (dono e profissional). Sem ADDRESS_ENC_KEY ou banco, as rotas nao ligam (404).
   const detalhe = montarDetalhePedido(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
   // Issue 120 (H-111): direitos do titular sobre o papel app_system; sem banco ou fabrica, as rotas nao ligam (404).
-  const privacidade = montarPrivacidadeTitular(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
+  const privacidade = montarPrivacidadeTitular(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock, email, waitUntil: opcoes.waitUntil });
   // Issue 120 (H-111): painel do DPO; sem banco app_system ou ADMIN_BASE_URL, as rotas nao ligam (404 vazio).
   const privacidadeDpo = montarPrivacidadeDpo(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
   // Issue 47 (H-034) | Lista do dono: so DATABASE_URL_APP_SYSTEM (sem chave de endereco e sem provedor de mapas).
@@ -399,6 +405,7 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     pendenciasPrivacidadeDpo: privacidadeDpo.pendencias,
     requestDiscovery: descoberta.options,
     photoView: fotosPedido.options,
+    watermarkedPhoto: fotosPedido.entrega,
     pendenciasFotos: fotosPedido.pendencias,
     pendenciasDescoberta: descoberta.pendencias,
     requestContact: contato.options,

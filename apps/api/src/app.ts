@@ -132,6 +132,8 @@ import { handleRequestListRoute, isRequestListRoute, type RequestListRouteOption
 import { handleDiscoveryRoute, isDiscoveryRoute, type DiscoveryRouteOptions } from './requests/discovery-route.js';
 // H-056 (Issue 69) | Fotos elegiveis: lista e link de visualizacao do profissional e do dono.
 import { handlePhotoViewRoute, isPhotoViewRoute, type PhotoViewRouteOptions } from './requests/photo-view-route.js';
+// H-056 (Issue 69) | Entrega da foto com marca d'agua (60 s), independente da midia.
+import { handleWatermarkedPhotoRoute, isWatermarkedPhotoRoute, type WatermarkedPhotoRouteOptions } from './media/watermarked-photo-route.js';
 // Issue 71 (H-058) | Aceite idempotente do trabalho (POST /v1/requests/:id/acceptances).
 import { handleAcceptanceRoute, isAcceptanceRoute, type AcceptanceRouteOptions } from './requests/acceptance-route.js';
 // Issue 46 (H-033) | Telefone e consentimento de contato (dono e profissional).
@@ -234,6 +236,8 @@ export interface AppOptions {
   readonly requestDiscovery?: DiscoveryRouteOptions;
   /** H-056 (#69): fotos elegiveis (lista e link), ou ausente (404 uniforme do rascunho). */
   readonly photoView?: PhotoViewRouteOptions;
+  /** H-056 (#69): entrega da foto com marca (60 s). Sem esta opcao, a rota responde o 404 uniforme do rascunho. */
+  readonly watermarkedPhoto?: WatermarkedPhotoRouteOptions;
   /** Issue 71 (H-058): aceite idempotente. Sem a montagem completa, o mesmo 404 uniforme do rascunho. */
   readonly requestAcceptance?: AcceptanceRouteOptions;
   /** Issue 46 (H-033): telefone e consentimento de contato. Sem esta opcao as rotas respondem 404 uniforme. */
@@ -388,6 +392,14 @@ export async function handleRequest(
       await handleIdentityDocRoute(req, res, path, opts.identityDocs);
       return;
     }
+    const r = draftNotFound();
+    res.writeHead(r.status, r.headers);
+    res.end(r.body);
+    return;
+  }
+  // H-056 (Issue 69): entrega da foto com marca. Nao depende da midia; sem a montagem, o 404 uniforme do rascunho.
+  if (isWatermarkedPhotoRoute(path)) {
+    if (opts.watermarkedPhoto) return handleWatermarkedPhotoRoute(req, res, path, opts.watermarkedPhoto);
     const r = draftNotFound();
     res.writeHead(r.status, r.headers);
     res.end(r.body);

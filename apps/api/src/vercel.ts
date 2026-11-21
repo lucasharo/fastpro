@@ -39,7 +39,7 @@ export default async function vercelHandler(
 ): Promise<void> {
   try {
     // H-073: o pool do papel app_system so e aberto quando DATABASE_URL_APP_SYSTEM e ADMIN_BASE_URL existem.
-    const integracoes = montarIntegracoes(process.env, { abrirClienteSql, abrirClienteApi, fabricaCatalogo, fabricaRascunho, reducaoMidia, abrirClienteSistema, abrirConexaoDedicada: abrirConexaoDedicadaSql });
+    const integracoes = montarIntegracoes(process.env, { abrirClienteSql, abrirClienteApi, fabricaCatalogo, fabricaRascunho, reducaoMidia, abrirClienteSistema, abrirConexaoDedicada: abrirConexaoDedicadaSql, waitUntil });
     // H-107: gestao do catalogo admin; so monta com DATABASE_URL_APP_SYSTEM e ADMIN_BASE_URL (sem eles, 404).
     const adminCatalog = montarCatalogoAdmin(process.env, { abrirCliente: abrirClienteSql });
     // H-105: dupla aprovacao de estorno e suspensao; so monta com DATABASE_URL_APP_SYSTEM e ADMIN_BASE_URL (sem eles, 404).
@@ -94,6 +94,7 @@ export default async function vercelHandler(
       ...(integracoes.privacyDpo !== undefined ? { privacyDpo: integracoes.privacyDpo } : {}),
       ...(integracoes.requestAcceptance !== undefined ? { requestAcceptance: integracoes.requestAcceptance } : {}),
       ...(integracoes.photoView !== undefined ? { photoView: integracoes.photoView } : {}),
+      ...(integracoes.watermarkedPhoto !== undefined ? { watermarkedPhoto: integracoes.watermarkedPhoto } : {}),
     });
   } catch {
     // Sem detalhe de erro na resposta nem no log (ADR-013: sem dado sensivel).
