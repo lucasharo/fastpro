@@ -1,0 +1,157 @@
+/* #154 (desenho 176 §4.2) | Estilo comum das telas de entrada: cliente e profissional.
+   So tokens EDS (tokens.css): sem hexadecimal, sem cor nomeada e sem style= (a CSP exige style-src 'self').
+   var() nao funciona dentro de @media, por isso o limite de 768 px e literal. */
+body {
+  margin: 0;
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-size: 16px;
+  font-family: var(--font-family);
+}
+
+.entrada-pagina {
+  box-sizing: border-box;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+}
+
+.entrada-pagina h1 {
+  margin: 0 0 var(--space-3);
+  font-size: 1.5rem;
+}
+
+.entrada-pagina h2 {
+  margin: var(--space-6) 0 var(--space-2);
+  font-size: 1.25rem;
+}
+
+.entrada-apoio {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-secondary);
+}
+
+.entrada-campo {
+  display: block;
+  margin-bottom: var(--space-4);
+}
+
+.entrada-campo label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-weight: var(--font-weight-medium);
+}
+
+.entrada-campo input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--input-height);
+  padding: var(--space-3);
+  font-size: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-button);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.entrada-campo input[aria-invalid='true'] {
+  border-color: var(--color-error-text);
+}
+
+.entrada-ajuda {
+  margin: var(--space-2) 0 0;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+/* Mensagens ficam sempre no DOM (role=alert/status precisam existir para anunciar); vazias, nao ocupam espaco. */
+.entrada-erro {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-button);
+  color: var(--color-error-text);
+  background: var(--color-error-background);
+}
+
+.entrada-erro:empty {
+  margin: 0;
+  padding: 0;
+  background: none;
+}
+
+.entrada-status {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3);
+  border-radius: var(--radius-button);
+  color: var(--color-info-text);
+  background: var(--color-info-background);
+}
+
+.entrada-status:empty {
+  margin: 0;
+  padding: 0;
+  background: none;
+}
+
+.entrada-acoes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+}
+
+.entrada-botao {
+  box-sizing: border-box;
+  min-height: var(--button-height-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: 16px;
+  border: 0;
+  border-radius: var(--radius-button);
+  background: var(--color-button-primary-background);
+  color: var(--color-button-primary-text);
+  cursor: pointer;
+}
+
+.entrada-botao-secundario {
+  background: var(--color-button-secondary-background);
+  color: var(--color-button-secondary-text);
+}
+
+.entrada-botao[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.entrada-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--button-height-md);
+  color: var(--color-text-primary);
+  text-decoration: underline;
+}
+
+.entrada-lista-links {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 var(--space-4);
+}
+
+.entrada-pagina [hidden] {
+  display: none;
+}
+
+/* Foco visivel de 3 px com deslocamento de 2 px (WCAG 2.2 AA; contraste do componente >= 3:1). */
+.entrada-pagina :focus-visible {
+  outline: 3px solid var(--color-text-primary);
+  outline-offset: 2px;
+}
+
+@media (min-width: 768px) {
+  .entrada-acoes {
+    flex-direction: row;
+  }
+
+  .entrada-botao {
+    width: auto;
+  }
+}
