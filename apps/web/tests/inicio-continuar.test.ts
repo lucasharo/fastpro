@@ -8,7 +8,6 @@ import {
   type Chamada,
   type Desfecho,
   criarJanela,
-  digitar,
   escolherPrimeiroServico,
   esperar,
   rotaComBusca,

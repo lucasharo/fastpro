@@ -85,7 +85,8 @@ export class DocumentoSimulado {
     return el;
   }
 
-  createElement(_tag: string): ElementoSimulado {
+  createElement(tag: string): ElementoSimulado {
+    void tag;
     return new ElementoSimulado(this, '');
   }
 }

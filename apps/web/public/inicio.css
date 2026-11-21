@@ -1,4 +1,4 @@
-/* Issue #153 | Pagina inicial (docs/factory/175-DESENHO-WEB-INICIAL.md, §4 e §6). Cores e espacos so por tokens EDS
+/* Issue 153 | Pagina inicial (docs/factory/175-DESENHO-WEB-INICIAL.md, §4 e §6). Cores e espacos so por tokens EDS
    (tokens.css); sem hexadecimal, sem cor nomeada, sem estilo inline. Sem animacao (prefers-reduced-motion).
    var() nao funciona dentro de @media: o breakpoint de tablet (--breakpoint-tablet, 768px) entra literal. */
 body {
