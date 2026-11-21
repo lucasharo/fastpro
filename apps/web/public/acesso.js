@@ -38,6 +38,7 @@
   function iniciar(doc, loc, hist, buscar, agendar) {
     var botao = doc.getElementById('confirmar');
     var aviso = doc.getElementById('aviso');
+    var novo = doc.getElementById('novo-acesso'); // S2: link 'Pedir novo acesso' some depois do sucesso.
     var token = extrairToken(loc.hash);
 
     // Tira o token da barra de endereco: a URL fica so em /acesso.
@@ -89,7 +90,7 @@
             body: '{}'
           }).then(
             function (sessao) {
-              if (sessao.status === 200) aviso.textContent = MENSAGENS.confirmado;
+              if (sessao.status === 200) { aviso.textContent = MENSAGENS.confirmado; if (novo) novo.hidden = true; }
               else if (sessao.status === 401) aviso.textContent = MENSAGENS.invalido;
               else if (sessao.status === 503) aviso.textContent = MENSAGENS.indisponivel;
               else aviso.textContent = MENSAGENS.generico;

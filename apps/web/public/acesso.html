@@ -2,14 +2,22 @@
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
     <title>FastPro - Confirmar acesso</title>
+    <link rel="stylesheet" href="/tokens.css" />
+    <link rel="stylesheet" href="/entrada.css" />
   </head>
   <body>
-    <main>
+    <main id="conteudo" class="entrada-pagina">
       <h1>Confirmar acesso</h1>
-      <p id="aviso" role="status">Carregando.</p>
-      <button id="confirmar" type="button" disabled>Confirmar acesso</button>
+      <p id="aviso" class="entrada-status" role="status">Carregando.</p>
+      <p class="entrada-acoes">
+        <button id="confirmar" class="entrada-botao" type="button" disabled>Confirmar acesso</button>
+      </p>
+      <p class="entrada-lista-links">
+        <a id="novo-acesso" class="entrada-link" href="/entrar">Pedir novo acesso</a>
+      </p>
     </main>
     <script src="/acesso.js"></script>
   </body>
