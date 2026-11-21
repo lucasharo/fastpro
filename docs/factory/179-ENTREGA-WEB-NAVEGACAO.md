@@ -37,7 +37,7 @@ Fluxo final do cliente (decisão 960 B): `/` → `/pedido` → `/fotos` → `/pe
 ## 3. Provas (resultados locais, esta rodada)
 | Verificação | Comando | Resultado |
 |---|---|---|
-| eslint dos arquivos tocados | `corepack pnpm exec eslint <8 arquivos>` (raiz) | exit 0 |
+| eslint dos arquivos tocados | `corepack pnpm exec eslint <6 arquivos: pedido.js, pedido-logica.js, pedido-revisao.js, fluxo-pedido.spec.ts, pedido-h030.spec.ts, profissional-documentos-estatico.test.ts>` (raiz) | exit 0 |
 | typecheck | `corepack pnpm run typecheck` | exit 0 |
 | sincronização de navegação | `node apps/web/scripts/sincronizar-navegacao.mjs --check` | exit 0, "navegação sincronizada em 17 páginas" |
 | Vitest do web (completo) | `corepack pnpm exec vitest run` em `apps/web` | exit 1: **575 passed, 2 failed de 577** (31 de 32 arquivos passam) |
