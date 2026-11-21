@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quadro da fábrica</title>
+<style>
+  :root { --fundo: #f6f7f9; --cartao: #ffffff; --texto: #1d2330; --suave: #6b7280; --borda: #e3e6eb; --destaque: #2563eb; --alvo: #dbeafe; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --fundo: #14171d; --cartao: #1e232c; --texto: #e6e9ef; --suave: #9aa3b2; --borda: #2c323d; --destaque: #6ea8ff; --alvo: #22304a; }
+  }
+  :root[data-theme="dark"] { --fundo: #14171d; --cartao: #1e232c; --texto: #e6e9ef; --suave: #9aa3b2; --borda: #2c323d; --destaque: #6ea8ff; --alvo: #22304a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fundo); color: var(--texto); font: 14px/1.45 system-ui, sans-serif; }
+  header { padding: 14px 16px; border-bottom: 1px solid var(--borda); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; position: sticky; top: 0; background: var(--fundo); z-index: 1; }
+  h1 { font-size: 18px; margin: 0; }
+  .ajuda { color: var(--suave); font-size: 12px; }
+  .busca { margin-left: auto; padding: 6px 10px; border: 1px solid var(--borda); border-radius: 6px; background: var(--cartao); color: var(--texto); min-width: 220px; }
+  #aviso { font-size: 12px; min-height: 16px; }
+  .ok { color: #15803d; } .falha { color: #b91c1c; }
+  main { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; align-items: start; }
+  .coluna { background: var(--cartao); border: 1px solid var(--borda); border-radius: 10px; padding: 10px; min-height: 120px; }
+  .coluna.alvo { background: var(--alvo); border-color: var(--destaque); }
+  .coluna h2 { font-size: 13px; margin: 2px 2px 10px; display: flex; justify-content: space-between; }
+  .contagem { color: var(--suave); font-weight: normal; }
+  .cartao { border: 1px solid var(--borda); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; background: var(--cartao); cursor: grab; }
+  .cartao:active { cursor: grabbing; }
+  .cartao.arrastando { opacity: .5; }
+  .num { font-weight: 600; color: var(--destaque); }
+  .pino { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  .pino.verde { background: #16a34a; }
+  .pino.amarelo { background: #eab308; }
+  .pino.vermelho { background: #dc2626; }
+  .vazio { color: var(--suave); font-style: italic; font-size: 12px; }
+  .erro { color: #b91c1c; padding: 16px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Quadro da fábrica</h1>
+  <span class="ajuda" id="atualizado"></span>
+  <span id="aviso"></span>
+  <input class="busca" id="busca" type="search" placeholder="Buscar por número ou título">
+</header>
+<main id="quadro"><p class="vazio">Carregando…</p></main>
+
+<script>
+(function () {
+  const quadro = document.getElementById('quadro');
+  const busca = document.getElementById('busca');
+  const aviso = document.getElementById('aviso');
+  const atualizado = document.getElementById('atualizado');
+  const INTERVALO = 5000; // ms entre recargas automaticas
+  let dados = null; // { colunas: [{nome, itens:[{numero,titulo}]}], ordem: [...] }
+
+  function mostrarAviso(texto, ok) {
+    aviso.textContent = texto;
+    aviso.className = ok ? 'ok' : 'falha';
+    if (ok) setTimeout(() => { if (aviso.textContent === texto) aviso.textContent = ''; }, 2500);
+  }
+
+  // Pino: verde = pronto (Concluido ou Aguardando aprovacao); amarelo = executando agora;
+  // vermelho = aguardando (na fila, parado ou esperando dependencia).
+  function estadoDe(coluna, numero) {
+    const executando = (window.QUADRO_EXEC || (dados && dados.executando) || []).map(Number);
+    const prontos = ((dados && dados.pronto) || []).map(Number);
+    if (coluna === 'Concluído' || coluna === 'Aguardando aprovação' || prontos.includes(Number(numero))) return { classe: 'verde', texto: 'Pronto' };
+    if (executando.includes(Number(numero))) return { classe: 'amarelo', texto: 'Executando' };
+    return { classe: 'vermelho', texto: 'Aguardando' };
+  }
+
+  function desenhar() {
+    const termo = busca.value.trim().toLowerCase();
+    quadro.innerHTML = '';
+    const ordem = dados.ordem || dados.colunas.map(c => c.nome);
+    const porNome = Object.fromEntries(dados.colunas.map(c => [c.nome, c]));
+    const todas = ordem.map(nome => porNome[nome] || { nome, itens: [] });
+    for (const col of todas) {
+      const itens = col.itens.filter(i => !termo || String(i.numero).includes(termo) || i.titulo.toLowerCase().includes(termo));
+      const div = document.createElement('section');
+      div.className = 'coluna';
+      div.dataset.coluna = col.nome;
+      const h = document.createElement('h2');
+      const nome = document.createElement('span'); nome.textContent = col.nome;
+      const cont = document.createElement('span'); cont.className = 'contagem'; cont.textContent = itens.length;
+      h.append(nome, cont);
+      div.appendChild(h);
+      if (!itens.length) {
+        const p = document.createElement('p'); p.className = 'vazio'; p.textContent = 'Solte uma Issue aqui.';
+        div.appendChild(p);
+      }
+      for (const i of itens) {
+        const c = document.createElement('div');
+        c.className = 'cartao';
+        c.draggable = true;
+        c.dataset.numero = i.numero;
+        const pino = document.createElement('span');
+        const estado = estadoDe(col.nome, i.numero);
+        pino.className = 'pino ' + estado.classe;
+        pino.title = estado.texto;
+        const n = document.createElement('span'); n.className = 'num'; n.textContent = '#' + i.numero + ' ';
+        c.append(pino, n, document.createTextNode(i.titulo));
+        c.addEventListener('dragstart', e => {
+          e.dataTransfer.setData('text/plain', String(i.numero));
+          e.dataTransfer.effectAllowed = 'move';
+          c.classList.add('arrastando');
+        });
+        c.addEventListener('dragend', () => c.classList.remove('arrastando'));
+        div.appendChild(c);
+      }
+      div.addEventListener('dragover', e => { e.preventDefault(); div.classList.add('alvo'); });
+      div.addEventListener('dragleave', () => div.classList.remove('alvo'));
+      div.addEventListener('drop', e => {
+        e.preventDefault();
+        div.classList.remove('alvo');
+        const numero = Number(e.dataTransfer.getData('text/plain'));
+        if (numero) mover(numero, col.nome);
+      });
+      quadro.appendChild(div);
+    }
+  }
+
+  async function mover(numero, destino) {
+    const origem = dados.colunas.find(c => c.itens.some(i => i.numero === numero));
+    if (!origem || origem.nome === destino) return;
+    // Atualiza na tela ja, e confirma no servidor.
+    const item = origem.itens.find(i => i.numero === numero);
+    origem.itens = origem.itens.filter(i => i.numero !== numero);
+    const alvo = dados.colunas.find(c => c.nome === destino);
+    if (alvo) alvo.itens.push(item);
+    desenhar();
+    salvando = true;
+    try {
+      const r = await fetch('/api/mover', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ numero, destino }) });
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j.erro || 'falha');
+      mostrarAviso('#' + numero + ' movida para ' + destino + ' (salvo)', true);
+      salvando = false;
+      carregar();
+    } catch (e) {
+      salvando = false;
+      mostrarAviso('Não salvou (' + e.message + '). Recarregando.', false);
+      carregar();
+    }
+  }
+
+  let assinatura = '';
+  let arrastando = false;
+  let salvando = false;
+  document.addEventListener('dragstart', () => { arrastando = true; });
+  document.addEventListener('dragend', () => { arrastando = false; });
+
+  // Recarrega sozinho: so redesenha se algo mudou (colunas, cartoes ou pinos).
+  async function carregar(automatico) {
+    try {
+      const r = await fetch('/api/quadro', { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const novo = await r.json();
+      const nova = JSON.stringify(novo);
+      const agora = new Date().toLocaleTimeString('pt-BR');
+      atualizado.textContent = 'Atualização automática a cada ' + (INTERVALO / 1000) + ' s · última checagem ' + agora;
+      if (automatico && nova === assinatura) return;
+      dados = novo;
+      assinatura = nova;
+      desenhar();
+    } catch (e) {
+      if (automatico && dados) { atualizado.textContent = 'Sem conexão com o servidor do quadro; tentando de novo…'; return; }
+      quadro.innerHTML = '<p class="erro">Não consegui falar com o servidor do quadro. Rode na pasta do projeto: <b>node docs/factory/servidor-quadro.mjs</b> e abra <b>http://127.0.0.1:8765/quadro.html</b>.</p>';
+    }
+  }
+
+  busca.addEventListener('input', () => { if (dados) desenhar(); });
+  carregar();
+  setInterval(() => {
+    if (document.hidden || arrastando || salvando) return;
+    carregar(true);
+  }, INTERVALO);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) carregar(true); });
+})();
+</script>
+</body>
+</html>

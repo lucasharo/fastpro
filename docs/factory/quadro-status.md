@@ -1,6 +1,6 @@
 # Quadro da fábrica (fonte da verdade local)
 
-Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado de tempos em tempos (não a cada passo). Atualizado em 2026-11-19 (local), apos a rodada 144.
+Fonte da verdade do estado das Issues. O GitHub Project é espelho, sincronizado de tempos em tempos (não a cada passo). Atualizado em 2026-11-20 (local), rodada 145.
 
 Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o GitHub é periódica. Concluído e Bloqueado só por decisão humana.
 
@@ -63,44 +63,37 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #135 | [E6] Aviso “apenas conecta” nos termos |
 | #136 | [E7] Mensagem automática do aceite |
 
-## Product Owner (7)
+## Product Owner (2)
 
 | Issue | Título |
 |---|---|
 | #131 | [E14] App Expo base |
-| #123 | [E13] Runbook de incidente e reconciliação |
-| #69 | [E6] Fotos a elegíveis com marca d'água |
-| #71 | [E6] Aceitar trabalho idempotente |
-| #109 | [E11] Lembretes de prazo, trial e ciclo |
 | #137 | [E11] Canal “no site” |
-| #124 | [E15] Autorização por recurso e paridade |
 
 ## Arquitetura (0)
 
 | Issue | Título |
 |---|---|
 
-## Desenvolvimento (1)
+## Desenvolvimento (3)
 
 | Issue | Título |
 |---|---|
+| #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
+| #69 | [E6] Fotos a elegíveis com marca d'água |
 | #120 | [E13] Direitos do titular (dsr_case) |
 
-## Code Review (3)
+## Code Review (0)
 
 | Issue | Título |
 |---|---|
-| #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
-| #146 | [E15] db:test: T-H018-13 depende de semente ausente no DEV |
-| #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 
-## QA (1)
+## QA (0)
 
 | Issue | Título |
 |---|---|
-| #68 | [E6] Descoberta de pedidos elegíveis |
 
-## Concluído (75)
+## Concluído (79)
 
 | Issue | Título |
 |---|---|
@@ -152,6 +145,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #48 | [E4] Cadastro profissional com CPF/CNPJ cifrado |
 | #49 | [E4] Perfil: serviços, base e raio |
 | #50 | [E4] Documentos de identidade |
+| #51 | [E4] Certificações para atividades regulamentadas |
 | #52 | [E4] Fila de verificação |
 | #53 | [E4] Retenção por duplicidade |
 | #54 | [E4] Estado da verificação visível |
@@ -160,6 +154,7 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #57 | [E5] Trial de 14 dias |
 | #58 | [E5] Acesso comercial derivado |
 | #59 | [E5] Planos e preços em centavos |
+| #68 | [E6] Descoberta de pedidos elegíveis |
 | #83 | [E7] Acesso excepcional a conversa |
 | #102 | [E11] Pipeline de notificações e cooldown |
 | #103 | [E11] EmailProviderPort: Mailpit e Resend |
@@ -177,6 +172,8 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #129 | [E15] Dados sintéticos de demonstração |
 | #140 | [E15] Triagem das falhas do db:test no banco de desenvolvimento |
 | #141 | [E3] Composição da rota de mídia na API (upload, redução e galeria) |
+| #146 | [E15] db:test: T-H018-13 depende de semente ausente no DEV |
+| #147 | [E15] db:test: rollback de H-025 falha com objetos posteriores |
 | #150 | [E6] Remover o histórico de acesso às fotos (media_access_log e resumo diário) |
 | #151 | [E15] Remover backup, restauração e exportação de dados do escopo do projeto |
 
@@ -188,10 +185,14 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #128 | [E15] Teste de restauração de backup |
 | #145 | [E15] db:test: media_asset fora do backup sem decisão registrada |
 
-## Aguardando aprovação (1)
+## Aguardando aprovação (5)
 
 | Issue | Título |
 |---|---|
-| #51 | [E4] Certificações para atividades regulamentadas |
+| #109 | [E11] Lembretes de prazo, trial e ciclo (parte a; ciclo pago e composição na API pendentes) |
+| #123 | [E13] Runbook de incidente e reconciliação (lacunas L-1 a L-5 declaradas) |
+| #152 | [E15] build do web quebra: stub de node:crypto sem createCipheriv, createDecipheriv, hkdfSync e randomBytes |
+| #124 | [E15] Autorização por recurso e paridade (20 de 23 casos ativos nas duas camadas; 3 pendentes declarados) |
+| #71 | [E6] Aceitar trabalho idempotente |
 
 ## Bloqueado (0)
