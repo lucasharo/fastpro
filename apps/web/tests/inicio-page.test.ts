@@ -34,7 +34,9 @@ describe('marcacao da inicial (CA-W01, CA-W21)', () => {
 
   it('nao traz texto de previa, nem links de entrar ou cadastro', () => {
     expect(HTML_INICIO).not.toContain('Sem conteúdo de produto');
-    expect(HTML_INICIO).not.toMatch(/<a\s|Entrar|Cadastr|Criar conta|[Ss]enha/);
+    // Decisao D-5 (#155): os links de entrada ficam no bloco de cabecalho comum; o conteudo (main) nao os traz.
+    const principal = HTML_INICIO.slice(HTML_INICIO.indexOf('<main'), HTML_INICIO.indexOf('</main>'));
+    expect(principal).not.toMatch(/<a\s|Entrar|Cadastr|Criar conta|[Ss]enha/);
   });
 
   it('nao tem script inline, estilo inline nem <style> (CSP style-src self)', () => {
