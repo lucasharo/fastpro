@@ -79,7 +79,7 @@ export function toDraftView(record: DraftRecord): DraftView {
     id: record.id,
     status: record.status,
     service_id: record.serviceId,
-    service_name: record.serviceName,
+    service_name: record.serviceName ?? null,
     address_text: record.addressText,
     urgency: record.urgency,
     description: record.description,

@@ -20,6 +20,7 @@ import {
   SQL_DRAFT_PATCH,
   SQL_DRAFT_RL_CHECK,
   SQL_DRAFT_RL_HIT,
+  SQL_SERVICE_PUBLIC_NAME,
 } from '../src/request-draft.js';
 import type { SqlClient } from '../src/jobs-tick.js';
 
@@ -75,18 +76,43 @@ describe('leitura (private.draft_get)', () => {
 
   it('linha: mapeia para o registro do dominio, com datas em ISO', async () => {
     const sql = new FakeSql();
-    sql.enfileira([linha()]);
+    sql.enfileira([linha()], [{ name: 'Eletricista' }]);
     const d = await new PgDraftStore(sql).find(HASH_SEGREDO, AGORA);
     expect(d).toEqual({
       id: '11111111-2222-4333-8444-555555555555',
       status: 'aberto',
       serviceId: SERVICO,
+      serviceName: 'Eletricista',
       addressText: 'Rua Alfa, 10',
       urgency: 'imediato',
       description: 'Teste',
       expiresAt: new Date(AGORA + DRAFT_TTL_DAYS * 86_400_000).toISOString(),
       updatedAt: AGORA_ISO,
     });
+  });
+
+  it('Issue 159: com servico, consulta o nome publico (private.service_public_name) uma vez', async () => {
+    const sql = new FakeSql();
+    sql.enfileira([linha()], [{ name: 'Eletricista' }]);
+    await new PgDraftStore(sql).find(HASH_SEGREDO, AGORA);
+    expect(sql.chamadas).toHaveLength(2);
+    expect(sql.chamadas[1]).toEqual({ text: SQL_SERVICE_PUBLIC_NAME, params: [SERVICO] });
+  });
+
+  it('Issue 159: sem servico no rascunho, nao consulta o nome e devolve serviceName null', async () => {
+    const sql = new FakeSql();
+    sql.enfileira([linha({ out_service_id: null })]);
+    const d = await new PgDraftStore(sql).find(HASH_SEGREDO, AGORA);
+    expect(sql.chamadas).toHaveLength(1);
+    expect(d?.serviceName).toBeNull();
+  });
+
+  it('Issue 159: falha na consulta do nome degrada para null e nao derruba a leitura', async () => {
+    const sql = new FakeSql();
+    sql.enfileira([linha()], erroBanco('falha simulada do nome'));
+    const d = await new PgDraftStore(sql).find(HASH_SEGREDO, AGORA);
+    expect(d?.serviceId).toBe(SERVICO);
+    expect(d?.serviceName).toBeNull();
   });
 
   it('linha com estado fora dos quatro e erro interno (nao vaza para a resposta)', async () => {

@@ -13,13 +13,14 @@ const FUNCAO = 'private.request_list_owner(uuid, timestamptz, timestamptz, uuid,
 const SAIDA = SQL.slice(SQL.indexOf('returns table'), SQL.indexOf('language plpgsql'));
 
 describe('nome, prefixo e arquivos (T-16)', () => {
-  it('o prefixo e maior que o da #46 (20261113250000) e que o maior existente', () => {
+  it('o prefixo e maior que o da #46 (20261113250000) e nenhuma outra migracao usa o mesmo prefixo', () => {
+    // Migracoes de issues posteriores entram depois desta; o teste nao exige mais ser o arquivo mais novo.
     const prefixo = NOME.slice(0, 14);
     expect(prefixo > '20261113250000').toBe(true);
     const existentes = readdirSync(new URL('../../../supabase/migrations/', import.meta.url))
       .filter((f) => f.endsWith('.sql') && f !== `${NOME}.sql`)
       .map((f) => f.slice(0, 14));
-    for (const p of existentes) expect(prefixo > p).toBe(true);
+    expect(existentes.filter((p) => p === prefixo)).toEqual([]);
   });
   it('a reversao existe com o mesmo nome base', () => {
     expect(DOWN.length).toBeGreaterThan(0);
