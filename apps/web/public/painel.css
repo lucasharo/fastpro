@@ -1,0 +1,76 @@
+/* #155 (desenho 178, §7.1) | Tela "Meus pedidos". So tokens do EDS; sem cor literal e sem style=. */
+.painel-pagina {
+  box-sizing: border-box;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+  font-family: var(--font-family);
+  color: var(--color-text-primary);
+  background: var(--color-background);
+}
+
+.painel-pagina h1 {
+  margin: 0 0 var(--space-4);
+  font-size: 1.5rem;
+}
+
+.painel-aviso {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-secondary);
+}
+
+.painel-erro {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3);
+  background: var(--color-error-background);
+  color: var(--color-error-text);
+  border-radius: var(--radius-card);
+}
+
+.painel-lista {
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.painel-item {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+}
+
+.painel-item p {
+  margin: 0 0 var(--space-1);
+}
+
+.painel-nome {
+  font-weight: var(--font-weight-bold);
+}
+
+.painel-botao {
+  min-height: var(--button-height-md);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-button-primary-background);
+  color: var(--color-button-primary-text);
+  border: 0;
+  border-radius: var(--radius-button);
+  font: inherit;
+  cursor: pointer;
+}
+
+.painel-botao-secundario {
+  background: var(--color-button-secondary-background);
+  color: var(--color-button-secondary-text);
+}
+
+.painel-link {
+  color: var(--color-text-primary);
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}

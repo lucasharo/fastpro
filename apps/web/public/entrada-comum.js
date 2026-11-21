@@ -7,8 +7,8 @@
   // Destino depois do login do profissional com e-mail confirmado. A #155 troca o valor quando existir a pagina
   // de situacao (desenho 176, AD-154-02).
   var DESTINO_PROFISSIONAL = '/profissional-documentos';
-  // Lista fixa de retorno (AD-154-07). Qualquer outro valor e ignorado.
-  var DESTINOS_VOLTAR = ['/pedido/revisao', '/pedido', '/'];
+  // Lista fixa de retorno (AD-154-07; #155 acrescenta as quatro rotas novas, AD-155-04). Qualquer outro valor e ignorado.
+  var DESTINOS_VOLTAR = ['/pedido/revisao', '/pedido', '/', '/painel', '/profissional-documentos', '/profissional-situacao', '/profissional-perfil'];
   // Mesma forma aceita pelo servidor (packages do dominio, password/e-mail).
   var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   var ESPERA_PADRAO_S = 30;

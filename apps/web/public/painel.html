@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>FastPro - Meus pedidos</title>
+    <link rel="stylesheet" href="/tokens.css" />
+    <link rel="stylesheet" href="/navegacao.css" />
+    <link rel="stylesheet" href="/painel.css" />
+  </head>
+  <body>
+    <!-- fp:cabecalho -->
+    <a class="pular" href="#conteudo">Pular para o conteúdo</a>
+    <header class="fp-cab">
+      <a class="fp-logo" href="/">FastPro</a>
+      <nav aria-label="Principal">
+        <ul class="fp-menu">
+          <li><a href="/">Início</a></li>
+          <li><a href="/pedido">Pedir um serviço</a></li>
+          <li><a href="/painel" aria-current="page">Meus pedidos</a></li>
+          <li><a href="/entrar">Entrar</a></li>
+          <li><a href="/profissional/entrar">Sou profissional</a></li>
+        </ul>
+      </nav>
+    </header>
+    <!-- /fp:cabecalho -->
+    <main id="conteudo" class="painel-pagina" data-area="cliente" aria-busy="true">
+      <h1 tabindex="-1">Meus pedidos</h1>
+      <p id="estado" class="painel-aviso" role="status">Carregando seus pedidos…</p>
+      <p id="erro-geral" class="painel-erro" role="alert"></p>
+      <p><button id="tentar" class="painel-botao painel-botao-secundario" type="button" hidden>Tentar de novo</button></p>
+      <ul id="lista" class="painel-lista" aria-label="Meus pedidos"></ul>
+      <p id="vazio" class="painel-aviso" hidden>Você ainda não publicou pedidos. <a class="painel-link" href="/pedido">Pedir um serviço</a></p>
+      <p><button id="mais" class="painel-botao painel-botao-secundario" type="button" hidden>Carregar mais</button></p>
+    </main>
+    <!-- fp:rodape -->
+    <footer class="fp-rod">
+      <nav aria-label="Rodapé">
+        <ul class="fp-menu">
+          <li><a href="/">Início</a></li>
+          <li><a href="/pedido">Pedir um serviço</a></li>
+          <li><a href="/profissional/entrar">Sou profissional</a></li>
+        </ul>
+      </nav>
+    </footer>
+    <!-- /fp:rodape -->
+    <script type="module" src="/painel.js"></script>
+  </body>
+</html>

@@ -15,11 +15,13 @@
   "scripts": {
     "copy:tokens": "node scripts/copy-tokens.mjs",
     "build:fotos-envio": "node scripts/build-fotos-envio.mjs",
-    "build": "node scripts/copy-tokens.mjs && node scripts/build-fotos-envio.mjs && tsc -p tsconfig.json",
+    "build:situacao": "node scripts/build-situacao.mjs",
+    "sincronizar:navegacao": "node scripts/sincronizar-navegacao.mjs",
+    "build": "node scripts/copy-tokens.mjs && node scripts/build-fotos-envio.mjs && node scripts/build-situacao.mjs && tsc -p tsconfig.json",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node scripts/copy-tokens.mjs && node scripts/build-fotos-envio.mjs && vitest run --passWithNoTests",
-    "test:e2e": "node scripts/copy-tokens.mjs && playwright test"
+    "test": "node scripts/copy-tokens.mjs && node scripts/build-fotos-envio.mjs && node scripts/build-situacao.mjs && vitest run --passWithNoTests",
+    "test:e2e": "node scripts/copy-tokens.mjs && node scripts/build-situacao.mjs && playwright test"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",

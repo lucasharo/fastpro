@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>FastPro - Situação do cadastro</title>
+    <link rel="stylesheet" href="/tokens.css" />
+    <link rel="stylesheet" href="/navegacao.css" />
+    <link rel="stylesheet" href="/profissional-situacao.css" />
+  </head>
+  <body>
+    <!-- fp:cabecalho -->
+    <a class="pular" href="#conteudo">Pular para o conteúdo</a>
+    <header class="fp-cab">
+      <a class="fp-logo" href="/">FastPro</a>
+      <nav aria-label="Principal">
+        <ul class="fp-menu">
+          <li><a href="/">Início</a></li>
+          <li><a href="/pedido">Pedir um serviço</a></li>
+          <li><a href="/painel">Meus pedidos</a></li>
+          <li><a href="/entrar">Entrar</a></li>
+          <li><a href="/profissional/entrar" aria-current="page">Sou profissional</a></li>
+        </ul>
+      </nav>
+    </header>
+    <!-- /fp:cabecalho -->
+    <!-- fp:subnav -->
+    <nav class="fp-sub" aria-label="Passos do profissional">
+      <ul class="fp-menu">
+        <li><a href="/profissional-documentos">Documento</a></li>
+        <li><a href="/profissional-situacao" aria-current="page">Situação</a></li>
+        <li><a href="/profissional-perfil">Perfil</a></li>
+      </ul>
+    </nav>
+    <!-- /fp:subnav -->
+    <main id="conteudo" class="situacao-pagina" data-area="profissional" data-sonda="/api/v1/professional/verificacao" aria-busy="true">
+      <h1 tabindex="-1">Situação do cadastro</h1>
+      <div id="situacao" class="situacao-corpo" role="status" aria-live="polite"></div>
+      <p id="erro-geral" class="situacao-erro" role="alert"></p>
+      <p><button id="tentar" class="situacao-botao situacao-botao-secundario" type="button" hidden>Tentar de novo</button></p>
+    </main>
+    <!-- fp:rodape -->
+    <footer class="fp-rod">
+      <nav aria-label="Rodapé">
+        <ul class="fp-menu">
+          <li><a href="/">Início</a></li>
+          <li><a href="/pedido">Pedir um serviço</a></li>
+          <li><a href="/profissional/entrar">Sou profissional</a></li>
+        </ul>
+      </nav>
+    </footer>
+    <!-- /fp:rodape -->
+    <script src="/situacao-bundle.js"></script>
+    <script src="/profissional-situacao.js"></script>
+    <script type="module" src="/profissional-situacao-pagina.js"></script>
+  </body>
+</html>

@@ -114,8 +114,10 @@ test.describe('telas de entrada (S7)', () => {
   test('ordem do Tab em /profissional/entrar: e-mail, senha, mostrar senha, entrar (CA-154-20)', async ({ page }) => {
     await simular(page);
     await page.goto(`${BASE}/profissional/entrar`);
-    const ordem: string[] = [];
-    for (let i = 0; i < 4; i += 1) {
+    // #155: o cabecalho comum (Pular para o conteudo e os links) vem antes do formulario; a ordem do formulario comeca no e-mail.
+    await page.locator('#email').focus();
+    const ordem: string[] = [await focoAtual(page)];
+    for (let i = 0; i < 3; i += 1) {
       await page.keyboard.press('Tab');
       ordem.push(await focoAtual(page));
     }
@@ -148,7 +150,8 @@ test.describe('telas de entrada (S7)', () => {
     ];
     for (const [tela, texto, destino] of esperados) {
       await page.goto(`${BASE}${tela}`);
-      await expect(page.getByRole('link', { name: texto })).toHaveAttribute('href', destino);
+      // #155: o cabecalho e o rodape repetem alguns links; a conferencia fica no conteudo da tela (main).
+      await expect(page.locator('main').getByRole('link', { name: texto })).toHaveAttribute('href', destino);
     }
   });
 

@@ -16,9 +16,10 @@ describe('entrar.html: estrutura e links (desenho 176 §4.1, §4.2, §6)', () =>
     expect(html).toContain('<main id="conteudo"');
   });
 
-  it('blocos de cabecalho e rodape vazios para a Issue 155', () => {
-    expect(html).toMatch(/<!-- fp:cabecalho -->\s*<!-- \/fp:cabecalho -->/);
-    expect(html).toMatch(/<!-- fp:rodape -->\s*<!-- \/fp:rodape -->/);
+  // #155 (desenho 178, AD-155-01): a Issue 155 preenche os blocos que a 154 deixou vazios.
+  it('blocos de cabecalho e rodape preenchidos pela Issue 155 (fp-cab e fp-rod)', () => {
+    expect(html).toMatch(/<!-- fp:cabecalho -->[\s\S]*<header class="fp-cab">[\s\S]*<\/header>\s*<!-- \/fp:cabecalho -->/);
+    expect(html).toMatch(/<!-- fp:rodape -->\s*<footer class="fp-rod">[\s\S]*<\/footer>\s*<!-- \/fp:rodape -->/);
   });
 
   it('links para o codigo e para a entrada do profissional (CA-154-13)', () => {

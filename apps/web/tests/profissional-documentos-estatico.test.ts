@@ -173,8 +173,11 @@ describe('CA-20 foco por script tem alvo focavel', () => {
 describe('textos da tela = textos aprovados do dominio (sem texto inventado)', () => {
   const textos = ler('../../../packages/domain/src/identity-docs/textos.ts');
   const aprovados = [...textos.slice(textos.indexOf('IDOC_TEXTOS')).matchAll(/^\s+\w+: '([^']+)',?$/gm)].map((m) => m[1]);
-  const EXCECOES = ['FastPro - Documento de identidade'];
+  // #155 (desenho 178, AD-155-01): o cabecalho, a subnavegacao e o rodape comuns sao conferidos em navegacao-estatico.test.ts;
+  // os textos de navegacao e a ligacao "Ver situacao" e a guarda nao sao texto de documento e saem desta conta.
+  const EXCECOES = ['FastPro - Documento de identidade', 'Tentar de novo', 'Ver situação do cadastro'];
   const html = ler(HTML);
+  const telaSemBlocos = html.replace(/<!-- fp:(cabecalho|subnav|rodape) -->[\s\S]*?<!-- \/fp:\1 -->/g, '');
   const bloco = ler(JS);
   const mensagens = bloco.slice(bloco.indexOf('export const MENSAGENS'), bloco.indexOf('});', bloco.indexOf('export const MENSAGENS')));
   const tela = html + bloco;
@@ -185,7 +188,7 @@ describe('textos da tela = textos aprovados do dominio (sem texto inventado)', (
 
   it('cada texto de MENSAGENS e cada texto visivel do HTML existe em textos.ts ou esta na lista de excecao', () => {
     const doMapa = [...mensagens.matchAll(/'([^']*)'/g)].map((m) => m[1]);
-    const doHtml = [...html.matchAll(/>([^<>]+)</g)].map((m) => m[1].trim()).filter((t) => t !== '');
+    const doHtml = [...telaSemBlocos.matchAll(/>([^<>]+)</g)].map((m) => m[1].trim()).filter((t) => t !== '');
     const inventados = [...doMapa, ...doHtml].filter((t) => !aprovados.includes(t) && !EXCECOES.includes(t));
     expect(inventados).toEqual([]);
   });
@@ -211,8 +214,9 @@ describe('R6: sem bucket de fotos e sem exibicao do documento enviado', () => {
     expect(js).not.toMatch(/<(img|iframe|embed|object|canvas)\b/i);
   });
 
-  it('nao ha link para documento (nenhum <a> na tela) nem preview por URL local', () => {
-    expect(html).not.toMatch(/<a\b/i);
+  // #155: a tela pode ter links de navegacao (cabecalho, subnavegacao, "Ver situacao"); o que e proibido e link ao arquivo.
+  it('nao ha link para documento (nenhum href a arquivo, Storage ou blob) nem preview por URL local', () => {
+    expect(html).not.toMatch(/href="[^"]*(storage|blob:|arquivo|\.pdf|\.jpe?g|\.png|\.webp)/i);
     expect(js).not.toMatch(/createObjectURL|URL\.revokeObjectURL|window\.open|\.src\s*=|\.href\s*=/);
   });
 

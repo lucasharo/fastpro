@@ -1,0 +1,66 @@
+/* #155 (desenho 178, §7.2) | Tela da situacao do profissional. So tokens do EDS; sem cor literal e sem style=. */
+.situacao-pagina {
+  box-sizing: border-box;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+  font-family: var(--font-family);
+  color: var(--color-text-primary);
+  background: var(--color-background);
+}
+
+.situacao-pagina h1 {
+  margin: 0 0 var(--space-4);
+  font-size: 1.5rem;
+}
+
+.situacao-titulo {
+  font-weight: var(--font-weight-bold);
+  font-size: 1.125rem;
+}
+
+.situacao-motivo,
+.situacao-explicacao,
+.situacao-data,
+.situacao-aviso {
+  margin: var(--space-2) 0;
+}
+
+.situacao-acao,
+.situacao-botao {
+  min-height: var(--button-height-md);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-button-primary-background);
+  color: var(--color-button-primary-text);
+  border: 0;
+  border-radius: var(--radius-button);
+  font: inherit;
+  cursor: pointer;
+}
+
+.situacao-acao:disabled,
+.situacao-botao:disabled {
+  opacity: 1;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  cursor: default;
+}
+
+.situacao-botao-secundario {
+  background: var(--color-button-secondary-background);
+  color: var(--color-button-secondary-text);
+}
+
+.situacao-erro {
+  padding: var(--space-3);
+  background: var(--color-error-background);
+  color: var(--color-error-text);
+  border-radius: var(--radius-card);
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}

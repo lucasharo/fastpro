@@ -6,10 +6,24 @@
     <meta name="robots" content="noindex" />
     <title>FastPro - Entrar como profissional</title>
     <link rel="stylesheet" href="/tokens.css" />
+    <link rel="stylesheet" href="/navegacao.css" />
     <link rel="stylesheet" href="/entrada.css" />
   </head>
   <body data-pagina="entrar">
     <!-- fp:cabecalho -->
+    <a class="pular" href="#conteudo">Pular para o conteúdo</a>
+    <header class="fp-cab">
+      <a class="fp-logo" href="/">FastPro</a>
+      <nav aria-label="Principal">
+        <ul class="fp-menu">
+          <li><a href="/">Início</a></li>
+          <li><a href="/pedido">Pedir um serviço</a></li>
+          <li><a href="/painel">Meus pedidos</a></li>
+          <li><a href="/entrar">Entrar</a></li>
+          <li><a href="/profissional/entrar" aria-current="page">Sou profissional</a></li>
+        </ul>
+      </nav>
+    </header>
     <!-- /fp:cabecalho -->
     <main id="conteudo" class="entrada-pagina">
       <h1>Entrar como profissional</h1>
@@ -48,6 +62,15 @@
       </p>
     </main>
     <!-- fp:rodape -->
+    <footer class="fp-rod">
+      <nav aria-label="Rodapé">
+        <ul class="fp-menu">
+          <li><a href="/">Início</a></li>
+          <li><a href="/pedido">Pedir um serviço</a></li>
+          <li><a href="/profissional/entrar">Sou profissional</a></li>
+        </ul>
+      </nav>
+    </footer>
     <!-- /fp:rodape -->
     <script src="/entrada-comum.js"></script>
     <script src="/profissional-acesso.js"></script>
