@@ -5,6 +5,9 @@
 export const APP_ENVS = ['local', 'test', 'preview', 'staging', 'production'] as const;
 export type AppEnv = (typeof APP_ENVS)[number];
 export const EMAIL_PROVIDERS = ['resend'] as const;
+// Issue 160 (decisao 1000 do dono): so nestes ambientes o remetente de teste redireciona o destino
+// para a conta. Conjunto fechado, comparacao exata (sem maiusculas). Fora dele: recusa (fail-closed).
+export const REDIRECT_APP_ENVS = ['local', 'test'] as const;
 
 export interface EmailEnv {
   readonly APP_ENV?: string | undefined;
@@ -12,7 +15,7 @@ export interface EmailEnv {
   readonly EMAIL_FROM?: string | undefined;
   readonly RESEND_API_KEY?: string | undefined;
   readonly RESEND_VERIFIED_DOMAIN?: string | undefined;
-  /** E-mail da conta Resend do titular; unico destino aceito com o remetente de teste. */
+  /** E-mail da conta Resend do titular; destino de entrega do remetente de teste. Em local e test recebe tambem os e-mails redirecionados. */
   readonly RESEND_ACCOUNT_RECIPIENT?: string | undefined;
 }
 

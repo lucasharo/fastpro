@@ -15,4 +15,5 @@ export * from './professional-mail.js';
 export * from './reminder-renderer.js';
 export * from './transports.js';
 export * from './resend.js';
+export * from './destination.js';
 export * from './select.js';
