@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>FastPro - Entrar como profissional</title>
+    <link rel="stylesheet" href="/tokens.css" />
+    <link rel="stylesheet" href="/entrada.css" />
+  </head>
+  <body data-pagina="entrar">
+    <!-- fp:cabecalho -->
+    <!-- /fp:cabecalho -->
+    <main id="conteudo" class="entrada-pagina">
+      <h1>Entrar como profissional</h1>
+      <p class="entrada-apoio">Use o e-mail e a senha do seu cadastro.</p>
+      <form id="formulario" method="post" novalidate>
+        <div class="entrada-campo">
+          <label for="email">E-mail</label>
+          <input id="email" name="email" type="email" autocomplete="username" aria-describedby="erro-email" />
+          <p id="erro-email" class="entrada-erro" role="alert"></p>
+        </div>
+        <div class="entrada-campo">
+          <label for="senha">Senha</label>
+          <input id="senha" name="senha" type="password" autocomplete="current-password" aria-describedby="erro-senha" />
+          <p id="erro-senha" class="entrada-erro" role="alert"></p>
+          <p class="entrada-acoes">
+            <button id="alternar-senha" class="entrada-botao entrada-botao-secundario" type="button" aria-pressed="false">Mostrar senha</button>
+          </p>
+        </div>
+        <p id="erro-geral" class="entrada-erro" role="alert"></p>
+        <p class="entrada-acoes">
+          <button id="enviar" class="entrada-botao" type="submit">Entrar</button>
+        </p>
+      </form>
+      <section id="confirma" aria-labelledby="confirma-titulo" hidden>
+        <h2 id="confirma-titulo">Confirme seu e-mail</h2>
+        <p>Confirme seu e-mail para continuar.</p>
+        <p class="entrada-acoes">
+          <button id="reenviar" class="entrada-botao entrada-botao-secundario" type="button">Reenviar link</button>
+        </p>
+        <p id="resultado" class="entrada-status" role="status"></p>
+      </section>
+      <p class="entrada-lista-links">
+        <a class="entrada-link" href="/profissional/recuperar">Esqueci minha senha</a>
+        <a class="entrada-link" href="/profissional/cadastro">Criar conta</a>
+        <a class="entrada-link" href="/entrar">Sou cliente</a>
+      </p>
+    </main>
+    <!-- fp:rodape -->
+    <!-- /fp:rodape -->
+    <script src="/entrada-comum.js"></script>
+    <script src="/profissional-acesso.js"></script>
+  </body>
+</html>

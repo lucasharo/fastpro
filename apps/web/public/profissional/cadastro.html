@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>FastPro - Criar conta de profissional</title>
+    <link rel="stylesheet" href="/tokens.css" />
+    <link rel="stylesheet" href="/entrada.css" />
+  </head>
+  <body data-pagina="cadastro">
+    <!-- fp:cabecalho -->
+    <!-- /fp:cabecalho -->
+    <main id="conteudo" class="entrada-pagina">
+      <h1>Criar conta de profissional</h1>
+      <p class="entrada-apoio">Crie sua conta com e-mail e senha.</p>
+      <form id="formulario" method="post" novalidate>
+        <div class="entrada-campo">
+          <label for="email">E-mail</label>
+          <input id="email" name="email" type="email" autocomplete="email" aria-describedby="erro-email" />
+          <p id="erro-email" class="entrada-erro" role="alert"></p>
+        </div>
+        <div class="entrada-campo">
+          <label for="senha">Senha</label>
+          <input id="senha" name="senha" type="password" autocomplete="new-password" aria-describedby="regra-senha erro-senha" />
+          <p id="regra-senha" class="entrada-ajuda">Mínimo de 8 caracteres.</p>
+          <p id="erro-senha" class="entrada-erro" role="alert"></p>
+          <p class="entrada-acoes">
+            <button id="alternar-senha" class="entrada-botao entrada-botao-secundario" type="button" aria-pressed="false">Mostrar senha</button>
+          </p>
+        </div>
+        <p id="erro-geral" class="entrada-erro" role="alert"></p>
+        <p class="entrada-acoes">
+          <button id="enviar" class="entrada-botao" type="submit">Criar conta</button>
+        </p>
+      </form>
+      <section id="confira" aria-labelledby="confira-titulo" hidden>
+        <h2 id="confira-titulo" tabindex="-1">Confira seu e-mail</h2>
+        <p>Se este e-mail puder ser usado, enviamos um link para confirmar. Abra o link no seu e-mail.</p>
+        <p class="entrada-acoes">
+          <button id="reenviar" class="entrada-botao entrada-botao-secundario" type="button">Reenviar link</button>
+        </p>
+        <p id="resultado" class="entrada-status" role="status"></p>
+      </section>
+      <p class="entrada-lista-links">
+        <a class="entrada-link" href="/profissional/entrar">Já tenho conta</a>
+      </p>
+    </main>
+    <!-- fp:rodape -->
+    <!-- /fp:rodape -->
+    <script src="/entrada-comum.js"></script>
+    <script src="/profissional-acesso.js"></script>
+  </body>
+</html>
