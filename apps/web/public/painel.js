@@ -1,3 +1,4 @@
+/* global document, fetch, location */
 // #155 (desenho 178, §7.1, S5) | Tela "Meus pedidos": le a lista do proprio cliente em GET /api/v1/requests (mesma origem).
 // Sem sessao (401/403) redireciona para a entrada e nao mostra dado. Falha de rede ou 5xx mostra "Tentar de novo".
 // Sem telefone, e-mail, endereco nem foto: so o que PANEL_ITEM_KEYS entrega. Sem innerHTML: so textContent.

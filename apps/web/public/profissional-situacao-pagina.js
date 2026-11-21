@@ -1,3 +1,4 @@
+/* global document, fetch, location */
 // #155 (desenho 178, §7.2, S6b, AD-155-03, AD-155-12) | Situacao do profissional: le GET /api/v1/professional/verificacao,
 // monta a tela com construirTela (bundle do dominio) e desenha com renderizarSituacao (profissional-situacao.js).
 // 401/403 = entrar; 404 = sem documento enviado ainda; falha de rede ou 5xx = erro com "Tentar de novo".

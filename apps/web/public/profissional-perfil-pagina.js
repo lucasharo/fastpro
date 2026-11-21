@@ -1,3 +1,4 @@
+/* global document, fetch, location */
 // #155 (desenho 178, §7.3, S6c, AD-155-06, AD-155-11) | Perfil do profissional em leitura: nome, servicos ativos, base e raio.
 // Guarda: sem sessao (401/403) vai para a entrada; sem aprovacao (perfilLiberado) vai para a situacao.
 // A edicao de servicos, base e raio nao existe nesta entrega (D-1). Sem innerHTML: so textContent.

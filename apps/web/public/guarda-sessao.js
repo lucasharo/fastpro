@@ -1,3 +1,4 @@
+/* global document, fetch, location */
 // #155 (desenho 178, §7.4 e §7.6, AD-155-03) | Guarda de sessao por sonda de API (o cookie de sessao e HttpOnly, nao e lido aqui).
 // A pagina marca o <main data-guarda="<area>" data-sonda="<rota>" data-caminho="<rota atual>"> e o conteudo protegido com
 // data-protegido e hidden. So e revelado depois da resposta: 200 ou 404 liberam; 401 ou 403 mandam entrar;
@@ -31,7 +32,7 @@ export function iniciarGuarda({ doc, fetchFn, navegar }) {
     tentar.hidden = true;
     estado.textContent = TEXTOS.verificando;
     principal.setAttribute('aria-busy', 'true');
-    let status = null;
+    let status;
     try {
       status = (await fetchFn(sonda, CABECALHO_REQUISICAO)).status;
     } catch {

@@ -30,7 +30,7 @@ const TELAS = [
 const LARGURAS = [320, 768, 1200];
 const TEMAS = ['light', 'dark'] as const;
 /** Pendencia pre-existente (H-013, codigo.css, fora do escopo da #154): botao secundario sem contraste no tema escuro. */
-const MOTIVO_CODIGO_ESCURO = 'pendencia pre-existente: botao secundario de codigo.css abaixo de 4,5:1 no tema escuro (H-013); a #154 nao altera codigo.css';
+const MOTIVO_CODIGO_ESCURO = 'pendencia pre-existente: botao secundario de codigo.css abaixo de 4,5:1 no tema escuro (H-013); a Issue 154 nao altera codigo.css';
 
 function arquivoPublico(caminho: string): string | undefined {
   const base = caminho === '/' ? '/index.html' : caminho;
