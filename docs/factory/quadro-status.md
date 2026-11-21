@@ -70,27 +70,24 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #131 | [E14] App Expo base |
 | #137 | [E11] Canal “no site” |
 
-## Arquitetura (1)
+## Arquitetura (0)
 
 | Issue | Título |
 |---|---|
-| #155 | [E16] Navegação ligando as telas existentes num fluxo a partir da inicial |
 
 ## Desenvolvimento (4)
 
 | Issue | Título |
 |---|---|
-| #156 | [E0] Ambiente DEV executável: papéis de login da API, chaves DEV, script dev local e rotas respondendo |
-| #154 | [E16] Telas de entrada: cliente (link/código) e profissional (cadastro e login) |
+| #154 | [E16] Telas de entrada: cliente (link/código) e profissional (cadastro e login) (QA reprovado: ajuste dos testes após o cabeçalho/rodapé da #155) |
+| #155 | [E16] Navegação ligando as telas existentes num fluxo a partir da inicial |
 | #149 | [E15] check:all vermelho no repositório (hex, secrets, logs, boundaries, typography) |
 | #120 | [E13] Direitos do titular (dsr_case) |
 
-## Code Review (2)
+## Code Review (0)
 
 | Issue | Título |
 |---|---|
-| #153 | [E16] Página inicial com busca de serviço e endereço que leva ao pedido |
-| #69 | [E6] Fotos a elegíveis com marca d'água |
 
 ## QA (0)
 
@@ -189,10 +186,13 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #128 | [E15] Teste de restauração de backup |
 | #145 | [E15] db:test: media_asset fora do backup sem decisão registrada |
 
-## Aguardando aprovação (5)
+## Aguardando aprovação (8)
 
 | Issue | Título |
 |---|---|
+| #156 | [E0] Ambiente DEV executável: papéis de login da API, chaves DEV, script dev local e rotas respondendo (preview Vercel da API, F8, pendente) |
+| #153 | [E16] Página inicial com busca de serviço e endereço que leva ao pedido (Playwright/axe e prova com a API real pendentes) |
+| #69 | [E6] Fotos a elegíveis com marca d'água (entrega real contra o Storage de DEV fica para a #156) |
 | #109 | [E11] Lembretes de prazo, trial e ciclo (parte a; ciclo pago e composição na API pendentes) |
 | #123 | [E13] Runbook de incidente e reconciliação (lacunas L-1 a L-5 declaradas) |
 | #152 | [E15] build do web quebra: stub de node:crypto sem createCipheriv, createDecipheriv, hkdfSync e randomBytes |
