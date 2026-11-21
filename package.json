@@ -9,6 +9,8 @@
   },
   "scripts": {
     "build": "turbo run build",
+    "predev": "node scripts/dev-prepara.mjs",
+    "dev": "node scripts/dev-local.mjs",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
