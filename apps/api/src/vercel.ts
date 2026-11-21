@@ -9,6 +9,8 @@ import { abrirClienteSql, abrirConexaoDedicadaSql } from './sql-pool.js';
 import { criarFabricaCatalogo } from './catalog/fabrica-pg.js';
 import { abrirPoolCatalogo } from './catalog/pool-pg.js';
 import { criarFabricaRascunho } from './drafts/compose.js';
+// Issue 156 (F5b) | Sessao da funcao (conversao e logout): so monta com DATABASE_URL_APP_SYSTEM e SITE_URL.
+import { montarSessao } from './session-composicao.js';
 // H-025 (D-11) | Sugestao de endereco ligada ao rascunho real; so monta com as variaveis completas (sem elas, 404).
 import { memoizarCliente, montarSugestaoEndereco } from './geo/composicao-sugestao.js';
 import { montarAprovacaoDupla, montarCatalogoAdmin } from './admin-composicao.js';
@@ -62,8 +64,10 @@ export default async function vercelHandler(
     // H-016: cadastro, login, conta, recuperacao e troca de senha do profissional; so monta com as variaveis
     // completas (sem elas, 404). Usa o mesmo provedor de e-mail do login (decisao 55).
     const profissional = montarProfissional(process.env, { abrirCliente: abrirClienteSistema });
+    const sessao = montarSessao(process.env, { abrirCliente: abrirClienteSistema });
     await handleRequest(req, res, {
       tickSecret: process.env.JOBS_TICK_SECRET,
+      ...(sessao !== undefined ? { session: sessao } : {}),
       catalog: integracoes.catalog,
       ...(profissional.professional !== undefined ? { professional: profissional.professional } : {}),
       ...(profissional.professionalAccount !== undefined ? { professionalAccount: profissional.professionalAccount } : {}),
