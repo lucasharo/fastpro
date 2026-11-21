@@ -3,7 +3,8 @@
 // Resend (createEmailProvider) -> transporte HTTP falso que conta as chamadas. A fila (processOutbox) fica no
 // banco e e provada em packages/db/tests/h097-login-prioridade.dbtest.mjs; aqui o envio e feito pela mesma
 // chamada de provedor que a fila usa.
-// Prova: destino fora da conta de teste = zero chamadas a API do provedor; o remetente de teste so vale para a conta.
+// Prova: destino fora da conta de teste em local/test = redirecionado para a conta (Issue 160, decisao 1000);
+// fora desses ambientes = zero chamadas a API do provedor; o remetente de teste nunca vale para terceiros.
 import { describe, expect, it } from 'vitest';
 import { randomBytes } from 'node:crypto';
 import {
@@ -133,7 +134,9 @@ async function enviarLogin(
 }
 
 describe('CA-08 ponta a ponta do login (H-097)', () => {
-  it('destino fora da conta de teste: zero chamadas a API do provedor, e a resposta nao traz o endereco', async () => {
+  // ATUALIZADO na Issue 160 (decisao 1000 do dono): em local, o destino fora da conta agora e
+  // redirecionado para a conta, com marcador (desenho 188, D-188-03). Antes era recusado sem chamada.
+  it('destino fora da conta de teste em local: uma chamada para a conta, com marcador; a resposta nao traz o endereco', async () => {
     const store = new RepoMemoria();
     const transporte = new TransporteContado();
     const { r, id } = await pedirLogin(store, CLIENTE);
@@ -141,9 +144,21 @@ describe('CA-08 ponta a ponta do login (H-097)', () => {
 
     const res = await enviarLogin(store, transporte, envTeste(true), CLIENTE, id);
 
-    expect(res).toEqual({ kind: 'recusa_permanente', code: 'destinatario_nao_permitido' });
-    expect(transporte.chamadas).toHaveLength(0);
+    expect(res).toEqual({ kind: 'aceito', providerMessageId: 're_ca08' });
+    expect(transporte.chamadas).toHaveLength(1);
+    const corpo = JSON.parse(transporte.chamadas[0]?.body ?? '{}') as { to: string; subject: string; text: string };
+    expect(corpo.to).toBe(CONTA);
+    expect(corpo.subject.startsWith('[Teste] ')).toBe(true);
+    expect(corpo.text).toContain(`destinado a: ${CLIENTE}.`);
     expect(JSON.stringify(res)).not.toContain(CLIENTE);
+  });
+
+  it('CA-160-08: cadastro com destino fora da conta e com a propria conta responde igual (mesmo status e corpo)', async () => {
+    const store = new RepoMemoria();
+    const fora = await pedirLogin(store, CLIENTE);
+    const conta = await pedirLogin(store, CONTA);
+    expect(fora.r).toEqual(conta.r);
+    expect(JSON.stringify(fora.r)).not.toContain(CLIENTE);
   });
 
   it('destino igual a conta de teste: uma chamada, e o login e aceito', async () => {
