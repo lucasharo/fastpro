@@ -70,15 +70,20 @@ Regra: mudanças de coluna são feitas aqui primeiro; a sincronização com o Gi
 | #131 | [E14] App Expo base |
 | #137 | [E11] Canal “no site” |
 
-## Arquitetura (0)
+## Arquitetura (1)
 
 | Issue | Título |
 |---|---|
 
-## Desenvolvimento (1)
+## Desenvolvimento (6)
 
 | Issue | Título |
 |---|---|
+| #161 | [E1] Defeito: cliente novo (sem conta) criando o primeiro pedido nunca recebe o código de confirmação |
+| #160 | [E11] E-mail em DEV/teste: cadastro com qualquer e-mail e envio redirecionado para a conta de teste |
+| #159 | [E16] Defeitos das telas: endereço falha na primeira visita e serviço escolhido aparece vazio em /pedido |
+| #158 | [E0] Publicar a API dentro do projeto fastpro-web na Vercel (somente preview) |
+| #157 | [E16] Prova ponta a ponta das telas contra a API local (aguarda #159, #160 e #161 para a matriz completa) |
 | #120 | [E13] Direitos do titular (dsr_case) |
 
 ## Code Review (0)
