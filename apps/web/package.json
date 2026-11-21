@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
+    "@fastpro/api": "workspace:*",
     "@fastpro/config": "workspace:*",
     "@fastpro/domain": "workspace:*",
     "@playwright/test": "^1.65.0",
