@@ -25,6 +25,9 @@
   justify-content: space-between;
   gap: var(--space-3) var(--space-6);
   padding: var(--space-3) var(--space-4);
+  /* Faixa reservada no topo para o link "Pular" quando focado: ele fica fora do logo (target-size, WCAG 2.5.8)
+     e, por ser absoluto, nunca empurra o cabecalho (um deslocamento no foco quebrava o clique do mouse). */
+  padding-top: var(--button-height-md);
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   position: static;

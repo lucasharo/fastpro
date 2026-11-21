@@ -34,7 +34,7 @@
       <form id="formulario" class="inicio-formulario" novalidate>
         <div class="inicio-campo">
           <label for="servico">Qual serviço você precisa?</label>
-          <input id="servico" name="servico" type="search" autocomplete="off" aria-autocomplete="list" aria-controls="servico-lista" aria-expanded="false" aria-describedby="servico-aviso servico-erro" />
+          <input id="servico" name="servico" type="search" role="combobox" autocomplete="off" aria-autocomplete="list" aria-controls="servico-lista" aria-expanded="false" aria-describedby="servico-aviso servico-erro" />
           <ul id="servico-lista" class="inicio-lista" role="listbox" aria-label="Serviços encontrados"></ul>
           <p id="servico-aviso" class="inicio-aviso" role="status"></p>
           <p id="servico-erro" class="inicio-erro"></p>
@@ -42,7 +42,7 @@
 
         <div class="inicio-campo">
           <label for="endereco">Onde o serviço será feito?</label>
-          <input id="endereco" name="endereco" type="text" autocomplete="off" aria-autocomplete="list" aria-controls="endereco-lista" aria-expanded="false" aria-describedby="endereco-aviso endereco-erro" />
+          <input id="endereco" name="endereco" type="text" role="combobox" autocomplete="off" aria-autocomplete="list" aria-controls="endereco-lista" aria-expanded="false" aria-describedby="endereco-aviso endereco-erro" />
           <ul id="endereco-lista" class="inicio-lista" role="listbox" aria-label="Endereços sugeridos"></ul>
           <p id="endereco-aviso" class="inicio-aviso" role="status"></p>
           <p id="endereco-erro" class="inicio-erro"></p>
