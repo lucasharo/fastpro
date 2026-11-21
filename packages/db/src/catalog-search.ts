@@ -44,9 +44,11 @@ export class PgCatalogSqlRunner {
   }
 }
 
+// Issue 156 (F6): o login da API nao tem EXECUTE em private.rl_check/rl_hit nem acesso ao esquema ops.
+// Usa as funcoes privadas catalog_rate_check/catalog_rate_hit (SECURITY DEFINER, so app_api, chave catalog_search:).
 export const SQL_RL_CHECK =
-  'select out_ok, out_retry_after from private.rl_check($1, $2, $3, $4, $5::timestamptz)';
-export const SQL_RL_HIT = 'select private.rl_hit($1, $2, $3::timestamptz)';
+  'select out_ok, out_retry_after from private.catalog_rate_check($1, $2, $3, $4, $5::timestamptz)';
+export const SQL_RL_HIT = 'select private.catalog_rate_hit($1, $2, $3::timestamptz)';
 
 const iso = (ms: number): string => new Date(ms).toISOString();
 
