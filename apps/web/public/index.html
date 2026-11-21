@@ -2,13 +2,51 @@
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
-    <title>FastPro - pre-visualizacao</title>
+    <title>FastPro - Início</title>
+    <link rel="stylesheet" href="/tokens.css" />
+    <link rel="stylesheet" href="/inicio.css" />
   </head>
   <body>
-    <main>
+    <main id="inicio-raiz" class="inicio-pagina" aria-busy="false">
       <h1>FastPro</h1>
-      <p>Pagina de pre-visualizacao. Sem conteudo de produto.</p>
+      <p class="inicio-apoio">Diga o serviço e onde ele será feito. Na próxima tela você descreve o pedido.</p>
+      <p id="estado" class="inicio-erro" role="status" aria-live="polite"></p>
+
+      <form id="formulario" class="inicio-formulario" novalidate>
+        <div class="inicio-campo">
+          <label for="servico">Qual serviço você precisa?</label>
+          <input id="servico" name="servico" type="search" autocomplete="off" aria-autocomplete="list" aria-controls="servico-lista" aria-expanded="false" aria-describedby="servico-aviso servico-erro" />
+          <ul id="servico-lista" class="inicio-lista" role="listbox" aria-label="Serviços encontrados"></ul>
+          <p id="servico-aviso" class="inicio-aviso" role="status"></p>
+          <p id="servico-erro" class="inicio-erro"></p>
+        </div>
+
+        <div class="inicio-campo">
+          <label for="endereco">Onde o serviço será feito?</label>
+          <input id="endereco" name="endereco" type="text" autocomplete="off" aria-autocomplete="list" aria-controls="endereco-lista" aria-expanded="false" aria-describedby="endereco-aviso endereco-erro" />
+          <ul id="endereco-lista" class="inicio-lista" role="listbox" aria-label="Endereços sugeridos"></ul>
+          <p id="endereco-aviso" class="inicio-aviso" role="status"></p>
+          <p id="endereco-erro" class="inicio-erro"></p>
+        </div>
+
+        <section id="substituir" class="inicio-substituir" aria-labelledby="substituir-titulo" hidden>
+          <h2 id="substituir-titulo" tabindex="-1">Você já tem um pedido em andamento.</h2>
+          <p id="substituir-texto" role="status">Ele é de outro serviço. Trocar o serviço mantém a descrição e a urgência que você já escreveu.</p>
+          <p class="inicio-acoes">
+            <button id="substituir-trocar" class="inicio-botao" type="button">Trocar e continuar</button>
+            <button id="substituir-voltar" class="inicio-botao inicio-botao-secundario" type="button">Voltar ao pedido que já existe</button>
+          </p>
+        </section>
+
+        <p class="inicio-acoes">
+          <button id="continuar" class="inicio-botao" type="submit">Continuar</button>
+        </p>
+      </form>
+
+      <noscript><p class="inicio-erro">Ative o JavaScript para continuar.</p></noscript>
     </main>
+    <script type="module" src="/inicio.js"></script>
   </body>
 </html>
