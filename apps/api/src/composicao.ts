@@ -57,6 +57,10 @@ import { montarVerificacaoProfissional } from './professional-verification-compo
 import type { ProfessionalVerificationRouteOptions } from './professional-verification-route.js';
 // Issue 57 (H-044) | Ativacao do trial (POST /v1/billing/trial/activate).
 import { montarAtivacaoTrial } from './professional-trial-composicao.js';
+// E5 (Issues 60 a 67) | Cobranca pelo Mercado Pago (so liga com banco, SITE_URL e a credencial do provedor).
+import { montarCobranca } from './billing/billing-composicao.js';
+import type { BillingRouteOptions } from './billing/billing-route.js';
+import type { BillingService } from './billing/billing-service.js';
 import type { ProfessionalTrialRouteOptions } from './professional-trial-route.js';
 // H-036 | Servicos, base e raio do perfil profissional (/v1/professional/profile/services e /area).
 import { montarOfertaProfissional } from './professional-offering-composicao.js';
@@ -174,6 +178,12 @@ export interface Integracoes {
   /** Issue 54 (H-041): estado visivel e recurso do profissional, ou undefined (404). */
   readonly professionalVerification?: ProfessionalVerificationRouteOptions;
   readonly professionalTrial: ProfessionalTrialRouteOptions | undefined;
+  /** E5: rotas de cobranca, ou undefined (404). */
+  readonly billing?: BillingRouteOptions;
+  /** E5 (H-053): servico usado pela reconciliacao do tick. */
+  readonly billingService?: BillingService;
+  /** Nomes (nunca valores) que impedem a cobranca de ligar. */
+  readonly pendenciasCobranca?: readonly string[];
   /** Nomes (nunca valores) que impedem as rotas do perfil profissional (H-035) de ligar. */
   readonly pendenciasPerfil: readonly string[];
   /** Rotas de servicos, base e raio do perfil profissional (H-036), ou undefined (404). */
@@ -325,6 +335,7 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   // Issue 54 (H-041): estado visivel e recurso (mesmo cliente app_system; sem opcoes, rotas em 404).
   const verificacao = montarVerificacaoProfissional(env, { abrirCliente: opcoes.abrirClienteSql, relogio: opcoes.clock });
   const trial = montarAtivacaoTrial(env, { abrirCliente: opcoes.abrirClienteSql, relogio: opcoes.clock });
+  const cobranca = montarCobranca(env, { abrirCliente: opcoes.abrirClienteSistema ?? opcoes.abrirClienteSql, relogio: opcoes.clock });
 
   // H-036: servicos, base e raio. Sem o provedor permanente (BLQ-EXEC, decisao 116) as rotas seguem 404.
   const oferta = montarOfertaProfissional(env, { abrirCliente: opcoes.abrirClienteSql, relogio: opcoes.clock });
@@ -383,6 +394,9 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     professionalProfile: perfil.options,
     professionalVerification: verificacao,
     professionalTrial: trial.options,
+    ...(cobranca.options !== undefined ? { billing: cobranca.options } : {}),
+    ...(cobranca.service !== undefined ? { billingService: cobranca.service } : {}),
+    pendenciasCobranca: cobranca.pendencias,
     pendencias,
     pendenciasCaso,
     pendenciasRascunho,

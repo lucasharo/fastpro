@@ -65,11 +65,61 @@ export interface MpPayment {
   readonly status: string;
   readonly status_detail: string;
   readonly date_approved: string | null;
+  readonly date_last_updated?: string | null;
+  readonly external_reference?: string | null;
+  readonly transaction_amount?: number;
+  readonly payment_type_id?: string;
+  readonly payment_method_id?: string;
+  /** Pagamento de assinatura: identificador da assinatura (preapproval) quando o provedor informa. */
+  readonly metadata?: Record<string, unknown> | null;
+  readonly point_of_interaction?: {
+    readonly transaction_data?: { readonly subscription_id?: string };
+  } | null;
 }
 
 export interface MpPreapproval {
   readonly id: string;
   readonly status: string;
+  readonly preapproval_plan_id?: string | null;
+  readonly external_reference?: string | null;
+  readonly init_point?: string;
+}
+
+/** Preferencia do checkout hospedado (Checkout Pro): o cartao e o Pix sao digitados no Mercado Pago. */
+export interface PreferenceInput {
+  readonly title: string;
+  readonly amountCents: number;
+  readonly externalReference: string;
+  readonly method: 'cartao' | 'pix';
+  readonly backUrl: string;
+  readonly notificationUrl?: string;
+  readonly idempotencyKey: string;
+}
+
+export interface MpPreference {
+  readonly id: string;
+  readonly init_point: string;
+  readonly sandbox_init_point?: string;
+}
+
+/** Plano de assinatura (preapproval_plan) de uma unica intencao: so cartao, renovacao a cada ciclo. */
+export interface SubscriptionPlanInput {
+  readonly reason: string;
+  readonly amountCents: number;
+  readonly ciclo: CicloMeses;
+  readonly backUrl: string;
+  readonly idempotencyKey: string;
+}
+
+export interface MpSubscriptionPlan {
+  readonly id: string;
+  readonly init_point: string;
+}
+
+export interface MpAuthorizedPayment {
+  readonly id: number | string;
+  readonly preapproval_id?: string;
+  readonly payment?: { readonly id?: number | string; readonly status?: string } | null;
 }
 
 /** Converte centavos inteiros em reais (2990 -> 29.9, valor de R$ 29,90). */
@@ -156,8 +206,84 @@ export class MercadoPagoClient {
     );
   }
 
-  async consultarPagamento(id: number): Promise<MpPayment> {
-    return this.request<MpPayment>('GET', `/v1/payments/${id}`);
+  async consultarPagamento(id: number | string): Promise<MpPayment> {
+    return this.request<MpPayment>('GET', `/v1/payments/${encodeURIComponent(String(id))}`);
+  }
+
+  /** Checkout hospedado de pagamento avulso por ciclo (Pix ou cartao a vista). Boleto e loterica excluidos (H5). */
+  async criarPreferencia(input: PreferenceInput): Promise<MpPreference> {
+    const excluidos =
+      input.method === 'pix'
+        ? ['ticket', 'atm', 'credit_card', 'debit_card', 'prepaid_card']
+        : ['ticket', 'atm', 'bank_transfer'];
+    const body: Record<string, unknown> = {
+      items: [
+        {
+          title: input.title,
+          quantity: 1,
+          unit_price: centavosParaReais(input.amountCents),
+          currency_id: 'BRL',
+        },
+      ],
+      external_reference: input.externalReference,
+      back_urls: { success: input.backUrl, failure: input.backUrl, pending: input.backUrl },
+      payment_methods: { excluded_payment_types: excluidos.map((id) => ({ id })), installments: 1 },
+      statement_descriptor: 'FASTPRO',
+    };
+    // O provedor so aceita volta automatica para endereco https (em localhost o usuario clica em voltar).
+    if (input.backUrl.startsWith('https://')) body.auto_return = 'approved';
+    if (input.notificationUrl) body.notification_url = input.notificationUrl;
+    return this.request<MpPreference>('POST', '/checkout/preferences', body, input.idempotencyKey);
+  }
+
+  /** Plano de assinatura no cartao com renovacao a cada ciclo (1, 3, 6 ou 12 meses). */
+  async criarPlanoAssinatura(input: SubscriptionPlanInput): Promise<MpSubscriptionPlan> {
+    return this.request<MpSubscriptionPlan>(
+      'POST',
+      '/preapproval_plan',
+      {
+        reason: input.reason,
+        back_url: input.backUrl,
+        auto_recurring: {
+          frequency: input.ciclo,
+          frequency_type: 'months',
+          transaction_amount: centavosParaReais(input.amountCents),
+          currency_id: 'BRL',
+        },
+        payment_methods_allowed: { payment_types: [{ id: 'credit_card' }] },
+      },
+      input.idempotencyKey,
+    );
+  }
+
+  /** Cancela a assinatura no provedor (sem nova cobranca). O acesso ate o fim do periodo e regra do livro. */
+  async cancelarAssinatura(id: string): Promise<MpPreapproval> {
+    return this.request<MpPreapproval>('PUT', `/preapproval/${encodeURIComponent(id)}`, {
+      status: 'cancelled',
+    });
+  }
+
+  /** Cobranca de uma assinatura (topico subscription_authorized_payment): traz o pagamento gerado. */
+  async consultarCobrancaAutorizada(id: string): Promise<MpAuthorizedPayment> {
+    return this.request<MpAuthorizedPayment>(
+      'GET',
+      `/authorized_payments/${encodeURIComponent(id)}`,
+    );
+  }
+
+  /** Pagamentos de uma intencao (reconciliacao): busca por external_reference. */
+  async buscarPagamentos(externalReference: string): Promise<readonly MpPayment[]> {
+    const r = await this.request<{ results?: MpPayment[] }>(
+      'GET',
+      `/v1/payments/search?external_reference=${encodeURIComponent(externalReference)}&limit=50`,
+    );
+    return Array.isArray(r.results) ? r.results : [];
+  }
+
+  /** Conta dona da credencial: usada pela trava de cobranca real (so conta de teste em sandbox). */
+  async conta(): Promise<{ readonly tags: readonly string[]; readonly site_id: string }> {
+    const r = await this.request<{ tags?: string[]; site_id?: string }>('GET', '/users/me');
+    return { tags: Array.isArray(r.tags) ? r.tags : [], site_id: String(r.site_id ?? '') };
   }
 
   private async criarPagamento(
@@ -168,7 +294,7 @@ export class MercadoPagoClient {
   }
 
   private async request<T>(
-    method: 'GET' | 'POST',
+    method: 'GET' | 'POST' | 'PUT',
     path: string,
     body?: Record<string, unknown>,
     idempotencyKey?: string,

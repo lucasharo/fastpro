@@ -186,7 +186,7 @@
       ]
     },
     {
-      "source": "/profissional-(documentos|situacao|perfil)",
+      "source": "/profissional-(documentos|situacao|perfil|assinatura)",
       "headers": [
         { "key": "Cache-Control", "value": "no-store" },
         { "key": "Referrer-Policy", "value": "no-referrer" },

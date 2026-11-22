@@ -83,6 +83,8 @@ export * from './commercial-access.js';
 export * from './trial-activation.js';
 // H-046 (Issue 59) | Adaptador Pg de planos e precos (private.plan_price_at, somente leitura).
 export * from './plan-pricing.js';
+// E5 (Issues 60 a 67) | Adaptador Pg do livro de cobranca (checkout, pagamento, webhook, reconciliacao).
+export * from './billing-ledger.js';
 export * from './discovery-requests.js';
 // Issue 68 (H-055) | Adaptadores da lista do profissional: projecao, limite de taxa e fotos prontas (153 §5.2, §5.3).
 export * from './discovery-projection.js';

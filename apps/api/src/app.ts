@@ -81,6 +81,9 @@ import {
   PROFESSIONAL_VERIFICATION_PATH,
   type ProfessionalVerificationRouteOptions,
 } from './professional-verification-route.js';
+// E5 (Issues 60 a 67) | Cobranca pelo Mercado Pago: planos, situacao, checkout, retorno, cancelamento e webhook.
+import { BILLING_PATHS, handleBillingRoute, type BillingRouteOptions } from './billing/billing-route.js';
+import type { BillingService } from './billing/billing-service.js';
 // Issue 57 (H-044) | Ativacao do trial de 14 dias (POST /v1/billing/trial/activate).
 import { handleProfessionalTrialRoute, TRIAL_ACTIVATE_PATH, type ProfessionalTrialRouteOptions } from './professional-trial-route.js';
 // H-036 | Servicos, base e raio do perfil profissional (GET/PUT /v1/professional/profile/services e /area).
@@ -220,6 +223,10 @@ export interface AppOptions {
   readonly professionalVerification?: ProfessionalVerificationRouteOptions;
   // Issue 57 (H-044) | Ativacao do trial (so existe com a opcao).
   readonly professionalTrial?: ProfessionalTrialRouteOptions;
+  /** E5: rotas de cobranca (Mercado Pago). Sem esta opcao as rotas /v1/billing/* (exceto trial) respondem 404. */
+  readonly billing?: BillingRouteOptions;
+  /** E5 (H-053): reconciliacao diaria executada pelo tick autenticado. */
+  readonly billingReconcile?: Pick<BillingService, 'reconciliar'>;
   /** H-036: servicos, base e raio do perfil. Sem esta opcao as rotas nao existem (404). */
   readonly professionalOffering?: ProfessionalOfferingRouteOptions;
   /** H-031 (#44): publicacao do pedido. Sem esta opcao a rota POST /v1/requests responde 404 uniforme (decisao 254). */
@@ -301,8 +308,16 @@ async function handleTick(
     send(res, 413, NO_STORE, '');
     return;
   }
-  // Nesta pre-visualizacao o tick nao executa jobs (sem banco). A resposta prova o caminho autenticado.
-  send(res, 200, JSON_HEADERS, JSON.stringify({ ok: true }));
+  // E5 (H-053): reconciliacao MP x livro (so registra divergencias). Falha nao derruba o tick.
+  let reconciliacao: { conferidos: number; divergencias: number } | 'falhou' | undefined;
+  if (opts.billingReconcile) {
+    try {
+      reconciliacao = await opts.billingReconcile.reconciliar();
+    } catch {
+      reconciliacao = 'falhou';
+    }
+  }
+  send(res, 200, JSON_HEADERS, JSON.stringify(reconciliacao === undefined ? { ok: true } : { ok: true, reconciliacao }));
 }
 
 /** Roteia uma requisicao. Rotas desconhecidas e metodos errados respondem 404 sem corpo. */
@@ -510,6 +525,9 @@ export async function handleRequest(
   }
   if (opts.professionalVerification && path === PROFESSIONAL_VERIFICATION_APPEAL_PATH && req.method === 'POST') {
     return handleProfessionalVerificationAppeal(req, res, opts.professionalVerification);
+  }
+  if (opts.billing && BILLING_PATHS.includes(path)) {
+    return handleBillingRoute(req, res, path, opts.billing);
   }
   if (opts.professionalTrial && path === TRIAL_ACTIVATE_PATH) {
     return handleProfessionalTrialRoute(req, res, opts.professionalTrial);

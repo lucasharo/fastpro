@@ -15,7 +15,8 @@ export const MENU = Object.freeze([
 export const SUBITENS = Object.freeze([
   { subitem: 'documentos', href: '/profissional-documentos', rotulo: 'Documento' },
   { subitem: 'situacao', href: '/profissional-situacao', rotulo: 'Situação' },
-  { subitem: 'perfil', href: '/profissional-perfil', rotulo: 'Perfil' }
+  { subitem: 'perfil', href: '/profissional-perfil', rotulo: 'Perfil' },
+  { subitem: 'assinatura', href: '/profissional-assinatura', rotulo: 'Assinatura' }
 ]);
 
 /** Itens do rodape (sem marca de pagina atual). */

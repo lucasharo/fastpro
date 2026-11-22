@@ -26,7 +26,7 @@ function cabecalhosDe(origem: string): Record<string, string> {
 }
 
 describe('cabecalhos das telas novas (desenho 178 §8)', () => {
-  for (const origem of ['/painel', '/profissional-(documentos|situacao|perfil)']) {
+  for (const origem of ['/painel', '/profissional-(documentos|situacao|perfil|assinatura)']) {
     it(`${origem}: sem cache, noindex, CSP padrao sem origem externa`, () => {
       const c = cabecalhosDe(origem);
       expect(c['Cache-Control']).toBe('no-store');

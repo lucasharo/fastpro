@@ -20,6 +20,7 @@ export const ROTAS = Object.freeze([
   { rota: '/profissional-documentos', arquivo: 'profissional-documentos.html', area: 'profissional', item: 'profissional', subitem: 'documentos', retornavel: true },
   { rota: '/profissional-situacao', arquivo: 'profissional-situacao.html', area: 'profissional', item: 'profissional', subitem: 'situacao', retornavel: true },
   { rota: '/profissional-perfil', arquivo: 'profissional-perfil.html', area: 'profissional', item: 'profissional', subitem: 'perfil', retornavel: true },
+  { rota: '/profissional-assinatura', arquivo: 'profissional-assinatura.html', area: 'profissional', item: 'profissional', subitem: 'assinatura', retornavel: true },
   { rota: '/404', arquivo: '404.html', area: 'publica', item: null, subitem: null, retornavel: false }
 ]);
 
@@ -34,6 +35,7 @@ export const DESTINOS_SITUACAO = Object.freeze([
   '/profissional-documentos',
   '/profissional-situacao',
   '/profissional-perfil',
+  '/profissional-assinatura',
   '/profissional/entrar',
   '/entrar',
   '/pedido',
