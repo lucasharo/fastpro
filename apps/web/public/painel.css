@@ -117,3 +117,8 @@ button:focus-visible {
   margin: var(--space-1) 0 0;
   overflow-wrap: anywhere;
 }
+
+/* Foco colocado pela tela no titulo (leitor de tela): sem moldura visivel. */
+.painel-pagina h1:focus {
+  outline: none;
+}
