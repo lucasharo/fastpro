@@ -12,7 +12,7 @@ import { createAddressHasher } from '../geo/address-hash.js';
 import { createAddressVault, type AddressVault } from './address-crypto.js';
 import { MAPBOX_TOKEN_ENV } from '../geo/composicao-sugestao.js';
 import { createMapboxPermanentAdapter } from '../geo/mapbox-permanent-adapter.js';
-import { createCepPermanentAdapter } from '../geo/cep-permanent-adapter.js';
+import { createOsmPermanentAdapter } from '../geo/osm-permanent-adapter.js';
 import type { GeocodingPermanentPort } from '../geo/permanent-ports.js';
 import type { PublishRouteOptions } from './publish-route.js';
 import type { PublishServiceDeps } from './publish-service.js';
@@ -26,7 +26,7 @@ const AMBIENTES_COM_PROVEDOR_REAL: readonly string[] = ['development', 'dev', 't
 /** VERCEL_ENV em que o provedor real pode ligar: ausente (local), development ou preview. Producao nunca liga. */
 const VERCEL_AMBIENTES_COM_PROVEDOR_REAL: readonly string[] = ['', 'development', 'preview'];
 
-/** Escolha do provedor permanente: "cep" = BrasilAPI + Nominatim (decisao do dono, 2026-11-22); ausente = Mapbox. */
+/** Escolha do provedor permanente: "osm" = OpenStreetMap/Nominatim (decisao do dono, 2026-11-22); ausente = Mapbox. */
 export const GEOCODER_PROVIDER_ENV = 'GEOCODER_PROVIDER' as const;
 
 /** Variaveis fixas exigidas (nomes). */
@@ -87,9 +87,9 @@ export function provedorPermanenteDoAmbiente(env: Ambiente): GeocodingPermanentP
   if (!AMBIENTES_COM_PROVEDOR_REAL.includes(ambiente)) return undefined;
   const ambienteVercel = (env.VERCEL_ENV ?? '').trim().toLowerCase();
   if (!VERCEL_AMBIENTES_COM_PROVEDOR_REAL.includes(ambienteVercel)) return undefined;
-  // Mapbox so no autocompletar e no mapa: a coordenada gravada vem do CEP (BrasilAPI) e do OpenStreetMap.
-  if ((env[GEOCODER_PROVIDER_ENV] ?? '').trim().toLowerCase() === 'cep') {
-    return createCepPermanentAdapter({ fetchImpl: globalThis.fetch });
+  // Mapbox so no autocompletar e no mapa: a coordenada gravada vem do OpenStreetMap.
+  if ((env[GEOCODER_PROVIDER_ENV] ?? '').trim().toLowerCase() === 'osm') {
+    return createOsmPermanentAdapter({ fetchImpl: globalThis.fetch });
   }
   const token = (env[MAPBOX_TOKEN_ENV] ?? '').trim();
   if (token === '') return undefined;
