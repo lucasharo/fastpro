@@ -12,6 +12,7 @@ import { createAddressHasher } from '../geo/address-hash.js';
 import { createAddressVault, type AddressVault } from './address-crypto.js';
 import { MAPBOX_TOKEN_ENV } from '../geo/composicao-sugestao.js';
 import { createMapboxPermanentAdapter } from '../geo/mapbox-permanent-adapter.js';
+import { createCepPermanentAdapter } from '../geo/cep-permanent-adapter.js';
 import type { GeocodingPermanentPort } from '../geo/permanent-ports.js';
 import type { PublishRouteOptions } from './publish-route.js';
 import type { PublishServiceDeps } from './publish-service.js';
@@ -24,6 +25,9 @@ const AMBIENTES_COM_PROVEDOR_REAL: readonly string[] = ['development', 'dev', 't
 
 /** VERCEL_ENV em que o provedor real pode ligar: ausente (local), development ou preview. Producao nunca liga. */
 const VERCEL_AMBIENTES_COM_PROVEDOR_REAL: readonly string[] = ['', 'development', 'preview'];
+
+/** Escolha do provedor permanente: "cep" = BrasilAPI + Nominatim (decisao do dono, 2026-11-22); ausente = Mapbox. */
+export const GEOCODER_PROVIDER_ENV = 'GEOCODER_PROVIDER' as const;
 
 /** Variaveis fixas exigidas (nomes). */
 export const PUBLICACAO_PEDIDO_ENV_OBRIGATORIAS = [
@@ -78,11 +82,15 @@ function preenchida(env: Ambiente, nome: string): boolean {
  * VERCEL_ENV ausente ou development. Fora disso (preview, producao, ambiente desconhecido ou chave ausente)
  * devolve undefined e a rota segue 503.
  */
-function provedorMapboxDesenvolvimento(env: Ambiente): GeocodingPermanentPort | undefined {
+export function provedorPermanenteDoAmbiente(env: Ambiente): GeocodingPermanentPort | undefined {
   const ambiente = (env.APP_ENV ?? '').trim().toLowerCase();
   if (!AMBIENTES_COM_PROVEDOR_REAL.includes(ambiente)) return undefined;
   const ambienteVercel = (env.VERCEL_ENV ?? '').trim().toLowerCase();
   if (!VERCEL_AMBIENTES_COM_PROVEDOR_REAL.includes(ambienteVercel)) return undefined;
+  // Mapbox so no autocompletar e no mapa: a coordenada gravada vem do CEP (BrasilAPI) e do OpenStreetMap.
+  if ((env[GEOCODER_PROVIDER_ENV] ?? '').trim().toLowerCase() === 'cep') {
+    return createCepPermanentAdapter({ fetchImpl: globalThis.fetch });
+  }
   const token = (env[MAPBOX_TOKEN_ENV] ?? '').trim();
   if (token === '') return undefined;
   return createMapboxPermanentAdapter({ token, fetchImpl: globalThis.fetch });
@@ -129,7 +137,7 @@ export function montarPublicacaoPedido(env: Ambiente, opcoes: PublicacaoPedidoOp
   ) {
     return { options: undefined, pendencias };
   }
-  const provedor = opcoes.provedor ?? provedorMapboxDesenvolvimento(env);
+  const provedor = opcoes.provedor ?? provedorPermanenteDoAmbiente(env);
   if (provedor === undefined) {
     pendencias.push(`${MAPBOX_TOKEN_ENV} com APP_ENV de desenvolvimento (provedor de geocodificacao, decisao 239)`);
   }

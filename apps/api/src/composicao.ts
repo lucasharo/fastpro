@@ -73,7 +73,7 @@ import type { ReduceGate } from './media/reduce-gate.js';
 import { montarDocumentosDoAmbiente } from './identity-docs/identity-doc-montagem.js';
 import type { IdentityDocRouteOptions } from './identity-docs/identity-doc-route.js';
 // H-031 (#44) | Publicacao do pedido (POST /v1/requests): so monta com as variaveis completas; sem provedor responde 503.
-import { montarPublicacaoPedido } from './requests/publish-composicao.js';
+import { montarPublicacaoPedido, provedorPermanenteDoAmbiente } from './requests/publish-composicao.js';
 import type { PublishRouteOptions } from './requests/publish-route.js';
 // Issue 45 (H-032) | Leitura do pedido por papel: liga so com ADDRESS_ENC_KEY e a fabrica do papel app_system.
 import { montarDetalhePedido } from './requests/detail-composicao.js';
@@ -338,7 +338,13 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   const cobranca = montarCobranca(env, { abrirCliente: opcoes.abrirClienteSistema ?? opcoes.abrirClienteSql, relogio: opcoes.clock });
 
   // H-036: servicos, base e raio. Sem o provedor permanente (BLQ-EXEC, decisao 116) as rotas seguem 404.
-  const oferta = montarOfertaProfissional(env, { abrirCliente: opcoes.abrirClienteSql, relogio: opcoes.clock });
+  // Mesmo provedor permanente da publicacao (endereco-base do profissional); so DEV e preview.
+  const provedorPermanente = provedorPermanenteDoAmbiente(env);
+  const oferta = montarOfertaProfissional(env, {
+    abrirCliente: opcoes.abrirClienteSql,
+    relogio: opcoes.clock,
+    ...(provedorPermanente !== undefined ? { provedor: provedorPermanente } : {}),
+  });
 
   // H-031 (#44): publicacao do pedido sobre o papel app_system; sem chave, banco ou provedor, a rota nao liga (404; 503 sem provedor).
   const publicacao = montarPublicacaoPedido(env, { abrirCliente: opcoes.abrirClienteSistema });
