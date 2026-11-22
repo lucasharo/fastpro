@@ -447,6 +447,13 @@
       limparRaiz(lista);
       if (estado.carregando) {
         status.textContent = TEXTOS.carregando;
+      } else if (status.textContent === TEXTOS.carregando) {
+        status.textContent = '';
+      }
+      // Pedido vencido: os passos (Continuar e Voltar) nao levam a lugar nenhum; fica so o novo pedido.
+      if (passos) {
+        if (estado.erroLista === 'rascunho') passos.setAttribute('hidden', '');
+        else passos.removeAttribute('hidden');
       }
       if (!estado.carregando && estado.erroLista !== null) {
         var msg = estado.erroLista === 'rascunho' ? TEXTOS.rascunhoVencido

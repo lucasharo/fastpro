@@ -228,8 +228,9 @@ describe('G-11 controlador /fotos (CA-01 a CA-12)', () => {
     });
     const { raiz } = amb.montar({ adicionarFoto: () => undefined });
     expect(amb.doc.activeElement).toBeNull();
-    await flush();
     expect(achar(raiz, 'Carregando fotos')).toBeDefined();
+    await flush();
+    expect(achar(raiz, 'Carregando fotos')).toBeUndefined();
     expect(todos(raiz).some((e) => e.textContent === '2 de 5 fotos')).toBe(true);
     expect(ordemNaTela(raiz)).toEqual([ID_A, ID_B, ID_C]);
     expect(achar(raiz, 'Foto 1 de 2')).toBeDefined();
@@ -264,6 +265,7 @@ describe('G-11 controlador /fotos (CA-01 a CA-12)', () => {
     expect(achar(rv, 'Este pedido não está mais disponível. Comece um novo pedido.')).toBeDefined();
     expect(achar(rv, 'Tentar de novo')).toBeUndefined();
     expect(achar(rv, 'Começar um novo pedido')?.attrs.href).toBe('/pedido');
+    expect(achar(rv, 'Carregando fotos')).toBeUndefined();
   });
 
   it('404 da midia com rascunho vivo: fotos indisponiveis com Tentar de novo (nao diz que o pedido venceu)', async () => {
