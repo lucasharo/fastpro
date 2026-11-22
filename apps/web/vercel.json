@@ -200,6 +200,7 @@
       ]
     }
   ],
+  "rewrites": [{ "source": "/api/(.*)", "destination": "/api" }],
   "redirects": [
     { "source": "/profissional", "destination": "/profissional/entrar", "permanent": false },
     { "source": "/profissional-documento", "destination": "/profissional-documentos", "permanent": false }

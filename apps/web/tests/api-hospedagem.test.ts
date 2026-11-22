@@ -64,7 +64,7 @@ describe('vercel.json da web: hospedagem da API (CA-158-02; desenho 182 D-3)', (
 });
 
 describe('funcao da API na web (CA-158-01; desenho 182 D-1, D-2, D-5)', () => {
-  const caminhoFuncao = 'api/[...caminho].ts';
+  const caminhoFuncao = 'api/index.ts';
 
   it('o padrao api/**/*.ts casa o arquivo do catch-all, e o arquivo existe', () => {
     expect(casaFuncaoApi(caminhoFuncao)).toBe(true);
