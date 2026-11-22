@@ -184,3 +184,52 @@ body {
     animation: none;
   }
 }
+
+/* Passos do pedido no fim da tela: "Continuar para revisao" e a acao principal; no celular, botoes na largura toda. */
+.fotos-main .fp-sub {
+  max-width: none;
+  margin: var(--space-6) 0 0;
+  padding: var(--space-4) 0 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.fotos-main .fp-sub .fp-menu {
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+  gap: var(--space-3);
+}
+
+.fotos-main .fp-sub .fp-menu a {
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--space-5);
+}
+
+.fotos-main .fp-sub .fp-menu a[href='/pedido/revisao'] {
+  border-color: var(--color-button-primary-background);
+  background: var(--color-button-primary-background);
+  color: var(--color-button-primary-text);
+  font-weight: var(--font-weight-bold);
+}
+
+.fotos-erro + .fotos-botao {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  text-decoration: none;
+}
+
+@media (max-width: 599px) {
+  .fotos-main .fp-sub .fp-menu {
+    flex-direction: column;
+  }
+
+  .fotos-main .fp-sub .fp-menu li:last-child {
+    order: -1;
+  }
+
+  .fotos-main .fp-sub .fp-menu a {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}

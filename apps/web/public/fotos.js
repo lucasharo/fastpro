@@ -10,6 +10,7 @@
   var CAMINHO_FOTOS = '/api/v1/media/photos';
   var CAMINHO_ORDEM = '/api/v1/media/photos/order';
   var CAMINHO_EMISSAO = '/api/v1/media/uploads';
+  var CAMINHO_RASCUNHO = '/api/v1/drafts/current';
   function caminhoItem(id) { return '/api/v1/media/' + id; }
   var LIMITE_FOTOS = 5;
   var INTERVALO_CONSULTA_MS = 3000;
@@ -36,6 +37,8 @@
     },
     erroLista: 'Não foi possível carregar as fotos.',
     rascunhoVencido: 'Este pedido não está mais disponível. Comece um novo pedido.',
+    novoPedido: 'Começar um novo pedido',
+    fotosIndisponiveis: 'As fotos estão indisponíveis no momento. Você pode tentar de novo ou continuar o pedido sem fotos.',
     muitasAcoes: 'Aguarde alguns instantes e tente de novo.',
     erroImagem: 'Não foi possível mostrar esta foto.',
     ainda: 'Ainda preparando a foto.',
@@ -229,7 +232,10 @@
     pagina.appendChild(avisoAdicionar);
     pagina.appendChild(adicionar);
     pagina.appendChild(dialogo);
-    raiz.appendChild(pagina);
+    // O conteudo vem antes dos passos do pedido (Voltar e Continuar ficam no fim da tela).
+    var passos = typeof raiz.querySelector === 'function' ? raiz.querySelector('.fp-sub') : null;
+    if (passos) raiz.insertBefore(pagina, passos);
+    else raiz.appendChild(pagina);
 
     function anunciar(texto) {
       status.textContent = texto;
@@ -402,14 +408,22 @@
           agendarConsulta(INTERVALO_CONSULTA_MS);
           return;
         }
-        estado.carregando = false;
-        if (r.status === 404) estado.erroLista = 'rascunho';
-        else if (r.status === 429) estado.erroLista = 'muitas';
-        else estado.erroLista = 'falha';
-        estado.exibida = [];
-        liberarUrls([]);
-        render();
+        if (r.status === 404) {
+          // O 404 da midia e uniforme: so o rascunho diz se o pedido venceu ou se as fotos estao fora do ar.
+          return pedir('GET', CAMINHO_RASCUNHO).then(function (rr) {
+            falhaLista(rr.status === 200 ? 'indisponivel' : 'rascunho');
+          });
+        }
+        falhaLista(r.status === 429 ? 'muitas' : 'falha');
       });
+    }
+
+    function falhaLista(codigo) {
+      estado.carregando = false;
+      estado.erroLista = codigo;
+      estado.exibida = [];
+      liberarUrls([]);
+      render();
     }
 
     function sincronizarImagens() {
@@ -436,10 +450,17 @@
       }
       if (!estado.carregando && estado.erroLista !== null) {
         var msg = estado.erroLista === 'rascunho' ? TEXTOS.rascunhoVencido
+          : estado.erroLista === 'indisponivel' ? TEXTOS.fotosIndisponiveis
           : estado.erroLista === 'muitas' ? TEXTOS.muitasAcoes : TEXTOS.erroLista;
         bloco.appendChild(texto('p', msg, 'fotos-erro'));
         bloco.setAttribute('role', 'alert');
-        if (estado.erroLista !== 'rascunho') {
+        if (estado.erroLista === 'rascunho') {
+          var novo = doc.createElement('a');
+          novo.setAttribute('href', '/pedido');
+          novo.setAttribute('class', 'fotos-botao');
+          novo.textContent = TEXTOS.novoPedido;
+          bloco.appendChild(novo);
+        } else {
           bloco.appendChild(botao(TEXTOS.tentarDeNovo, 'lista:tentar', 'fotos-botao', function () { carregarLista(false); }, false));
         }
       } else {

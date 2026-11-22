@@ -263,6 +263,19 @@ describe('G-11 controlador /fotos (CA-01 a CA-12)', () => {
     await flush();
     expect(achar(rv, 'Este pedido não está mais disponível. Comece um novo pedido.')).toBeDefined();
     expect(achar(rv, 'Tentar de novo')).toBeUndefined();
+    expect(achar(rv, 'Começar um novo pedido')?.attrs.href).toBe('/pedido');
+  });
+
+  it('404 da midia com rascunho vivo: fotos indisponiveis com Tentar de novo (nao diz que o pedido venceu)', async () => {
+    const amb = criarAmbiente((c) => (c.url === '/api/v1/drafts/current' ? { status: 200, dados: { id: 'x' } } : { status: 404 }));
+    const { raiz } = amb.montar({ adicionarFoto: () => undefined });
+    await flush();
+    expect(
+      achar(raiz, 'As fotos estão indisponíveis no momento. Você pode tentar de novo ou continuar o pedido sem fotos.'),
+    ).toBeDefined();
+    expect(achar(raiz, 'Este pedido não está mais disponível. Comece um novo pedido.')).toBeUndefined();
+    expect(achar(raiz, 'Tentar de novo')).toBeDefined();
+    expect(amb.chamadas.some((c) => c.metodo === 'GET' && c.url === '/api/v1/drafts/current')).toBe(true);
   });
 
   it('CA-03: consulta a cada 3 s, no maximo 20 vezes, depois mostra Ainda preparando a foto com Tentar de novo', async () => {
@@ -797,10 +810,11 @@ describe('G-12 estatico da pagina /fotos (CA-13, CA-15, CA-16)', () => {
     expect(FOTOS_JS).toContain("ainda: 'Ainda preparando a foto.'");
   });
 
-  it('a pagina chama somente rotas da galeria (sem pedido, revisao ou publicacao)', () => {
+  it('a pagina chama somente rotas da galeria e a leitura do rascunho (sem pedido, revisao ou publicacao)', () => {
     const rotas = FOTOS_JS.match(/'\/api\/[^']*'/g) ?? [];
     expect(rotas.length).toBeGreaterThan(0);
-    for (const r of rotas) expect(r).toMatch(/^'\/api\/v1\/media\//);
+    // Leitura do rascunho: so para distinguir pedido vencido de fotos fora do ar no 404 uniforme da midia.
+    for (const r of rotas) expect(r).toMatch(/^'\/api\/v1\/media\/|^'\/api\/v1\/drafts\/current'$/);
     expect(FOTOS_JS).not.toMatch(/publica|revisa|\/v1\/orders|\/v1\/pedido/i);
   });
 
