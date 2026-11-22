@@ -1,6 +1,6 @@
 // Geocodificacao permanente sem Mapbox (decisao do dono, 2026-11-22): o Mapbox fica so no autocompletar e no mapa.
 // O texto do endereco (rotulo do autocompletar: "Rua X 100, Bairro, Cidade - Estado, 01310-100, Brasil") e separado em
-// rua, numero, cidade, estado e CEP. Com CEP de 8 digitos, a BrasilAPI completa rua, cidade e estado. A coordenada vem do
+// rua, numero, cidade, estado e CEP. Com CEP de 8 digitos, a BrasilAPI (reserva: ViaCEP) completa rua, cidade e estado. A coordenada vem do
 // Nominatim (OpenStreetMap), por consulta estruturada, aceitando so candidato da mesma cidade (e do mesmo CEP, quando
 // houver). Ultimo recurso: a coordenada que a BrasilAPI devolve para o CEP, que e o centro da cidade (precisao localidade).
 // BrasilAPI e OpenStreetMap sao gratuitos e permitem guardar a coordenada (OpenStreetMap: ODbL, credito "© OpenStreetMap").
@@ -10,7 +10,8 @@ import { isInsideBrazilBox, providerErrorCode, type PermanentPrecision } from '@
 import type { GeocodingPermanentPort, PermanentLookup } from './permanent-ports.js';
 
 export const BRASILAPI_CEP_URL = 'https://brasilapi.com.br/api/cep/v2/' as const;
-export const NOMINATIM_SEARCH_URL = 'https://nominatim.openstreetmap.org/search' as const;
+export const VIACEP_URL = 'https://viacep.com.br/ws/' as const;
+export const NOMINATIM_SEARCH_URL ='https://nominatim.openstreetmap.org/search' as const;
 export const CEP_PERMANENT_TIMEOUT_MS = 3_500;
 /** Identificacao generica exigida pela politica de uso do Nominatim (sem dado pessoal). */
 export const GEOCODER_USER_AGENT = 'FastPro-DEV/0.1 (geocodificacao de enderecos)' as const;
@@ -160,6 +161,16 @@ export function lerBrasilApi(corpo: unknown): {
   };
 }
 
+/** Resposta do ViaCEP ({erro: true} para CEP inexistente): so campos, sem coordenada. */
+export function lerViaCep(corpo: unknown): { readonly rua?: string; readonly cidade?: string; readonly estado?: string } {
+  const o = objeto(corpo);
+  if (o.erro === true || o.erro === 'true') return {};
+  const rua = texto(o.logradouro);
+  const cidade = texto(o.localidade);
+  const estado = texto(o.uf);
+  return { ...(rua ? { rua } : {}), ...(cidade ? { cidade } : {}), ...(estado ? { estado } : {}) };
+}
+
 /** Escolhe o candidato do Nominatim: mesma cidade (quando conhecida), de preferencia o mesmo CEP. */
 export function escolherCandidato(corpo: unknown, partes: PartesEndereco): PermanentLookup | null {
   if (!Array.isArray(corpo)) return null;
@@ -221,6 +232,17 @@ export function createCepPermanentAdapter(opts: CepPermanentOptions): GeocodingP
       let centroDoCep: { lon: number; lat: number } | null = null;
       if (partes.cep) {
         const r = await chamar(opts.fetchImpl, new URL(`${BRASILAPI_CEP_URL}${partes.cep}`));
+        // BrasilAPI fora do ar: o ViaCEP confirma rua, cidade e estado (ele nao tem coordenada).
+        const via = r.ok ? null : await chamar(opts.fetchImpl, new URL(`${VIACEP_URL}${partes.cep}/json/`));
+        if (via?.ok) {
+          const v = lerViaCep(via.corpo);
+          partes = {
+            ...partes,
+            ...(v.cidade ? { cidade: v.cidade } : {}),
+            ...(v.estado ? { estado: v.estado } : {}),
+            ...(partes.rua ? {} : v.rua ? { rua: v.rua } : {}),
+          };
+        }
         if (r.ok) {
           const b = lerBrasilApi(r.corpo);
           centroDoCep = b.centro;

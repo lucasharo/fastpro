@@ -7,6 +7,7 @@ globalThis.fetch = () => {
 import { describe, expect, it } from 'vitest';
 import {
   BRASILAPI_CEP_URL,
+  VIACEP_URL,
   GEOCODER_USER_AGENT,
   NOMINATIM_SEARCH_URL,
   createCepPermanentAdapter,
@@ -119,12 +120,27 @@ describe('createCepPermanentAdapter', () => {
   it('numero nao encontrado: tenta a rua sem numero', async () => {
     const f = fetchFalso((url) => {
       if (url.href.startsWith(BRASILAPI_CEP_URL)) return { status: 404 };
+      if (url.href.startsWith(VIACEP_URL)) return { status: 200, corpo: { erro: true } };
       const rua = url.searchParams.get('street') ?? '';
       return { status: 200, corpo: rua.startsWith('1000 ') ? [] : [candidato(-23.56, -46.65, 26, 'São Paulo')] };
     });
     const r = await createCepPermanentAdapter({ fetchImpl: f.impl }).geocode(ROTULO);
     expect(r).toEqual({ status: 'ponto', point: { lon: -46.65, lat: -23.56, precision: 'rua' } });
-    expect(f.chamadas).toHaveLength(3);
+    expect(f.chamadas).toHaveLength(4);
+  });
+
+  it('BrasilAPI fora do ar: o ViaCEP corrige a cidade pelo CEP', async () => {
+    const f = fetchFalso((url) => {
+      if (url.href.startsWith(BRASILAPI_CEP_URL)) return { status: 503 };
+      if (url.href.startsWith(VIACEP_URL))
+        return { status: 200, corpo: { logradouro: 'Avenida Paulista', localidade: 'São Paulo', uf: 'SP' } };
+      return { status: 200, corpo: [candidato(-23.5648, -46.6519, 30, 'São Paulo', '01310-100')] };
+    });
+    const r = await createCepPermanentAdapter({ fetchImpl: f.impl }).geocode('Avenida Paulista 1000, 01310-100');
+    expect(r).toEqual({ status: 'ponto', point: { lon: -46.6519, lat: -23.5648, precision: 'endereco' } });
+    expect(f.chamadas[1]?.url.href).toBe(`${VIACEP_URL}01310100/json/`);
+    expect(f.chamadas[2]?.url.searchParams.get('city')).toBe('São Paulo');
+    expect(f.chamadas[2]?.url.searchParams.get('state')).toBe('SP');
   });
 
   it('nada no OpenStreetMap: usa o centro do CEP como localidade', async () => {
