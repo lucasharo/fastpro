@@ -57,6 +57,7 @@ function bancoSimulado(challengeId: string, userId: string) {
       if (sql.includes('app_user_ensure')) {
         return { rows: [{ out_user_id: userId, out_status: 'ativo', out_criado: true }] };
       }
+      if (sql.includes('customer_profile_ensure')) return { rows: [{ out_status: 'ok' }] };
       if (sql.includes('app_session_open_stage')) return { rows: [{ id: randomUUID() }] };
       return { rows: [] };
     },
@@ -97,6 +98,7 @@ describe('composicao buildConsumeDeps (ponta a ponta com banco simulado)', () =>
       'auth_challenge_consume_link_attach',
       'app_user_find',
       'app_user_ensure',
+      'customer_profile_ensure',
       'app_session_open_stage',
     ]);
     expect(criacoes).toBe(1);

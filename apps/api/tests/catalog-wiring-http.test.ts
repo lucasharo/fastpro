@@ -36,7 +36,7 @@ function poolFalso() {
   let liberados = 0;
   const responder = (text: string): Record<string, unknown>[] => {
     if (text.includes('private.catalog_search')) return [LINHA];
-    if (text.includes('private.rl_check')) return [{ out_ok: true, out_retry_after: 0 }];
+    if (text.includes('private.catalog_rate_check')) return [{ out_ok: true, out_retry_after: 0 }];
     return [];
   };
   const executar = async (text: string, params: unknown[] = []) => {
@@ -148,7 +148,7 @@ describe('busca ligada pela composicao (fabrica Pg sobre pool falso)', () => {
     const porta = await subirComEnv(ENV_COMPLETO, f.pool);
     const r = await postBusca(porta, 'pedr');
     expect(r.status).toBe(200);
-    const rl = f.chamadas.find((c) => c.text.includes('private.rl_check'));
+    const rl = f.chamadas.find((c) => c.text.includes('private.catalog_rate_check'));
     expect(String(rl?.params[0])).toMatch(/^catalog_search:[0-9a-f]{64}$/);
     expect(JSON.stringify(f.chamadas)).not.toContain('127.0.0.1');
     expect(r.text).not.toContain(CHAVE);

@@ -32,6 +32,8 @@ export interface DsrDpoSql {
   obter(actor: string, caso: string): Promise<unknown>;
   abrir(actor: string, entrada: EntradaAberturaDpo): Promise<Record<string, unknown>>;
   atribuir(actor: string, caso: string, responsavel: string): Promise<Record<string, unknown>>;
+  /** Deferimento (aberto ou em_analise para deferido, app.dsr_defer). Opcional nas portas falsas dos testes. */
+  deferir?(actor: string, caso: string): Promise<Record<string, unknown>>;
   processar(actor: string, caso: string): Promise<Record<string, unknown>>;
   recusar(
     actor: string,
@@ -72,6 +74,11 @@ export class PgDsrDpoSql implements DsrDpoSql {
 
   async atribuir(actor: string, caso: string, responsavel: string): Promise<Record<string, unknown>> {
     const r = await this.cliente.query('select * from app.dsr_assign($1::uuid, $2::uuid, $3::uuid)', [actor, caso, responsavel]);
+    return r.rows[0] ?? {};
+  }
+
+  async deferir(actor: string, caso: string): Promise<Record<string, unknown>> {
+    const r = await this.cliente.query('select * from app.dsr_defer($1::uuid, $2::uuid)', [actor, caso]);
     return r.rows[0] ?? {};
   }
 
@@ -243,15 +250,54 @@ export class ServicoDsrDpo {
 
   async processar(actor: string, caso: string): Promise<RespostaDpo> {
     try {
+      // 147 §4.3: processar = deferir (aberto/em_analise para deferido) e executar o efeito; as funcoes de efeito
+      // (app.dsr_process e o extrato) exigem o caso deferido. Le o estado antes, para nao usar recusa do banco como
+      // desvio: uma recusa aborta a transacao da conexao e derruba as consultas seguintes.
+      const estado = await this.estadoDoCaso(actor, caso);
+      if (estado === null) await this.deferirSePreciso(actor, caso);
+      else if (estado.status === 'aberto' || estado.status === 'em_analise') await this.sql.deferir?.(actor, caso);
+
+      const extrato = this.extrato;
+      if (estado?.kind === 'acesso' && extrato !== undefined) return await processarAcesso(extrato, actor, caso);
+
       const linha = semPrefixo(await this.sql.processar(actor, caso));
       return { status: 200, corpo: { id: linha.case_id, status: linha.status, outcome: linha.outcome } };
     } catch (erro) {
-      // Caso de acesso: app.dsr_process recusa antes de qualquer efeito; o extrato gerado pela API encerra o caso.
+      if (erro instanceof DsrDpoErro) throw erro;
+      // Estado desconhecido (porta sem leitura): o banco recusa o caso de acesso e o extrato encerra o caso.
       const extrato = this.extrato;
       if (extrato !== undefined && mensagemDe(erro) === ERRO_ACESSO_USA_EXTRATO) {
         return processarAcesso(extrato, actor, caso);
       }
       throw traduzirErroDpo(erro) ?? erro;
+    }
+  }
+
+  /** Tipo e estado do caso pela leitura do operador; null quando a porta nao tem leitura (portas falsas). */
+  private async estadoDoCaso(actor: string, caso: string): Promise<{ kind?: string; status?: string } | null> {
+    let detalhe: unknown;
+    try {
+      detalhe = await this.sql.obter(actor, caso);
+    } catch (erro) {
+      const traduzido = traduzirErroDpo(erro);
+      if (traduzido !== undefined) throw traduzido;
+      return null;
+    }
+    if (detalhe === null || detalhe === undefined) throw new DsrDpoErro(404, { code: 'not_found' });
+    const d = detalhe as { kind?: unknown; status?: unknown };
+    return {
+      ...(typeof d.kind === 'string' ? { kind: d.kind } : {}),
+      ...(typeof d.status === 'string' ? { status: d.status } : {}),
+    };
+  }
+
+  /** Sem leitura do estado: tenta deferir; caso ja deferido ou terminal (dsr_nao_deferivel) segue para o efeito. */
+  private async deferirSePreciso(actor: string, caso: string): Promise<void> {
+    if (this.sql.deferir === undefined) return;
+    try {
+      await this.sql.deferir(actor, caso);
+    } catch (erro) {
+      if (mensagemDe(erro) !== 'dsr_nao_deferivel') throw erro;
     }
   }
 

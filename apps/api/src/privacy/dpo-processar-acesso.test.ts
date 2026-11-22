@@ -65,4 +65,53 @@ describe('processar caso de acesso pelo DPO (P-B 3)', () => {
     expect(r).toEqual({ status: 200, corpo: { id: CASO, status: 'concluido', outcome: 'anonimizado' } });
     expect(gerou).toBe(false);
   });
+
+  it('defere antes do efeito: deferimento, depois processamento comum e extrato (147 §4.3)', async () => {
+    const ordem: string[] = [];
+    const sql = {
+      ...sqlFalso(async () => {
+        ordem.push('processar');
+        throw new Error('dsr_acesso_usa_extrato');
+      }),
+      async deferir() {
+        ordem.push('deferir');
+        return { out_case_id: CASO, out_status: 'deferido' };
+      },
+    } as DsrDpoSql;
+    const extrato = {
+      async gerar() {
+        ordem.push('extrato');
+        return { expiresAt: EXPIRA };
+      },
+    };
+    const r = await new ServicoDsrDpo(sql, extrato).processar(ATOR, CASO);
+    expect(r.status).toBe(200);
+    expect(ordem).toEqual(['deferir', 'processar', 'extrato']);
+  });
+
+  it('caso ja deferido: a recusa do deferimento (dsr_nao_deferivel) nao interrompe o processamento', async () => {
+    const sql = {
+      ...sqlFalso(async () => ({ out_case_id: CASO, out_status: 'concluido', out_outcome: 'anonimizado' })),
+      async deferir() {
+        throw new Error('dsr_nao_deferivel');
+      },
+    } as DsrDpoSql;
+    const r = await new ServicoDsrDpo(sql).processar(ATOR, CASO);
+    expect(r).toEqual({ status: 200, corpo: { id: CASO, status: 'concluido', outcome: 'anonimizado' } });
+  });
+
+  it('outro erro do deferimento (ex.: permissao) segue para a rota e nada e processado', async () => {
+    let processou = false;
+    const sql = {
+      ...sqlFalso(async () => {
+        processou = true;
+        return {};
+      }),
+      async deferir() {
+        throw new Error('permissao_negada');
+      },
+    } as DsrDpoSql;
+    await expect(new ServicoDsrDpo(sql).processar(ATOR, CASO)).rejects.toMatchObject({ status: 403 });
+    expect(processou).toBe(false);
+  });
 });

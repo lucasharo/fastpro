@@ -52,4 +52,5 @@ function renderizarSituacao(raiz, tela) {
   return raiz;
 }
 
-if (typeof window !== 'undefined') window.renderizarSituacao = renderizarSituacao;
+if (typeof globalThis.window !== 'undefined')
+  globalThis.window.renderizarSituacao = renderizarSituacao;

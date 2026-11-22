@@ -80,7 +80,7 @@
     form.setAttribute('novalidate', '');
 
     var campoEmail = null;
-    var emailEntrada = null;
+    var emailEntrada;
     if (emailFixo === null) {
       var grupoEmail = doc.createElement('div');
       grupoEmail.setAttribute('class', 'codigo-campo');

@@ -1,3 +1,5 @@
+// Leitura de JSON dinamico do corpo da resposta: tipagem solta so neste teste.
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // H-108 (Issue 117) | Painel operacional minimo (docs/factory/76-DESENHO-H108.md §4).
 // T-H108-01 tela e menu por papel; T-H108-02 guarda do handler (404 identico, 403 sem permissao, 200);
 // T-H108-03 mapa papel x permissao e registro (so GET, so superadmin); T-H108-04 percentual, alerta,

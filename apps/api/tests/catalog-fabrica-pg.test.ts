@@ -48,7 +48,7 @@ function poolFalso(opcoes: { rateOk?: boolean; falha?: boolean } = {}) {
   const chamadas: Chamada[] = [];
   const executa = async (text: string, params: unknown[] = []) => {
     chamadas.push({ text, params });
-    if (text.includes('rl_check')) {
+    if (text.includes('catalog_rate_check')) {
       return { rows: [{ out_ok: opcoes.rateOk ?? true, out_retry_after: null }] };
     }
     if (text.includes('catalog_search')) {

@@ -138,7 +138,7 @@ async function abrirPedido() {
   return { el: (id: string) => documento.getElementById(id), chamadas };
 }
 
-describe('cliente novo em /pedido usa purpose publish (Issue #161, CA-161-01 e CA-161-02)', () => {
+describe('cliente novo em /pedido usa purpose publish (Issue 161, CA-161-01 e CA-161-02)', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -169,7 +169,7 @@ describe('cliente novo em /pedido usa purpose publish (Issue #161, CA-161-01 e C
   });
 });
 
-describe('textos da espera e fontes de /pedido (Issue #161, D-6 e R-1)', () => {
+describe('textos da espera e fontes de /pedido (Issue 161, D-6 e R-1)', () => {
   it('pedido.js nao fixa purpose login e nao afirma envio ("Enviamos")', () => {
     expect(FONTE_PEDIDO).not.toContain("purpose: 'login'");
     expect(FONTE_PEDIDO).not.toContain('Enviamos');

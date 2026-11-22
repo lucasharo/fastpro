@@ -182,8 +182,16 @@ describe('textos da tela = textos aprovados do dominio (sem texto inventado)', (
   const mensagens = bloco.slice(bloco.indexOf('export const MENSAGENS'), bloco.indexOf('});', bloco.indexOf('export const MENSAGENS')));
   const tela = html + bloco;
 
-  it('o dominio tem os 26 textos aprovados (sanidade da leitura)', () => {
-    expect(aprovados).toHaveLength(26);
+  // H-038 (decisao 313) somou 4 textos da certificacao ao mesmo mapa; o envio de certificacao ainda nao tem tela,
+  // entao esses 4 ficam fora da conferencia "aparece na tela" ate a tela da certificacao existir.
+  const DA_CERTIFICACAO = ['certificacao_exigida', 'servico_invalido', 'limite_certificacao', 'upload_em_uso'];
+  const textosCertificacao = DA_CERTIFICACAO.map(
+    (chave) => new RegExp(`^\\s+${chave}: '([^']+)'`, 'm').exec(textos.slice(textos.indexOf('IDOC_TEXTOS')))?.[1],
+  );
+
+  it('o dominio tem os 30 textos aprovados (26 do documento e 4 da certificacao; sanidade da leitura)', () => {
+    expect(aprovados).toHaveLength(30);
+    expect(textosCertificacao.every((t) => t !== undefined && aprovados.includes(t))).toBe(true);
   });
 
   it('cada texto de MENSAGENS e cada texto visivel do HTML existe em textos.ts ou esta na lista de excecao', () => {
@@ -194,7 +202,7 @@ describe('textos da tela = textos aprovados do dominio (sem texto inventado)', (
   });
 
   it('cada texto aprovado de textos.ts aparece na tela (HTML ou codigo)', () => {
-    const faltando = aprovados.filter((t) => !tela.includes(t));
+    const faltando = aprovados.filter((t) => !textosCertificacao.includes(t) && !tela.includes(t));
     expect(faltando).toEqual([]);
   });
 });

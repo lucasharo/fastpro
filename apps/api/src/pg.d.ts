@@ -24,6 +24,14 @@ declare module 'pg' {
     end(): Promise<void>;
   }
 
-  const pg: { Pool: typeof Pool };
+  // Conexao avulsa, usada so pelos testes de fluxo contra o banco de DEV (transacao desfeita).
+  export class Client {
+    constructor(config?: PoolConfig);
+    connect(): Promise<void>;
+    query(text: string, params?: unknown[]): Promise<QueryResult>;
+    end(): Promise<void>;
+  }
+
+  const pg: { Pool: typeof Pool; Client: typeof Client };
   export default pg;
 }

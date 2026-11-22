@@ -40,7 +40,6 @@ const PROFISSIONAL = '66666666-7777-4888-8999-000000000000';
 const MOTIVO = 'SENTINELA-MOTIVO-H105-zq motivo juridico detalhado';
 const SEG = 'example-admin-secret-h105-000000000000000000';
 
-const ROLES = ['superadmin', 'verificacao', 'moderador', 'financeiro', 'suporte', 'auditor'] as const;
 
 function linha(roles: string[], extra: Partial<AdminGuardRecord> = {}): AdminGuardRecord {
   return {
