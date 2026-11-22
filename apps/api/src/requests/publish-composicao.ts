@@ -18,11 +18,12 @@ import type { PublishServiceDeps } from './publish-service.js';
 // Issue 46 (H-033): telefone opcional da publicacao (mesmo cliente app_system; sem PHONE_ENC_KEY valida, sem telefone).
 import { cofreDoTelefone } from '../contact/contact-composicao.js';
 
-/** APP_ENV em que o provedor real pode ligar (decisao 239: so desenvolvimento). Sem APP_ENV, nao liga. */
-const AMBIENTES_COM_PROVEDOR_REAL: readonly string[] = ['development', 'dev', 'test'];
+/** APP_ENV em que o provedor real pode ligar (decisao 239, ampliada pelo dono em 2026-11-22: DEV local e preview).
+ * Sem APP_ENV, nao liga; production nunca liga por aqui. */
+const AMBIENTES_COM_PROVEDOR_REAL: readonly string[] = ['development', 'dev', 'test', 'local', 'preview'];
 
-/** VERCEL_ENV em que o provedor real pode ligar: ausente (ambiente local) ou development. Preview e producao nunca ligam. */
-const VERCEL_AMBIENTES_COM_PROVEDOR_REAL: readonly string[] = ['', 'development'];
+/** VERCEL_ENV em que o provedor real pode ligar: ausente (local), development ou preview. Producao nunca liga. */
+const VERCEL_AMBIENTES_COM_PROVEDOR_REAL: readonly string[] = ['', 'development', 'preview'];
 
 /** Variaveis fixas exigidas (nomes). */
 export const PUBLICACAO_PEDIDO_ENV_OBRIGATORIAS = [

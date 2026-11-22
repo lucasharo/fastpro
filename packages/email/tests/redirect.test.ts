@@ -70,7 +70,7 @@ describe('T-188-02 | local e test redirecionam com o remetente de teste (CA-160-
 });
 
 describe('T-188-03 | ambientes fora de local e test recusam antes da API (CA-160-02)', () => {
-  it.each(['production', 'preview', 'staging'])('%s: recusa, 0 chamadas, sem o endereco original', async (appEnv) => {
+  it.each(['production', 'staging'])('%s: recusa, 0 chamadas, sem o endereco original', async (appEnv) => {
     const http = new FakeHttp();
     const res = await providerWith(devEnv(appEnv), http).send(message(ALVO));
 

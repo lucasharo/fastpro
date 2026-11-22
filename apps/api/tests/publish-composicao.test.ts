@@ -68,7 +68,7 @@ describe('montarPublicacaoPedido: chave de cifra do endereco (Issue 45, T-13)', 
 
 describe('montarPublicacaoPedido: provedor real da Mapbox', () => {
   describe('liga com chave e APP_ENV de desenvolvimento', () => {
-    const casos = ['development', 'dev', 'test', ' Development ', 'DEV', '  test  '];
+    const casos = ['development', 'dev', 'test', ' Development ', 'DEV', '  test  ', 'local', 'preview'];
     for (const appEnv of casos) {
       it(`APP_ENV "${appEnv}" sem VERCEL_ENV liga o provedor`, () => {
         const r = montarPublicacaoPedido(ambiente({ APP_ENV: appEnv, [NOME_TOKEN]: TOKEN_SENTINELA }), opcoesComFabrica());
@@ -78,7 +78,7 @@ describe('montarPublicacaoPedido: provedor real da Mapbox', () => {
     }
 
     it('VERCEL_ENV development (ou vazio, so espacos) continua ligando', () => {
-      for (const vercel of ['development', ' Development ', '   ']) {
+      for (const vercel of ['development', ' Development ', '   ', 'preview']) {
         const r = montarPublicacaoPedido(
           ambiente({ APP_ENV: 'development', VERCEL_ENV: vercel, [NOME_TOKEN]: TOKEN_SENTINELA }),
           opcoesComFabrica(),
@@ -94,7 +94,6 @@ describe('montarPublicacaoPedido: provedor real da Mapbox', () => {
       ['APP_ENV production', { APP_ENV: 'production', [NOME_TOKEN]: TOKEN_SENTINELA }],
       ['APP_ENV ausente', { [NOME_TOKEN]: TOKEN_SENTINELA }],
       ['APP_ENV staging', { APP_ENV: 'staging', [NOME_TOKEN]: TOKEN_SENTINELA }],
-      ['APP_ENV preview', { APP_ENV: 'preview', [NOME_TOKEN]: TOKEN_SENTINELA }],
       ['APP_ENV desconhecido', { APP_ENV: 'desenvolvimento', [NOME_TOKEN]: TOKEN_SENTINELA }],
       ['chave vazia', { APP_ENV: 'development', [NOME_TOKEN]: '' }],
       ['chave so espacos', { APP_ENV: 'development', [NOME_TOKEN]: '     ' }],
@@ -102,14 +101,6 @@ describe('montarPublicacaoPedido: provedor real da Mapbox', () => {
       [
         'APP_ENV development com VERCEL_ENV production',
         { APP_ENV: 'development', VERCEL_ENV: 'production', [NOME_TOKEN]: TOKEN_SENTINELA },
-      ],
-      [
-        'APP_ENV development com VERCEL_ENV preview',
-        { APP_ENV: 'development', VERCEL_ENV: 'preview', [NOME_TOKEN]: TOKEN_SENTINELA },
-      ],
-      [
-        'APP_ENV test com VERCEL_ENV preview',
-        { APP_ENV: 'test', VERCEL_ENV: 'preview', [NOME_TOKEN]: TOKEN_SENTINELA },
       ],
     ];
 

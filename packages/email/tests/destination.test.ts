@@ -13,15 +13,15 @@ const base = {
 };
 
 describe('decidirDestino: conjunto de ambientes (fail-closed)', () => {
-  it('REDIRECT_APP_ENVS e exatamente local e test', () => {
-    expect([...REDIRECT_APP_ENVS]).toEqual(['local', 'test']);
+  it('REDIRECT_APP_ENVS e exatamente local, test e preview (decisao do dono, 2026-11-22)', () => {
+    expect([...REDIRECT_APP_ENVS]).toEqual(['local', 'test', 'preview']);
   });
 
-  it.each(['local', 'test'])('%s redireciona para a conta', (appEnv) => {
+  it.each(['local', 'test', 'preview'])('%s redireciona para a conta', (appEnv) => {
     expect(decidirDestino({ ...base, appEnv })).toEqual({ kind: 'redirecionado', to: CONTA });
   });
 
-  it.each(['preview', 'staging', 'production', '', 'dev', 'development', 'LOCAL', 'Test'])(
+  it.each(['staging', 'production', '', 'dev', 'development', 'LOCAL', 'Test'])(
     'APP_ENV "%s" recusa, sem redirecionar',
     (appEnv) => {
       expect(decidirDestino({ ...base, appEnv })).toEqual({
