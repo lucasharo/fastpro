@@ -27,6 +27,12 @@ export const RODAPE = Object.freeze([
 
 export const MARCA_SENTINELA = '<span id="conteudo" tabindex="-1"></span>';
 export const LINK_CSS_COMUM = '<link rel="stylesheet" href="/navegacao.css" />';
+/** Camada visual comum (template de referencia): sempre a ultima folha da pagina, para vencer as folhas de cada tela. */
+export const LINK_CSS_VISUAL = '<link rel="stylesheet" href="/visual.css" />';
+
+/** Marca do FastPro em SVG inline (cor por currentColor e tokens no CSS; a CSP nao libera img-src). */
+const MARCA_SVG =
+  '<svg class="fp-marca" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="10" class="fp-marca-fundo"/><path d="M18.5 5 9 18h6.5L13.5 27 23 14h-6.5z" class="fp-marca-raio"/></svg>';
 
 function atual(marcado) {
   return marcado ? ' aria-current="page"' : '';
@@ -37,12 +43,14 @@ export function linhasCabecalho(item) {
   return [
     '<a class="pular" href="#conteudo">Pular para o conteúdo</a>',
     '<header class="fp-cab">',
-    '  <a class="fp-logo" href="/">FastPro</a>',
-    '  <nav aria-label="Principal">',
-    '    <ul class="fp-menu">',
-    ...MENU.map((m) => `      <li><a href="${m.href}"${atual(m.item === item)}>${m.rotulo}</a></li>`),
-    '    </ul>',
-    '  </nav>',
+    '  <div class="fp-cab-in">',
+    `    <a class="fp-logo" href="/">${MARCA_SVG}<span>FastPro</span></a>`,
+    '    <nav aria-label="Principal">',
+    '      <ul class="fp-menu">',
+    ...MENU.map((m) => `        <li><a href="${m.href}"${atual(m.item === item)}>${m.rotulo}</a></li>`),
+    '      </ul>',
+    '    </nav>',
+    '  </div>',
     '</header>'
   ];
 }
@@ -62,11 +70,18 @@ export function linhasSubnav(subitem) {
 export function linhasRodape() {
   return [
     '<footer class="fp-rod">',
-    '  <nav aria-label="Rodapé">',
-    '    <ul class="fp-menu">',
-    ...RODAPE.map((r) => `      <li><a href="${r.href}">${r.rotulo}</a></li>`),
-    '    </ul>',
-    '  </nav>',
+    '  <div class="fp-rod-in">',
+    '    <div class="fp-rod-marca">',
+    `      <a class="fp-logo" href="/">${MARCA_SVG}<span>FastPro</span></a>`,
+    '      <p>Profissionais verificados perto de você. Para quem pede, é grátis.</p>',
+    '    </div>',
+    '    <nav aria-label="Rodapé">',
+    '      <ul class="fp-menu">',
+    ...RODAPE.map((r) => `        <li><a href="${r.href}">${r.rotulo}</a></li>`),
+    '      </ul>',
+    '    </nav>',
+    '  </div>',
+    '  <p class="fp-rod-base">© 2026 FastPro</p>',
     '</footer>'
   ];
 }

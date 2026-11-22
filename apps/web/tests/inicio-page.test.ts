@@ -36,18 +36,21 @@ function rotaDeRascunho(sugestao: () => Desfecho) {
 
 describe('marcacao da inicial (CA-W01, CA-W21)', () => {
   it('traz titulo, frase de apoio e os rotulos aprovados', () => {
-    expect(HTML_INICIO).toContain('<h1>FastPro</h1>');
+    // Titulo do hero (redesenho visual): a marca abre o h1, seguida da proposta de valor.
+    expect(HTML_INICIO).toMatch(/<h1 id="ini-titulo">FastPro: [^<]+<span class="ini-destaque">[^<]+<\/span><\/h1>/);
     expect(HTML_INICIO).toContain('Diga o serviço e onde ele será feito. Na próxima tela você descreve o pedido.');
     expect(HTML_INICIO).toContain('Qual serviço você precisa?');
     expect(HTML_INICIO).toContain('Onde o serviço será feito?');
     expect(HTML_INICIO).toContain('lang="pt-BR"');
   });
 
-  it('nao traz texto de previa, nem links de entrar ou cadastro', () => {
+  it('nao traz texto de previa nem formulario de entrada; links do conteudo so para rotas da propria web', () => {
     expect(HTML_INICIO).not.toContain('Sem conteúdo de produto');
-    // Decisao D-5 (#155): os links de entrada ficam no bloco de cabecalho comum; o conteudo (main) nao os traz.
+    // Decisao do dono (2026-11-21, redesenho pelo template de referencia) substitui a D-5 (#155) so na inicial:
+    // o conteudo pode ter chamadas para pedir, cadastrar ou entrar, mas sem campo de senha e sem origem externa.
     const principal = HTML_INICIO.slice(HTML_INICIO.indexOf('<main'), HTML_INICIO.indexOf('</main>'));
-    expect(principal).not.toMatch(/<a\s|Entrar|Cadastr|Criar conta|[Ss]enha/);
+    expect(principal).not.toMatch(/[Ss]enha|type="password"/);
+    for (const m of principal.matchAll(/<a\s[^>]*href="([^"]+)"/g)) expect(m[1]).toMatch(/^(\/|#)/);
   });
 
   it('nao tem script inline, estilo inline nem <style> (CSP style-src self)', () => {

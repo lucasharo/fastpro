@@ -7,7 +7,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ROTAS } from '../public/navegacao-logica.js';
-import { blocos, LINK_CSS_COMUM, MARCA_SENTINELA } from './navegacao-blocos.mjs';
+import { blocos, LINK_CSS_COMUM, LINK_CSS_VISUAL, MARCA_SENTINELA } from './navegacao-blocos.mjs';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const checar = process.argv.includes('--check');
@@ -66,6 +66,10 @@ function aplicar(html, rota) {
     if (!re.test(saida)) throw new Error('tokens.css nao encontrado para inserir navegacao.css');
     saida = saida.replace(re, (t) => `${t}\n    ${LINK_CSS_COMUM}`);
   }
+
+  // Camada visual comum: sempre a ultima folha antes de </head> (vence as folhas de cada tela).
+  saida = saida.replace(/\r?\n[ \t]*<link rel="stylesheet" href="\/visual\.css"\s*\/>/g, '');
+  saida = saida.replace(/(\r?\n)([ \t]*)<\/head>/, (_t, nl, ind) => `${nl}${ind}  ${LINK_CSS_VISUAL}${nl}${ind}</head>`);
 
   // Alvo do "Pular para o conteudo": <main id="conteudo"> ou sentinela logo dentro do <main>.
   if (!/<main[^>]*\sid="conteudo"/.test(saida) && !saida.includes(MARCA_SENTINELA)) {

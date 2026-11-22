@@ -8,21 +8,24 @@
     <link rel="stylesheet" href="/tokens.css" />
     <link rel="stylesheet" href="/navegacao.css" />
     <link rel="stylesheet" href="/entrada.css" />
+    <link rel="stylesheet" href="/visual.css" />
   </head>
   <body>
     <!-- fp:cabecalho -->
     <a class="pular" href="#conteudo">Pular para o conteúdo</a>
     <header class="fp-cab">
-      <a class="fp-logo" href="/">FastPro</a>
-      <nav aria-label="Principal">
-        <ul class="fp-menu">
-          <li><a href="/">Início</a></li>
-          <li><a href="/pedido">Pedir um serviço</a></li>
-          <li><a href="/painel">Meus pedidos</a></li>
-          <li><a href="/entrar" aria-current="page">Entrar</a></li>
-          <li><a href="/profissional/entrar">Sou profissional</a></li>
-        </ul>
-      </nav>
+      <div class="fp-cab-in">
+        <a class="fp-logo" href="/"><svg class="fp-marca" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="10" class="fp-marca-fundo"/><path d="M18.5 5 9 18h6.5L13.5 27 23 14h-6.5z" class="fp-marca-raio"/></svg><span>FastPro</span></a>
+        <nav aria-label="Principal">
+          <ul class="fp-menu">
+            <li><a href="/">Início</a></li>
+            <li><a href="/pedido">Pedir um serviço</a></li>
+            <li><a href="/painel">Meus pedidos</a></li>
+            <li><a href="/entrar" aria-current="page">Entrar</a></li>
+            <li><a href="/profissional/entrar">Sou profissional</a></li>
+          </ul>
+        </nav>
+      </div>
     </header>
     <!-- /fp:cabecalho -->
     <main id="conteudo" class="entrada-pagina">
@@ -48,13 +51,20 @@
     </main>
     <!-- fp:rodape -->
     <footer class="fp-rod">
-      <nav aria-label="Rodapé">
-        <ul class="fp-menu">
-          <li><a href="/">Início</a></li>
-          <li><a href="/pedido">Pedir um serviço</a></li>
-          <li><a href="/profissional/entrar">Sou profissional</a></li>
-        </ul>
-      </nav>
+      <div class="fp-rod-in">
+        <div class="fp-rod-marca">
+          <a class="fp-logo" href="/"><svg class="fp-marca" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="10" class="fp-marca-fundo"/><path d="M18.5 5 9 18h6.5L13.5 27 23 14h-6.5z" class="fp-marca-raio"/></svg><span>FastPro</span></a>
+          <p>Profissionais verificados perto de você. Para quem pede, é grátis.</p>
+        </div>
+        <nav aria-label="Rodapé">
+          <ul class="fp-menu">
+            <li><a href="/">Início</a></li>
+            <li><a href="/pedido">Pedir um serviço</a></li>
+            <li><a href="/profissional/entrar">Sou profissional</a></li>
+          </ul>
+        </nav>
+      </div>
+      <p class="fp-rod-base">© 2026 FastPro</p>
     </footer>
     <!-- /fp:rodape -->
     <script src="/entrada-comum.js"></script>
