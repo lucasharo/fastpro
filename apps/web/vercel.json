@@ -172,7 +172,7 @@
       ]
     },
     {
-      "source": "/painel",
+      "source": "/painel(/pedido)?",
       "headers": [
         { "key": "Cache-Control", "value": "no-store" },
         { "key": "Referrer-Policy", "value": "no-referrer" },

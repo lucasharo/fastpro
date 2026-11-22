@@ -12,6 +12,7 @@ export const ROTAS = Object.freeze([
   { rota: '/acesso', arquivo: 'acesso.html', area: 'publica', item: 'entrar', subitem: null, retornavel: false },
   { rota: '/codigo', arquivo: 'codigo.html', area: 'publica', item: 'entrar', subitem: null, retornavel: false },
   { rota: '/painel', arquivo: 'painel.html', area: 'cliente', item: 'painel', subitem: null, retornavel: true },
+  { rota: '/painel/pedido', arquivo: 'painel/pedido.html', area: 'cliente', item: 'painel', subitem: null, retornavel: false },
   { rota: '/profissional/entrar', arquivo: 'profissional/entrar.html', area: 'publica', item: 'profissional', subitem: null, retornavel: false },
   { rota: '/profissional/cadastro', arquivo: 'profissional/cadastro.html', area: 'publica', item: 'profissional', subitem: null, retornavel: false },
   { rota: '/profissional/recuperar', arquivo: 'profissional/recuperar.html', area: 'publica', item: 'profissional', subitem: null, retornavel: false },

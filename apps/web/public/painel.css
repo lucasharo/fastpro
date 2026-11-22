@@ -74,3 +74,46 @@ button:focus-visible {
   outline: 3px solid var(--color-primary);
   outline-offset: 2px;
 }
+
+/* O estilo dos botoes nao pode vencer o atributo hidden; aviso de erro vazio nao aparece. */
+.painel-pagina [hidden] {
+  display: none !important;
+}
+
+.painel-erro:empty {
+  display: none;
+}
+
+.painel-item-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.painel-item:has(.painel-item-link) {
+  padding: 0;
+}
+
+.painel-item-link {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-card);
+}
+
+.painel-item-link:hover .painel-nome {
+  text-decoration: underline;
+}
+
+.painel-detalhe {
+  margin: 0 0 var(--space-4);
+}
+
+.painel-detalhe dt {
+  margin-top: var(--space-3);
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.painel-detalhe dd {
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+}

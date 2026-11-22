@@ -55,6 +55,14 @@ export function linhasDoItem(item) {
   return linhas;
 }
 
+/** Caminho do detalhe do pedido, ou nulo se o id nao for um uuid. */
+export function linkDoItem(item) {
+  const id = typeof item?.id === 'string' ? item.id : '';
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+    ? `/painel/pedido?id=${encodeURIComponent(id)}`
+    : null;
+}
+
 /** Controlador da tela. `doc`, `fetchFn` e `navegar` entram por parametro (testavel sem navegador). */
 export function iniciarPainel({ doc, fetchFn, navegar }) {
   const lista = doc.getElementById('lista');
@@ -77,11 +85,19 @@ export function iniciarPainel({ doc, fetchFn, navegar }) {
   function desenharItem(item) {
     const li = doc.createElement('li');
     li.className = 'painel-item';
+    // Com id valido, o cartao inteiro abre o detalhe do pedido (/painel/pedido?id=).
+    const destino = linkDoItem(item);
+    const caixa = destino ? doc.createElement('a') : li;
+    if (destino) {
+      caixa.className = 'painel-item-link';
+      caixa.setAttribute('href', destino);
+      li.appendChild(caixa);
+    }
     for (const linha of linhasDoItem(item)) {
       const p = doc.createElement('p');
       p.className = `painel-${linha.papel}`;
       p.textContent = linha.texto;
-      li.appendChild(p);
+      caixa.appendChild(p);
     }
     return li;
   }
@@ -121,7 +137,8 @@ export function iniciarPainel({ doc, fetchFn, navegar }) {
     vazio.hidden = lista.children.length > 0;
     if (primeiraCarga) {
       primeiraCarga = false;
-      principal.querySelector('h1').focus();
+      // Sem rolar: o foco no titulo nao pode deixa-lo atras do cabecalho fixo.
+      principal.querySelector('h1').focus({ preventScroll: true });
     }
   }
 
