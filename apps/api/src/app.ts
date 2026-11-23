@@ -124,6 +124,8 @@ import { handleRequestDetailRoute, isRequestDetailRoute, type RequestDetailRoute
 import { handleConversationRoute, isConversationRoute, type ConversationRouteOptions } from './conversations/conversation-route.js';
 // Pacote A (H-061, H-077, H-078, H-080) | Ciclo do pedido e do aceite: concluir, desfazer, cancelar, retirar aceite.
 import { handleLifecycleRoute, isLifecycleRoute, type LifecycleRouteOptions } from './lifecycle/lifecycle-route.js';
+// Pacote C (H-060, H-082, H-083): segunda onda e republicacao do pedido.
+import { handleWaveRoute, isWaveRoute, type WaveRouteOptions } from './waves/wave-route.js';
 // Issue 120 (H-111) | Direitos do titular: POST/GET /v1/privacy/dsr-requests e detalhe/cancelamento do proprio caso.
 import {
   handlePrivacyTitularRoute,
@@ -240,6 +242,8 @@ export interface AppOptions {
   readonly conversations?: ConversationRouteOptions;
   /** Pacote A: concluir, desfazer conclusao, cancelar pedido e retirar aceite. Sem esta opcao as rotas respondem 404 uniforme. */
   readonly lifecycle?: LifecycleRouteOptions;
+  /** Pacote C: segunda onda, republicacao e acoes do dono. Sem esta opcao as rotas respondem 404 uniforme. */
+  readonly waves?: WaveRouteOptions;
   /** Issue 120 (H-111): direitos do titular. Sem esta opcao as rotas /v1/privacy/dsr-requests respondem 404 uniforme. */
   readonly privacyTitular?: PrivacyTitularRouteOptions;
   /** Issue 120 (H-111): painel do DPO. Sem esta opcao, /v1/admin/privacy/dsr-cases responde 404 vazio. */
@@ -480,6 +484,14 @@ export async function handleRequest(
   // Pacote A: ciclo do pedido e do aceite. Sem a montagem, o mesmo 404 uniforme do rascunho.
   if (isLifecycleRoute(req.method ?? '', path)) {
     if (opts.lifecycle) return handleLifecycleRoute(req, res, path, opts.lifecycle);
+    const r = draftNotFound();
+    res.writeHead(r.status, r.headers);
+    res.end(r.body);
+    return;
+  }
+  // Pacote C (H-060, H-082, H-083): segunda onda e republicacao. Sem a montagem, o mesmo 404 uniforme do rascunho.
+  if (isWaveRoute(req.method ?? '', path)) {
+    if (opts.waves) return handleWaveRoute(req, res, path, opts.waves);
     const r = draftNotFound();
     res.writeHead(r.status, r.headers);
     res.end(r.body);

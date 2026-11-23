@@ -111,3 +111,4 @@ export * from './privacy-dsr-step-up.js';
 // H-099 (Issue 109) | Handlers dos lembretes no tick (reminder.scan e reminder.fire) e adaptador de leitura. Composicao em apps/api fica para a Issue do tick.
 export * from './reminders.js';
 export * from './request-lifecycle.js';
+export * from './request-waves.js';
