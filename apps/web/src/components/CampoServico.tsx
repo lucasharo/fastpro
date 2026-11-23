@@ -94,7 +94,7 @@ export function CampoServico({ valor, onTexto, onEscolher, placeholder, classNam
         }}
       />
       {opcoes.length > 0 ? (
-        <ul id={`${idCampo}-lista`} role="listbox" className="lista-sugestoes" style={{ position: 'absolute', zIndex: 20, left: 0, right: 0 }}>
+        <ul id={`${idCampo}-lista`} role="listbox" className="lista-sugestoes lista-sugestoes-larga">
           {opcoes.map((s, i) => (
             <li key={s.service_id} id={`${idCampo}-op-${i}`} role="option" aria-selected={i === ativo}>
               <button type="button" tabIndex={-1} onMouseDown={(e) => e.preventDefault()} onClick={() => escolher(s)}>

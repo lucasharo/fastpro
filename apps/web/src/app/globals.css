@@ -1472,3 +1472,27 @@ textarea.entrada {
   letter-spacing: 0.06em;
   color: var(--fp-muted);
 }
+
+/* Sugestoes do servico: mais largas que o campo (no hero o campo e estreito), sem quebrar nomes longos. */
+.lista-sugestoes-larga {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  width: max-content;
+  min-width: max(100%, 22rem);
+  max-width: min(32rem, calc(100vw - 3rem));
+}
+
+.lista-sugestoes-larga button {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 767px) {
+  .lista-sugestoes-larga {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+}
