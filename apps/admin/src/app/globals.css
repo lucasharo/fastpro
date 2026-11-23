@@ -93,7 +93,8 @@ textarea {
 
 .btn-primary {
   background: var(--color-button-primary-background);
-  color: var(--color-button-primary-text);
+  /* Texto branco (decisao do Lucas, 2026-11-23): no escuro o token do botao secundario vira preto; ver o fim do arquivo. */
+  color: var(--color-button-secondary-text);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -828,4 +829,15 @@ select option {
   .cartao-plano {
     padding: var(--space-4);
   }
+}
+
+/* Botao principal com texto branco no tema escuro (o token do botao secundario vira preto nesse tema). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .btn-primary {
+    color: var(--color-text-primary);
+  }
+}
+
+:root[data-theme='dark'] .btn-primary {
+  color: var(--color-text-primary);
 }

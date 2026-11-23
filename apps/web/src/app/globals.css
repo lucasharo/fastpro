@@ -104,7 +104,9 @@ textarea {
 
 .btn-primary {
   background: var(--color-button-primary-background);
-  color: var(--color-button-primary-text);
+  /* Texto branco (decisao do Lucas, 2026-11-23): no claro o token branco e o do botao secundario;
+     no escuro ele vira preto, entao a regra do tema escuro (fim do arquivo) usa o texto principal. */
+  color: var(--color-button-secondary-text);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -1639,4 +1641,15 @@ select option {
 .avaliacao-estrela:focus-within {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+/* Botao principal com texto branco no tema escuro (o token do botao secundario vira preto nesse tema). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .btn-primary {
+    color: var(--color-text-primary);
+  }
+}
+
+:root[data-theme='dark'] .btn-primary {
+  color: var(--color-text-primary);
 }
