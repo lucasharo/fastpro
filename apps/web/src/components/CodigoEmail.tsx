@@ -83,7 +83,7 @@ export function CodigoEmail({ email, finalidade, aoConfirmar, aoTrocarEmail, cri
   return (
     <div className="form">
       <p className="texto-suave" style={{ textAlign: 'center' }}>
-        Enviamos um código de 6 dígitos para <strong style={{ color: 'var(--fp-text)' }}>{email}</strong>. Confira também a caixa de spam.
+        Enviamos um código de 6 dígitos para <strong style={{ color: 'var(--color-text-primary)' }}>{email}</strong>. Confira também a caixa de spam.
       </p>
       <div className="codigo-caixas" role="group" aria-label="Código de 6 dígitos">
         {digitos.map((d, i) => (

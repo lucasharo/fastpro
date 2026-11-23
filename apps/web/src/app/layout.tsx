@@ -1,13 +1,10 @@
-// Casca da web: tokens EDS, design system, Roboto, cabecalho flutuante e rodape escuro.
+// Casca da web: tokens EDS, design system, Roboto (familia do token --font-family), cabecalho flutuante e rodape.
 import '@fastpro/tokens/tokens.css';
 import './globals.css';
 import type { Metadata } from 'next';
-import { Roboto } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { Navegacao } from '@/components/Navegacao';
 import { Rodape } from '@/components/Rodape';
-
-const roboto = Roboto({ subsets: ['latin'], weight: ['400', '500', '700'], variable: '--font-roboto', display: 'swap' });
 
 export const metadata: Metadata = {
   title: { default: 'FastPro | Profissionais verificados perto de você', template: '%s | FastPro' },
@@ -17,7 +14,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { readonly children: ReactNode }) {
   return (
-    <html lang="pt-BR" className={roboto.variable}>
+    <html lang="pt-BR">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+      </head>
       <body>
         <Navegacao />
         <main>{children}</main>

@@ -152,7 +152,7 @@ export default function FotosPedido() {
           <div className="grade" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(9rem, 1fr))' }}>
             {(fotos ?? []).map((f) => (
               <div key={f.id} className="cartao" style={{ position: 'relative' }}>
-                <div className="servico-imagem" style={{ aspectRatio: '1 / 1', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--fp-bg-light)' }}>
+                <div className="servico-imagem" style={{ aspectRatio: '1 / 1', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-background)' }}>
                   {f.estado === 'pronta' ? <Miniatura id={f.id} /> : <Icone nome={f.estado === 'recusada' ? 'alerta' : 'relogio'} tamanho={28} />}
                   <span className={`nota-flutuante ${f.estado === 'recusada' ? 'selo-erro' : ''}`}>{TEXTO_ESTADO[f.estado] ?? f.estado}</span>
                 </div>

@@ -185,7 +185,7 @@ export default function Perfil() {
             <label htmlFor="raio">
               Raio de atendimento: <strong className="destaque">{raio} km</strong>
             </label>
-            <input id="raio" type="range" min={5} max={100} step={5} value={raio} onChange={(e) => setRaio(Number(e.target.value))} style={{ accentColor: 'var(--fp-primary)' }} />
+            <input id="raio" type="range" min={5} max={100} step={5} value={raio} onChange={(e) => setRaio(Number(e.target.value))} style={{ accentColor: 'var(--color-primary)' }} />
           </div>
           {area.configured && typeof area.changesRemaining === 'number' ? (
             <p className="campo-dica">

@@ -21,7 +21,7 @@ export function Conversa({ nome, foto, subtitulo }: { readonly nome: string; rea
 
   return (
     <div className="cartao conversa">
-      <div className="linha-entre" style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--fp-border)' }}>
+      <div className="linha-entre" style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--color-border)' }}>
         <div className="linha">
           <Image src={foto} alt="" width={40} height={40} className="avatar" />
           <div>

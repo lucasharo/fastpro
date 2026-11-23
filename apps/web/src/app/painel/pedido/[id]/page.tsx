@@ -93,7 +93,7 @@ export default function DetalhePedido() {
                   <span>{p.addressText}</span>
                 </div>
               ) : null}
-              <p style={{ color: 'var(--fp-text)', whiteSpace: 'pre-wrap', marginBottom: 0 }}>{p.description}</p>
+              <p style={{ color: 'var(--color-text-primary)', whiteSpace: 'pre-wrap', marginBottom: 0 }}>{p.description}</p>
             </div>
           </div>
 

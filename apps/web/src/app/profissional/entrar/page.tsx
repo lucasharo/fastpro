@@ -56,7 +56,7 @@ export default function EntrarProfissional() {
           <input id="senha" className="entrada" type="password" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} />
         </Campo>
         <div style={{ textAlign: 'right', marginTop: '-0.5rem' }}>
-          <Link href="/profissional/recuperar" className="campo-dica" style={{ color: 'var(--fp-primary)', fontWeight: 500 }}>
+          <Link href="/profissional/recuperar" className="campo-dica" style={{ color: 'var(--color-primary)', fontWeight: 500 }}>
             Esqueci minha senha
           </Link>
         </div>
@@ -74,7 +74,7 @@ export default function EntrarProfissional() {
           {ocupado ? 'Entrando…' : 'Entrar'} <Icone nome="seta" tamanho={18} />
         </button>
         <p className="campo-dica" style={{ textAlign: 'center' }}>
-          Ainda não tem conta? <Link href="/profissional/cadastro" style={{ color: 'var(--fp-primary)', fontWeight: 700 }}>Cadastre-se grátis</Link>
+          Ainda não tem conta? <Link href="/profissional/cadastro" style={{ color: 'var(--color-primary)', fontWeight: 700 }}>Cadastre-se grátis</Link>
         </p>
       </form>
     </MolduraConta>

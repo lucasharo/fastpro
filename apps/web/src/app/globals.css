@@ -1,24 +1,6 @@
 /* Design system da web (referência: template travel-tourism). Cores só pelos tokens EDS (@fastpro/tokens);
    tons derivados com color-mix. Roboto, pesos 400/500/700. */
 
-:root {
-  --fp-primary: var(--color-primary);
-  --fp-brand: var(--color-brand);
-  --fp-bg: var(--color-surface);
-  --fp-bg-light: var(--color-background);
-  --fp-text: var(--color-text-primary);
-  --fp-muted: var(--color-text-secondary);
-  --fp-border: var(--color-border);
-  --fp-cta: var(--color-button-primary-background);
-  --fp-cta-text: var(--color-button-primary-text);
-  --fp-cta-dark: color-mix(in srgb, var(--color-primary) 82%, var(--color-brand));
-  --fp-shadow: color-mix(in srgb, var(--color-brand) 10%, transparent);
-  --fp-shadow-forte: color-mix(in srgb, var(--color-brand) 18%, transparent);
-  --fp-glass: color-mix(in srgb, var(--color-surface) 90%, transparent);
-  --fp-glass-borda: color-mix(in srgb, var(--color-surface) 50%, transparent);
-  --fp-largura: 72rem;
-}
-
 *,
 *::before,
 *::after {
@@ -31,10 +13,10 @@ html {
 
 body {
   margin: 0;
-  font-family: var(--font-roboto), var(--font-family);
-  font-weight: 400;
-  color: var(--fp-text);
-  background: var(--fp-bg);
+  font-family: var(--font-family);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
@@ -71,7 +53,7 @@ textarea {
 }
 
 :focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--fp-primary) 60%, transparent);
+  outline: 3px solid color-mix(in srgb, var(--color-primary) 60%, transparent);
   outline-offset: 2px;
 }
 
@@ -87,11 +69,11 @@ textarea {
 }
 
 .destaque {
-  color: var(--fp-primary);
+  color: var(--color-primary);
 }
 
 .container {
-  max-width: var(--fp-largura);
+  max-width: 72rem;
   margin: 0 auto;
 }
 
@@ -121,30 +103,29 @@ textarea {
 }
 
 .btn-primary {
-  background: var(--fp-cta);
-  color: var(--fp-cta-text);
+  background: var(--color-button-primary-background);
+  color: var(--color-button-primary-text);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--fp-cta-dark);
-  color: var(--color-button-secondary-text);
+  filter: brightness(0.92);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px color-mix(in srgb, var(--fp-primary) 30%, transparent);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--color-primary) 30%, transparent);
 }
 
 .btn-secondary {
   background: transparent;
-  color: var(--fp-text);
-  border-color: var(--fp-border);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  border-color: var(--fp-primary);
-  color: var(--fp-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .btn-escuro {
-  background: var(--fp-brand);
+  background: var(--color-button-secondary-background);
   color: var(--color-button-secondary-text);
 }
 
@@ -158,46 +139,46 @@ textarea {
   height: 2.5rem;
   border-radius: 999px;
   border: none;
-  background: var(--fp-bg-light);
+  background: var(--color-background);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
-  color: var(--fp-text);
+  color: var(--color-text-primary);
 }
 
 .btn-icone:hover {
-  background: var(--fp-primary);
-  color: var(--color-button-secondary-text);
+  background: var(--color-primary);
+  color: var(--color-button-primary-text);
 }
 
 /* ---------- Cartões ---------- */
 .glass-card {
-  background: var(--fp-glass);
+  background: color-mix(in srgb, var(--color-surface) 90%, transparent);
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
-  border: 1px solid var(--fp-glass-borda);
+  border: 1px solid color-mix(in srgb, var(--color-surface) 50%, transparent);
   border-radius: var(--radius-card);
-  box-shadow: 0 8px 32px var(--fp-shadow);
+  box-shadow: 0 8px 32px color-mix(in srgb, var(--color-brand) 10%, transparent);
 }
 
 .cartao {
-  background: var(--fp-bg);
+  background: var(--color-surface);
   border-radius: 20px;
-  box-shadow: 0 4px 20px var(--fp-shadow);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--color-brand) 10%, transparent);
   overflow: hidden;
   transition: all 0.3s ease;
 }
 
 .cartao-elevado:hover {
   transform: translateY(-8px);
-  box-shadow: 0 20px 40px var(--fp-shadow-forte);
+  box-shadow: 0 20px 40px color-mix(in srgb, var(--color-brand) 18%, transparent);
 }
 
 .cartao-plano {
-  background: var(--fp-bg);
-  border: 1px solid var(--fp-border);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 20px;
   padding: 1.5rem;
 }
@@ -208,8 +189,8 @@ textarea {
   gap: 0.5rem;
   padding: 0.5rem 1rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--fp-primary) 10%, transparent);
-  color: var(--fp-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
   font-size: 0.875rem;
   font-weight: 500;
 }
@@ -240,8 +221,8 @@ textarea {
 }
 
 .selo-neutro {
-  background: var(--fp-bg-light);
-  color: var(--fp-muted);
+  background: var(--color-background);
+  color: var(--color-text-secondary);
 }
 
 /* ---------- Aurora ---------- */
@@ -250,11 +231,11 @@ textarea {
   inset: 0;
   background: linear-gradient(
       135deg,
-      var(--fp-brand) 0%,
-      var(--fp-primary) 30%,
-      color-mix(in srgb, var(--fp-primary) 40%, var(--color-info-background)) 55%,
-      color-mix(in srgb, var(--color-warning-background) 70%, var(--fp-primary)) 80%,
-      var(--fp-brand) 100%
+      var(--color-brand) 0%,
+      var(--color-primary) 30%,
+      color-mix(in srgb, var(--color-primary) 40%, var(--color-info-background)) 55%,
+      color-mix(in srgb, var(--color-warning-background) 70%, var(--color-primary)) 80%,
+      var(--color-brand) 100%
     )
     0 0 / 400% 400%;
   animation: aurora 15s ease infinite;
@@ -293,7 +274,7 @@ textarea {
 }
 
 .nav-barra {
-  max-width: var(--fp-largura);
+  max-width: 72rem;
   margin: 0 auto;
   padding: 1rem 1.5rem;
   display: flex;
@@ -311,7 +292,7 @@ textarea {
 }
 
 .marca-icone {
-  color: var(--fp-primary);
+  color: var(--color-primary);
 }
 
 .nav-links {
@@ -323,13 +304,13 @@ textarea {
 .nav-link {
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--fp-muted);
+  color: var(--color-text-secondary);
   transition: color 0.2s;
 }
 
 .nav-link:hover,
 .nav-link[aria-current='page'] {
-  color: var(--fp-primary);
+  color: var(--color-primary);
 }
 
 .nav-acoes {
@@ -347,7 +328,7 @@ textarea {
 }
 
 .nav-gaveta {
-  max-width: var(--fp-largura);
+  max-width: 72rem;
   margin: 0.5rem auto 0;
   padding: 1rem 1.5rem;
   display: flex;
@@ -373,7 +354,7 @@ textarea {
 }
 
 .secao-clara {
-  background: var(--fp-bg-light);
+  background: var(--color-background);
 }
 
 @media (min-width: 640px) {
@@ -385,7 +366,7 @@ textarea {
 .sobretitulo {
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--fp-primary);
+  color: var(--color-primary);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -420,7 +401,7 @@ textarea {
 }
 
 .texto-suave {
-  color: var(--fp-muted);
+  color: var(--color-text-secondary);
 }
 
 .grade {
@@ -459,7 +440,7 @@ textarea {
 .hero-conteudo {
   position: relative;
   z-index: 1;
-  max-width: var(--fp-largura);
+  max-width: 72rem;
   margin: 0 auto;
   padding-top: 4rem;
   display: grid;
@@ -487,7 +468,7 @@ textarea {
 
 .hero-texto {
   font-size: 1.125rem;
-  color: var(--fp-muted);
+  color: var(--color-text-secondary);
   max-width: 28rem;
   margin-bottom: 2rem;
 }
@@ -512,7 +493,7 @@ textarea {
 .busca-campo label {
   display: block;
   font-size: 0.75rem;
-  color: var(--fp-muted);
+  color: var(--color-text-secondary);
   margin-bottom: 0.25rem;
 }
 
@@ -547,11 +528,11 @@ textarea {
 
 .numero-rotulo {
   font-size: 0.875rem;
-  color: var(--fp-muted);
+  color: var(--color-text-secondary);
 }
 
 .estrela {
-  color: var(--fp-primary);
+  color: var(--color-primary);
 }
 
 .hero-galeria {
@@ -620,8 +601,8 @@ textarea {
   width: 3rem;
   height: 3rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--fp-primary) 20%, transparent);
-  color: var(--fp-primary);
+  background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -656,7 +637,7 @@ textarea {
   top: 0.75rem;
   right: 0.75rem;
   padding: 0.25rem 0.5rem;
-  background: color-mix(in srgb, var(--fp-bg) 90%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 90%, transparent);
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   border-radius: 999px;
@@ -678,7 +659,7 @@ textarea {
 
 .servico-corpo p {
   font-size: 0.875rem;
-  color: var(--fp-muted);
+  color: var(--color-text-secondary);
   margin-bottom: 0.75rem;
 }
 
@@ -691,12 +672,12 @@ textarea {
 .preco {
   font-size: 1.125rem;
   font-weight: 700;
-  color: var(--fp-primary);
+  color: var(--color-primary);
 }
 
 .preco-sufixo {
   font-size: 0.875rem;
-  color: var(--fp-muted);
+  color: var(--color-text-secondary);
 }
 
 /* ---------- Diferenciais ---------- */
@@ -710,8 +691,8 @@ textarea {
   height: 4rem;
   margin: 0 auto 1.5rem;
   border-radius: 1rem;
-  background: color-mix(in srgb, var(--fp-primary) 10%, transparent);
-  color: var(--fp-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -719,8 +700,8 @@ textarea {
 }
 
 .diferencial:hover .diferencial-icone {
-  background: var(--fp-primary);
-  color: var(--color-button-secondary-text);
+  background: var(--color-primary);
+  color: var(--color-button-primary-text);
 }
 
 .diferencial h3 {
@@ -730,31 +711,31 @@ textarea {
 
 .diferencial p {
   font-size: 0.875rem;
-  color: var(--fp-muted);
+  color: var(--color-text-secondary);
 }
 
 /* ---------- Depoimentos ---------- */
 .depoimento {
-  background: var(--fp-bg);
+  background: var(--color-surface);
   border-radius: 1rem;
   padding: 1.5rem;
-  box-shadow: 0 1px 3px var(--fp-shadow);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-brand) 10%, transparent);
   transition: box-shadow 0.3s;
 }
 
 .depoimento:hover {
-  box-shadow: 0 12px 30px var(--fp-shadow-forte);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--color-brand) 18%, transparent);
 }
 
 .estrelas {
   display: flex;
   gap: 0.25rem;
   margin-bottom: 1rem;
-  color: var(--fp-primary);
+  color: var(--color-primary);
 }
 
 .depoimento-texto {
-  color: var(--fp-muted);
+  color: var(--color-text-secondary);
   margin-bottom: 1.5rem;
 }
 
@@ -763,7 +744,7 @@ textarea {
   align-items: center;
   gap: 0.75rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--fp-border);
+  border-top: 1px solid var(--color-border);
 }
 
 .avatar {
@@ -777,8 +758,8 @@ textarea {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--fp-primary) 15%, transparent);
-  color: var(--fp-primary);
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -793,7 +774,7 @@ textarea {
 
 .autor-local {
   font-size: 0.75rem;
-  color: var(--fp-muted);
+  color: var(--color-text-secondary);
 }
 
 /* ---------- Chamada final ---------- */
@@ -820,7 +801,7 @@ textarea {
 
 .chamada-texto {
   font-size: 1.125rem;
-  color: var(--fp-muted);
+  color: var(--color-text-secondary);
   max-width: 36rem;
   margin: 0 auto 2.5rem;
 }
@@ -839,7 +820,7 @@ textarea {
   justify-content: center;
   gap: 2rem;
   font-size: 0.875rem;
-  color: var(--fp-muted);
+  color: var(--color-text-secondary);
 }
 
 .garantias span {
@@ -850,7 +831,7 @@ textarea {
 
 /* ---------- Rodapé ---------- */
 .rodape {
-  background: var(--fp-brand);
+  background: var(--color-brand);
   color: var(--color-button-secondary-text);
   padding: 2.5rem 1.5rem;
 }
@@ -881,7 +862,8 @@ textarea {
 }
 
 .rodape-sobre {
-  color: color-mix(in srgb, var(--color-button-secondary-text) 60%, transparent);
+  color: inherit;
+  opacity: 0.7;
   margin: 1rem 0 1.5rem;
   max-width: 20rem;
 }
@@ -903,7 +885,8 @@ textarea {
 .rodape li a,
 .rodape li span {
   font-size: 0.875rem;
-  color: color-mix(in srgb, var(--color-button-secondary-text) 60%, transparent);
+  color: inherit;
+  opacity: 0.7;
   transition: color 0.2s;
   display: inline-flex;
   align-items: center;
@@ -911,7 +894,8 @@ textarea {
 }
 
 .rodape li a:hover {
-  color: var(--fp-primary);
+  color: var(--color-primary);
+  opacity: 1;
 }
 
 .sociais {
@@ -923,7 +907,7 @@ textarea {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-button-secondary-text) 10%, transparent);
+  background: color-mix(in srgb, currentColor 12%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -931,18 +915,19 @@ textarea {
 }
 
 .social:hover {
-  background: var(--fp-primary);
+  background: var(--color-primary);
 }
 
 .rodape-base {
   padding-top: 2rem;
-  border-top: 1px solid color-mix(in srgb, var(--color-button-secondary-text) 10%, transparent);
+  border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent);
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 1rem;
   font-size: 0.875rem;
-  color: color-mix(in srgb, var(--color-button-secondary-text) 40%, transparent);
+  color: inherit;
+  opacity: 0.6;
 }
 
 .rodape-base nav {
@@ -954,7 +939,7 @@ textarea {
 .pagina {
   min-height: 100vh;
   padding: 8rem 1.5rem 4rem;
-  background: var(--fp-bg-light);
+  background: var(--color-background);
   position: relative;
   overflow: hidden;
 }
@@ -975,7 +960,7 @@ textarea {
 .pagina-conteudo {
   position: relative;
   z-index: 1;
-  max-width: var(--fp-largura);
+  max-width: 72rem;
   margin: 0 auto;
 }
 
@@ -997,7 +982,7 @@ textarea {
 }
 
 .pagina-cabeca p {
-  color: var(--fp-muted);
+  color: var(--color-text-secondary);
   margin-top: 0.75rem;
   max-width: 40rem;
 }
@@ -1008,12 +993,12 @@ textarea {
   gap: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--fp-muted);
+  color: var(--color-text-secondary);
   margin-bottom: 1rem;
 }
 
 .voltar:hover {
-  color: var(--fp-primary);
+  color: var(--color-primary);
 }
 
 .painel-cartao {
@@ -1047,7 +1032,7 @@ textarea {
 
 .campo-dica {
   font-size: 0.75rem;
-  color: var(--fp-muted);
+  color: var(--color-text-secondary);
 }
 
 .entrada {
@@ -1063,8 +1048,8 @@ textarea {
 
 .entrada:focus {
   outline: none;
-  border-color: var(--fp-primary);
-  background: var(--fp-bg);
+  border-color: var(--color-primary);
+  background: var(--color-surface);
 }
 
 .entrada[aria-invalid='true'] {
@@ -1126,37 +1111,37 @@ textarea.entrada {
   align-items: center;
   gap: 0.75rem;
   padding: 1rem;
-  border: 2px solid var(--fp-border);
+  border: 2px solid var(--color-border);
   border-radius: var(--radius-button);
   cursor: pointer;
-  background: var(--fp-bg);
+  background: var(--color-surface);
   transition: border-color 0.2s;
   text-align: left;
   width: 100%;
 }
 
 .opcao:hover {
-  border-color: color-mix(in srgb, var(--fp-primary) 50%, var(--fp-border));
+  border-color: color-mix(in srgb, var(--color-primary) 50%, var(--color-border));
 }
 
 .opcao[aria-pressed='true'],
 .opcao:has(input:checked) {
-  border-color: var(--fp-primary);
-  background: color-mix(in srgb, var(--fp-primary) 6%, var(--fp-bg));
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
 }
 
 .opcao input {
-  accent-color: var(--fp-primary);
+  accent-color: var(--color-primary);
 }
 
 .lista-sugestoes {
   list-style: none;
   margin: 0.25rem 0 0;
   padding: 0.25rem;
-  border: 1px solid var(--fp-border);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-button);
-  background: var(--fp-bg);
-  box-shadow: 0 8px 24px var(--fp-shadow);
+  background: var(--color-surface);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-brand) 10%, transparent);
 }
 
 .lista-sugestoes button {
@@ -1172,7 +1157,7 @@ textarea.entrada {
 
 .lista-sugestoes button:hover,
 .lista-sugestoes button:focus {
-  background: var(--fp-bg-light);
+  background: var(--color-background);
 }
 
 /* ---------- Passos ---------- */
@@ -1186,11 +1171,11 @@ textarea.entrada {
   flex: 1;
   height: 0.375rem;
   border-radius: 999px;
-  background: var(--fp-border);
+  background: var(--color-border);
 }
 
 .passo-feito {
-  background: var(--fp-primary);
+  background: var(--color-primary);
 }
 
 /* ---------- Painéis e listas ---------- */
@@ -1221,18 +1206,18 @@ textarea.entrada {
   border-radius: var(--radius-button);
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--fp-muted);
+  color: var(--color-text-secondary);
   transition: all 0.2s;
 }
 
 .menu-item:hover {
-  background: var(--fp-bg-light);
-  color: var(--fp-text);
+  background: var(--color-background);
+  color: var(--color-text-primary);
 }
 
 .menu-item[aria-current='page'] {
-  background: color-mix(in srgb, var(--fp-primary) 12%, transparent);
-  color: var(--fp-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
 }
 
 .metricas {
@@ -1258,7 +1243,7 @@ textarea.entrada {
 
 .metrica-rotulo {
   font-size: 0.8125rem;
-  color: var(--fp-muted);
+  color: var(--color-text-secondary);
 }
 
 .item-lista {
@@ -1267,14 +1252,14 @@ textarea.entrada {
   align-items: center;
   padding: 1rem;
   border-radius: 1rem;
-  background: var(--fp-bg);
-  border: 1px solid var(--fp-border);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   transition: all 0.2s;
 }
 
 .item-lista:hover {
-  border-color: color-mix(in srgb, var(--fp-primary) 40%, var(--fp-border));
-  box-shadow: 0 8px 24px var(--fp-shadow);
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-brand) 10%, transparent);
 }
 
 .item-miniatura {
@@ -1306,7 +1291,7 @@ textarea.entrada {
   flex-wrap: wrap;
   gap: 0.25rem 1rem;
   font-size: 0.8125rem;
-  color: var(--fp-muted);
+  color: var(--color-text-secondary);
   margin-top: 0.25rem;
 }
 
@@ -1339,7 +1324,7 @@ textarea.entrada {
 
 .divisor {
   border: none;
-  border-top: 1px solid var(--fp-border);
+  border-top: 1px solid var(--color-border);
   margin: 1.5rem 0;
 }
 
@@ -1366,7 +1351,7 @@ textarea.entrada {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  background: var(--fp-bg-light);
+  background: var(--color-background);
 }
 
 .balao {
@@ -1378,14 +1363,14 @@ textarea.entrada {
 
 .balao-deles {
   align-self: flex-start;
-  background: var(--fp-bg);
+  background: var(--color-surface);
   border-bottom-left-radius: 0.25rem;
 }
 
 .balao-meu {
   align-self: flex-end;
-  background: var(--fp-primary);
-  color: var(--fp-cta-text);
+  background: var(--color-primary);
+  color: var(--color-button-primary-text);
   border-bottom-right-radius: 0.25rem;
 }
 
@@ -1400,7 +1385,7 @@ textarea.entrada {
   display: flex;
   gap: 0.5rem;
   padding: 1rem;
-  border-top: 1px solid var(--fp-border);
+  border-top: 1px solid var(--color-border);
 }
 
 /* ---------- Planos ---------- */
@@ -1413,7 +1398,7 @@ textarea.entrada {
 }
 
 .plano-destaque {
-  border-color: var(--fp-primary);
+  border-color: var(--color-primary);
 }
 
 .plano-preco {
@@ -1429,7 +1414,7 @@ textarea.entrada {
   flex-direction: column;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: var(--fp-muted);
+  color: var(--color-text-secondary);
 }
 
 .plano li {
@@ -1439,7 +1424,7 @@ textarea.entrada {
 }
 
 .plano li svg {
-  color: var(--fp-primary);
+  color: var(--color-primary);
 }
 
 /* ---------- Código ---------- */
@@ -1456,13 +1441,13 @@ textarea.entrada {
   font-size: 1.5rem;
   font-weight: 700;
   border-radius: var(--radius-button);
-  border: 2px solid var(--fp-border);
+  border: 2px solid var(--color-border);
   background: var(--color-field);
 }
 
 .codigo-caixas input:focus {
   outline: none;
-  border-color: var(--fp-primary);
+  border-color: var(--color-primary);
 }
 
 .mock-tag {
@@ -1470,7 +1455,7 @@ textarea.entrada {
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--fp-muted);
+  color: var(--color-text-secondary);
 }
 
 /* Sugestoes do servico: mais largas que o campo (no hero o campo e estreito), sem quebrar nomes longos. */
@@ -1495,4 +1480,23 @@ textarea.entrada {
     min-width: 0;
     max-width: none;
   }
+}
+
+/* ---------- Tema escuro ----------
+   O rodape fica sobre a cor da marca nos dois temas: no claro o texto e o texto do botao secundario (branco);
+   no escuro esse token vira preto, entao o texto passa ao texto principal do tema (branco). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .rodape {
+    color: var(--color-text-primary);
+  }
+}
+
+:root[data-theme='dark'] .rodape {
+  color: var(--color-text-primary);
+}
+
+/* Opcoes nativas do select seguem o tema. */
+select option {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
 }

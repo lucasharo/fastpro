@@ -71,7 +71,7 @@ export default function Cadastro() {
             {ocupado ? 'Criando…' : 'Criar conta'} <Icone nome="seta" tamanho={18} />
           </button>
           <p className="campo-dica" style={{ textAlign: 'center' }}>
-            Já tem conta? <Link href="/profissional/entrar" style={{ color: 'var(--fp-primary)', fontWeight: 700 }}>Entrar</Link>
+            Já tem conta? <Link href="/profissional/entrar" style={{ color: 'var(--color-primary)', fontWeight: 700 }}>Entrar</Link>
           </p>
         </form>
       )}

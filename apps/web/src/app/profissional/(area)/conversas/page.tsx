@@ -28,7 +28,7 @@ export default function Conversas() {
               key={x.id}
               type="button"
               className="item-lista"
-              style={{ textAlign: 'left', cursor: 'pointer', borderColor: x.id === ativo ? 'var(--fp-primary)' : undefined }}
+              style={{ textAlign: 'left', cursor: 'pointer', borderColor: x.id === ativo ? 'var(--color-primary)' : undefined }}
               onClick={() => setAtivo(x.id)}
             >
               <Image src={x.foto} alt="" width={44} height={44} className="avatar" />

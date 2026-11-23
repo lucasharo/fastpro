@@ -101,7 +101,7 @@ export default function PedidoRegiao() {
               </span>
               {p.modality ? <span>{ROTULO_MODALIDADE[p.modality] ?? p.modality}</span> : null}
             </div>
-            <p style={{ color: 'var(--fp-text)', whiteSpace: 'pre-wrap', marginBottom: 0 }}>{p.description}</p>
+            <p style={{ color: 'var(--color-text-primary)', whiteSpace: 'pre-wrap', marginBottom: 0 }}>{p.description}</p>
           </div>
         </div>
         <div className="glass-card painel-cartao pilha">
