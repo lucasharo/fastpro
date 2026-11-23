@@ -97,6 +97,11 @@ describe('T43-01 perfil aprovado sem sessao', () => {
     expect(r.corpo.includes('uuid-interno')).toBe(false);
   });
 
+  it('aceita o caminho com o prefixo /api (como chega na Vercel e no Next)', async () => {
+    const r = await executar('/api/v1/public/professionals/ana-teste', portaComMapa({ 'ana-teste': linhaValida }), { ip: '10.0.0.9' });
+    expect(r.status).toBe(200);
+  });
+
   it('a presenca de cookie de sessao nao muda a resposta nem cria Set-Cookie', async () => {
     const porta = portaComMapa({ 'ana-teste': linhaValida });
     const sem = await executar('/v1/public/professionals/ana-teste', porta, { ip: '10.0.0.2' });

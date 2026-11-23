@@ -77,7 +77,8 @@ function ipDoPedido(req: IncomingMessage): string {
 
 /** Extrai o slug do caminho; devolve undefined quando o caminho nao segue o formato da rota. */
 function slugDoCaminho(url: string | undefined): string | undefined {
-  const caminho = (url ?? '').split('?')[0] ?? '';
+  // Na Vercel e no Next a requisicao chega com o prefixo /api (o roteador ja o remove em routePath).
+  const caminho = ((url ?? '').split('?')[0] ?? '').replace(/^\/api(?=\/)/, '');
   if (!caminho.startsWith(PUBLIC_PROFILE_ROUTE_PREFIX)) return undefined;
   const resto = caminho.slice(PUBLIC_PROFILE_ROUTE_PREFIX.length);
   if (resto.length === 0 || resto.includes('/')) return undefined;
