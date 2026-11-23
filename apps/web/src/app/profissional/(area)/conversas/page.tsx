@@ -1,8 +1,9 @@
 'use client';
 // Conversas do profissional (GET /v1/conversations): uma por pedido aceito, da mais recente para a mais antiga.
+// Filtro "Caixa" e "Arquivadas" (H-069); contador de nao lidas por conversa (H-101), atualizado a cada 10 s.
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Conversa, iniciais } from '@/components/Conversa';
 import { Aviso, CabecaPagina, Carregando, Vazio } from '@/components/ui';
 import { chamarApi } from '@/lib/api';
@@ -18,7 +19,12 @@ interface Resumo {
   lastKind: string | null;
   lastBody: string | null;
   lastAt: string | null;
+  unreadCount: number;
+  archived: boolean;
+  blocked: boolean;
 }
+
+type Filtro = 'caixa' | 'arquivadas';
 
 function previa(c: Resumo): string {
   if (c.lastKind === 'sistema') return 'Você aceitou o pedido.';
@@ -29,32 +35,51 @@ export default function Conversas() {
   const router = useRouter();
   const [itens, setItens] = useState<Resumo[] | null>(null);
   const [ativo, setAtivo] = useState<string | null>(null);
+  const [filtro, setFiltro] = useState<Filtro>('caixa');
   const [erro, setErro] = useState('');
 
-  useEffect(() => {
-    (async () => {
-      const r = await chamarApi<{ items?: Resumo[] }>('/v1/conversations');
-      if (r.status === 401) {
-        router.replace('/profissional/entrar');
-        return;
-      }
-      if (r.status !== 200) {
-        setItens([]);
-        setErro('Não foi possível carregar as conversas agora.');
-        return;
-      }
-      const lista = Array.isArray(r.corpo?.items) ? r.corpo.items : [];
-      setItens(lista);
-      setAtivo((a) => a ?? lista[0]?.conversationId ?? null);
-    })();
+  const carregarLista = useCallback(async (): Promise<boolean> => {
+    const r = await chamarApi<{ items?: Resumo[] }>('/v1/conversations');
+    if (r.status === 401) {
+      router.replace('/profissional/entrar');
+      return false;
+    }
+    if (r.status !== 200) {
+      setItens((atual) => atual ?? []);
+      setErro('Não foi possível carregar as conversas agora.');
+      return false;
+    }
+    const lista = Array.isArray(r.corpo?.items) ? r.corpo.items : [];
+    setItens(lista);
+    setErro('');
+    setAtivo((a) => a ?? lista[0]?.conversationId ?? null);
+    return true;
   }, [router]);
 
+  useEffect(() => {
+    void carregarLista();
+    const t = setInterval(() => {
+      if (document.visibilityState === 'visible') void carregarLista();
+    }, 10000);
+    return () => clearInterval(t);
+  }, [carregarLista]);
+
   if (itens === null) return <Carregando texto="Carregando conversas…" />;
+
+  const visiveis = itens.filter((x) => (filtro === 'arquivadas' ? x.archived : !x.archived));
 
   return (
     <>
       <CabecaPagina sobretitulo="Mensagens" titulo="Suas" destaque="conversas" texto="Uma conversa para cada pedido que você aceitou." />
       {erro ? <Aviso tipo="erro">{erro}</Aviso> : null}
+      <div className="linha" role="group" aria-label="Filtrar conversas" style={{ marginBottom: '1rem' }}>
+        <button type="button" className="btn btn-secondary btn-sm" aria-pressed={filtro === 'caixa'} onClick={() => setFiltro('caixa')}>
+          Caixa
+        </button>
+        <button type="button" className="btn btn-secondary btn-sm" aria-pressed={filtro === 'arquivadas'} onClick={() => setFiltro('arquivadas')}>
+          Arquivadas
+        </button>
+      </div>
       {itens.length === 0 && !erro ? (
         <div className="glass-card">
           <Vazio
@@ -72,7 +97,16 @@ export default function Conversas() {
       {itens.length > 0 ? (
         <div className="grade" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 18rem), 1fr))', alignItems: 'start' }}>
           <div className="pilha" style={{ gap: '0.75rem' }}>
-            {itens.map((x) => (
+            {visiveis.length === 0 ? (
+              <div className="glass-card">
+                <Vazio
+                  icone="conversa"
+                  titulo={filtro === 'arquivadas' ? 'Nenhuma conversa arquivada' : 'Caixa vazia'}
+                  texto={filtro === 'arquivadas' ? 'Conversas arquivadas aparecem aqui.' : 'Suas conversas ativas aparecem aqui.'}
+                />
+              </div>
+            ) : null}
+            {visiveis.map((x) => (
               <button
                 key={x.conversationId}
                 type="button"
@@ -89,7 +123,15 @@ export default function Conversas() {
                     <span className="item-titulo">
                       {x.otherName} · {x.serviceName}
                     </span>
-                    {x.selected ? <span className="selo selo-sm selo-sucesso">Você foi escolhido</span> : null}
+                    <span className="linha">
+                      {x.unreadCount > 0 ? (
+                        <span className="selo selo-sm selo-alerta selo-contador" aria-label={`${x.unreadCount} mensagens não lidas`}>
+                          {x.unreadCount}
+                        </span>
+                      ) : null}
+                      {x.selected ? <span className="selo selo-sm selo-sucesso">Você foi escolhido</span> : null}
+                      {x.blocked ? <span className="selo selo-sm selo-erro">Bloqueada</span> : null}
+                    </span>
                   </span>
                   <span className="campo-dica" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {previa(x)}
@@ -99,7 +141,7 @@ export default function Conversas() {
               </button>
             ))}
           </div>
-          {ativo ? <Conversa conversationId={ativo} /> : null}
+          {ativo ? <Conversa conversationId={ativo} aoMudar={() => void carregarLista()} /> : null}
         </div>
       ) : null}
     </>

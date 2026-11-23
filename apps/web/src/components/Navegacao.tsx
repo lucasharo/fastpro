@@ -2,7 +2,8 @@
 // Cabecalho de vidro flutuante (template de referencia): marca, links, chamada e gaveta no celular.
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { chamarApi } from '@/lib/api';
 import { Icone } from './Icone';
 import { TrocaTema } from './TrocaTema';
 
@@ -25,6 +26,19 @@ export function Marca() {
 export function Navegacao() {
   const caminho = usePathname() ?? '';
   const [aberto, setAberto] = useState(false);
+  // Total de conversas nao lidas (H-101). Sem sessao a API responde 401 e nada aparece.
+  const [naoLidas, setNaoLidas] = useState(0);
+  const atualizarNaoLidas = useCallback(async () => {
+    const r = await chamarApi<{ total?: number }>('/v1/conversations/unread');
+    setNaoLidas(r.status === 200 && typeof r.corpo?.total === 'number' ? r.corpo.total : 0);
+  }, []);
+  useEffect(() => {
+    void atualizarNaoLidas();
+    const t = setInterval(() => {
+      if (document.visibilityState === 'visible') void atualizarNaoLidas();
+    }, 30000);
+    return () => clearInterval(t);
+  }, [caminho, atualizarNaoLidas]);
   return (
     <header className="nav">
       <nav className="nav-barra glass-card" aria-label="Principal">
@@ -33,6 +47,11 @@ export function Navegacao() {
           {LINKS.map((l) => (
             <Link key={l.href} href={l.href} className="nav-link" aria-current={caminho === l.href ? 'page' : undefined}>
               {l.rotulo}
+              {l.href === '/painel' && naoLidas > 0 ? (
+                <span className="selo selo-sm selo-alerta selo-contador" aria-label={`${naoLidas} conversas com mensagens não lidas`}>
+                  {naoLidas}
+                </span>
+              ) : null}
             </Link>
           ))}
         </div>

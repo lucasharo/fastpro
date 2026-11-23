@@ -39,6 +39,16 @@ export default function DetalhePedido() {
   const [conversaAberta, setConversaAberta] = useState<string | null>(null);
   const [aviso, setAviso] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(null);
   const [escolhendo, setEscolhendo] = useState<string | null>(null);
+  // Nao lidas por conversa (H-101), lidas de GET /v1/conversations e atualizadas a cada 10 s.
+  const [naoLidas, setNaoLidas] = useState<Record<string, number>>({});
+
+  const atualizarNaoLidas = useCallback(async () => {
+    const r = await chamarApi<{ items?: { conversationId: string; unreadCount?: number }[] }>('/v1/conversations');
+    if (r.status !== 200 || !Array.isArray(r.corpo?.items)) return;
+    const mapa: Record<string, number> = {};
+    for (const c of r.corpo.items) if (c.unreadCount) mapa[c.conversationId] = c.unreadCount;
+    setNaoLidas(mapa);
+  }, []);
 
   const carregar = useCallback(async () => {
     const [d, a] = await Promise.all([
@@ -54,7 +64,8 @@ export default function DetalhePedido() {
     const lista = a.status === 200 && Array.isArray(a.corpo?.items) ? a.corpo.items : [];
     setInteressados(lista);
     setConversaAberta((atual) => atual ?? lista.find((x) => x.selected)?.conversationId ?? lista[0]?.conversationId ?? null);
-  }, [id, router]);
+    void atualizarNaoLidas();
+  }, [id, router, atualizarNaoLidas]);
 
   useEffect(() => {
     if (!UUID_RE.test(id)) {
@@ -62,7 +73,11 @@ export default function DetalhePedido() {
       return;
     }
     void carregar();
-  }, [id, carregar]);
+    const t = setInterval(() => {
+      if (document.visibilityState === 'visible') void atualizarNaoLidas();
+    }, 10000);
+    return () => clearInterval(t);
+  }, [id, carregar, atualizarNaoLidas]);
 
   async function escolher(x: Interessado) {
     setEscolhendo(x.acceptanceId);
@@ -199,6 +214,11 @@ export default function DetalhePedido() {
                         onClick={() => setConversaAberta(x.conversationId)}
                       >
                         <Icone nome="conversa" tamanho={16} /> Conversar
+                        {naoLidas[x.conversationId] ? (
+                          <span className="selo selo-sm selo-alerta selo-contador" aria-label={`${naoLidas[x.conversationId]} mensagens não lidas`}>
+                            {naoLidas[x.conversationId]}
+                          </span>
+                        ) : null}
                       </button>
                     ) : null}
                     {x.status === 'ativo' && !x.selected && podeEscolher ? (
@@ -213,7 +233,13 @@ export default function DetalhePedido() {
             {aviso ? <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso> : null}
           </div>
         </div>
-        {conversaAberta ? <Conversa conversationId={conversaAberta} subtitulo={`Conversa sobre ${p.serviceName ?? 'o pedido'}`} /> : null}
+        {conversaAberta ? (
+          <Conversa
+            conversationId={conversaAberta}
+            subtitulo={`Conversa sobre ${p.serviceName ?? 'o pedido'}`}
+            aoMudar={() => void atualizarNaoLidas()}
+          />
+        ) : null}
       </div>
     </PaginaInterna>
   );

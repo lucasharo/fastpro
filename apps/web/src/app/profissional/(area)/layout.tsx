@@ -2,7 +2,7 @@
 // Area logada do profissional: menu lateral de vidro e conteudo. Sem sessao, cada tela leva a entrada.
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Icone, type NomeIcone } from '@/components/Icone';
 import { chamarApi } from '@/lib/api';
 
@@ -18,6 +18,21 @@ const MENU: readonly { href: string; rotulo: string; icone: NomeIcone }[] = [
 export default function LayoutArea({ children }: { readonly children: ReactNode }) {
   const caminho = usePathname() ?? '';
   const router = useRouter();
+  const [naoLidas, setNaoLidas] = useState(0);
+
+  // Contador de nao lidas (H-101) do item "Conversas": atualiza ao trocar de tela e a cada 30 s.
+  const atualizarNaoLidas = useCallback(async () => {
+    const r = await chamarApi<{ total?: number }>('/v1/conversations/unread');
+    if (r.status === 200 && typeof r.corpo?.total === 'number') setNaoLidas(r.corpo.total);
+  }, []);
+
+  useEffect(() => {
+    void atualizarNaoLidas();
+    const t = setInterval(() => {
+      if (document.visibilityState === 'visible') void atualizarNaoLidas();
+    }, 30000);
+    return () => clearInterval(t);
+  }, [caminho, atualizarNaoLidas]);
 
   async function sair() {
     await chamarApi('/v1/auth/logout', { body: {} });
@@ -35,6 +50,11 @@ export default function LayoutArea({ children }: { readonly children: ReactNode 
             <Link key={m.href} href={m.href} className="menu-item" aria-current={caminho === m.href || caminho.startsWith(`${m.href}/`) ? 'page' : undefined}>
               <Icone nome={m.icone} tamanho={18} />
               {m.rotulo}
+              {m.href === '/profissional/conversas' && naoLidas > 0 ? (
+                <span className="selo selo-sm selo-alerta selo-contador" aria-label={`${naoLidas} mensagens não lidas`}>
+                  {naoLidas}
+                </span>
+              ) : null}
             </Link>
           ))}
           <hr className="divisor" style={{ margin: '0.5rem 0' }} />

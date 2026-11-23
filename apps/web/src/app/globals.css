@@ -1512,3 +1512,51 @@ select option {
   background: var(--color-surface);
   color: var(--color-text-primary);
 }
+
+/* ===== Pacote E: chat (nao lidas, arquivar, denunciar, bloquear) ===== */
+.selo-contador {
+  min-width: 1.5rem;
+  justify-content: center;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  font-weight: 700;
+}
+
+.conversa-acoes {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.conversa-confirmacao {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.dialogo-denuncia {
+  width: min(100% - 2rem, 28rem);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.dialogo-denuncia::backdrop {
+  background: color-mix(in srgb, var(--color-text-primary) 40%, transparent);
+}
+
+.dialogo-denuncia input[type='radio'] {
+  accent-color: var(--color-primary);
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.linha-acoes-dialogo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
