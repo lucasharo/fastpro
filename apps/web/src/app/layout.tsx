@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Navegacao } from '@/components/Navegacao';
 import { Rodape } from '@/components/Rodape';
+import { SCRIPT_TEMA } from '@/components/TrocaTema';
 
 export const metadata: Metadata = {
   title: { default: 'FastPro | Profissionais verificados perto de você', template: '%s | FastPro' },
@@ -14,8 +15,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { readonly children: ReactNode }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />

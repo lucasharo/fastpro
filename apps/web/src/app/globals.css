@@ -319,8 +319,20 @@ textarea {
   gap: 0.75rem;
 }
 
+.nav-celular {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.troca-tema {
+  background: var(--color-background);
+  color: var(--color-text-primary);
+}
+
 .nav-menu-botao {
   display: inline-flex;
+  color: var(--color-text-primary);
   padding: 0.5rem;
   background: none;
   border: none;
@@ -341,7 +353,7 @@ textarea {
   .nav-acoes {
     display: flex;
   }
-  .nav-menu-botao,
+  .nav-celular,
   .nav-gaveta {
     display: none;
   }

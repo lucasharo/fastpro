@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { Icone } from './Icone';
+import { TrocaTema } from './TrocaTema';
 
 const LINKS = [
   { href: '/#servicos', rotulo: 'Serviços' },
@@ -36,6 +37,7 @@ export function Navegacao() {
           ))}
         </div>
         <div className="nav-acoes">
+          <TrocaTema />
           <Link href="/entrar" className="nav-link">
             Entrar
           </Link>
@@ -43,7 +45,9 @@ export function Navegacao() {
             Pedir orçamento
           </Link>
         </div>
-        <button
+        <div className="nav-celular">
+          <TrocaTema />
+          <button
           type="button"
           className="nav-menu-botao"
           aria-expanded={aberto}
@@ -52,7 +56,8 @@ export function Navegacao() {
           onClick={() => setAberto((v) => !v)}
         >
           <Icone nome={aberto ? 'fechar' : 'menu'} tamanho={24} />
-        </button>
+          </button>
+        </div>
       </nav>
       {aberto ? (
         <div id="nav-gaveta" className="nav-gaveta glass-card">
