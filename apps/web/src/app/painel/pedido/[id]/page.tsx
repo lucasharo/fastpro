@@ -4,10 +4,11 @@
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { Confirmacao } from '@/components/Confirmacao';
 import { Conversa, iniciais } from '@/components/Conversa';
 import { Icone } from '@/components/Icone';
 import { Aviso, CabecaPagina, Carregando, PaginaInterna, Vazio } from '@/components/ui';
-import { chamarApi, MENSAGEM_LIMITE } from '@/lib/api';
+import { chamarApi, MENSAGEM_INDISPONIVEL, MENSAGEM_LIMITE } from '@/lib/api';
 import { formatarData, formatarDataHora, rotuloUrgencia, STATUS_PEDIDO, UUID_RE } from '@/lib/formatos';
 import { fotoDoServico, urlFoto } from '@/lib/mock';
 
@@ -30,6 +31,38 @@ interface Interessado {
   selected: boolean;
 }
 
+type AcaoPedido = 'concluir' | 'desfazer' | 'cancelar';
+
+const CAMINHO_ACAO: Record<AcaoPedido, string> = {
+  concluir: 'complete',
+  desfazer: 'uncomplete',
+  cancelar: 'cancel',
+};
+
+const TEXTO_SUCESSO: Record<AcaoPedido, string> = {
+  concluir: 'Pedido marcado como concluído. Você pode desfazer essa marcação em até 24 horas.',
+  desfazer: 'A conclusão foi desfeita. O pedido voltou para selecionado.',
+  cancelar: 'Pedido cancelado. As conversas com os profissionais ficaram somente de leitura.',
+};
+
+const DIALOGO_ACAO: Record<AcaoPedido, { titulo: string; texto: string; confirmar: string }> = {
+  concluir: {
+    titulo: 'Marcar como concluído?',
+    texto: 'Confirme que o serviço foi realizado. Você poderá desfazer essa marcação em até 24 horas.',
+    confirmar: 'Confirmar conclusão',
+  },
+  desfazer: {
+    titulo: 'Desfazer a conclusão?',
+    texto: 'O pedido volta para selecionado e a conversa com o profissional escolhido continua disponível.',
+    confirmar: 'Desfazer conclusão',
+  },
+  cancelar: {
+    titulo: 'Cancelar este pedido?',
+    texto: 'O pedido deixa de receber aceites. As conversas com os profissionais ficam somente de leitura.',
+    confirmar: 'Cancelar pedido',
+  },
+};
+
 export default function DetalhePedido() {
   const id = useParams<{ id: string }>()?.id ?? '';
   const router = useRouter();
@@ -39,6 +72,9 @@ export default function DetalhePedido() {
   const [conversaAberta, setConversaAberta] = useState<string | null>(null);
   const [aviso, setAviso] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(null);
   const [escolhendo, setEscolhendo] = useState<string | null>(null);
+  // Pacote A: acao do pedido aguardando confirmacao (concluir, desfazer ou cancelar).
+  const [acao, setAcao] = useState<AcaoPedido | null>(null);
+  const [executando, setExecutando] = useState(false);
 
   const carregar = useCallback(async () => {
     const [d, a] = await Promise.all([
@@ -89,6 +125,35 @@ export default function DetalhePedido() {
     });
   }
 
+  // Pacote A: concluir, desfazer a conclusao (ate 24 h) ou cancelar. A regra mora no banco; a tela so mostra o resultado.
+  async function executarAcao(tipo: AcaoPedido) {
+    setExecutando(true);
+    setAviso(null);
+    const r = await chamarApi<{ code?: string }>(`/v1/requests/${id}/${CAMINHO_ACAO[tipo]}`, { method: 'POST' });
+    setExecutando(false);
+    setAcao(null);
+    if (r.status === 200) {
+      setAviso({ tipo: 'sucesso', texto: TEXTO_SUCESSO[tipo] });
+      await carregar();
+      return;
+    }
+    const c = r.corpo?.code;
+    setAviso({
+      tipo: 'erro',
+      texto:
+        r.status === 429
+          ? MENSAGEM_LIMITE
+          : r.status === 404
+            ? 'Pedido não encontrado.'
+            : c === 'prazo_encerrado'
+              ? 'O prazo de 24 horas para desfazer a conclusão terminou.'
+              : c === 'estado_invalido'
+                ? 'Este pedido não pode mais ser alterado assim. A tela será atualizada.'
+                : MENSAGEM_INDISPONIVEL,
+    });
+    await carregar();
+  }
+
   if (erro) {
     return (
       <PaginaInterna largura="media">
@@ -118,7 +183,26 @@ export default function DetalhePedido() {
         acoes={st ? <span className={`selo ${st.classe}`}>{st.rotulo}</span> : undefined}
       />
       <div className="pilha" style={{ gap: '1.5rem' }}>
-        <div className="grade" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 22rem), 1fr))', alignItems: 'start' }}>
+        {p.status === 'selecionado' || p.status === 'concluido' || p.status === 'publicado' || p.status === 'cancelado' ? (
+          <div className="pacote-a-acoes" aria-label="Ações do pedido">
+            {p.status === 'selecionado' ? (
+              <button type="button" className="btn btn-primary btn-sm" disabled={executando} onClick={() => setAcao('concluir')}>
+                <Icone nome="check" tamanho={16} /> Marcar como concluído
+              </button>
+            ) : null}
+            {p.status === 'concluido' ? (
+              <button type="button" className="btn btn-secondary btn-sm" disabled={executando} onClick={() => setAcao('desfazer')}>
+                <Icone nome="seta" tamanho={16} /> Desfazer conclusão
+              </button>
+            ) : null}
+            {p.status === 'publicado' || p.status === 'selecionado' ? (
+              <button type="button" className="btn btn-secondary btn-sm" disabled={executando} onClick={() => setAcao('cancelar')}>
+                <Icone nome="fechar" tamanho={16} /> Cancelar pedido
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="grade"style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 22rem), 1fr))', alignItems: 'start' }}>
           <div className="cartao">
             <div className="servico-imagem" style={{ aspectRatio: '16 / 9' }}>
               <Image src={urlFoto(fotoDoServico(p.serviceName), 900, 500)} alt="" fill sizes="50vw" />
@@ -215,6 +299,16 @@ export default function DetalhePedido() {
         </div>
         {conversaAberta ? <Conversa conversationId={conversaAberta} subtitulo={`Conversa sobre ${p.serviceName ?? 'o pedido'}`} /> : null}
       </div>
+      <Confirmacao
+        aberto={acao !== null}
+        titulo={acao ? DIALOGO_ACAO[acao].titulo : ''}
+        texto={acao ? DIALOGO_ACAO[acao].texto : ''}
+        rotuloConfirmar={acao ? DIALOGO_ACAO[acao].confirmar : ''}
+        rotuloCancelar={acao === 'desfazer' ? 'Manter conclusão' : 'Voltar'}
+        ocupado={executando}
+        onConfirmar={() => acao && void executarAcao(acao)}
+        onFechar={() => setAcao(null)}
+      />
     </PaginaInterna>
   );
 }

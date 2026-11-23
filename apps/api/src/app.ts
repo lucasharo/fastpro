@@ -122,6 +122,8 @@ import { handleRequestPublishRoute, REQUEST_PUBLISH_PATH, type PublishRouteOptio
 // Issue 45 (H-032) | Leitura do pedido: dono (GET /v1/requests/:id) e profissional elegivel (GET /v1/professional/requests/:id).
 import { handleRequestDetailRoute, isRequestDetailRoute, type RequestDetailRouteOptions } from './requests/detail-route.js';
 import { handleConversationRoute, isConversationRoute, type ConversationRouteOptions } from './conversations/conversation-route.js';
+// Pacote A (H-061, H-077, H-078, H-080) | Ciclo do pedido e do aceite: concluir, desfazer, cancelar, retirar aceite.
+import { handleLifecycleRoute, isLifecycleRoute, type LifecycleRouteOptions } from './lifecycle/lifecycle-route.js';
 // Issue 120 (H-111) | Direitos do titular: POST/GET /v1/privacy/dsr-requests e detalhe/cancelamento do proprio caso.
 import {
   handlePrivacyTitularRoute,
@@ -236,6 +238,8 @@ export interface AppOptions {
   readonly requestDetail?: RequestDetailRouteOptions;
   /** Ciclo central: interessados, selecao, conversas e mensagens. Sem esta opcao as rotas respondem 404 uniforme. */
   readonly conversations?: ConversationRouteOptions;
+  /** Pacote A: concluir, desfazer conclusao, cancelar pedido e retirar aceite. Sem esta opcao as rotas respondem 404 uniforme. */
+  readonly lifecycle?: LifecycleRouteOptions;
   /** Issue 120 (H-111): direitos do titular. Sem esta opcao as rotas /v1/privacy/dsr-requests respondem 404 uniforme. */
   readonly privacyTitular?: PrivacyTitularRouteOptions;
   /** Issue 120 (H-111): painel do DPO. Sem esta opcao, /v1/admin/privacy/dsr-cases responde 404 vazio. */
@@ -468,6 +472,14 @@ export async function handleRequest(
   // H-056 (Issue 69): fotos elegiveis do profissional e do dono. Sem a montagem, o mesmo 404 uniforme do rascunho.
   if (isPhotoViewRoute(path)) {
     if (opts.photoView) return handlePhotoViewRoute(req, res, path, opts.photoView);
+    const r = draftNotFound();
+    res.writeHead(r.status, r.headers);
+    res.end(r.body);
+    return;
+  }
+  // Pacote A: ciclo do pedido e do aceite. Sem a montagem, o mesmo 404 uniforme do rascunho.
+  if (isLifecycleRoute(req.method ?? '', path)) {
+    if (opts.lifecycle) return handleLifecycleRoute(req, res, path, opts.lifecycle);
     const r = draftNotFound();
     res.writeHead(r.status, r.headers);
     res.end(r.body);
