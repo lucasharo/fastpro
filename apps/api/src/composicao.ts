@@ -79,6 +79,9 @@ import type { PublishRouteOptions } from './requests/publish-route.js';
 import { montarDetalhePedido } from './requests/detail-composicao.js';
 import { montarConversas } from './conversations/conversation-composicao.js';
 import type { ConversationRouteOptions } from './conversations/conversation-route.js';
+// Pacote A (H-061, H-077, H-078, H-080) | Ciclo do pedido e do aceite: liga so com DATABASE_URL_APP_SYSTEM e SITE_URL.
+import { montarLifecycle } from './lifecycle/lifecycle-composicao.js';
+import type { LifecycleRouteOptions } from './lifecycle/lifecycle-route.js';
 import type { RequestDetailRouteOptions } from './requests/detail-route.js';
 // Issue 120 (H-111) | Rotas do titular para direitos: liga so com DATABASE_URL_APP_SYSTEM e a fabrica do cliente SQL.
 import { montarPrivacidadeTitular } from './privacy/privacy-composicao.js';
@@ -211,6 +214,9 @@ export interface Integracoes {
   readonly pendenciasLista: readonly string[];
   readonly requestDetail: RequestDetailRouteOptions | undefined;
   readonly conversations: ConversationRouteOptions | undefined;
+  /** Pacote A: rotas de concluir, desfazer, cancelar e retirar aceite, ou undefined (404 uniforme). */
+  readonly lifecycle: LifecycleRouteOptions | undefined;
+  readonly pendenciasCiclo: readonly string[];
   readonly pendenciasConversas: readonly string[];
   /** Issue 120 (H-111): rotas do titular para direitos, ou undefined (404 uniforme). */
   readonly privacyTitular?: PrivacyTitularRouteOptions;
@@ -356,6 +362,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   // Issue 45 (H-032): leitura do pedido (dono e profissional). Sem ADDRESS_ENC_KEY ou banco, as rotas nao ligam (404).
   const detalhe = montarDetalhePedido(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
   const conversas = montarConversas(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
+  // Pacote A: ciclo do pedido e do aceite. Sem banco app_system ou SITE_URL, as rotas nao ligam (404).
+  const ciclo = montarLifecycle(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
   // Issue 120 (H-111): direitos do titular sobre o papel app_system; sem banco ou fabrica, as rotas nao ligam (404).
   const privacidade = montarPrivacidadeTitular(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock, email, waitUntil: opcoes.waitUntil });
   // Issue 120 (H-111): painel do DPO; sem banco app_system ou ADMIN_BASE_URL, as rotas nao ligam (404 vazio).
@@ -425,6 +433,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     requestDetail: detalhe.options,
     conversations: conversas.options,
     pendenciasConversas: conversas.pendencias,
+    lifecycle: ciclo.options,
+    pendenciasCiclo: ciclo.pendencias,
     pendenciasDetalhe: detalhe.pendencias,
     privacyTitular: privacidade.options,
     pendenciasPrivacidade: privacidade.pendencias,

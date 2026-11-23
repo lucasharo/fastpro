@@ -30,6 +30,8 @@ export interface ConversaResumo {
   readonly lastEvent: string | null;
   readonly lastBody: string | null;
   readonly lastAt: string | null;
+  /** Aceite desta conversa (Pacote A): a tela do profissional usa para retirar o aceite. */
+  readonly acceptanceId: string;
 }
 
 export interface MensagemConversa {
@@ -94,6 +96,7 @@ export class PgConversationStore {
       lastEvent: texto(l.out_last_event),
       lastBody: texto(l.out_last_body),
       lastAt: iso(l.out_last_at),
+      acceptanceId: String(l.out_acceptance_id),
     }));
   }
 
