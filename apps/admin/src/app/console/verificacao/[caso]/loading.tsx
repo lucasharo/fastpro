@@ -3,8 +3,10 @@ import { TEXTO_CARREGANDO_CASO } from '../../../../verification-detail-state';
 
 export default function CarregandoCaso() {
   return (
-    <main>
-      <p role="status">{TEXTO_CARREGANDO_CASO}</p>
-    </main>
+    <div>
+      <p role="status" className="texto-suave">
+        {TEXTO_CARREGANDO_CASO}
+      </p>
+    </div>
   );
 }

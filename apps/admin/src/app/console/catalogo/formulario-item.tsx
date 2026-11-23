@@ -4,6 +4,7 @@
 // resumo de erros com foco ao aparecer, tudo operavel so pelo teclado (botoes e campos nativos). O envio nao usa
 // action nativa do formulario: assim o navegador nao limpa o que foi digitado quando a API recusa a alteracao.
 import { useActionState, useEffect, useId, useRef, useTransition, type FormEvent } from 'react';
+import { AvisoErro } from '../../../components/AvisoErro';
 import { salvarCatalogo } from './actions';
 import {
   ESTADO_INICIAL,
@@ -80,7 +81,7 @@ export function FormularioItem({ entidade, item, grupos, servicos, titulo }: For
           {estado.mensagem}
         </p>
       )}
-      {estado.situacao === 'sem_acesso' && <p role="alert">Sua sessão não permite esta alteração. Entre novamente.</p>}
+      {estado.situacao === 'sem_acesso' && <AvisoErro texto="Sua sessão não permite esta alteração. Entre novamente." />}
 
       {(entidade === 'group' || entidade === 'service') && (
         <CampoTexto
@@ -204,20 +205,20 @@ export function FormularioItem({ entidade, item, grupos, servicos, titulo }: For
 
       <div className="catalogo-acoes">
         {criacao ? (
-          <button type="submit" name="acao" value="salvar" disabled={pendente}>
+          <button type="submit" name="acao" value="salvar" className="btn btn-primary" disabled={pendente}>
             Criar
           </button>
         ) : (
           <>
-            <button type="submit" name="acao" value="salvar" disabled={pendente}>
+            <button type="submit" name="acao" value="salvar" className="btn btn-primary" disabled={pendente}>
               Salvar
             </button>
             {item?.active ? (
-              <button type="submit" name="acao" value="desativar" disabled={pendente}>
+              <button type="submit" name="acao" value="desativar" className="btn btn-secondary" disabled={pendente}>
                 Desativar
               </button>
             ) : (
-              <button type="submit" name="acao" value="reativar" disabled={pendente}>
+              <button type="submit" name="acao" value="reativar" className="btn btn-secondary" disabled={pendente}>
                 Reativar
               </button>
             )}

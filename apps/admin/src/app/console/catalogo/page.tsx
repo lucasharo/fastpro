@@ -5,6 +5,9 @@
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { ADMIN_SESSION_COOKIE } from '@fastpro/domain';
+import { AvisoErro } from '../../../components/AvisoErro';
+import { CabecaPagina } from '../../../components/CabecaPagina';
+import { EstadoVazio } from '../../../components/EstadoVazio';
 import {
   estadoDoCatalogo,
   rotuloModalidade,
@@ -39,9 +42,9 @@ async function carregarCatalogo(): Promise<CatalogoEstado> {
 
 function SecaoGrupos({ grupos, servicos }: { readonly grupos: readonly CatalogoGrupo[]; readonly servicos: readonly CatalogoServico[] }) {
   return (
-    <section aria-labelledby="catalogo-grupos" className="ops-bloco">
+    <section aria-labelledby="catalogo-grupos" className="cartao-plano pilha">
       <h2 id="catalogo-grupos">Grupos</h2>
-      {grupos.length === 0 ? <p>{TEXTO_LISTA_VAZIA}</p> : null}
+      {grupos.length === 0 ? <EstadoVazio texto={TEXTO_LISTA_VAZIA} /> : null}
       <ul className="catalogo-lista">
         {grupos.map((g) => (
           <li key={`${g.id}-${g.version}`}>
@@ -63,9 +66,9 @@ function SecaoGrupos({ grupos, servicos }: { readonly grupos: readonly CatalogoG
 
 function SecaoServicos({ grupos, servicos }: { readonly grupos: readonly CatalogoGrupo[]; readonly servicos: readonly CatalogoServico[] }) {
   return (
-    <section aria-labelledby="catalogo-servicos" className="ops-bloco">
+    <section aria-labelledby="catalogo-servicos" className="cartao-plano pilha">
       <h2 id="catalogo-servicos">Serviços</h2>
-      {servicos.length === 0 ? <p>{TEXTO_LISTA_VAZIA}</p> : null}
+      {servicos.length === 0 ? <EstadoVazio texto={TEXTO_LISTA_VAZIA} /> : null}
       <ul className="catalogo-lista">
         {servicos.map((s) => (
           <li key={`${s.id}-${s.version}`}>
@@ -96,9 +99,9 @@ function SecaoSinonimos({
 }) {
   const nomeDoServico = (id: string) => servicos.find((s) => s.id === id)?.name ?? 'serviço';
   return (
-    <section aria-labelledby="catalogo-sinonimos" className="ops-bloco">
+    <section aria-labelledby="catalogo-sinonimos" className="cartao-plano pilha">
       <h2 id="catalogo-sinonimos">Sinônimos</h2>
-      {sinonimos.length === 0 ? <p>{TEXTO_LISTA_VAZIA}</p> : null}
+      {sinonimos.length === 0 ? <EstadoVazio texto={TEXTO_LISTA_VAZIA} /> : null}
       <ul className="catalogo-lista">
         {sinonimos.map((y) => (
           <li key={`${y.id}-${y.version}`}>
@@ -123,19 +126,19 @@ export default async function PaginaCatalogo() {
   if (estado.tipo === 'sem_acesso') notFound();
   if (estado.tipo === 'erro') {
     return (
-      <main className="console">
-        <h1>Catálogo</h1>
-        <p role="alert">{TEXTO_ERRO_CARREGAR}</p>
-      </main>
+      <div>
+        <CabecaPagina titulo="Catálogo" />
+        <AvisoErro texto={TEXTO_ERRO_CARREGAR} />
+      </div>
     );
   }
 
   return (
-    <main className="console">
-      <h1>Catálogo</h1>
+    <div className="pilha">
+      <CabecaPagina titulo="Catálogo" />
       <SecaoGrupos grupos={estado.grupos} servicos={estado.servicos} />
       <SecaoServicos grupos={estado.grupos} servicos={estado.servicos} />
       <SecaoSinonimos sinonimos={estado.sinonimos} servicos={estado.servicos} grupos={estado.grupos} />
-    </main>
+    </div>
   );
 }
