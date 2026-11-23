@@ -366,14 +366,6 @@ describe('H-025 D-11: DraftGate real ligada a sugestao de endereco (H-020), pont
     expect(m.provedor.chamadas).toBe(0);
   });
 
-  it('interruptor ADDRESS_SUGGEST_ENABLED=false responde texto livre sem provedor', async () => {
-    const m = await iniciar({ ...ENV_COMPLETO, ADDRESS_SUGGEST_ENABLED: 'false' });
-    const cookie = await criarRascunho(m);
-    const r = await sugerir(m, cookie);
-    expect(r.status).toBe(200);
-    expect(JSON.parse(r.body)).toEqual({ mode: 'texto_livre', reason: 'desligado' });
-    expect(m.provedor.chamadas).toBe(0);
-  });
 });
 
 describe('H-025 D-11: composicao da sugestao (variaveis, limites e portas)', () => {
@@ -419,7 +411,6 @@ describe('H-025 D-11: composicao da sugestao (variaveis, limites e portas)', () 
     const opts = montarSugestaoEndereco(ENV_COMPLETO, { abrirCliente: abrir, rascunho: r });
     expect(opts).toBeDefined();
     expect(opts?.siteUrl).toBe(SITE);
-    expect(opts?.enabled).toBe(true);
     // A porta nao e a indisponivel: sem cookie responde no_principal sem consultar o banco.
     const semCookie = await opts?.deps.gate.check('request_draft', undefined);
     expect(semCookie).toEqual({ status: 'no_principal' });

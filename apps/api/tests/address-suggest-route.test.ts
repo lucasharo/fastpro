@@ -96,7 +96,6 @@ function montar(
     quota?: QuotaFake;
     provider?: ProviderFake;
     alerta?: ReturnType<typeof vi.fn>;
-    enabled?: boolean;
   } = {},
 ) {
   const gate = over.gate ?? new GateFake('ok');
@@ -112,7 +111,7 @@ function montar(
     clock: { nowMs: () => Date.UTC(2099, 0, 1, 12) },
     onQuotaAlert: alerta,
   };
-  return { gate, rate, quota, provider, alerta, deps, enabled: over.enabled ?? true };
+  return { gate, rate, quota, provider, alerta, deps };
 }
 
 const servers: Server[] = [];
@@ -134,7 +133,7 @@ async function subir(
   const server = createServer((req, res) =>
     handleRequest(req, res, {
       tickSecret: undefined,
-      geo: geo ? { deps: geo.deps, enabled: geo.enabled, siteUrl: SITE } : undefined,
+      geo: geo ? { deps: geo.deps, siteUrl: SITE } : undefined,
     }).catch(() => {
       res.statusCode = 500;
       res.end();
@@ -328,19 +327,12 @@ describe('T-H020-R13 validacao, origem e interruptor antes de qualquer custo (§
     expect(m.gate.calls).toBe(0);
   });
 
-  it('origem diferente responde 403 antes do corpo; interruptor desligado responde texto livre sem gate', async () => {
+  it('origem diferente responde 403 antes do corpo', async () => {
     const m = montar();
     const porta = await subir(m);
     const origem = await post(porta, corpoOk(), { Origin: 'https://outro.example.test' });
     expect(origem.status).toBe(403);
     expect(m.gate.calls).toBe(0);
-
-    const desligado = montar({ enabled: false });
-    const porta2 = await subir(desligado);
-    const r = await post(porta2, corpoOk());
-    expect(JSON.parse(r.text)).toEqual({ mode: 'texto_livre', reason: 'desligado' });
-    expect(desligado.gate.calls).toBe(0);
-    expect(r.headers['cache-control']).toBe('no-store');
   });
 
   it('sem a opcao geo a rota nao existe (404)', async () => {

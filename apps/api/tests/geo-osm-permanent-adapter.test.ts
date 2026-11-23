@@ -126,24 +126,20 @@ describe('createOsmPermanentAdapter', () => {
   });
 });
 
-describe('provedorPermanenteDoAmbiente com GEOCODER_PROVIDER=osm', () => {
+describe('provedorPermanenteDoAmbiente (sempre OpenStreetMap)', () => {
   it('liga sem chave da Mapbox em DEV e no preview', () => {
-    expect(provedorPermanenteDoAmbiente({ APP_ENV: 'development', GEOCODER_PROVIDER: 'osm' })).toBeDefined();
+    expect(provedorPermanenteDoAmbiente()).toBeDefined();
     expect(
-      provedorPermanenteDoAmbiente({ APP_ENV: 'preview', VERCEL_ENV: 'preview', GEOCODER_PROVIDER: 'osm' }),
+      provedorPermanenteDoAmbiente(),
     ).toBeDefined();
   });
-  it('producao continua sem provedor', () => {
-    expect(provedorPermanenteDoAmbiente({ APP_ENV: 'production', GEOCODER_PROVIDER: 'osm' })).toBeUndefined();
-    expect(
-      provedorPermanenteDoAmbiente({ APP_ENV: 'preview', VERCEL_ENV: 'production', GEOCODER_PROVIDER: 'osm' }),
-    ).toBeUndefined();
+  it('liga tambem em producao (sem interruptor)', () => {
+    expect(provedorPermanenteDoAmbiente()).toBeDefined();
   });
   it('montarPublicacaoPedido liga o servico sem pendencia de provedor', () => {
     const r = montarPublicacaoPedido(
       {
         APP_ENV: 'development',
-        GEOCODER_PROVIDER: 'osm',
         DATABASE_URL_APP_SYSTEM: 'postgres://sintetico',
         SITE_URL: 'https://example.test',
         ['ADDRESS_HASH_KEY']: ['endereco', 'sentinela', 'nao-registrar', 'klmnopqrst'].join('-'),

@@ -1,5 +1,5 @@
 // E3 (Issue 141) | Ponta a ponta da midia montada (docs/factory/104-DESENHO-MIDIA-COMPOSICAO.md, §8, CA-08 e CA-10).
-// montarMidia com MEDIA_UPLOAD_ENABLED=1 e ambiente completo; o banco e o banco em memoria (MemMedia) e o Storage
+// montarMidia com ambiente completo; o banco e o banco em memoria (MemMedia) e o Storage
 // e um fetch falso que implementa o contrato REST que os adaptadores reais usam (bucket quarantine e request-photos).
 // Servidor de loopback real (porta 0), sem rede: fetch global bloqueado. Valores sentinela sinteticos.
 globalThis.fetch = () => {
@@ -30,7 +30,6 @@ const NOME_CHAVE_IP = ['DRAFT', 'IP', 'HMAC', 'KEY'].join('_');
 const NOME_CHAVE_STORAGE = ['SUPABASE', 'SECRET', 'KEY'].join('_');
 
 const ENV_LIGADO: Readonly<Record<string, string>> = {
-  MEDIA_UPLOAD_ENABLED: '1',
   DATABASE_URL_APP_API: `postgres://sentinela-e2e-app-api:${SENHA_SENTINELA}@db.example.test/app`,
   DATABASE_URL_APP_SYSTEM: `postgres://sentinela-e2e-app-system:${SENHA_SENTINELA}@db.example.test/sys`,
   [NOME_CHAVE_IP]: CHAVE_IP,
@@ -264,11 +263,11 @@ describe('E3 ponta a ponta com a midia montada (CA-10, automatizado e simulado)'
     expect(estado.body).not.toMatch(/quarantine|request-photos|upload_url|token|d\/|p\//);
   });
 
-  it('CA-10: com a liberacao ausente, todas as rotas de midia respondem o 404 do rascunho e nada toca o banco ou o Storage', async () => {
+  it('CA-10: com item faltando (SUPABASE_URL), todas as rotas de midia respondem o 404 do rascunho e nada toca o banco ou o Storage', async () => {
     const env = { ...ENV_LIGADO };
-    delete (env as Record<string, string | undefined>).MEDIA_UPLOAD_ENABLED;
+    delete (env as Record<string, string | undefined>).SUPABASE_URL;
     const m = await subir(env);
-    expect(m.pendencias).toEqual(['MEDIA_UPLOAD_ENABLED (liberacao explicita)']);
+    expect(m.pendencias).toEqual(['SUPABASE_URL']);
     const esperado = draftNotFound();
     const cookie = `${COOKIE}=${SEGREDO}`;
     const alvos: Pedido[] = [

@@ -24,7 +24,6 @@ const SENTINELA_STORAGE = 'sentinela-service-key-storage-g4-0123456789';
 const SENTINELA_URL = 'https://sentinela-projeto-g5.supabase.example.test';
 
 const ENV_COMPLETO: Readonly<Record<string, string>> = {
-  MEDIA_UPLOAD_ENABLED: '1',
   DATABASE_URL_APP_API: SENTINELA_APP_API,
   DATABASE_URL_APP_SYSTEM: SENTINELA_APP_SYSTEM,
   [NOME_CHAVE_IP]: SENTINELA_CHAVE_IP,
@@ -64,9 +63,8 @@ function visoes(valor: unknown): string {
 }
 
 describe('E3 galeria na borda: portasGaleriaMidia (H-029)', () => {
-  it('fechada sem liberacao, com item faltando ou sem fabrica: nao monta e nao consulta o banco', () => {
+  it('fechada com item faltando ou sem fabrica: nao monta e nao consulta o banco', () => {
     const urls: string[] = [];
-    expect(portasGaleriaMidia({ ...ENV_COMPLETO, MEDIA_UPLOAD_ENABLED: '0' }, espiao(urls))).toBeUndefined();
     expect(portasGaleriaMidia({ ...ENV_COMPLETO, [NOME_CHAVE_STORAGE]: '' }, espiao(urls))).toBeUndefined();
     expect(portasGaleriaMidia({ ...ENV_COMPLETO, SITE_URL: 'sentinela-site-invalido' }, espiao(urls))).toBeUndefined();
     expect(portasGaleriaMidia(ENV_COMPLETO, undefined)).toBeUndefined();
@@ -128,9 +126,9 @@ describe('E3 galeria na borda: montarMidia e composicao (CA-04, CA-06)', () => {
 
   it('montarIntegracoes com a midia fechada nao monta a galeria (404 uniforme)', () => {
     const urls: string[] = [];
-    const integracoes = montarIntegracoes({ ...ENV_COMPLETO, MEDIA_UPLOAD_ENABLED: '0' }, { abrirClienteApi: espiao(urls) });
+    const integracoes = montarIntegracoes({ ...ENV_COMPLETO, SUPABASE_URL: '' }, { abrirClienteApi: espiao(urls) });
     expect(integracoes.media).toBeUndefined();
     expect(urls).toEqual([]);
-    expect(integracoes.pendenciasMidia).toContain('MEDIA_UPLOAD_ENABLED (liberacao explicita)');
+    expect(integracoes.pendenciasMidia).toContain('SUPABASE_URL');
   });
 });

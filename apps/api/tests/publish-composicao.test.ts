@@ -66,7 +66,7 @@ describe('montarPublicacaoPedido: chave de cifra do endereco (Issue 45, T-13)', 
   });
 });
 
-describe('montarPublicacaoPedido: provedor real da Mapbox', () => {
+describe('montarPublicacaoPedido: provedor da coordenada', () => {
   describe('liga com chave e APP_ENV de desenvolvimento', () => {
     const casos = ['development', 'dev', 'test', ' Development ', 'DEV', '  test  ', 'local', 'preview'];
     for (const appEnv of casos) {
@@ -89,36 +89,12 @@ describe('montarPublicacaoPedido: provedor real da Mapbox', () => {
     });
   });
 
-  describe('nao liga (service undefined e pendencia com o nome da variavel)', () => {
-    const casosSemLigar: Array<[string, Record<string, string | undefined>]> = [
-      ['APP_ENV production', { APP_ENV: 'production', [NOME_TOKEN]: TOKEN_SENTINELA }],
-      ['APP_ENV ausente', { [NOME_TOKEN]: TOKEN_SENTINELA }],
-      ['APP_ENV staging', { APP_ENV: 'staging', [NOME_TOKEN]: TOKEN_SENTINELA }],
-      ['APP_ENV desconhecido', { APP_ENV: 'desenvolvimento', [NOME_TOKEN]: TOKEN_SENTINELA }],
-      ['chave vazia', { APP_ENV: 'development', [NOME_TOKEN]: '' }],
-      ['chave so espacos', { APP_ENV: 'development', [NOME_TOKEN]: '     ' }],
-      ['chave ausente', { APP_ENV: 'development' }],
-      [
-        'APP_ENV development com VERCEL_ENV production',
-        { APP_ENV: 'development', VERCEL_ENV: 'production', [NOME_TOKEN]: TOKEN_SENTINELA },
-      ],
-    ];
-
-    for (const [descricao, extra] of casosSemLigar) {
-      it(`${descricao}: options definido, service undefined e pendencia com o nome`, () => {
-        const r = montarPublicacaoPedido(ambiente(extra), opcoesComFabrica());
-        expect(r.options).toBeDefined();
-        expect(r.options?.service).toBeUndefined();
-        expect(r.pendencias.some((p) => p.includes(NOME_TOKEN))).toBe(true);
-      });
+  it('liga o provedor (OpenStreetMap) em qualquer ambiente, sem chave nem interruptor', () => {
+    for (const extra of [{ APP_ENV: 'production' }, {}, { APP_ENV: 'development', VERCEL_ENV: 'production' }]) {
+      const r = montarPublicacaoPedido(ambiente(extra), opcoesComFabrica());
+      expect(r.options?.service).toBeDefined();
+      expect(r.pendencias).toEqual([]);
     }
-  });
-
-  it('options definido mesmo sem provedor, com as variaveis fixas completas', () => {
-    const r = montarPublicacaoPedido(ambiente({ APP_ENV: 'production' }), opcoesComFabrica());
-    expect(r.options).toBeDefined();
-    expect(r.options?.siteUrl).toBe(AMBIENTE_BASE.SITE_URL);
-    expect(r.options?.service).toBeUndefined();
   });
 
   it('nenhuma pendencia contem o valor do token, da chave HMAC ou da chave de endereco', () => {

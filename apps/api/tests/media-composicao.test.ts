@@ -21,7 +21,6 @@ const SENHA_SENTINELA = 'senha';
 const NOME_CHAVE_IP = ['DRAFT', 'IP', 'HMAC', 'KEY'].join('_');
 const NOME_CHAVE_STORAGE = ['SUPABASE', 'SECRET', 'KEY'].join('_');
 const SITE = 'https://fastpro.example.test';
-const LIBERACAO = 'MEDIA_UPLOAD_ENABLED (liberacao explicita)';
 const SENTINELA_APP_API = `postgres://sentinela-app-api-u1:${SENHA_SENTINELA}@db.example.test/app`;
 const SENTINELA_APP_SYSTEM = `postgres://sentinela-app-system-u2:${SENHA_SENTINELA}@db.example.test/sys`;
 const SENTINELA_CHAVE_IP = 'sentinela-chave-ip-hmac-k3-'.padEnd(40, 'x');
@@ -31,7 +30,6 @@ const COOKIE = '__Host-fp_draft';
 const SEGREDO = 'B'.repeat(43);
 
 const ENV_COMPLETO: Readonly<Record<string, string>> = {
-  MEDIA_UPLOAD_ENABLED: '1',
   DATABASE_URL_APP_API: SENTINELA_APP_API,
   DATABASE_URL_APP_SYSTEM: SENTINELA_APP_SYSTEM,
   [NOME_CHAVE_IP]: SENTINELA_CHAVE_IP,
@@ -69,22 +67,12 @@ describe('E3 montarMidia: liberacao, pendencias e papel (CA-02, CA-04, CA-05, CA
     const r = montarMidia({}, { abrirCliente: espiao([]) });
     expect(r.options).toBeUndefined();
     expect(r.pendencias).toEqual([
-      LIBERACAO,
       'DATABASE_URL_APP_API',
       'DRAFT_IP_HMAC_KEY',
       'SITE_URL',
       'SUPABASE_URL',
       NOME_CHAVE_STORAGE,
     ]);
-  });
-
-  it('CA-02: liberacao ausente, 0, true ou com espacos deixa a midia fechada, com ambiente completo', () => {
-    for (const valor of [undefined, '0', 'true', ' 1', '1 ']) {
-      const env = { ...ENV_COMPLETO, MEDIA_UPLOAD_ENABLED: valor };
-      const r = montarMidia(env, { abrirCliente: espiao([]) });
-      expect(r.options).toBeUndefined();
-      expect(r.pendencias).toEqual([LIBERACAO]);
-    }
   });
 
   it('CA-02: chave do IP curta aparece marcada, sem tamanho e sem valor', () => {

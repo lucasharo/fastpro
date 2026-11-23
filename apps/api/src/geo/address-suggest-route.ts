@@ -1,5 +1,5 @@
 // H-020 | Rota POST /v1/geo/address-suggest (docs/factory/56-DESENHO-H020.md, §2.1, §2.2).
-// Ordem fixa: Origin e Content-Type conferidos ANTES do corpo; interruptor; corpo (so {q, context}, 1 KB);
+// Ordem fixa: Origin e Content-Type conferidos ANTES do corpo; corpo (so {q, context}, 1 KB);
 // e so entao o servico. Sem CORS. Sem log do corpo ou do texto. Resposta sempre Cache-Control: no-store.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import {
@@ -13,8 +13,6 @@ import { suggestAddress, type AddressSuggestDeps } from './address-suggest-servi
 export interface GeoRouteOptions {
   /** Dependencias do servico (portas). Sem elas a rota nao existe (404, §2.1). */
   readonly deps: AddressSuggestDeps;
-  /** Interruptor ADDRESS_SUGGEST_ENABLED. Desligado: texto livre, sem provedor (§2.2 passo 1). */
-  readonly enabled: boolean;
   /** SITE_URL: a origem dela e a unica aceita em Origin. */
   readonly siteUrl: string;
 }
@@ -80,11 +78,6 @@ export async function handleAddressSuggest(
     );
     if (!cabecalhos.ok) {
       enviar(res, cabecalhos.status, { code: cabecalhos.code });
-      return;
-    }
-
-    if (!opts.enabled) {
-      enviar(res, 200, { mode: 'texto_livre', reason: 'desligado' });
       return;
     }
 

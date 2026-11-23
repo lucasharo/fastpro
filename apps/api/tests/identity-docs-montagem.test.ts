@@ -15,7 +15,6 @@ import {
 import { MemGate } from './identity-docs-fakes.js';
 
 const COMPLETO: Record<string, string> = {
-  IDENTITY_DOCS_ENABLED: '1',
   DATABASE_URL_APP_SYSTEM: 'postgres://usuario:senha@host/db',
   SUPABASE_URL: 'https://projeto-de-teste.supabase.co',
   SUPABASE_SECRET_KEY: 'dummy-chave-de-servico-de-teste',
@@ -49,36 +48,19 @@ async function subir(opcoes: AppOptions): Promise<string> {
 }
 
 describe('H-037 | T-23: trava e pendencias da montagem', () => {
-  it('fechada sem IDENTITY_DOCS_ENABLED=1: sem opcoes, sem pendencias e zero chamadas', () => {
+  it('ambiente vazio: sem opcoes, lista os nomes e zero chamadas', () => {
     const abrir = vi.fn(() => clienteFalso());
     const r = montarDocumentosDoAmbiente({}, { abrirCliente: abrir, gate: new MemGate() });
     expect(r.options).toBeUndefined();
-    expect(r.pendencias).toEqual([]);
+    expect(r.pendencias).toContain('SUPABASE_URL');
     expect(abrir).not.toHaveBeenCalled();
   });
 
-  it('valor da trava diferente de 1 continua fechada', () => {
-    const r = montarDocumentosDoAmbiente({ ...COMPLETO, IDENTITY_DOCS_ENABLED: 'true' }, {
-      abrirCliente: () => clienteFalso(),
-      gate: new MemGate(),
-    });
-    expect(r.options).toBeUndefined();
-    expect(r.pendencias).toEqual([]);
-  });
-
-  it('em producao sem IDENTITY_DOCS_L1_PARECER=1 fica fechada e nomeia a variavel', () => {
-    const abrir = vi.fn(() => clienteFalso());
-    const r = montarDocumentosDoAmbiente({ ...COMPLETO, VERCEL_ENV: 'production' }, { abrirCliente: abrir, gate: new MemGate() });
-    expect(r.options).toBeUndefined();
-    expect(r.pendencias).toContain('IDENTITY_DOCS_L1_PARECER');
-    expect(abrir).not.toHaveBeenCalled();
-  });
-
-  it('em producao com IDENTITY_DOCS_L1_PARECER=1 e completa, monta as opcoes (caso positivo)', () => {
+  it('em producao e completa, monta as opcoes sem trava extra (caso positivo)', () => {
     const cliente = clienteFalso();
     const abrir = vi.fn(() => cliente);
     const r = montarDocumentosDoAmbiente(
-      { ...COMPLETO, VERCEL_ENV: 'production', IDENTITY_DOCS_L1_PARECER: '1' },
+      { ...COMPLETO, VERCEL_ENV: 'production' },
       { abrirCliente: abrir, gate: new MemGate() },
     );
     expect(r.pendencias).toEqual([]);

@@ -18,7 +18,6 @@ export const DATABASE_URL_APP_SYSTEM_ENV = 'DATABASE_URL_APP_SYSTEM' as const;
 export const MAPBOX_TEMP_SOFT_ENV = 'MAPBOX_TEMP_SOFT_LIMIT' as const;
 export const MAPBOX_TEMP_HARD_ENV = 'MAPBOX_TEMP_HARD_LIMIT' as const;
 /** Interruptor: so 'false' desliga (padrao ligado, 56 §2.2 passo 1). */
-export const ADDRESS_SUGGEST_ENABLED_ENV = 'ADDRESS_SUGGEST_ENABLED' as const;
 /** Teto do banco (private.mapbox_temp_quota_take, 99.000) e abaixo das 100.000 gratuitas. */
 export const MAPBOX_TEMP_HARD_MAX = 99_000;
 
@@ -173,7 +172,6 @@ export function montarSugestaoEndereco(
   };
   return {
     deps,
-    enabled: (env[ADDRESS_SUGGEST_ENABLED_ENV] ?? '').trim().toLowerCase() !== 'false',
     siteUrl: rascunho.siteUrl,
   };
 }

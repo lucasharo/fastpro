@@ -65,7 +65,7 @@ import type { ProfessionalTrialRouteOptions } from './professional-trial-route.j
 // H-036 | Servicos, base e raio do perfil profissional (/v1/professional/profile/services e /area).
 import { montarOfertaProfissional } from './professional-offering-composicao.js';
 import type { ProfessionalOfferingRouteOptions } from './professional-offering-route.js';
-// E3 (Issue 141) | Midia: upload, quarentena e galeria (so liga com MEDIA_UPLOAD_ENABLED=1 e todos os itens; decisao 190).
+// E3 (Issue 141) | Midia: upload, quarentena e galeria (liga com todos os itens).
 import { montarMidia, portasGaleriaMidia } from './media/media-composicao.js';
 import type { MediaRouteOptions } from './media/media-route.js';
 import type { ReduceCounters } from './media/media-reduce-service.js';
@@ -339,7 +339,7 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
 
   // H-036: servicos, base e raio. Sem o provedor permanente (BLQ-EXEC, decisao 116) as rotas seguem 404.
   // Mesmo provedor permanente da publicacao (endereco-base do profissional); so DEV e preview.
-  const provedorPermanente = provedorPermanenteDoAmbiente(env);
+  const provedorPermanente = provedorPermanenteDoAmbiente();
   const oferta = montarOfertaProfissional(env, {
     abrirCliente: opcoes.abrirClienteSql,
     relogio: opcoes.clock,
@@ -371,7 +371,7 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   // Issue 46 (H-033): telefone e consentimento. Sem PHONE_ENC_KEY valida, as rotas nao ligam (404).
   const contato = montarContato(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
 
-  // E3: midia. Liga so com MEDIA_UPLOAD_ENABLED=1 e os itens completos (decisao 190); sem isso, 404.
+  // E3: midia. Liga com os itens completos; sem eles, 404.
   // A galeria (H-029) entra junto, pelas portas montadas na borda; sem a midia ligada, ela tambem fica 404.
   const galeriaMidia = portasGaleriaMidia(env, opcoes.abrirClienteApi);
   const midia = montarMidia(env, {
@@ -383,7 +383,7 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   // Issue 56 (H-043): perfil publico; liga so com DATABASE_URL_APP_SYSTEM e a fabrica do papel app_system.
   const perfilPublico = montarPerfilPublicoRota(env, { abrirCliente: opcoes.abrirClienteSql });
 
-  // H-037 (#50): documentos de identidade; fechados por trava (sem pendencias) ou incompletos (com nomes).
+  // H-037 (#50): documentos de identidade; incompletos = fechados (com nomes nas pendencias).
   const documentos = montarDocumentosDoAmbiente(env, {
     abrirCliente: opcoes.abrirClienteSistema,
     gate: opcoes.reducaoMidia?.gate,

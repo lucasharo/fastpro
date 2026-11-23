@@ -1,8 +1,7 @@
 // H-031 (Issue 44) | Montagem da rota de publicacao a partir do ambiente (docs/factory/110-DESENHO-H031.md, §7; D-12).
 // Liga com os itens fixos presentes: papel app_system (DATABASE_URL_APP_SYSTEM), SITE_URL, chave de hash do endereco
 // (ADDRESS_HASH_KEY, com tamanho minimo) e a chave dos baldes e do token (REQUEST_PUBLISH_HMAC_KEY, >= 32).
-// Provedor real (Mapbox, permanente): liga so com MAPBOX_ACCESS_TOKEN, APP_ENV de desenvolvimento e VERCEL_ENV
-// ausente ou development (decisao 239, Rodada 66 do quadro). Em preview, producao, ou sem a chave, a rota responde 503 (D-12).
+// Provedor da coordenada gravada: sempre OpenStreetMap/Nominatim (decisao do dono, 2026-11-22), sem interruptor.
 // Nunca le, grava nem registra o valor das variaveis: so o nome aparece nas pendencias.
 import { createHmac } from 'node:crypto';
 import { PgContactStore, PgGeoPointStore, PgRequestPublishStore, PgSessionRepository, type SqlClient } from '@fastpro/db';
@@ -10,24 +9,12 @@ import { parseBreakerCaps } from '@fastpro/domain';
 import { createDraftHasher } from '../drafts/draft-hash.js';
 import { createAddressHasher } from '../geo/address-hash.js';
 import { createAddressVault, type AddressVault } from './address-crypto.js';
-import { MAPBOX_TOKEN_ENV } from '../geo/composicao-sugestao.js';
-import { createMapboxPermanentAdapter } from '../geo/mapbox-permanent-adapter.js';
 import { createOsmPermanentAdapter } from '../geo/osm-permanent-adapter.js';
 import type { GeocodingPermanentPort } from '../geo/permanent-ports.js';
 import type { PublishRouteOptions } from './publish-route.js';
 import type { PublishServiceDeps } from './publish-service.js';
 // Issue 46 (H-033): telefone opcional da publicacao (mesmo cliente app_system; sem PHONE_ENC_KEY valida, sem telefone).
 import { cofreDoTelefone } from '../contact/contact-composicao.js';
-
-/** APP_ENV em que o provedor real pode ligar (decisao 239, ampliada pelo dono em 2026-11-22: DEV local e preview).
- * Sem APP_ENV, nao liga; production nunca liga por aqui. */
-const AMBIENTES_COM_PROVEDOR_REAL: readonly string[] = ['development', 'dev', 'test', 'local', 'preview'];
-
-/** VERCEL_ENV em que o provedor real pode ligar: ausente (local), development ou preview. Producao nunca liga. */
-const VERCEL_AMBIENTES_COM_PROVEDOR_REAL: readonly string[] = ['', 'development', 'preview'];
-
-/** Escolha do provedor permanente: "osm" = OpenStreetMap/Nominatim (decisao do dono, 2026-11-22); ausente = Mapbox. */
-export const GEOCODER_PROVIDER_ENV = 'GEOCODER_PROVIDER' as const;
 
 /** Variaveis fixas exigidas (nomes). */
 export const PUBLICACAO_PEDIDO_ENV_OBRIGATORIAS = [
@@ -77,23 +64,9 @@ function preenchida(env: Ambiente, nome: string): boolean {
   return (env[nome] ?? '').trim() !== '';
 }
 
-/**
- * Provedor real da Mapbox para a publicacao: so com a chave no ambiente, APP_ENV de desenvolvimento e
- * VERCEL_ENV ausente ou development. Fora disso (preview, producao, ambiente desconhecido ou chave ausente)
- * devolve undefined e a rota segue 503.
- */
-export function provedorPermanenteDoAmbiente(env: Ambiente): GeocodingPermanentPort | undefined {
-  const ambiente = (env.APP_ENV ?? '').trim().toLowerCase();
-  if (!AMBIENTES_COM_PROVEDOR_REAL.includes(ambiente)) return undefined;
-  const ambienteVercel = (env.VERCEL_ENV ?? '').trim().toLowerCase();
-  if (!VERCEL_AMBIENTES_COM_PROVEDOR_REAL.includes(ambienteVercel)) return undefined;
-  // Mapbox so no autocompletar e no mapa: a coordenada gravada vem do OpenStreetMap.
-  if ((env[GEOCODER_PROVIDER_ENV] ?? '').trim().toLowerCase() === 'osm') {
-    return createOsmPermanentAdapter({ fetchImpl: globalThis.fetch });
-  }
-  const token = (env[MAPBOX_TOKEN_ENV] ?? '').trim();
-  if (token === '') return undefined;
-  return createMapboxPermanentAdapter({ token, fetchImpl: globalThis.fetch });
+/** Provedor da coordenada gravada: OpenStreetMap/Nominatim em qualquer ambiente (Mapbox so no autocompletar e no mapa). */
+export function provedorPermanenteDoAmbiente(): GeocodingPermanentPort {
+  return createOsmPermanentAdapter({ fetchImpl: globalThis.fetch });
 }
 
 /** Telefone da publicacao (Issue 46): cofre e porta do mesmo cliente. Sem chave valida, undefined. */
@@ -137,10 +110,7 @@ export function montarPublicacaoPedido(env: Ambiente, opcoes: PublicacaoPedidoOp
   ) {
     return { options: undefined, pendencias };
   }
-  const provedor = opcoes.provedor ?? provedorPermanenteDoAmbiente(env);
-  if (provedor === undefined) {
-    pendencias.push(`${MAPBOX_TOKEN_ENV} com APP_ENV de desenvolvimento (provedor de geocodificacao, decisao 239)`);
-  }
+  const provedor = opcoes.provedor ?? provedorPermanenteDoAmbiente();
 
   const relogio = opcoes.relogio ?? { nowMs: () => Date.now() };
   const cliente = clienteDe(url, opcoes.abrirCliente);

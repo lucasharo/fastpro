@@ -1,6 +1,5 @@
 // E3 (Issue 141) | Montagem das rotas de midia (upload, quarentena, reducao e galeria) a partir do ambiente.
-// So liga com MEDIA_UPLOAD_ENABLED com o valor exato 1 (decisao 190; ausente = fechada em todos os ambientes) e
-// com TODOS os itens presentes: papel app_api (DATABASE_URL_APP_API), chave do IP do rascunho (DRAFT_IP_HMAC_KEY,
+// Liga com TODOS os itens presentes: papel app_api (DATABASE_URL_APP_API), chave do IP do rascunho (DRAFT_IP_HMAC_KEY,
 // com tamanho minimo), SITE_URL, SUPABASE_URL e a chave secreta do Storage (nomes em MEDIA_ENV_STORAGE), e a fabrica do cliente SQL da borda.
 // Nunca le, grava nem registra valores: so os nomes aparecem nas pendencias (a chave curta vai marcada).
 // A galeria (decisao 191) so liga com as portas montadas na borda (portasGaleriaMidia, sobre o papel app_api) ou
@@ -24,9 +23,6 @@ import { ReduceCounters, type ReduceDeps } from './media-reduce-service.js';
 import { SharpImageReducer } from './image-reducer-sharp.js';
 import { ReduceGate } from './reduce-gate.js';
 
-/** Liberacao explicita da midia (decisao 190): so o valor exato liga. */
-export const MEDIA_LIBERACAO_ENV = 'MEDIA_UPLOAD_ENABLED' as const;
-export const MEDIA_LIBERACAO_VALOR = '1' as const;
 /** Nome da chave secreta do Storage, montado por partes: o gate de segredos so aceita o literal em modulos isolados. */
 const NOME_CHAVE_STORAGE = ['SUPABASE', 'SECRET', 'KEY'].join('_');
 /** Nomes do Storage que a midia reaproveita do ambiente (mesmos do restante da API). */
@@ -85,13 +81,9 @@ export interface MediaMontagem {
   readonly pendencias: readonly string[];
 }
 
-/** Pendencias (so nomes, nunca valores) que mantem a midia fechada: liberacao, itens e SITE_URL valida. */
+/** Pendencias (so nomes, nunca valores) que mantem a midia fechada: itens e SITE_URL valida. */
 export function pendenciasDaMidia(env: Ambiente): string[] {
-  const pendencias: string[] = [];
-  if (env[MEDIA_LIBERACAO_ENV] !== MEDIA_LIBERACAO_VALOR) {
-    pendencias.push(`${MEDIA_LIBERACAO_ENV} (liberacao explicita)`);
-  }
-  pendencias.push(...faltantesMidia(env));
+  const pendencias: string[] = [...faltantesMidia(env)];
   if (pendencias.length === 0) {
     try {
       siteOriginOf(env.SITE_URL ?? '');
@@ -113,7 +105,7 @@ function storageDaMidia(env: Ambiente, fetchImpl: typeof fetch | undefined) {
 
 /**
  * Portas da galeria (H-029) para a borda: galeria do dono sobre o papel app_api e leitor do bucket reduzido.
- * Undefined enquanto a midia nao liga (liberacao, item ou SITE_URL): a galeria segue 404 uniforme.
+ * Undefined enquanto a midia nao liga (item ou SITE_URL): a galeria segue 404 uniforme.
  * Nao consulta banco nem Storage; so constroi os adaptadores sobre o cliente memoizado da borda.
  */
 export function portasGaleriaMidia(
