@@ -3,7 +3,8 @@
 // variaveis completas. Sem fabrica de pool, a busca de servico continua 404.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { metric, waitUntil } from '@vercel/functions';
-import { handleRequest } from './app.js';
+import { handleRequest, routePath } from './app.js';
+import { montarExecutorJobs, montarTickOportunista } from './jobs/executor-composicao.js';
 import { montarIntegracoes, montarRetencaoAdmin } from './composicao.js';
 import { abrirClienteSql, abrirConexaoDedicadaSql } from './sql-pool.js';
 import { criarFabricaCatalogo } from './catalog/fabrica-pg.js';
@@ -34,6 +35,9 @@ const fabricaRascunho = criarFabricaRascunho(abrirClienteApi);
 const reducaoMidia = { gate: new ReduceGate(), contadores: new ReduceCounters() };
 /** H-025 (D-11): cliente do papel app_system para a cota da sugestao (um por URL, reaproveitado). */
 const abrirClienteSistema = memoizarCliente(abrirClienteSql);
+/** Executor dos avisos (uma instancia por modulo) e o tick oportunista que roda depois das respostas. */
+const executorJobs = montarExecutorJobs(process.env, { abrirConexaoDedicada: abrirConexaoDedicadaSql });
+const tickOportunista = montarTickOportunista(executorJobs);
 
 export default async function vercelHandler(
   req: IncomingMessage,
@@ -107,7 +111,10 @@ export default async function vercelHandler(
       ...(integracoes.requestAcceptance !== undefined ? { requestAcceptance: integracoes.requestAcceptance } : {}),
       ...(integracoes.photoView !== undefined ? { photoView: integracoes.photoView } : {}),
       ...(integracoes.watermarkedPhoto !== undefined ? { watermarkedPhoto: integracoes.watermarkedPhoto } : {}),
+      ...(executorJobs !== undefined ? { jobs: executorJobs } : {}),
     });
+    // Depois da resposta: processa avisos pendentes (no maximo uma vez por minuto por instancia).
+    if (tickOportunista !== undefined) waitUntil(tickOportunista(routePath(req.url)));
   } catch {
     // Sem detalhe de erro na resposta nem no log (ADR-013: sem dado sensivel).
     if (!res.headersSent) {

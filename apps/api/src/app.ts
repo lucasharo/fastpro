@@ -234,6 +234,8 @@ export interface AppOptions {
   readonly billing?: BillingRouteOptions;
   /** E5 (H-053): reconciliacao diaria executada pelo tick autenticado. */
   readonly billingReconcile?: Pick<BillingService, 'reconciliar'>;
+  /** Executor dos jobs do pipeline de avisos (outbox, agrupamento e envio). Sem ele o tick nao processa avisos. */
+  readonly jobs?: { rodar(origem: 'a'): Promise<unknown> };
   /** H-036: servicos, base e raio do perfil. Sem esta opcao as rotas nao existem (404). */
   readonly professionalOffering?: ProfessionalOfferingRouteOptions;
   /** H-031 (#44): publicacao do pedido. Sem esta opcao a rota POST /v1/requests responde 404 uniforme (decisao 254). */
@@ -332,7 +334,22 @@ async function handleTick(
       reconciliacao = 'falhou';
     }
   }
-  send(res, 200, JSON_HEADERS, JSON.stringify(reconciliacao === undefined ? { ok: true } : { ok: true, reconciliacao }));
+  // Avisos do ciclo central: processa o pipeline (outbox -> itens -> e-mails). Falha nao derruba o tick.
+  let avisos: 'executado' | 'falhou' | undefined;
+  if (opts.jobs) {
+    try {
+      await opts.jobs.rodar('a');
+      avisos = 'executado';
+    } catch {
+      avisos = 'falhou';
+    }
+  }
+  send(
+    res,
+    200,
+    JSON_HEADERS,
+    JSON.stringify({ ok: true, ...(reconciliacao === undefined ? {} : { reconciliacao }), ...(avisos === undefined ? {} : { avisos }) }),
+  );
 }
 
 /** Roteia uma requisicao. Rotas desconhecidas e metodos errados respondem 404 sem corpo. */

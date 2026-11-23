@@ -43,6 +43,7 @@ class TransporteContado implements HttpTransport {
 const VALORES: Readonly<Record<string, unknown>> = {
   request_ref: '6f1c2d3e-4b5a-4c6d-8e7f-9a0b1c2d3e4f',
   conversation_ref: 'conversa-160',
+  servico: 'Eletricista residencial',
   count: 2,
 };
 
