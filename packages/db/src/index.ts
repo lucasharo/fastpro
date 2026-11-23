@@ -113,3 +113,6 @@ export * from './reminders.js';
 export * from './request-lifecycle.js';
 export * from './request-waves.js';
 export * from './reviews.js';
+
+// Pacote D (H-095, H-096, H-098) | Adaptador de leitura do ciclo central (regras em @fastpro/domain, registerCycleRules).
+export * from './cycle-source.js';

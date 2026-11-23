@@ -13,6 +13,8 @@ export * from './professional-renderer.js';
 export * from './professional-mail.js';
 // H-099 (Issue 109) | Modelos dos lembretes de prazo (pedido) e de trial (desenho 163 §6). Sem envio.
 export * from './reminder-renderer.js';
+// Pacote D (H-095, H-096, H-098) | Modelos dos avisos do ciclo central (aceite, mensagem, selecao, cancelamento). Sem envio.
+export * from './cycle-renderer.js';
 export * from './transports.js';
 export * from './resend.js';
 export * from './destination.js';
