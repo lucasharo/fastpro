@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { useSessao } from '@/components/Sessao';
 import { Aviso, CabecaPagina, Carregando, PaginaInterna, Vazio } from '@/components/ui';
 import { chamarApi } from '@/lib/api';
 import { formatarData, rotuloUrgencia, STATUS_PEDIDO, UUID_RE } from '@/lib/formatos';
@@ -51,10 +52,7 @@ export default function Painel() {
     void carregar();
   }, [carregar]);
 
-  async function sair() {
-    await chamarApi('/v1/auth/logout', { body: {} });
-    router.push('/');
-  }
+  const { sair } = useSessao();
 
   return (
     <PaginaInterna>

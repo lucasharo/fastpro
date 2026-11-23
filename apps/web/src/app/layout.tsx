@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import { Navegacao } from '@/components/Navegacao';
 import { Rodape } from '@/components/Rodape';
 import { SCRIPT_TEMA } from '@/components/TrocaTema';
+import { ProvedorSessao } from '@/components/Sessao';
 
 export const metadata: Metadata = {
   title: { default: 'FastPro | Profissionais verificados perto de você', template: '%s | FastPro' },
@@ -23,9 +24,11 @@ export default function RootLayout({ children }: { readonly children: ReactNode 
         <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
       </head>
       <body>
-        <Navegacao />
-        <main>{children}</main>
-        <Rodape />
+        <ProvedorSessao>
+          <Navegacao />
+          <main>{children}</main>
+          <Rodape />
+        </ProvedorSessao>
       </body>
     </html>
   );

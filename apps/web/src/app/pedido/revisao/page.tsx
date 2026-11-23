@@ -166,7 +166,7 @@ export default function RevisaoPedido() {
       ) : null}
       {estado.tipo === 'aguardando' ? (
         <div className="glass-card painel-cartao form">
-          <Aviso tipo="alerta">Falta confirmar seu e-mail. Use o código que enviamos ou abra o link do e-mail.</Aviso>
+          <Aviso tipo="alerta">Falta confirmar seu e-mail. Digite o código que enviamos.</Aviso>
           <Link href="/pedido" className="btn btn-primary btn-bloco">
             Digitar o código
           </Link>

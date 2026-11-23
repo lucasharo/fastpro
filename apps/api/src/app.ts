@@ -122,6 +122,7 @@ import { handleRequestPublishRoute, REQUEST_PUBLISH_PATH, type PublishRouteOptio
 // Issue 45 (H-032) | Leitura do pedido: dono (GET /v1/requests/:id) e profissional elegivel (GET /v1/professional/requests/:id).
 import { handleRequestDetailRoute, isRequestDetailRoute, type RequestDetailRouteOptions } from './requests/detail-route.js';
 import { handleConversationRoute, isConversationRoute, type ConversationRouteOptions } from './conversations/conversation-route.js';
+import { handleMeRoute, isMeRoute, type MeRouteOptions } from './conversations/me-route.js';
 // Pacote A (H-061, H-077, H-078, H-080) | Ciclo do pedido e do aceite: concluir, desfazer, cancelar, retirar aceite.
 import { handleLifecycleRoute, isLifecycleRoute, type LifecycleRouteOptions } from './lifecycle/lifecycle-route.js';
 // Pacote C (H-060, H-082, H-083): segunda onda e republicacao do pedido.
@@ -244,6 +245,8 @@ export interface AppOptions {
   readonly requestDetail?: RequestDetailRouteOptions;
   /** Ciclo central: interessados, selecao, conversas e mensagens. Sem esta opcao as rotas respondem 404 uniforme. */
   readonly conversations?: ConversationRouteOptions;
+  /** GET /v1/auth/me: papel da sessao (cliente ou profissional). Sem esta opcao, 404 uniforme. */
+  readonly me?: MeRouteOptions;
   /** Pacote A: concluir, desfazer conclusao, cancelar pedido e retirar aceite. Sem esta opcao as rotas respondem 404 uniforme. */
   readonly lifecycle?: LifecycleRouteOptions;
   /** Pacote C: segunda onda, republicacao e acoes do dono. Sem esta opcao as rotas respondem 404 uniforme. */
@@ -521,6 +524,14 @@ export async function handleRequest(
   // Pacote B (H-086, H-088, H-089): avaliacoes. Vem ANTES do bloco do perfil publico, que trata /v1/public/professionals/ inteiro.
   if (isReviewRoute(req.method ?? '', path)) {
     if (opts.reviews) return handleReviewRoute(req, res, path, opts.reviews);
+    const r = draftNotFound();
+    res.writeHead(r.status, r.headers);
+    res.end(r.body);
+    return;
+  }
+  // Papel da sessao, para a tela mostrar so o menu do cliente ou do profissional.
+  if (isMeRoute(req.method ?? '', path)) {
+    if (opts.me) return handleMeRoute(req, res, opts.me);
     const r = draftNotFound();
     res.writeHead(r.status, r.headers);
     res.end(r.body);

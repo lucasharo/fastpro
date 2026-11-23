@@ -179,7 +179,7 @@ function PedidoConteudo() {
       return;
     }
     if (r.status === 409) {
-      setAviso('Ainda não recebemos a confirmação do e-mail. Digite o código ou abra o link do e-mail.');
+      setAviso('Ainda não recebemos a confirmação do e-mail. Digite o código que enviamos.');
       return;
     }
     setAviso('Não foi possível abrir a revisão agora. Tente de novo.');

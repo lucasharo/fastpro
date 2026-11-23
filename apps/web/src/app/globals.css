@@ -1653,3 +1653,11 @@ select option {
 :root[data-theme='dark'] .btn-primary {
   color: var(--color-text-primary);
 }
+
+/* Botao "Sair" do cabecalho com a aparencia dos links. */
+.nav-sair {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}

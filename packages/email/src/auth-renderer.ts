@@ -1,5 +1,5 @@
 // H-011 | Renderizador do e-mail de acesso (docs/factory/39-DESENHO-H011.md, §5; CA-H011-14).
-// Para acesso_login o corpo traz SOMENTE: link de uso unico, codigo de 6 digitos, prazo e a
+// Para acesso_login o corpo traz SOMENTE: codigo de 6 digitos (sem link, decisao de 2026-11-23), prazo e a
 // orientacao de ignorar. Nenhum nome, endereco, estado de cadastro ou dado de terceiro.
 // Outros modelos seguem o renderizador base. Texto final: H-094/H-097.
 import type { EmailRenderer, RenderedEmail } from './renderer.js';
@@ -7,7 +7,6 @@ import type { EmailRenderer, RenderedEmail } from './renderer.js';
 export const ACCESS_TEMPLATE = 'acesso_login';
 export const ACCESS_SUBJECT = 'Seu acesso ao FastPro';
 
-const LINK_RE = /^https?:\/\/\S+$/;
 const CODE_RE = /^[0-9]{6}$/;
 
 /** Erro sem valores: so o codigo fixo. Nunca carrega o link ou o codigo. */
@@ -20,10 +19,10 @@ export class AuthRenderError extends Error {
 }
 
 export function renderAccessEmail(params: Readonly<Record<string, unknown>>): RenderedEmail {
-  const { link, code, minutos } = params;
+  // Decisao do dono (2026-11-23): o cliente entra SO com o codigo (OTP). O link continua sendo gerado pelo
+  // desafio (compatibilidade), mas nao vai mais no e-mail.
+  const { code, minutos } = params;
   if (
-    typeof link !== 'string' ||
-    !LINK_RE.test(link) ||
     typeof code !== 'string' ||
     !CODE_RE.test(code) ||
     typeof minutos !== 'number' ||
@@ -36,10 +35,7 @@ export function renderAccessEmail(params: Readonly<Record<string, unknown>>): Re
   return {
     subject: ACCESS_SUBJECT,
     text: [
-      'Use o link ou o codigo abaixo para entrar no FastPro.',
-      '',
-      `Link (valido por ${minutos} minutos, uso unico):`,
-      link,
+      'Use o codigo abaixo para entrar no FastPro.',
       '',
       `Codigo (valido por ${minutos} minutos, uso unico): ${code}`,
       '',

@@ -1,35 +1,53 @@
-// Rodape escuro (template de referencia), na cor da marca.
+'use client';
+// Rodape escuro (template de referencia), na cor da marca. As colunas de links seguem o papel da sessao.
 import Link from 'next/link';
 import { Icone } from './Icone';
+import { useSessao } from './Sessao';
 
-const COLUNAS = [
-  {
-    titulo: 'Para clientes',
-    links: [
-      { href: '/pedido', rotulo: 'Pedir orçamento' },
-      { href: '/#servicos', rotulo: 'Serviços' },
-      { href: '/painel', rotulo: 'Meus pedidos' },
-      { href: '/entrar', rotulo: 'Entrar' },
-    ],
-  },
-  {
-    titulo: 'Para profissionais',
-    links: [
-      { href: '/profissional/cadastro', rotulo: 'Cadastre-se' },
-      { href: '/profissional/entrar', rotulo: 'Entrar' },
-      { href: '/profissional/assinatura', rotulo: 'Planos' },
-      { href: '/profissional/pedidos', rotulo: 'Pedidos da região' },
-    ],
-  },
-] as const;
+const CLIENTES_VISITANTE = {
+  titulo: 'Para clientes',
+  links: [
+    { href: '/pedido', rotulo: 'Pedir orçamento' },
+    { href: '/#servicos', rotulo: 'Serviços' },
+    { href: '/entrar', rotulo: 'Entrar' },
+  ],
+};
+const PROFISSIONAIS_VISITANTE = {
+  titulo: 'Para profissionais',
+  links: [
+    { href: '/profissional/cadastro', rotulo: 'Cadastre-se' },
+    { href: '/profissional/entrar', rotulo: 'Entrar' },
+    { href: '/profissional#planos', rotulo: 'Planos' },
+  ],
+};
+const CLIENTE_LOGADO = {
+  titulo: 'Sua conta',
+  links: [
+    { href: '/painel', rotulo: 'Meus pedidos' },
+    { href: '/pedido', rotulo: 'Pedir orçamento' },
+    { href: '/#como-funciona', rotulo: 'Como funciona' },
+  ],
+};
+const PROFISSIONAL_LOGADO = {
+  titulo: 'Sua área',
+  links: [
+    { href: '/profissional/painel', rotulo: 'Painel' },
+    { href: '/profissional/pedidos', rotulo: 'Pedidos da região' },
+    { href: '/profissional/conversas', rotulo: 'Conversas' },
+    { href: '/profissional/assinatura', rotulo: 'Assinatura' },
+  ],
+};
 
 export function Rodape() {
+  const { papel } = useSessao();
+  const COLUNAS =
+    papel === 'cliente' ? [CLIENTE_LOGADO] : papel === 'profissional' ? [PROFISSIONAL_LOGADO] : [CLIENTES_VISITANTE, PROFISSIONAIS_VISITANTE];
   return (
     <footer className="rodape">
       <div className="container">
         <div className="rodape-grade">
           <div>
-            <Link href="/" className="marca">
+            <Link href={papel === 'profissional' ? '/profissional/painel' : '/'} className="marca">
               <Icone nome="raio" tamanho={28} className="marca-icone" preenchido />
               <span>FastPro</span>
             </Link>

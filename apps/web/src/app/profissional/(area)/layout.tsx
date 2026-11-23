@@ -1,9 +1,10 @@
 'use client';
 // Area logada do profissional: menu lateral de vidro e conteudo. Sem sessao, cada tela leva a entrada.
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Icone, type NomeIcone } from '@/components/Icone';
+import { useSessao } from '@/components/Sessao';
 import { chamarApi } from '@/lib/api';
 
 const MENU: readonly { href: string; rotulo: string; icone: NomeIcone }[] = [
@@ -18,7 +19,6 @@ const MENU: readonly { href: string; rotulo: string; icone: NomeIcone }[] = [
 
 export default function LayoutArea({ children }: { readonly children: ReactNode }) {
   const caminho = usePathname() ?? '';
-  const router = useRouter();
   const [naoLidas, setNaoLidas] = useState(0);
 
   // Contador de nao lidas (H-101) do item "Conversas": atualiza ao trocar de tela e a cada 30 s.
@@ -35,10 +35,7 @@ export default function LayoutArea({ children }: { readonly children: ReactNode 
     return () => clearInterval(t);
   }, [caminho, atualizarNaoLidas]);
 
-  async function sair() {
-    await chamarApi('/v1/auth/logout', { body: {} });
-    router.push('/profissional/entrar');
-  }
+  const { sair } = useSessao();
 
   return (
     <div className="pagina">
