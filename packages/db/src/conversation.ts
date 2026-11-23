@@ -1,9 +1,14 @@
 // Ciclo central (2026-11-23) | Adaptador das funcoes de interessados, conversas, mensagens e selecao
-// (migracao 20261123100000_chat_selection_core). Papel app_system; cada funcao confere a participacao.
+// (migracoes 20261123100000_chat_selection_core e 20261123150000_chat_unread_archive_report). Papel app_system;
+// cada funcao confere a participacao.
 import type { SqlClient } from './jobs-tick.js';
 
 const iso = (v: unknown): string | null => (v instanceof Date ? v.toISOString() : typeof v === 'string' ? v : null);
 const texto = (v: unknown): string | null => (typeof v === 'string' ? v : null);
+const numero = (v: unknown): number => Number(v ?? 0);
+
+export const MOTIVOS_DENUNCIA = ['assedio', 'golpe', 'ofensa', 'spam', 'outro'] as const;
+export type MotivoDenuncia = (typeof MOTIVOS_DENUNCIA)[number];
 
 export interface InteressadoPedido {
   readonly acceptanceId: string;
@@ -32,6 +37,9 @@ export interface ConversaResumo {
   readonly lastAt: string | null;
   /** Aceite desta conversa (Pacote A): a tela do profissional usa para retirar o aceite. */
   readonly acceptanceId: string;
+  readonly unreadCount: number;
+  readonly archived: boolean;
+  readonly blocked: boolean;
 }
 
 export interface MensagemConversa {
@@ -50,18 +58,35 @@ export interface ConversaCompleta {
   readonly papel: 'cliente' | 'profissional';
   readonly otherName: string;
   readonly state: string;
+  readonly archived: boolean;
+  readonly blocked: boolean;
   readonly messages: readonly MensagemConversa[];
 }
 
 export type ResultadoEnvio =
   | { readonly outcome: 'enviada' | 'repetida'; readonly messageId: string; readonly createdAt: string | null }
-  | { readonly outcome: 'nao_encontrada' | 'somente_leitura' | 'texto_invalido' };
+  | {
+      readonly outcome:
+        | 'nao_encontrada'
+        | 'somente_leitura'
+        | 'texto_invalido'
+        | 'conteudo_nao_permitido'
+        | 'conversa_bloqueada';
+    };
 
 export type ResultadoSelecao = {
   readonly outcome: 'selecionado' | 'sem_mudanca' | 'nao_encontrado' | 'estado_invalido' | 'aceite_invalido';
   readonly selectedAcceptanceId: string | null;
   readonly selectedAt: string | null;
 };
+
+export type ResultadoArquivo = 'arquivada' | 'desarquivada' | 'sem_mudanca' | 'nao_encontrada';
+
+export type ResultadoDenuncia =
+  | { readonly outcome: 'registrada'; readonly reportId: string }
+  | { readonly outcome: 'nao_encontrada' | 'motivo_invalido' | 'texto_invalido' };
+
+export type ResultadoBloqueio = 'bloqueada' | 'sem_mudanca' | 'nao_encontrada';
 
 export class PgConversationStore {
   constructor(private readonly client: SqlClient) {}
@@ -97,7 +122,16 @@ export class PgConversationStore {
       lastBody: texto(l.out_last_body),
       lastAt: iso(l.out_last_at),
       acceptanceId: String(l.out_acceptance_id),
+      unreadCount: numero(l.out_unread_count),
+      archived: l.out_archived === true,
+      blocked: l.out_blocked === true,
     }));
+  }
+
+  /** Total de nao lidas na caixa do usuario (H-101). */
+  async naoLidas(userId: string): Promise<number> {
+    const r = await this.client.query('select * from private.conversation_unread_total($1)', [userId]);
+    return numero(r.rows[0]?.out_total);
   }
 
   async conversa(conversationId: string, userId: string): Promise<ConversaCompleta | null> {
@@ -111,6 +145,8 @@ export class PgConversationStore {
       papel: primeira.out_papel === 'cliente' ? 'cliente' : 'profissional',
       otherName: texto(primeira.out_other_name) ?? '',
       state: String(primeira.out_state),
+      archived: primeira.out_archived === true,
+      blocked: primeira.out_blocked === true,
       messages: r.rows.map((l) => ({
         id: String(l.out_message_id),
         kind: l.out_kind === 'sistema' ? 'sistema' : 'humana',
@@ -120,6 +156,51 @@ export class PgConversationStore {
         createdAt: iso(l.out_created_at),
       })),
     };
+  }
+
+  /** Marca a conversa como lida para o usuario (chamado pela leitura das mensagens). */
+  async marcarLida(conversationId: string, userId: string, agora: Date): Promise<boolean> {
+    const r = await this.client.query('select * from private.conversation_mark_read($1, $2, $3)', [conversationId, userId, agora]);
+    return String(r.rows[0]?.out_outcome ?? '') === 'marcada';
+  }
+
+  async arquivar(conversationId: string, userId: string, arquivar: boolean, agora: Date): Promise<ResultadoArquivo> {
+    const r = await this.client.query('select * from private.conversation_archive($1, $2, $3, $4)', [
+      conversationId,
+      userId,
+      arquivar,
+      agora,
+    ]);
+    const outcome = String(r.rows[0]?.out_outcome ?? 'nao_encontrada');
+    if (outcome === 'arquivada' || outcome === 'desarquivada' || outcome === 'sem_mudanca') return outcome;
+    return 'nao_encontrada';
+  }
+
+  async denunciar(
+    conversationId: string,
+    userId: string,
+    motivo: string,
+    textoLivre: string | null,
+    agora: Date,
+  ): Promise<ResultadoDenuncia> {
+    const r = await this.client.query('select * from private.conversation_report($1, $2, $3, $4, $5)', [
+      conversationId,
+      userId,
+      motivo,
+      textoLivre,
+      agora,
+    ]);
+    const l = r.rows[0] ?? {};
+    if (l.out_outcome === 'registrada') return { outcome: 'registrada', reportId: String(l.out_report_id) };
+    if (l.out_outcome === 'motivo_invalido' || l.out_outcome === 'texto_invalido') return { outcome: l.out_outcome };
+    return { outcome: 'nao_encontrada' };
+  }
+
+  async bloquear(conversationId: string, userId: string, agora: Date): Promise<ResultadoBloqueio> {
+    const r = await this.client.query('select * from private.conversation_block($1, $2, $3)', [conversationId, userId, agora]);
+    const outcome = String(r.rows[0]?.out_outcome ?? 'nao_encontrada');
+    if (outcome === 'bloqueada' || outcome === 'sem_mudanca') return outcome;
+    return 'nao_encontrada';
   }
 
   async enviar(conversationId: string, userId: string, clientMessageId: string, corpo: string, agora: Date): Promise<ResultadoEnvio> {
@@ -135,7 +216,14 @@ export class PgConversationStore {
     if (outcome === 'enviada' || outcome === 'repetida') {
       return { outcome, messageId: String(l.out_message_id), createdAt: iso(l.out_created_at) };
     }
-    if (outcome === 'somente_leitura' || outcome === 'texto_invalido') return { outcome };
+    if (
+      outcome === 'somente_leitura' ||
+      outcome === 'texto_invalido' ||
+      outcome === 'conteudo_nao_permitido' ||
+      outcome === 'conversa_bloqueada'
+    ) {
+      return { outcome };
+    }
     return { outcome: 'nao_encontrada' };
   }
 
