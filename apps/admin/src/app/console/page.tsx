@@ -3,6 +3,9 @@
 // com o cookie da sessao admin, e a API decide o que aparece. Sem dado de tela nesta pagina.
 import { cookies } from 'next/headers';
 import { ADMIN_SESSION_COOKIE } from '@fastpro/domain';
+import { AvisoErro } from '../../components/AvisoErro';
+import { CabecaPagina } from '../../components/CabecaPagina';
+import { EstadoVazio } from '../../components/EstadoVazio';
 import {
   estadoDoMenu,
   TEXTO_ERRO,
@@ -33,8 +36,8 @@ async function carregarMenu(): Promise<ConsoleEstado> {
 export default async function PaginaConsole() {
   const estado = await carregarMenu();
   return (
-    <main className="console">
-      <h1>Console administrativo</h1>
+    <div>
+      <CabecaPagina titulo="Console administrativo" />
       {/* Itens do menu sem link: as paginas de destino (uma rota por item) ainda nao existem.
           Quando cada historia entregar a sua tela, este bloco vira navegacao. */}
       {estado.tipo === 'telas' ? (
@@ -44,9 +47,9 @@ export default async function PaginaConsole() {
           ))}
         </ul>
       ) : null}
-      {estado.tipo === 'vazio' ? <p>{TEXTO_VAZIO}</p> : null}
-      {estado.tipo === 'sem_sessao' ? <p>{TEXTO_SEM_SESSAO}</p> : null}
-      {estado.tipo === 'erro' ? <p role="alert">{TEXTO_ERRO}</p> : null}
-    </main>
+      {estado.tipo === 'vazio' ? <EstadoVazio texto={TEXTO_VAZIO} icone="escudo" /> : null}
+      {estado.tipo === 'sem_sessao' ? <EstadoVazio texto={TEXTO_SEM_SESSAO} icone="cadeado" /> : null}
+      {estado.tipo === 'erro' ? <AvisoErro texto={TEXTO_ERRO} /> : null}
+    </div>
   );
 }

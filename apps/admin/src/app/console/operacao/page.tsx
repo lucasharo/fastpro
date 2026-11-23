@@ -5,6 +5,9 @@
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { ADMIN_SESSION_COOKIE } from '@fastpro/domain';
+import { AvisoErro } from '../../../components/AvisoErro';
+import { CabecaPagina } from '../../../components/CabecaPagina';
+import { EstadoVazio } from '../../../components/EstadoVazio';
 import { TEXTO_ERRO } from '../../../console-state';
 import {
   contagemEstado,
@@ -105,10 +108,10 @@ export default async function PaginaOperacao() {
   if (estado.tipo === 'sem_acesso') notFound();
   if (estado.tipo === 'erro') {
     return (
-      <main className="console">
-        <h1>Painel operacional</h1>
-        <p role="alert">{TEXTO_ERRO}</p>
-      </main>
+      <div>
+        <CabecaPagina titulo="Painel operacional" />
+        <AvisoErro texto={TEXTO_ERRO} />
+      </div>
     );
   }
 
@@ -117,11 +120,10 @@ export default async function PaginaOperacao() {
   const motivos = Object.keys(fila.falhas_por_codigo).length;
 
   return (
-    <main className="console">
-      <h1>Painel operacional</h1>
-      <p className="ops-atualizado">Atualizado em {instanteTexto(painel.gerado_em)}</p>
+    <div className="pilha">
+      <CabecaPagina titulo="Painel operacional" descricao={`Atualizado em ${instanteTexto(painel.gerado_em)}`} />
 
-      <section className="ops-bloco" aria-labelledby="ops-fila">
+      <section className="ops-bloco cartao-plano" aria-labelledby="ops-fila">
         <h2 id="ops-fila">Fila de e-mail</h2>
         <ul className="ops-lista">
           {ESTADOS_EMAIL.map((estadoEmail) => (
@@ -130,14 +132,14 @@ export default async function PaginaOperacao() {
             </li>
           ))}
         </ul>
-        {filaVazia(fila) ? <p>{TEXTO_FILA_VAZIA}</p> : null}
+        {filaVazia(fila) ? <EstadoVazio texto={TEXTO_FILA_VAZIA} icone="conversa" /> : null}
         {fila.idade_pendente_s !== null ? (
           <p>Pendente mais antigo: há {idadeTexto(fila.idade_pendente_s)}.</p>
         ) : null}
         {motivos > 0 ? listaContagens('Falhas por motivo', fila.falhas_por_codigo) : null}
       </section>
 
-      <section className="ops-bloco" aria-labelledby="ops-cotas">
+      <section className="ops-bloco cartao-plano" aria-labelledby="ops-cotas">
         <h2 id="ops-cotas">Cotas de uso</h2>
         <ul className="ops-lista">
           {painel.cotas.map((cota) => (
@@ -166,13 +168,13 @@ export default async function PaginaOperacao() {
       {painel.webhooks !== null ? <BlocoWebhooks dados={painel.webhooks} /> : null}
       {painel.fotos !== null ? <BlocoFotos dados={painel.fotos} /> : null}
       {painel.rls !== null ? (
-        <section className="ops-bloco" aria-labelledby="ops-rls">
+        <section className="ops-bloco cartao-plano" aria-labelledby="ops-rls">
           <h2 id="ops-rls">Negações de acesso (últimas 24 horas)</h2>
           <p>
             Negações: <strong>{painel.rls.negacoes}</strong>
           </p>
         </section>
       ) : null}
-    </main>
+    </div>
   );
 }

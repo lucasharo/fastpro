@@ -4,6 +4,9 @@
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { ADMIN_SESSION_COOKIE } from '@fastpro/domain';
+import { AvisoErro } from '../../../components/AvisoErro';
+import { CabecaPagina } from '../../../components/CabecaPagina';
+import { EstadoVazio } from '../../../components/EstadoVazio';
 import {
   ESCOPOS_FILA,
   escopoDaUrl,
@@ -55,45 +58,48 @@ export default async function PaginaVerificacao({
   if (estado.tipo === 'sem_acesso') notFound();
 
   return (
-    <main>
-      <h1>Verificação de identidade</h1>
-      <nav aria-label="Listas da verificação">
-        <ul>
-          {ESCOPOS_FILA.map((e) => (
-            <li key={e.valor}>
-              <a href={`?escopo=${e.valor}`} aria-current={e.valor === escopo ? 'page' : undefined}>
-                {e.rotulo}
-              </a>
-            </li>
-          ))}
-        </ul>
+    <div>
+      <CabecaPagina titulo="Verificação de identidade" />
+      <nav aria-label="Listas da verificação" className="linha">
+        {ESCOPOS_FILA.map((e) => (
+          <a
+            key={e.valor}
+            href={`?escopo=${e.valor}`}
+            className={e.valor === escopo ? 'selo' : 'selo selo-neutro'}
+            aria-current={e.valor === escopo ? 'page' : undefined}
+          >
+            {e.rotulo}
+          </a>
+        ))}
       </nav>
-      {estado.tipo === 'erro' ? <p role="alert">{TEXTO_ERRO_CARREGAR}</p> : null}
-      {estado.tipo === 'vazia' ? <p>{TEXTO_LISTA_VAZIA}</p> : null}
+      {estado.tipo === 'erro' ? <AvisoErro texto={TEXTO_ERRO_CARREGAR} /> : null}
+      {estado.tipo === 'vazia' ? <EstadoVazio texto={TEXTO_LISTA_VAZIA} icone="escudo" /> : null}
       {estado.tipo === 'lista' ? (
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Caso</th>
-              <th scope="col">Serviços</th>
-              <th scope="col">Enviado em</th>
-              <th scope="col">Estado</th>
-              <th scope="col">Prazo</th>
-            </tr>
-          </thead>
-          <tbody>
-            {estado.itens.map((item) => (
-              <tr key={item.id}>
-                <td>{item.short_id}</td>
-                <td>{item.services.length > 0 ? item.services.join(', ') : 'Não informado'}</td>
-                <td>{formatarData(item.received_at)}</td>
-                <td>{rotuloEstado(item.status)}</td>
-                <td>{rotuloPrazo(item.overdue)}</td>
+        <div className="cartao-plano tabela-envoltorio">
+          <table className="tabela">
+            <thead>
+              <tr>
+                <th scope="col">Caso</th>
+                <th scope="col">Serviços</th>
+                <th scope="col">Enviado em</th>
+                <th scope="col">Estado</th>
+                <th scope="col">Prazo</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {estado.itens.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.short_id}</td>
+                  <td>{item.services.length > 0 ? item.services.join(', ') : 'Não informado'}</td>
+                  <td>{formatarData(item.received_at)}</td>
+                  <td>{rotuloEstado(item.status)}</td>
+                  <td>{rotuloPrazo(item.overdue)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
-    </main>
+    </div>
   );
 }

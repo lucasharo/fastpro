@@ -90,7 +90,7 @@ export function FormularioDecisao({ caso, versao }: FormularioDecisaoProps) {
         </p>
       </div>
 
-      <button type="submit" disabled={pendente || contador.excedeu}>
+      <button type="submit" className="btn btn-primary" disabled={pendente || contador.excedeu}>
         {pendente ? 'Registrando...' : 'Registrar decisão'}
       </button>
     </form>
