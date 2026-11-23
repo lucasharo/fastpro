@@ -1,6 +1,7 @@
 'use client';
 // Detalhe do pedido do cliente: dados (GET /v1/requests/:id), quem aceitou (GET .../acceptances), conversa com cada
 // um e escolha do profissional (POST .../selection). Tudo real; sem dados de demonstracao.
+// Pacote C: chamar mais profissionais (POST .../more-professionals) e republicar (POST .../republish), liberados por GET .../actions.
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -21,6 +22,11 @@ interface Detalhe {
   acceptanceDeadlineAt?: string;
 }
 
+interface Acoes {
+  canCallMore: boolean;
+  canRepublish: boolean;
+}
+
 interface Interessado {
   acceptanceId: string;
   professionalName: string;
@@ -39,16 +45,21 @@ export default function DetalhePedido() {
   const [conversaAberta, setConversaAberta] = useState<string | null>(null);
   const [aviso, setAviso] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(null);
   const [escolhendo, setEscolhendo] = useState<string | null>(null);
+  const [acoes, setAcoes] = useState<Acoes | null>(null);
+  const [acionando, setAcionando] = useState<'mais' | 'republicar' | null>(null);
+  const [confirmandoRepublicar, setConfirmandoRepublicar] = useState(false);
 
   const carregar = useCallback(async () => {
-    const [d, a] = await Promise.all([
+    const [d, a, ac] = await Promise.all([
       chamarApi<Detalhe>(`/v1/requests/${id}`),
       chamarApi<{ items?: Interessado[] }>(`/v1/requests/${id}/acceptances`),
+      chamarApi<Acoes>(`/v1/requests/${id}/actions`),
     ]);
     if (d.status === 401) {
       router.replace('/entrar');
       return;
     }
+    setAcoes(ac.status === 200 && ac.corpo ? ac.corpo : null);
     if (d.status === 200 && d.corpo) setP(d.corpo);
     else setErro(d.status === 404 ? 'Pedido não encontrado.' : 'Não foi possível abrir o pedido agora.');
     const lista = a.status === 200 && Array.isArray(a.corpo?.items) ? a.corpo.items : [];
@@ -87,6 +98,37 @@ export default function DetalhePedido() {
               ? 'Este pedido já foi concluído ou cancelado.'
               : 'Não foi possível escolher agora. Tente de novo.',
     });
+  }
+
+  async function chamarMais() {
+    setAcionando('mais');
+    setAviso(null);
+    const r = await chamarApi(`/v1/requests/${id}/more-professionals`, { method: 'POST' });
+    setAcionando(null);
+    if (r.status === 200) {
+      setAviso({ tipo: 'sucesso', texto: 'Pronto. Novos profissionais verificados já podem aceitar este pedido.' });
+    } else {
+      setAviso({ tipo: 'erro', texto: r.status === 429 ? MENSAGEM_LIMITE : 'Não foi possível chamar mais profissionais agora. Tente de novo.' });
+    }
+    await carregar();
+  }
+
+  async function republicar() {
+    setAcionando('republicar');
+    setAviso(null);
+    const r = await chamarApi<{ status?: string }>(`/v1/requests/${id}/republish`, { method: 'POST' });
+    setAcionando(null);
+    setConfirmandoRepublicar(false);
+    if (r.status === 201) {
+      router.push('/pedido');
+      return;
+    }
+    if (r.status === 200) {
+      setAviso({ tipo: 'erro', texto: 'Já existe uma republicação deste pedido em andamento.' });
+      return;
+    }
+    setAviso({ tipo: 'erro', texto: r.status === 429 ? MENSAGEM_LIMITE : 'Não foi possível republicar este pedido agora. Tente de novo.' });
+    await carregar();
   }
 
   if (erro) {
@@ -210,6 +252,35 @@ export default function DetalhePedido() {
                 </div>
               </div>
             ))}
+            {acoes?.canCallMore ? (
+              <div className="linha">
+                <button type="button" className="btn btn-secondary" disabled={acionando !== null} onClick={() => void chamarMais()}>
+                  {acionando === 'mais' ? 'Chamando…' : 'Chamar mais profissionais'}
+                </button>
+              </div>
+            ) : null}
+            {acoes?.canRepublish && !confirmandoRepublicar ? (
+              <div className="linha">
+                <button type="button" className="btn btn-secondary" disabled={acionando !== null} onClick={() => setConfirmandoRepublicar(true)}>
+                  Republicar pedido
+                </button>
+              </div>
+            ) : null}
+            {acoes?.canRepublish && confirmandoRepublicar ? (
+              <div className="pilha">
+                <p style={{ color: 'var(--color-text-primary)', marginBottom: 0 }}>
+                  Vamos criar um novo rascunho com os mesmos dados. Você revisa e publica pelo fluxo normal.
+                </p>
+                <div className="linha">
+                  <button type="button" className="btn btn-primary" disabled={acionando !== null} onClick={() => void republicar()}>
+                    {acionando === 'republicar' ? 'Republicando…' : 'Confirmar republicação'}
+                  </button>
+                  <button type="button" className="btn btn-secondary" disabled={acionando !== null} onClick={() => setConfirmandoRepublicar(false)}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : null}
             {aviso ? <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso> : null}
           </div>
         </div>

@@ -79,6 +79,9 @@ import type { PublishRouteOptions } from './requests/publish-route.js';
 import { montarDetalhePedido } from './requests/detail-composicao.js';
 import { montarConversas } from './conversations/conversation-composicao.js';
 import type { ConversationRouteOptions } from './conversations/conversation-route.js';
+// Pacote C (H-060, H-082, H-083) | Segunda onda e republicacao: liga so com as variaveis completas (404 sem elas).
+import { montarOndas } from './waves/wave-composicao.js';
+import type { WaveRouteOptions } from './waves/wave-route.js';
 import type { RequestDetailRouteOptions } from './requests/detail-route.js';
 // Issue 120 (H-111) | Rotas do titular para direitos: liga so com DATABASE_URL_APP_SYSTEM e a fabrica do cliente SQL.
 import { montarPrivacidadeTitular } from './privacy/privacy-composicao.js';
@@ -212,6 +215,10 @@ export interface Integracoes {
   readonly requestDetail: RequestDetailRouteOptions | undefined;
   readonly conversations: ConversationRouteOptions | undefined;
   readonly pendenciasConversas: readonly string[];
+  /** Pacote C: segunda onda e republicacao do pedido, ou undefined (404 uniforme). */
+  readonly waves: WaveRouteOptions | undefined;
+  /** Nomes (nunca valores) que impedem as rotas de segunda onda e republicacao de ligar. */
+  readonly pendenciasOndas: readonly string[];
   /** Issue 120 (H-111): rotas do titular para direitos, ou undefined (404 uniforme). */
   readonly privacyTitular?: PrivacyTitularRouteOptions;
   /** Nomes (nunca valores) que impedem as rotas do titular para direitos de ligar (H-111). */
@@ -356,6 +363,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
   // Issue 45 (H-032): leitura do pedido (dono e profissional). Sem ADDRESS_ENC_KEY ou banco, as rotas nao ligam (404).
   const detalhe = montarDetalhePedido(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
   const conversas = montarConversas(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
+  // Pacote C (H-060, H-082, H-083): segunda onda e republicacao; sem banco, cofre do endereco ou chave do rascunho, 404.
+  const ondas = montarOndas(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
   // Issue 120 (H-111): direitos do titular sobre o papel app_system; sem banco ou fabrica, as rotas nao ligam (404).
   const privacidade = montarPrivacidadeTitular(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock, email, waitUntil: opcoes.waitUntil });
   // Issue 120 (H-111): painel do DPO; sem banco app_system ou ADMIN_BASE_URL, as rotas nao ligam (404 vazio).
@@ -425,6 +434,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     requestDetail: detalhe.options,
     conversations: conversas.options,
     pendenciasConversas: conversas.pendencias,
+    waves: ondas.options,
+    pendenciasOndas: ondas.pendencias,
     pendenciasDetalhe: detalhe.pendencias,
     privacyTitular: privacidade.options,
     pendenciasPrivacidade: privacidade.pendencias,
