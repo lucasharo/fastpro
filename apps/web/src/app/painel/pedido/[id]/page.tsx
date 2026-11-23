@@ -2,8 +2,10 @@
 // Detalhe do pedido do cliente: dados (GET /v1/requests/:id), quem aceitou (GET .../acceptances), conversa com cada
 // um e escolha do profissional (POST .../selection). Tudo real; sem dados de demonstracao.
 import Image from 'next/image';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { AvaliacaoPedido } from '@/components/AvaliacaoPedido';
 import { Conversa, iniciais } from '@/components/Conversa';
 import { Icone } from '@/components/Icone';
 import { Aviso, CabecaPagina, Carregando, PaginaInterna, Vazio } from '@/components/ui';
@@ -24,6 +26,7 @@ interface Detalhe {
 interface Interessado {
   acceptanceId: string;
   professionalName: string;
+  professionalSlug: string | null;
   status: string;
   acceptedAt: string | null;
   conversationId: string | null;
@@ -191,6 +194,11 @@ export default function DetalhePedido() {
                     ) : null}
                   </div>
                   <div className="linha" style={{ marginTop: '0.75rem' }}>
+                    {x.professionalSlug ? (
+                      <Link href={`/p/${x.professionalSlug}`} className="btn btn-secondary btn-sm">
+                        <Icone nome="usuario" tamanho={16} /> Ver perfil
+                      </Link>
+                    ) : null}
                     {x.conversationId ? (
                       <button
                         type="button"
@@ -213,6 +221,7 @@ export default function DetalhePedido() {
             {aviso ? <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso> : null}
           </div>
         </div>
+        {p.status === 'concluido' ? <AvaliacaoPedido pedidoId={id} /> : null}
         {conversaAberta ? <Conversa conversationId={conversaAberta} subtitulo={`Conversa sobre ${p.serviceName ?? 'o pedido'}`} /> : null}
       </div>
     </PaginaInterna>

@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@fastpro/api": "workspace:*",
+    "@fastpro/domain": "workspace:*",
     "@fastpro/tokens": "workspace:*",
     "next": "16.4.6",
     "react": "^19.3.1",
