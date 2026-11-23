@@ -20,6 +20,8 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const FORBIDDEN_KEY =
   /mail|phone|telefone|celular|mensagem|message|body|corpo|url|link|token|nome|name|anexo|attach|endereco|address|cpf|senha|password|secret/i;
 const COUNT_MAX = 1000;
+// Pacote D (H-095): nome do servico do catalogo (nao e dado pessoal). Letras, numeros e pontuacao simples, 1 a 80.
+export const SERVICO_RE = /^[\p{L}\p{N} .,'()/-]{1,80}$/u;
 
 /** Lanca ContentGuardError se o conjunto de parametros puder carregar conteudo sensivel. */
 export function assertSafeTemplateParams(
@@ -37,6 +39,10 @@ export function assertSafeTemplateParams(
         value >= 1 &&
         value <= COUNT_MAX
       )) {
+        throw new ContentGuardError('valor_invalido');
+      }
+    } else if (key === 'servico') {
+      if (typeof value !== 'string' || !SERVICO_RE.test(value)) {
         throw new ContentGuardError('valor_invalido');
       }
     } else if (key.endsWith('_ref')) {

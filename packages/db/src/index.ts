@@ -110,3 +110,6 @@ export * from './privacy-dsr-step-up.js';
 
 // H-099 (Issue 109) | Handlers dos lembretes no tick (reminder.scan e reminder.fire) e adaptador de leitura. Composicao em apps/api fica para a Issue do tick.
 export * from './reminders.js';
+
+// Pacote D (H-095, H-096, H-098) | Adaptador de leitura do ciclo central (regras em @fastpro/domain, registerCycleRules).
+export * from './cycle-source.js';

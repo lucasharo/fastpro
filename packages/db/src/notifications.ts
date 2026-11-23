@@ -10,7 +10,7 @@ import {
   assertSafeTemplateParams,
   NOTIFICATION_EFFECTIVE_FROM_MS,
   isDigestCategory,
-  summaryTypeFor,
+  summaryFor,
   windowSecondsFrom,
   WINDOW_SETTING,
   type Category,
@@ -495,9 +495,8 @@ export async function flushGroup(d: NotificationDeps, key: FlushKey): Promise<vo
     else drops.push({ id: item.id, motivo: verdict });
   }
 
-  const emailType = summaryTypeFor(key.category);
-  const params =
-    key.category === 'aceite' ? { request_ref: key.scopeKey } : { conversation_ref: key.scopeKey };
+  // Pacote D: o resumo depende do escopo (mensagem ao profissional nao leva referencia de pedido).
+  const { emailType, params } = summaryFor(key.category, key.scopeKey);
   assertSafeTemplateParams(emailType, { ...params, count: 1 });
 
   await store.flushCommit({
