@@ -11,9 +11,7 @@ export default tseslint.config(
       '**/node_modules/**',
       'coverage/**',
       '*/*/coverage/**',
-      // Bundles gerados de apps/web/public (saida de build, nao codigo fonte).
-      'apps/web/public/fotos-envio.js',
-      'apps/web/public/situacao-bundle.js',
+      'apps/web/next-env.d.ts',
     ],
   },
   js.configs.recommended,

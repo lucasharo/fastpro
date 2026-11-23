@@ -57,6 +57,9 @@ const ALLOWED_RUNTIME = new Set([
   'npm_package_version',
   'PATH',
   'SystemRoot',
+  // Definidas pela propria Vercel em cada execucao (plataforma, nao configuracao do app).
+  'VERCEL',
+  'VERCEL_ENV',
 ]);
 for (const f of files) {
   if (

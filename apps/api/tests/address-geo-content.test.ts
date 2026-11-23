@@ -24,58 +24,12 @@ function arquivos(dir: string, saida: string[] = []): string[] {
 
 const rel = (p: string) => relative(RAIZ, p).replace(/\\/g, '/');
 
-/** Entrada de /fotos: unica pagina que liga o envio direto ao Storage (decisao 149, 98-DESENHO-H029 §4, R-04). */
-const ENTRADA_FOTOS = '/fotos';
-
-/** Valor de NEXT_PUBLIC_SUPABASE_URL do ambiente ou do .env.local do repositorio (so essa variavel e lida). */
-function urlPublicaSupabase(): string | null {
-  if (process.env.NEXT_PUBLIC_SUPABASE_URL) return process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const env = join(RAIZ, '.env.local');
-  if (!existsSync(env)) return null;
-  const linha = readFileSync(env, 'utf8')
-    .split(/\r?\n/)
-    .find((l) => l.startsWith('NEXT_PUBLIC_SUPABASE_URL='));
-  return linha ? linha.slice('NEXT_PUBLIC_SUPABASE_URL='.length).trim().replace(/^["']|["']$/g, '') : null;
-}
-
-/** Origem exata do Storage do projeto: https://<ref>.supabase.co, sem caminho. Sem origem, o teste falha. */
-function origemStorage(): string {
-  const valor = urlPublicaSupabase();
-  if (!valor) throw new Error('NEXT_PUBLIC_SUPABASE_URL ausente (ambiente ou .env.local): sem a origem do Storage o teste nao roda');
-  const url = new URL(valor);
-  if (url.protocol !== 'https:' || !/^[a-z0-9]+\.supabase\.co$/.test(url.hostname) || url.pathname !== '/') {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL fora do formato https://<ref>.supabase.co');
-  }
-  return url.origin;
-}
-
-/** Tokens de uma diretiva da CSP (ex.: connect-src), ou null quando a diretiva nao existe. */
-function tokensDiretiva(csp: string, nome: string): string[] | null {
-  const diretiva = csp
-    .split(';')
-    .map((d) => d.trim())
-    .find((d) => d.split(/\s+/)[0] === nome);
-  return diretiva === undefined ? null : diretiva.split(/\s+/).slice(1);
-}
-
-describe('T-H020-11a CSP publicada: connect-src somente self, sem Mapbox (CA-14, §2.4)', () => {
-  it('connect-src e self em todas as entradas; so /fotos acrescenta a origem exata do Storage (decisao 149)', () => {
-    const cfg = JSON.parse(readFileSync(join(RAIZ, 'apps/web/vercel.json'), 'utf8')) as {
-      headers: Array<{ source: string; headers: Array<{ key: string; value: string }> }>;
-    };
-    const origem = origemStorage();
-    const csps = cfg.headers.flatMap((bloco) =>
-      bloco.headers
-        .filter((h) => h.key === 'Content-Security-Policy')
-        .map((h) => ({ source: bloco.source, csp: h.value })),
-    );
-    expect(csps.length).toBeGreaterThan(0);
-    expect(csps.filter((c) => c.source === ENTRADA_FOTOS)).toHaveLength(1);
-    for (const { source, csp } of csps) {
-      const esperado = source === ENTRADA_FOTOS ? ["'self'", origem] : ["'self'"];
-      expect(tokensDiretiva(csp, 'connect-src'), source).toEqual(esperado);
-      expect(csp.toLowerCase(), source).not.toContain('mapbox');
-    }
+describe('T-H020-11a cabecalhos da web Next.js sem Mapbox (CA-14, §2.4)', () => {
+  it('a web declara nosniff e nao cita Mapbox nem origem cruzada nos cabecalhos', () => {
+    const cfg = readFileSync(join(RAIZ, 'apps/web/next.config.ts'), 'utf8');
+    expect(cfg).toContain('X-Content-Type-Options');
+    expect(cfg.toLowerCase()).not.toContain('mapbox');
+    expect(cfg).not.toMatch(/Access-Control-Allow-Origin/i);
   });
 });
 

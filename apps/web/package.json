@@ -2,33 +2,27 @@
   "name": "@fastpro/web",
   "version": "0.0.0",
   "private": true,
-  "description": "Web da hospedagem Vercel (H-009): estrutura estatica e cabecalhos; telas em historias futuras",
+  "description": "Web do cliente e do profissional em Next.js (App Router), com a API montada em /api no mesmo projeto Vercel",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
-  },
   "scripts": {
-    "copy:tokens": "node scripts/copy-tokens.mjs",
-    "build:fotos-envio": "node scripts/build-fotos-envio.mjs",
-    "build:situacao": "node scripts/build-situacao.mjs",
-    "sincronizar:navegacao": "node scripts/sincronizar-navegacao.mjs",
-    "build": "node scripts/copy-tokens.mjs && node scripts/build-fotos-envio.mjs && node scripts/build-situacao.mjs && tsc -p tsconfig.json",
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.funcoes.json --noEmit",
-    "test": "node scripts/copy-tokens.mjs && node scripts/build-fotos-envio.mjs && node scripts/build-situacao.mjs && vitest run --passWithNoTests",
-    "test:e2e": "node scripts/copy-tokens.mjs && node scripts/build-situacao.mjs && playwright test"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@fastpro/api": "workspace:*",
+    "@fastpro/tokens": "workspace:*",
+    "next": "16.4.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.14.0",
-    "@fastpro/api": "workspace:*",
     "@fastpro/config": "workspace:*",
-    "@fastpro/domain": "workspace:*",
-    "@playwright/test": "^1.65.0",
-    "esbuild": "^0.28.2"
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "happy-dom": "21.0.4"
   }
 }

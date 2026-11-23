@@ -1,17 +1,8 @@
-// Os testes de navegador (tests/e2e, Playwright) nao rodam no Vitest: exclui-os da suite unitaria.
-// Os modulos da tela importam outros por caminho absoluto ('/navegacao-logica.js'), como o navegador faz; nos testes,
-// esse caminho aponta para public/. publicDir desligado: senao o Vite recusa importar arquivo de public/.
+// Testes da web: JSX transformado pelo runtime automatico (o tsconfig usa "preserve" por causa do Next.js).
 import { fileURLToPath } from 'node:url';
-import { configDefaults, defineConfig } from 'vitest/config';
-
-const publico = fileURLToPath(new URL('./public/', import.meta.url));
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  publicDir: false,
-  resolve: {
-    alias: [{ find: /^\/([a-z0-9-]+\.js)$/, replacement: `${publico}$1` }],
-  },
-  test: {
-    exclude: [...configDefaults.exclude, 'tests/e2e/**'],
-  },
+  oxc: { jsx: { runtime: 'automatic' } },
+  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
 });

@@ -78,7 +78,7 @@ export class BillingService {
   constructor(private readonly deps: BillingServiceDeps) {}
 
   private voltaUrl(): string {
-    return `${this.deps.siteUrl.replace(/\/+$/, '')}/profissional-assinatura?retorno=1`;
+    return `${this.deps.siteUrl.replace(/\/+$/, '')}/profissional/assinatura?retorno=1`;
   }
 
   /** H-047 / H-051: cria a intencao e devolve o endereco do checkout hospedado. */
