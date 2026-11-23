@@ -4,6 +4,7 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Icone } from '@/components/Icone';
+import { Selecao } from '@/components/Selecao';
 import { Aviso, CabecaPagina, Campo } from '@/components/ui';
 import { chamarApi, codigoDe, MENSAGEM_LIMITE } from '@/lib/api';
 import { formatarData } from '@/lib/formatos';
@@ -153,11 +154,17 @@ export default function Documentos() {
             <h2 style={{ fontSize: '1.125rem' }}>1. Cadastro</h2>
           </div>
           <Campo id="tipo" rotulo="Tipo de documento" erro={erros.documentType}>
-            <select id="tipo" className="entrada" value={tipo} onChange={(e) => setTipo(e.target.value)}>
-              <option value="">Escolha</option>
-              <option value="CPF">CPF (pessoa física)</option>
-              <option value="CNPJ">CNPJ (empresa ou MEI)</option>
-            </select>
+            <Selecao
+              id="tipo"
+              valor={tipo}
+              onMudar={setTipo}
+              invalido={Boolean(erros.documentType)}
+              placeholder="Escolha"
+              opcoes={[
+                { valor: 'CPF', rotulo: 'CPF (pessoa física)' },
+                { valor: 'CNPJ', rotulo: 'CNPJ (empresa ou MEI)' },
+              ]}
+            />
           </Campo>
           <Campo id="nome" rotulo="Nome público" erro={erros.publicName} dica="Como os clientes vão ver você.">
             <input id="nome" className="entrada" value={nome} onChange={(e) => setNome(e.target.value)} />

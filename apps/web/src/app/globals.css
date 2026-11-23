@@ -1661,3 +1661,98 @@ select option {
   padding: 0;
   cursor: pointer;
 }
+
+/* ---------- Selecao (substitui o select nativo) ----------
+   Mesmo visual das listas de sugestao; so tokens aprovados; o tema escuro vem dos proprios tokens. */
+.selecao {
+  position: relative;
+}
+
+.selecao-botao {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  text-align: left;
+  cursor: pointer;
+  color: var(--color-text-primary);
+}
+
+.selecao-limpo .selecao-botao {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.selecao-placeholder {
+  color: var(--color-text-secondary);
+}
+
+.selecao-seta {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  transform: rotate(90deg);
+  transition: transform 0.2s ease;
+}
+
+.selecao-seta-aberta {
+  transform: rotate(-90deg);
+}
+
+.selecao-lista {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  min-width: max(100%, 12rem);
+  margin-top: 0.5rem;
+  padding: 0.375rem;
+  border-radius: var(--radius-button);
+}
+
+.selecao-opcao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.selecao-opcao-ativa {
+  background: var(--color-background);
+}
+
+.selecao-opcao[aria-selected='true'] {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+/* "Voltar" e acoes secundarias em formato de link: mesmo visual do "Sair" do cabecalho (decisao do Lucas, 2026-11-23). */
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0.5rem 0.25rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  transition: color 0.2s;
+}
+
+.btn-link:hover {
+  color: var(--color-primary);
+}
+
+/* O valor escolhido na selecao nao quebra linha (ex.: "Nesta semana" na busca da inicial). */
+.selecao-botao > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

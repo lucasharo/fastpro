@@ -7,6 +7,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { CampoEndereco, ENDERECO_MIN } from '@/components/CampoEndereco';
 import { CampoServico } from '@/components/CampoServico';
 import { CodigoEmail, pedirCodigo } from '@/components/CodigoEmail';
+import { useSessao } from '@/components/Sessao';
 import { Icone } from '@/components/Icone';
 import { Aviso, CabecaPagina, Campo, Carregando, PaginaInterna } from '@/components/ui';
 import { chamarApi, MENSAGEM_LIMITE, ok, type ServicoCatalogo } from '@/lib/api';
@@ -14,6 +15,8 @@ import { URGENCIAS, urgenciaDoQuando } from '@/lib/formatos';
 
 const DESCRICAO_MAX = 2000;
 const ETAPAS = ['Serviço e local', 'Detalhes', 'Seus dados', 'Confirmação'] as const;
+/** Cliente logado: sem e-mail e sem codigo (a sessao ja confirma quem ele e). */
+const ETAPAS_LOGADO = ['Serviço e local', 'Detalhes', 'Seu nome'] as const;
 
 interface Rascunho {
   service_id?: string | null;
@@ -34,6 +37,9 @@ const ROTULOS_FALTA: Record<string, string> = {
 
 function PedidoConteudo() {
   const router = useRouter();
+  const { papel } = useSessao();
+  const logado = papel === 'cliente';
+  const etapas: readonly string[] = logado ? ETAPAS_LOGADO : ETAPAS;
   const params = useSearchParams() ?? new URLSearchParams();
   const [carregando, setCarregando] = useState(true);
   const [criado, setCriado] = useState(false);
@@ -133,8 +139,47 @@ function PedidoConteudo() {
     setSalvando(true);
     setAviso('');
     const salvou = await salvar({ urgency: urgencia, description: descricao.trim() });
+    if (!salvou) {
+      setSalvando(false);
+      return;
+    }
+    if (logado) {
+      // Logado: nome e e-mail vem da conta; so pergunta o nome se ele nunca fez pedido.
+      const pronto = await identidadeDaSessao();
+      setSalvando(false);
+      if (!pronto) setEtapa(2);
+      return;
+    }
     setSalvando(false);
-    if (salvou) setEtapa(2);
+    setEtapa(2);
+  }
+
+  /** Grava nome e e-mail da conta no rascunho (sem codigo) e abre a revisao. Falso quando falta o nome. */
+  async function identidadeDaSessao(nomeDigitado?: string): Promise<boolean> {
+    const r = await chamarApi<{ code?: string }>('/v1/auth/me/draft-identity', {
+      body: nomeDigitado ? { first_name: nomeDigitado } : {},
+    });
+    if (r.status === 200) {
+      router.push('/pedido/revisao');
+      return true;
+    }
+    if (r.status === 422 && r.corpo?.code === 'nome_necessario') return false;
+    if (r.status === 401) setAviso('Sua sessão terminou. Entre de novo para continuar.');
+    else if (r.status === 404) setAviso('Seu pedido expirou. Confira os dados e continue.');
+    else setAviso('Não foi possível continuar agora. Tente de novo.');
+    return false;
+  }
+
+  async function avancarNome() {
+    if (nome.trim().length < 2) {
+      setErros({ nome: 'Informe seu primeiro nome.' });
+      return;
+    }
+    setErros({});
+    setSalvando(true);
+    setAviso('');
+    await identidadeDaSessao(nome.trim());
+    setSalvando(false);
   }
 
   async function avancarDados() {
@@ -190,15 +235,15 @@ function PedidoConteudo() {
   return (
     <div>
       <div className="glass-card painel-cartao">
-        <div className="passos" aria-label={`Etapa ${etapa + 1} de ${ETAPAS.length}: ${ETAPAS[etapa]}`}>
-          {ETAPAS.map((n, i) => (
+        <div className="passos" aria-label={`Etapa ${etapa + 1} de ${etapas.length}: ${etapas[etapa]}`}>
+          {etapas.map((n, i) => (
             <div key={n} className={`passo ${i <= etapa ? 'passo-feito' : ''}`} />
           ))}
         </div>
         <span className="sobretitulo">
-          Etapa {etapa + 1} de {ETAPAS.length}
+          Etapa {etapa + 1} de {etapas.length}
         </span>
-        <h2 style={{ fontSize: '1.5rem', margin: '0.25rem 0 1.5rem' }}>{ETAPAS[etapa]}</h2>
+        <h2 style={{ fontSize: '1.5rem', margin: '0.25rem 0 1.5rem' }}>{etapas[etapa]}</h2>
         {aviso ? (
           <div style={{ marginBottom: '1.25rem' }}>
             <Aviso tipo="alerta">{aviso}</Aviso>
@@ -274,7 +319,7 @@ function PedidoConteudo() {
               />
             </Campo>
             <div className="linha">
-              <button type="button" className="btn btn-secondary" onClick={() => setEtapa(0)}>
+              <button type="button" className="btn-link" onClick={() => setEtapa(0)}>
                 Voltar
               </button>
               <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={salvando}>
@@ -284,7 +329,31 @@ function PedidoConteudo() {
           </form>
         ) : null}
 
-        {etapa === 2 ? (
+        {etapa === 2 && logado ? (
+          <form
+            className="form"
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              void avancarNome();
+            }}
+          >
+            <p className="texto-suave">Você já está logado. Só falta o primeiro nome que o profissional vai ver.</p>
+            <Campo id="nome" rotulo="Primeiro nome" erro={erros.nome}>
+              <input id="nome" className="entrada" autoComplete="given-name" value={nome} onChange={(e) => setNome(e.target.value)} aria-invalid={erros.nome ? 'true' : undefined} />
+            </Campo>
+            <div className="linha">
+              <button type="button" className="btn-link" onClick={() => setEtapa(1)}>
+                Voltar
+              </button>
+              <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={salvando}>
+                {salvando ? 'Salvando…' : 'Revisar pedido'} <Icone nome="seta" tamanho={18} />
+              </button>
+            </div>
+          </form>
+        ) : null}
+
+        {etapa === 2 && !logado ? (
           <form
             className="form"
             noValidate
@@ -301,7 +370,7 @@ function PedidoConteudo() {
               <input id="email" className="entrada" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={erros.email ? 'true' : undefined} />
             </Campo>
             <div className="linha">
-              <button type="button" className="btn btn-secondary" onClick={() => setEtapa(1)}>
+              <button type="button" className="btn-link" onClick={() => setEtapa(1)}>
                 Voltar
               </button>
               <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={salvando}>
@@ -320,6 +389,7 @@ function PedidoConteudo() {
 }
 
 export default function Pedido() {
+  const { papel } = useSessao();
   return (
     <PaginaInterna largura="media">
       <CabecaPagina
@@ -329,10 +399,15 @@ export default function Pedido() {
         voltar={{ href: '/', rotulo: 'Início' }}
         texto={
           <>
-            Leva menos de 2 minutos. Profissionais verificados da sua região recebem o pedido assim que ele é publicado.{' '}
-            <Link href="/entrar" style={{ textDecoration: 'underline' }}>
-              Já tem pedidos? Entre.
-            </Link>
+            Leva menos de 2 minutos. Profissionais verificados da sua região recebem o pedido assim que ele é publicado.
+            {papel === 'anonimo' ? (
+              <>
+                {' '}
+                <Link href="/entrar" style={{ textDecoration: 'underline' }}>
+                  Já tem pedidos? Entre.
+                </Link>
+              </>
+            ) : null}
           </>
         }
       />

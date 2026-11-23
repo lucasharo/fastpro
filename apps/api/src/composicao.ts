@@ -77,7 +77,8 @@ import { montarPublicacaoPedido, provedorPermanenteDoAmbiente } from './requests
 import type { PublishRouteOptions } from './requests/publish-route.js';
 // Issue 45 (H-032) | Leitura do pedido por papel: liga so com ADDRESS_ENC_KEY e a fabrica do papel app_system.
 import { montarDetalhePedido } from './requests/detail-composicao.js';
-import { montarConversas, montarQuemSou } from './conversations/conversation-composicao.js';
+import { montarConversas, montarIdentidadeDaSessao, montarQuemSou } from './conversations/conversation-composicao.js';
+import type { DraftSessionRouteOptions } from './conversations/draft-session-route.js';
 import type { MeRouteOptions } from './conversations/me-route.js';
 import type { ConversationRouteOptions } from './conversations/conversation-route.js';
 // Pacote A (H-061, H-077, H-078, H-080) | Ciclo do pedido e do aceite: liga so com DATABASE_URL_APP_SYSTEM e SITE_URL.
@@ -222,6 +223,7 @@ export interface Integracoes {
   readonly requestDetail: RequestDetailRouteOptions | undefined;
   readonly conversations: ConversationRouteOptions | undefined;
   readonly me: MeRouteOptions | undefined;
+  readonly draftSession: DraftSessionRouteOptions | undefined;
   /** Pacote A: rotas de concluir, desfazer, cancelar e retirar aceite, ou undefined (404 uniforme). */
   readonly lifecycle: LifecycleRouteOptions | undefined;
   readonly pendenciasCiclo: readonly string[];
@@ -452,6 +454,7 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     requestDetail: detalhe.options,
     conversations: conversas.options,
     me: montarQuemSou(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock }),
+    draftSession: montarIdentidadeDaSessao(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock }),
     pendenciasConversas: conversas.pendencias,
     lifecycle: ciclo.options,
     pendenciasCiclo: ciclo.pendencias,

@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { CampoEndereco, ENDERECO_MIN } from '@/components/CampoEndereco';
 import { CampoServico } from '@/components/CampoServico';
+import { Selecao } from '@/components/Selecao';
 import { chamarApi, MENSAGEM_LIMITE, ok, type ServicoCatalogo } from '@/lib/api';
 
 export function BuscaHero() {
@@ -102,11 +103,17 @@ export function BuscaHero() {
         </div>
         <div className="busca-campo">
           <label htmlFor="hero-quando">Quando?</label>
-          <select id="hero-quando" value={quando} onChange={(e) => setQuando(e.target.value)}>
-            <option value="urgente">Hoje ou amanhã</option>
-            <option value="esta_semana">Nesta semana</option>
-            <option value="flexivel">Sem pressa</option>
-          </select>
+          <Selecao
+            id="hero-quando"
+            variante="limpo"
+            valor={quando}
+            onMudar={setQuando}
+            opcoes={[
+              { valor: 'urgente', rotulo: 'Hoje ou amanhã' },
+              { valor: 'esta_semana', rotulo: 'Nesta semana' },
+              { valor: 'flexivel', rotulo: 'Sem pressa' },
+            ]}
+          />
         </div>
         <button type="submit" className="btn btn-primary btn-sm" disabled={enviando}>
           {enviando ? 'Aguarde…' : 'Buscar'}

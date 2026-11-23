@@ -1,6 +1,8 @@
 // Ciclo central (2026-11-23) | Montagem das rotas de conversa a partir do ambiente: papel app_system
 // (DATABASE_URL_APP_SYSTEM), SITE_URL e a fabrica do cliente SQL. Faltando algo, nada monta (404 uniforme).
-import { PgConversationStore, PgProfessionalProfile, PgSessionRepository, type SqlClient } from '@fastpro/db';
+import { createHash } from 'node:crypto';
+import { PgConversationStore, PgProfessionalProfile, PgSessionRepository, challengeHmacHex, type SqlClient } from '@fastpro/db';
+import type { DraftSessionRouteOptions } from './draft-session-route.js';
 import type { MeRouteOptions } from './me-route.js';
 import type { ConversationRouteOptions } from './conversation-route.js';
 
@@ -51,5 +53,40 @@ export function montarQuemSou(env: Ambiente, opcoes: ConversaOpcoes = {}): MeRou
       const fimMs = fim instanceof Date ? fim.getTime() : typeof fim === 'string' ? Date.parse(fim) : null;
       return { renovada: linha.out_renovada === true, fimMs };
     },
+  };
+}
+
+/** Pedido de quem ja esta logado: banco app_system, SITE_URL e PEPPER_EMAIL_HMAC (mesmo HMAC da identidade do rascunho). */
+export function montarIdentidadeDaSessao(env: Ambiente, opcoes: ConversaOpcoes = {}): DraftSessionRouteOptions | undefined {
+  const url = (env.DATABASE_URL_APP_SYSTEM ?? '').trim();
+  const site = (env.SITE_URL ?? '').trim();
+  const pepper = (env.PEPPER_EMAIL_HMAC ?? '').trim();
+  if (url === '' || site === '' || pepper === '' || opcoes.abrirCliente === undefined) return undefined;
+  const cliente = opcoes.abrirCliente(url);
+  return {
+    siteUrl: site,
+    clock: opcoes.relogio ?? { nowMs: () => Date.now() },
+    identidade: async (sessionHash, nowMs) => {
+      const r = await cliente.query('select * from private.session_customer_identity($1, $2::timestamptz)', [
+        sessionHash,
+        new Date(nowMs).toISOString(),
+      ]);
+      const l = r.rows[0];
+      if (l === undefined || typeof l.out_email !== 'string') return null;
+      return { email: l.out_email, firstName: typeof l.out_first_name === 'string' ? l.out_first_name : null };
+    },
+    gravar: async (i) => {
+      const r = await cliente.query('select private.draft_identity_from_session($1, $2, $3::timestamptz, $4, $5, $6) as r', [
+        i.draftHash,
+        i.sessionHash,
+        new Date(i.nowMs).toISOString(),
+        i.firstName,
+        i.email,
+        i.emailHmac,
+      ]);
+      return String(r.rows[0]?.r ?? 'erro');
+    },
+    emailHmac: (email) => challengeHmacHex(pepper, email),
+    draftHash: (secret) => createHash('sha256').update(secret, 'utf8').digest('hex'),
   };
 }

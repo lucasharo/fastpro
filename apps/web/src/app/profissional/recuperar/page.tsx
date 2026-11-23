@@ -40,7 +40,7 @@ export default function Recuperar() {
           <button type="submit" className="btn btn-primary btn-bloco">
             Enviar link
           </button>
-          <Link href="/profissional/entrar" className="btn btn-secondary btn-bloco">
+          <Link href="/profissional/entrar" className="btn-link" style={{ alignSelf: 'center' }}>
             Voltar
           </Link>
         </form>

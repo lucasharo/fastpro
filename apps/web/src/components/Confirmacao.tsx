@@ -52,7 +52,7 @@ export function Confirmacao({
           {texto}
         </p>
         <div className="pacote-a-acoes">
-          <button type="button" className="btn btn-secondary btn-sm" autoFocus disabled={ocupado} onClick={onFechar}>
+          <button type="button" className="btn-link" autoFocus disabled={ocupado} onClick={onFechar}>
             {rotuloCancelar}
           </button>
           <button type="button" className="btn btn-primary btn-sm" disabled={ocupado} onClick={onConfirmar}>
