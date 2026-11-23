@@ -97,6 +97,9 @@ importers:
       '@fastpro/api':
         specifier: workspace:*
         version: link:../api
+      '@fastpro/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@fastpro/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens

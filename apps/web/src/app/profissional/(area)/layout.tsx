@@ -10,6 +10,7 @@ const MENU: readonly { href: string; rotulo: string; icone: NomeIcone }[] = [
   { href: '/profissional/painel', rotulo: 'Painel', icone: 'painel' },
   { href: '/profissional/pedidos', rotulo: 'Pedidos da região', icone: 'local' },
   { href: '/profissional/conversas', rotulo: 'Conversas', icone: 'conversa' },
+  { href: '/profissional/avaliacoes', rotulo: 'Avaliações', icone: 'estrela' },
   { href: '/profissional/perfil', rotulo: 'Perfil e área', icone: 'usuario' },
   { href: '/profissional/documentos', rotulo: 'Documentos', icone: 'documento' },
   { href: '/profissional/assinatura', rotulo: 'Assinatura', icone: 'carteira' },

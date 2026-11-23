@@ -126,6 +126,8 @@ import { handleConversationRoute, isConversationRoute, type ConversationRouteOpt
 import { handleLifecycleRoute, isLifecycleRoute, type LifecycleRouteOptions } from './lifecycle/lifecycle-route.js';
 // Pacote C (H-060, H-082, H-083): segunda onda e republicacao do pedido.
 import { handleWaveRoute, isWaveRoute, type WaveRouteOptions } from './waves/wave-route.js';
+// Pacote B (H-086, H-088, H-089) | Avaliacoes do servico, resposta do profissional e perfil publico de avaliacoes.
+import { handleReviewRoute, isReviewRoute, type ReviewRouteOptions } from './reviews/review-route.js';
 // Issue 120 (H-111) | Direitos do titular: POST/GET /v1/privacy/dsr-requests e detalhe/cancelamento do proprio caso.
 import {
   handlePrivacyTitularRoute,
@@ -244,6 +246,8 @@ export interface AppOptions {
   readonly lifecycle?: LifecycleRouteOptions;
   /** Pacote C: segunda onda, republicacao e acoes do dono. Sem esta opcao as rotas respondem 404 uniforme. */
   readonly waves?: WaveRouteOptions;
+  /** Pacote B: avaliacoes e resposta do profissional. Sem esta opcao as rotas respondem 404 uniforme. */
+  readonly reviews?: ReviewRouteOptions;
   /** Issue 120 (H-111): direitos do titular. Sem esta opcao as rotas /v1/privacy/dsr-requests respondem 404 uniforme. */
   readonly privacyTitular?: PrivacyTitularRouteOptions;
   /** Issue 120 (H-111): painel do DPO. Sem esta opcao, /v1/admin/privacy/dsr-cases responde 404 vazio. */
@@ -492,6 +496,14 @@ export async function handleRequest(
   // Pacote C (H-060, H-082, H-083): segunda onda e republicacao. Sem a montagem, o mesmo 404 uniforme do rascunho.
   if (isWaveRoute(req.method ?? '', path)) {
     if (opts.waves) return handleWaveRoute(req, res, path, opts.waves);
+    const r = draftNotFound();
+    res.writeHead(r.status, r.headers);
+    res.end(r.body);
+    return;
+  }
+  // Pacote B (H-086, H-088, H-089): avaliacoes. Vem ANTES do bloco do perfil publico, que trata /v1/public/professionals/ inteiro.
+  if (isReviewRoute(req.method ?? '', path)) {
+    if (opts.reviews) return handleReviewRoute(req, res, path, opts.reviews);
     const r = draftNotFound();
     res.writeHead(r.status, r.headers);
     res.end(r.body);

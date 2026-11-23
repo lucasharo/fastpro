@@ -112,3 +112,4 @@ export * from './privacy-dsr-step-up.js';
 export * from './reminders.js';
 export * from './request-lifecycle.js';
 export * from './request-waves.js';
+export * from './reviews.js';
