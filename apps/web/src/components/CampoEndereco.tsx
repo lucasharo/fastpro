@@ -35,10 +35,14 @@ export function CampoEndereco({
   const [itens, setItens] = useState<string[]>([]);
   const [ativo, setAtivo] = useState(-1);
   const escolhido = useRef<string | null>(null);
+  // So busca depois que a pessoa digita: valor preenchido pela tela (rascunho, inicial) nao abre sugestoes.
+  const digitou = useRef(false);
+  // Resposta que chega depois que a pessoa saiu do campo e descartada (a lista nao abre fora de hora).
+  const focado = useRef(false);
 
   useEffect(() => {
     const q = valor.trim();
-    if (!podeConsultar || q.length < ENDERECO_MIN || q.length > ENDERECO_MAX || escolhido.current === valor) {
+    if (!digitou.current || !podeConsultar || q.length < ENDERECO_MIN || q.length > ENDERECO_MAX || escolhido.current === valor) {
       setItens([]);
       return;
     }
@@ -47,7 +51,7 @@ export function CampoEndereco({
       const r = await chamarApi<{ mode?: string; items?: { label?: unknown }[] }>('/v1/geo/address-suggest', {
         body: { q, context: contexto },
       });
-      if (!vivo) return;
+      if (!vivo || !focado.current) return;
       if (r.status === 200 && r.corpo?.mode === 'ok' && Array.isArray(r.corpo.items)) {
         setItens(r.corpo.items.map((i) => (typeof i.label === 'string' ? i.label : null)).filter((l): l is string => l !== null));
         setAtivo(-1);
@@ -72,7 +76,6 @@ export function CampoEndereco({
       <input
         id={id}
         className={className}
-        onFocus={onPreparar}
         role="combobox"
         autoComplete="off"
         aria-autocomplete="list"
@@ -83,8 +86,17 @@ export function CampoEndereco({
         maxLength={ENDERECO_MAX}
         placeholder={placeholder ?? 'Rua, número e bairro'}
         value={valor}
+        onFocus={() => {
+          focado.current = true;
+          onPreparar?.();
+        }}
+        onBlur={() => {
+          focado.current = false;
+          setItens([]);
+        }}
         onChange={(e) => {
           escolhido.current = null;
+          digitou.current = true;
           onPreparar?.();
           onMudar(e.target.value);
         }}

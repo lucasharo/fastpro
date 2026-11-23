@@ -20,10 +20,14 @@ export function CampoServico({ valor, onTexto, onEscolher, placeholder, classNam
   const [aviso, setAviso] = useState('');
   const [ativo, setAtivo] = useState(-1);
   const escolhido = useRef<string | null>(null);
+  // So busca depois que a pessoa digita: valor preenchido pela tela (rascunho, inicial) nao abre sugestoes.
+  const digitou = useRef(false);
+  // Resposta que chega depois que a pessoa saiu do campo e descartada (a lista nao abre fora de hora).
+  const focado = useRef(false);
 
   useEffect(() => {
     const q = valor.trim();
-    if (q.length < 2 || escolhido.current === valor) {
+    if (!digitou.current || q.length < 2 || escolhido.current === valor) {
       setOpcoes([]);
       setAviso('');
       return;
@@ -31,7 +35,7 @@ export function CampoServico({ valor, onTexto, onEscolher, placeholder, classNam
     let vivo = true;
     const t = setTimeout(async () => {
       const r = await buscarServicos(q);
-      if (!vivo) return;
+      if (!vivo || !focado.current) return;
       if (r === 'limite') {
         setOpcoes([]);
         setAviso('Muitas buscas seguidas. Aguarde um instante.');
@@ -72,8 +76,16 @@ export function CampoServico({ valor, onTexto, onEscolher, placeholder, classNam
         aria-invalid={invalido ? 'true' : undefined}
         placeholder={placeholder ?? 'Ex.: eletricista, faxina, pintor'}
         value={valor}
+        onFocus={() => {
+          focado.current = true;
+        }}
+        onBlur={() => {
+          focado.current = false;
+          setOpcoes([]);
+        }}
         onChange={(e) => {
           escolhido.current = null;
+          digitou.current = true;
           onTexto(e.target.value);
         }}
         onKeyDown={(e) => {
