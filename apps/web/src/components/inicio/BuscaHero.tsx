@@ -1,9 +1,13 @@
 'use client';
-// Busca em card de vidro do hero: servico (catalogo real), endereco e quando. Leva ao pedido ja preenchido.
+// Busca em card de vidro do hero: servico (catalogo real), endereco com sugestoes do Mapbox e quando.
+// A API so libera as sugestoes de endereco para quem ja tem um rascunho de pedido (protege a cota do Mapbox):
+// o rascunho e criado na primeira vez que a pessoa mexe no endereco. "Buscar" grava servico e endereco no
+// rascunho e leva ao pedido ja preenchido.
 import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { CampoEndereco, ENDERECO_MIN } from '@/components/CampoEndereco';
 import { CampoServico } from '@/components/CampoServico';
-import type { ServicoCatalogo } from '@/lib/api';
+import { chamarApi, MENSAGEM_LIMITE, ok, type ServicoCatalogo } from '@/lib/api';
 
 export function BuscaHero() {
   const router = useRouter();
@@ -11,23 +15,64 @@ export function BuscaHero() {
   const [servico, setServico] = useState<ServicoCatalogo | null>(null);
   const [endereco, setEndereco] = useState('');
   const [quando, setQuando] = useState('esta_semana');
+  const [criado, setCriado] = useState(false);
+  const [aviso, setAviso] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const preparando = useRef<Promise<boolean> | null>(null);
 
-  function buscar(e: FormEvent) {
+  // Rascunho ja existente (ex.: a pessoa voltou a inicial): as sugestoes ja podem aparecer.
+  useEffect(() => {
+    void (async () => {
+      const r = await chamarApi('/v1/drafts/current');
+      if (r.status === 200) setCriado(true);
+    })();
+  }, []);
+
+  /** Cria o rascunho uma unica vez (com o servico, se ja escolhido; senao com o endereco digitado). */
+  function preparar(): Promise<boolean> {
+    if (criado) return Promise.resolve(true);
+    if (preparando.current) return preparando.current;
+    const corpo = servico ? { service_id: servico.service_id } : endereco.trim().length >= ENDERECO_MIN ? { address_text: endereco.trim() } : null;
+    if (corpo === null) return Promise.resolve(false);
+    preparando.current = (async () => {
+      const r = await chamarApi('/v1/drafts', { method: 'POST', body: corpo });
+      preparando.current = null;
+      if (ok(r.status)) {
+        setCriado(true);
+        return true;
+      }
+      if (r.status === 429) setAviso(MENSAGEM_LIMITE);
+      return false;
+    })();
+    return preparando.current;
+  }
+
+  async function buscar(e: FormEvent) {
     e.preventDefault();
-    const p = new URLSearchParams();
-    if (servico) {
-      p.set('servico_id', servico.service_id);
-      p.set('servico', servico.service_name);
-    } else if (texto.trim()) {
-      p.set('q', texto.trim());
+    setAviso('');
+    if (endereco.trim().length < ENDERECO_MIN) {
+      setAviso('Digite o endereço do serviço (rua, número e bairro).');
+      return;
     }
-    if (endereco.trim()) p.set('endereco', endereco.trim());
+    setEnviando(true);
+    const parcial: Record<string, string> = { address_text: endereco.trim() };
+    if (servico) parcial.service_id = servico.service_id;
+    const r = criado
+      ? await chamarApi('/v1/drafts/current', { method: 'PATCH', body: parcial })
+      : await chamarApi('/v1/drafts', { method: 'POST', body: parcial });
+    setEnviando(false);
+    if (!ok(r.status)) {
+      setAviso(r.status === 429 ? MENSAGEM_LIMITE : 'Não foi possível continuar agora. Tente de novo.');
+      return;
+    }
+    const p = new URLSearchParams();
+    if (!servico && texto.trim()) p.set('q', texto.trim());
     p.set('quando', quando);
     router.push(`/pedido?${p.toString()}`);
   }
 
   return (
-    <form className="glass-card busca-card" onSubmit={buscar} role="search" aria-label="Pedir um serviço">
+    <form className="glass-card busca-card" onSubmit={buscar} role="search" aria-label="Pedir um serviço" noValidate>
       <div className="busca-grade">
         <div className="busca-campo">
           <label htmlFor="hero-servico">Qual serviço?</label>
@@ -44,11 +89,15 @@ export function BuscaHero() {
         </div>
         <div className="busca-campo">
           <label htmlFor="hero-endereco">Onde?</label>
-          <input
+          <CampoEndereco
             id="hero-endereco"
-            placeholder="Bairro ou CEP"
-            value={endereco}
-            onChange={(e) => setEndereco(e.target.value)}
+            className=""
+            contexto="request_draft"
+            valor={endereco}
+            onMudar={setEndereco}
+            podeConsultar={criado}
+            onPreparar={() => void preparar()}
+            placeholder="Rua, número e bairro"
           />
         </div>
         <div className="busca-campo">
@@ -59,10 +108,15 @@ export function BuscaHero() {
             <option value="flexivel">Sem pressa</option>
           </select>
         </div>
-        <button type="submit" className="btn btn-primary btn-sm">
-          Buscar
+        <button type="submit" className="btn btn-primary btn-sm" disabled={enviando}>
+          {enviando ? 'Aguarde…' : 'Buscar'}
         </button>
       </div>
+      {aviso ? (
+        <p className="campo-erro" role="alert" style={{ marginTop: '0.75rem' }}>
+          {aviso}
+        </p>
+      ) : null}
     </form>
   );
 }

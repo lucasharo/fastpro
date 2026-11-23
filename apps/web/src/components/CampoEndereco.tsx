@@ -15,9 +15,23 @@ export interface CampoEnderecoProps {
   readonly podeConsultar?: boolean;
   readonly invalido?: boolean;
   readonly placeholder?: string;
+  /** Classe do campo (padrao: entrada do formulario). Na busca da inicial o campo e transparente. */
+  readonly className?: string;
+  /** Chamado no primeiro foco ou digitacao (ex.: criar o rascunho que libera as sugestoes). */
+  readonly onPreparar?: () => void;
 }
 
-export function CampoEndereco({ id, valor, onMudar, contexto, podeConsultar = true, invalido, placeholder }: CampoEnderecoProps) {
+export function CampoEndereco({
+  id,
+  valor,
+  onMudar,
+  contexto,
+  podeConsultar = true,
+  invalido,
+  placeholder,
+  className = 'entrada',
+  onPreparar,
+}: CampoEnderecoProps) {
   const [itens, setItens] = useState<string[]>([]);
   const [ativo, setAtivo] = useState(-1);
   const escolhido = useRef<string | null>(null);
@@ -57,7 +71,8 @@ export function CampoEndereco({ id, valor, onMudar, contexto, podeConsultar = tr
     <div style={{ position: 'relative' }}>
       <input
         id={id}
-        className="entrada"
+        className={className}
+        onFocus={onPreparar}
         role="combobox"
         autoComplete="off"
         aria-autocomplete="list"
@@ -70,6 +85,7 @@ export function CampoEndereco({ id, valor, onMudar, contexto, podeConsultar = tr
         value={valor}
         onChange={(e) => {
           escolhido.current = null;
+          onPreparar?.();
           onMudar(e.target.value);
         }}
         onKeyDown={(e) => {
@@ -90,7 +106,7 @@ export function CampoEndereco({ id, valor, onMudar, contexto, podeConsultar = tr
         }}
       />
       {itens.length > 0 ? (
-        <ul id={`${id}-lista`} role="listbox" className="lista-sugestoes" style={{ position: 'absolute', zIndex: 20, left: 0, right: 0 }}>
+        <ul id={`${id}-lista`} role="listbox" className="lista-sugestoes lista-sugestoes-larga">
           {itens.map((rotulo, i) => (
             <li key={rotulo} id={`${id}-op-${i}`} role="option" aria-selected={i === ativo}>
               <button type="button" tabIndex={-1} onMouseDown={(e) => e.preventDefault()} onClick={() => escolher(rotulo)}>
