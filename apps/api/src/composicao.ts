@@ -77,6 +77,8 @@ import { montarPublicacaoPedido, provedorPermanenteDoAmbiente } from './requests
 import type { PublishRouteOptions } from './requests/publish-route.js';
 // Issue 45 (H-032) | Leitura do pedido por papel: liga so com ADDRESS_ENC_KEY e a fabrica do papel app_system.
 import { montarDetalhePedido } from './requests/detail-composicao.js';
+import { montarConversas } from './conversations/conversation-composicao.js';
+import type { ConversationRouteOptions } from './conversations/conversation-route.js';
 import type { RequestDetailRouteOptions } from './requests/detail-route.js';
 // Issue 120 (H-111) | Rotas do titular para direitos: liga so com DATABASE_URL_APP_SYSTEM e a fabrica do cliente SQL.
 import { montarPrivacidadeTitular } from './privacy/privacy-composicao.js';
@@ -208,6 +210,8 @@ export interface Integracoes {
   /** Nomes (nunca valores) que impedem a lista do dono de ligar (H-034). */
   readonly pendenciasLista: readonly string[];
   readonly requestDetail: RequestDetailRouteOptions | undefined;
+  readonly conversations: ConversationRouteOptions | undefined;
+  readonly pendenciasConversas: readonly string[];
   /** Issue 120 (H-111): rotas do titular para direitos, ou undefined (404 uniforme). */
   readonly privacyTitular?: PrivacyTitularRouteOptions;
   /** Nomes (nunca valores) que impedem as rotas do titular para direitos de ligar (H-111). */
@@ -351,6 +355,7 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
 
   // Issue 45 (H-032): leitura do pedido (dono e profissional). Sem ADDRESS_ENC_KEY ou banco, as rotas nao ligam (404).
   const detalhe = montarDetalhePedido(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
+  const conversas = montarConversas(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock });
   // Issue 120 (H-111): direitos do titular sobre o papel app_system; sem banco ou fabrica, as rotas nao ligam (404).
   const privacidade = montarPrivacidadeTitular(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock, email, waitUntil: opcoes.waitUntil });
   // Issue 120 (H-111): painel do DPO; sem banco app_system ou ADMIN_BASE_URL, as rotas nao ligam (404 vazio).
@@ -418,6 +423,8 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     requestList: lista.options,
     pendenciasLista: lista.pendencias,
     requestDetail: detalhe.options,
+    conversations: conversas.options,
+    pendenciasConversas: conversas.pendencias,
     pendenciasDetalhe: detalhe.pendencias,
     privacyTitular: privacidade.options,
     pendenciasPrivacidade: privacidade.pendencias,

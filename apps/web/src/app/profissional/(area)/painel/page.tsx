@@ -1,15 +1,14 @@
 'use client';
-// Painel do profissional: situacao da verificacao e da assinatura (reais), metricas (DEMONSTRACAO) e os
-// pedidos mais recentes da regiao (reais).
+// Painel do profissional: situacao da verificacao e da assinatura, numeros das conversas e os pedidos mais
+// recentes da regiao. Tudo real.
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { CartaoPedidoRegiao } from '@/components/CartaoPedidoRegiao';
 import { Icone } from '@/components/Icone';
-import { Aviso, CabecaPagina, Carregando, SeloMock, Vazio } from '@/components/ui';
+import { Aviso, CabecaPagina, Carregando, Vazio } from '@/components/ui';
 import { chamarApi } from '@/lib/api';
 import { formatarData } from '@/lib/formatos';
-import { METRICAS_PROFISSIONAL } from '@/lib/mock';
 import { lerDescoberta, type ItemDescoberta } from '@/lib/profissional';
 
 interface Verificacao {
@@ -57,13 +56,15 @@ export default function PainelProfissional() {
   const [assin, setAssin] = useState<Assinatura | null>(null);
   const [pedidos, setPedidos] = useState<ItemDescoberta[] | null>(null);
   const [aviso, setAviso] = useState('');
+  const [numeros, setNumeros] = useState<{ valor: string; rotulo: string }[]>([]);
 
   useEffect(() => {
     (async () => {
-      const [v, a, d] = await Promise.all([
+      const [v, a, d, c] = await Promise.all([
         chamarApi<Verificacao>('/v1/professional/verificacao'),
         chamarApi<Assinatura>('/v1/billing/status'),
         lerDescoberta(),
+        chamarApi<{ items?: { state: string; selected: boolean; requestStatus: string }[] }>('/v1/conversations'),
       ]);
       if (v.status === 401 || d.tipo === 'sessao') {
         router.replace('/profissional/entrar');
@@ -71,6 +72,14 @@ export default function PainelProfissional() {
       }
       setVerif(v.status === 200 && v.corpo ? v.corpo : { estado: 'sem_envio' });
       if (a.status === 200 && a.corpo) setAssin(a.corpo);
+      const conversas = c.status === 200 && Array.isArray(c.corpo?.items) ? c.corpo.items : [];
+      const disponiveis = d.tipo === 'ok' ? `${d.itens.length}${d.cursor ? '+' : ''}` : '0';
+      setNumeros([
+        { valor: disponiveis, rotulo: 'Pedidos disponíveis na região' },
+        { valor: String(conversas.length), rotulo: 'Pedidos que você aceitou' },
+        { valor: String(conversas.filter((x) => x.state === 'ativa').length), rotulo: 'Conversas abertas' },
+        { valor: String(conversas.filter((x) => x.selected).length), rotulo: 'Vezes que você foi escolhido' },
+      ]);
       if (d.tipo === 'ok') setPedidos(d.itens.slice(0, 3));
       else {
         setPedidos([]);
@@ -120,10 +129,9 @@ export default function PainelProfissional() {
 
       <div className="linha-entre" style={{ marginBottom: '1rem' }}>
         <h2 style={{ fontSize: '1.25rem' }}>Seus números</h2>
-        <SeloMock />
       </div>
       <div className="metricas" style={{ marginBottom: '2rem' }}>
-        {METRICAS_PROFISSIONAL.map((m) => (
+        {numeros.map((m) => (
           <div key={m.rotulo} className="cartao metrica">
             <div className="metrica-valor">{m.valor}</div>
             <div className="metrica-rotulo">{m.rotulo}</div>

@@ -121,6 +121,7 @@ import { handleIdentityDocRoute, isIdentityDocRoute, type IdentityDocRouteOption
 import { handleRequestPublishRoute, REQUEST_PUBLISH_PATH, type PublishRouteOptions } from './requests/publish-route.js';
 // Issue 45 (H-032) | Leitura do pedido: dono (GET /v1/requests/:id) e profissional elegivel (GET /v1/professional/requests/:id).
 import { handleRequestDetailRoute, isRequestDetailRoute, type RequestDetailRouteOptions } from './requests/detail-route.js';
+import { handleConversationRoute, isConversationRoute, type ConversationRouteOptions } from './conversations/conversation-route.js';
 // Issue 120 (H-111) | Direitos do titular: POST/GET /v1/privacy/dsr-requests e detalhe/cancelamento do proprio caso.
 import {
   handlePrivacyTitularRoute,
@@ -233,6 +234,8 @@ export interface AppOptions {
   readonly requestPublish?: PublishRouteOptions;
   /** Issue 45 (H-032): leitura do pedido pelo dono e pelo profissional. Sem esta opcao as rotas respondem 404 uniforme. */
   readonly requestDetail?: RequestDetailRouteOptions;
+  /** Ciclo central: interessados, selecao, conversas e mensagens. Sem esta opcao as rotas respondem 404 uniforme. */
+  readonly conversations?: ConversationRouteOptions;
   /** Issue 120 (H-111): direitos do titular. Sem esta opcao as rotas /v1/privacy/dsr-requests respondem 404 uniforme. */
   readonly privacyTitular?: PrivacyTitularRouteOptions;
   /** Issue 120 (H-111): painel do DPO. Sem esta opcao, /v1/admin/privacy/dsr-cases responde 404 vazio. */
@@ -465,6 +468,14 @@ export async function handleRequest(
   // H-056 (Issue 69): fotos elegiveis do profissional e do dono. Sem a montagem, o mesmo 404 uniforme do rascunho.
   if (isPhotoViewRoute(path)) {
     if (opts.photoView) return handlePhotoViewRoute(req, res, path, opts.photoView);
+    const r = draftNotFound();
+    res.writeHead(r.status, r.headers);
+    res.end(r.body);
+    return;
+  }
+  // Ciclo central: interessados, selecao, conversas e mensagens. Sem a montagem, o mesmo 404 uniforme do rascunho.
+  if (isConversationRoute(req.method ?? '', path)) {
+    if (opts.conversations) return handleConversationRoute(req, res, path, opts.conversations);
     const r = draftNotFound();
     res.writeHead(r.status, r.headers);
     res.end(r.body);

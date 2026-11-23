@@ -1,16 +1,15 @@
 'use client';
-// Detalhe do pedido do cliente: dados reais (GET /v1/requests/:id). Interessados, conversa e escolha sao
-// DEMONSTRACAO ate o backlog E6 a E8 chegar a tela (o aceite do profissional ja existe na API).
+// Detalhe do pedido do cliente: dados (GET /v1/requests/:id), quem aceitou (GET .../acceptances), conversa com cada
+// um e escolha do profissional (POST .../selection). Tudo real; sem dados de demonstracao.
 import Image from 'next/image';
-import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { Conversa } from '@/components/Conversa';
+import { useCallback, useEffect, useState } from 'react';
+import { Conversa, iniciais } from '@/components/Conversa';
 import { Icone } from '@/components/Icone';
-import { Aviso, CabecaPagina, Carregando, PaginaInterna, SeloMock } from '@/components/ui';
-import { chamarApi } from '@/lib/api';
+import { Aviso, CabecaPagina, Carregando, PaginaInterna, Vazio } from '@/components/ui';
+import { chamarApi, MENSAGEM_LIMITE } from '@/lib/api';
 import { formatarData, formatarDataHora, rotuloUrgencia, STATUS_PEDIDO, UUID_RE } from '@/lib/formatos';
-import { fotoDoServico, INTERESSADOS, urlFoto } from '@/lib/mock';
+import { fotoDoServico, urlFoto } from '@/lib/mock';
 
 interface Detalhe {
   serviceName?: string;
@@ -22,26 +21,73 @@ interface Detalhe {
   acceptanceDeadlineAt?: string;
 }
 
+interface Interessado {
+  acceptanceId: string;
+  professionalName: string;
+  status: string;
+  acceptedAt: string | null;
+  conversationId: string | null;
+  selected: boolean;
+}
+
 export default function DetalhePedido() {
   const id = useParams<{ id: string }>()?.id ?? '';
   const router = useRouter();
   const [p, setP] = useState<Detalhe | null>(null);
   const [erro, setErro] = useState('');
-  const [conversaCom, setConversaCom] = useState(INTERESSADOS[0]?.id ?? '');
-  const [escolhido, setEscolhido] = useState<string | null>(null);
+  const [interessados, setInteressados] = useState<Interessado[] | null>(null);
+  const [conversaAberta, setConversaAberta] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(null);
+  const [escolhendo, setEscolhendo] = useState<string | null>(null);
+
+  const carregar = useCallback(async () => {
+    const [d, a] = await Promise.all([
+      chamarApi<Detalhe>(`/v1/requests/${id}`),
+      chamarApi<{ items?: Interessado[] }>(`/v1/requests/${id}/acceptances`),
+    ]);
+    if (d.status === 401) {
+      router.replace('/entrar');
+      return;
+    }
+    if (d.status === 200 && d.corpo) setP(d.corpo);
+    else setErro(d.status === 404 ? 'Pedido não encontrado.' : 'Não foi possível abrir o pedido agora.');
+    const lista = a.status === 200 && Array.isArray(a.corpo?.items) ? a.corpo.items : [];
+    setInteressados(lista);
+    setConversaAberta((atual) => atual ?? lista.find((x) => x.selected)?.conversationId ?? lista[0]?.conversationId ?? null);
+  }, [id, router]);
 
   useEffect(() => {
     if (!UUID_RE.test(id)) {
       setErro('Pedido não encontrado.');
       return;
     }
-    (async () => {
-      const r = await chamarApi<Detalhe>(`/v1/requests/${id}`);
-      if (r.status === 401) router.replace('/entrar');
-      else if (r.status === 200 && r.corpo) setP(r.corpo);
-      else setErro(r.status === 404 ? 'Pedido não encontrado.' : 'Não foi possível abrir o pedido agora.');
-    })();
-  }, [id, router]);
+    void carregar();
+  }, [id, carregar]);
+
+  async function escolher(x: Interessado) {
+    setEscolhendo(x.acceptanceId);
+    setAviso(null);
+    const r = await chamarApi<{ code?: string }>(`/v1/requests/${id}/selection`, { body: { acceptance_id: x.acceptanceId } });
+    setEscolhendo(null);
+    if (r.status === 200) {
+      setAviso({ tipo: 'sucesso', texto: `Você escolheu ${x.professionalName}. Combine os detalhes pela conversa.` });
+      setConversaAberta(x.conversationId);
+      await carregar();
+      return;
+    }
+    const c = r.corpo?.code;
+    setAviso({
+      tipo: 'erro',
+      texto:
+        r.status === 429
+          ? MENSAGEM_LIMITE
+          : c === 'aceite_invalido'
+            ? 'Este profissional não está mais disponível para este pedido.'
+            : c === 'estado_invalido'
+              ? 'Este pedido já foi concluído ou cancelado.'
+              : 'Não foi possível escolher agora. Tente de novo.',
+    });
+  }
 
   if (erro) {
     return (
@@ -51,7 +97,7 @@ export default function DetalhePedido() {
       </PaginaInterna>
     );
   }
-  if (!p) {
+  if (!p || interessados === null) {
     return (
       <PaginaInterna>
         <Carregando texto="Carregando o pedido…" />
@@ -60,7 +106,8 @@ export default function DetalhePedido() {
   }
 
   const st = STATUS_PEDIDO[p.status ?? ''];
-  const pro = INTERESSADOS.find((x) => x.id === conversaCom) ?? INTERESSADOS[0];
+  const ativos = interessados.filter((x) => x.status === 'ativo');
+  const podeEscolher = p.status === 'publicado' || p.status === 'selecionado';
 
   return (
     <PaginaInterna>
@@ -98,62 +145,75 @@ export default function DetalhePedido() {
           </div>
 
           <div className="pilha">
-            <div className="linha-entre">
-              <h2 style={{ fontSize: '1.25rem' }}>
-                {INTERESSADOS.length} profissionais <span className="destaque">aceitaram</span>
-              </h2>
-              <SeloMock />
-            </div>
-            {INTERESSADOS.map((x) => (
-              <div key={x.id} className="item-lista" style={{ alignItems: 'flex-start' }}>
-                <Image src={x.foto} alt="" width={56} height={56} className="avatar" style={{ width: '3.5rem', height: '3.5rem' }} />
+            <h2 style={{ fontSize: '1.25rem' }}>
+              {ativos.length === 0 ? (
+                <>
+                  Aguardando <span className="destaque">profissionais</span>
+                </>
+              ) : (
+                <>
+                  {ativos.length} {ativos.length === 1 ? 'profissional' : 'profissionais'}{' '}
+                  <span className="destaque">{ativos.length === 1 ? 'aceitou' : 'aceitaram'}</span>
+                </>
+              )}
+            </h2>
+            {interessados.length === 0 ? (
+              <div className="glass-card">
+                <Vazio
+                  icone="relogio"
+                  titulo="Ninguém aceitou ainda"
+                  texto="Os profissionais verificados da sua região já podem ver seu pedido. Quando alguém aceitar, ele aparece aqui."
+                />
+              </div>
+            ) : null}
+            {interessados.map((x) => (
+              <div key={x.acceptanceId} className="item-lista" style={{ alignItems: 'flex-start', borderColor: x.selected ? 'var(--color-primary)' : undefined }}>
+                <span className="avatar-letra" style={{ width: '3.5rem', height: '3.5rem', fontSize: '1.125rem' }} aria-hidden="true">
+                  {iniciais(x.professionalName)}
+                </span>
                 <div className="item-corpo">
                   <div className="linha-entre">
-                    <span className="item-titulo">{x.nome}</span>
-                    <span className="nota-flutuante" style={{ position: 'static' }}>
-                      <Icone nome="estrela" tamanho={12} preenchido className="estrela" /> {x.nota} ({x.avaliacoes})
-                    </span>
+                    <span className="item-titulo">{x.professionalName}</span>
+                    {x.selected ? (
+                      <span className="selo selo-sm selo-sucesso">Escolhido</span>
+                    ) : x.status !== 'ativo' ? (
+                      <span className="selo selo-sm selo-neutro">Retirou o aceite</span>
+                    ) : null}
                   </div>
-                  <p className="texto-suave" style={{ fontSize: '0.875rem', margin: '0.25rem 0' }}>
-                    {x.resumo}
-                  </p>
                   <div className="item-meta">
                     <span>
-                      <Icone nome="local" tamanho={14} /> {x.distancia}
+                      <Icone nome="escudo" tamanho={14} /> Verificado
                     </span>
-                    <span>
-                      <Icone nome="check" tamanho={14} /> {x.servicos} serviços
-                    </span>
-                    <span>
-                      <Icone nome="escudo" tamanho={14} /> Verificado desde {x.desde}
-                    </span>
+                    {x.acceptedAt ? (
+                      <span>
+                        <Icone nome="relogio" tamanho={14} /> Aceitou em {formatarDataHora(x.acceptedAt)}
+                      </span>
+                    ) : null}
                   </div>
                   <div className="linha" style={{ marginTop: '0.75rem' }}>
-                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => setConversaCom(x.id)}>
-                      <Icone nome="conversa" tamanho={16} /> Conversar
-                    </button>
-                    <button
-                      type="button"
-                      className={`btn btn-sm ${escolhido === x.id ? 'btn-escuro' : 'btn-primary'}`}
-                      onClick={() => setEscolhido(x.id)}
-                    >
-                      {escolhido === x.id ? 'Escolhido' : 'Escolher'}
-                    </button>
+                    {x.conversationId ? (
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        aria-pressed={conversaAberta === x.conversationId}
+                        onClick={() => setConversaAberta(x.conversationId)}
+                      >
+                        <Icone nome="conversa" tamanho={16} /> Conversar
+                      </button>
+                    ) : null}
+                    {x.status === 'ativo' && !x.selected && podeEscolher ? (
+                      <button type="button" className="btn btn-primary btn-sm" disabled={escolhendo !== null} onClick={() => void escolher(x)}>
+                        {escolhendo === x.acceptanceId ? 'Escolhendo…' : p.status === 'selecionado' ? 'Trocar para este' : 'Escolher'}
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               </div>
             ))}
-            {escolhido ? (
-              <Aviso tipo="sucesso">
-                Você escolheu {INTERESSADOS.find((x) => x.id === escolhido)?.nome}. Os outros profissionais serão avisados. (Demonstração: a escolha ainda não é gravada.)
-              </Aviso>
-            ) : null}
+            {aviso ? <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso> : null}
           </div>
         </div>
-        {pro ? <Conversa nome={pro.nome} foto={pro.foto} subtitulo={`Nota ${pro.nota} · ${pro.distancia}`} /> : null}
-        <p className="campo-dica" style={{ textAlign: 'center' }}>
-          Dúvidas? <Link href="/#como-funciona">Veja como funciona</Link>.
-        </p>
+        {conversaAberta ? <Conversa conversationId={conversaAberta} subtitulo={`Conversa sobre ${p.serviceName ?? 'o pedido'}`} /> : null}
       </div>
     </PaginaInterna>
   );

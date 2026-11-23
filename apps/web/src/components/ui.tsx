@@ -136,7 +136,3 @@ export function Vazio({
     </div>
   );
 }
-
-export function SeloMock() {
-  return <span className="mock-tag">Demonstração</span>;
-}
