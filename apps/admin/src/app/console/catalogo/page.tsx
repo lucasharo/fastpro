@@ -18,6 +18,7 @@ import {
   type CatalogoServico,
   type CatalogoSinonimo,
 } from '../../../catalog-state';
+import { Icone, type NomeIcone } from '../../../components/Icone';
 import { FormularioItem, type EntidadeCatalogo } from './formulario-item';
 
 export const dynamic = 'force-dynamic';
@@ -45,10 +46,10 @@ interface Pagina {
   readonly items: readonly (LinhaGrupo | LinhaServico | LinhaSinonimo)[];
 }
 
-const ABAS: readonly { readonly valor: Aba; readonly rotulo: string; readonly novo: string; readonly entidade: EntidadeCatalogo }[] = [
-  { valor: 'grupos', rotulo: 'Grupos', novo: 'Novo grupo', entidade: 'group' },
-  { valor: 'servicos', rotulo: 'Serviços', novo: 'Novo serviço', entidade: 'service' },
-  { valor: 'sinonimos', rotulo: 'Sinônimos', novo: 'Novo sinônimo', entidade: 'synonym' },
+const ABAS: readonly { readonly valor: Aba; readonly rotulo: string; readonly novo: string; readonly entidade: EntidadeCatalogo; readonly icone: NomeIcone }[] = [
+  { valor: 'grupos', rotulo: 'Grupos', novo: 'Novo grupo', entidade: 'group', icone: 'painel' },
+  { valor: 'servicos', rotulo: 'Serviços', novo: 'Novo serviço', entidade: 'service', icone: 'ferramenta' },
+  { valor: 'sinonimos', rotulo: 'Sinônimos', novo: 'Novo sinônimo', entidade: 'synonym', icone: 'busca' },
 ];
 
 const CAMINHO = '/console/catalogo';
@@ -131,7 +132,8 @@ export default async function PaginaCatalogo({ searchParams }: { readonly search
             className={`aba${a.valor === aba ? ' aba-ativa' : ''}`}
             aria-current={a.valor === aba ? 'page' : undefined}
           >
-            {a.rotulo}
+            <Icone nome={a.icone} tamanho={16} aria-hidden="true" />
+            <span>{a.rotulo}</span>
           </Link>
         ))}
       </nav>
