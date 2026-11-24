@@ -14,7 +14,10 @@ export async function POST(
 ): Promise<Response> {
   const { caso } = await params;
   const voltar = (): Response =>
-    Response.redirect(new URL(`/console/verificacao/${encodeURIComponent(caso)}?leitura=erro`, request.url), 303);
+    Response.redirect(
+      new URL(`/console/verificacao/${encodeURIComponent(caso)}?leitura=erro`, request.url),
+      303,
+    );
 
   const motivo = String((await request.formData()).get('motivo') ?? '');
   if (!ehMotivoLeitura(motivo)) return voltar();
@@ -22,12 +25,16 @@ export async function POST(
   const base = `/casos/${encodeURIComponent(caso)}`;
   const detalhe = await chamarVerificacao(base, 'GET');
   if (detalhe === 'sem_acesso') return NAO_ENCONTRADO();
-  if (detalhe === 'indisponivel' || detalhe.status !== 200) return detalhe === 'indisponivel' ? voltar() : NAO_ENCONTRADO();
+  if (detalhe === 'indisponivel' || detalhe.status !== 200)
+    return detalhe === 'indisponivel' ? voltar() : NAO_ENCONTRADO();
   const corpo = (await detalhe.json().catch(() => null)) as { documento?: unknown } | null;
   const documento = corpo?.documento;
   if (typeof documento !== 'string') return voltar();
 
-  const leitura = await chamarVerificacao(`${base}/documento/leitura`, 'POST', { documento, motivo });
+  const leitura = await chamarVerificacao(`${base}/documento/leitura`, 'POST', {
+    documento,
+    motivo,
+  });
   if (leitura === 'sem_acesso') return NAO_ENCONTRADO();
   if (leitura === 'indisponivel') return voltar();
   if (leitura.status === 404) return NAO_ENCONTRADO();

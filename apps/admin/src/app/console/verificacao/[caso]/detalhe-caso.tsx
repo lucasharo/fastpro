@@ -39,17 +39,22 @@ export function DetalheCaso({ estado, leituraErro }: DetalheCasoProps) {
           <Icone nome="voltar" tamanho={18} />
           Voltar para a fila
         </a>
-        <AvisoErro texto={estado.tipo === 'sem_acesso' ? TEXTO_CASO_INDISPONIVEL : TEXTO_ERRO_CASO} />
+        <AvisoErro
+          texto={estado.tipo === 'sem_acesso' ? TEXTO_CASO_INDISPONIVEL : TEXTO_ERRO_CASO}
+        />
       </div>
     );
   }
   const c = estado.caso;
   // Quem pode agir: o banco so aceita leitura do documento e decisao de quem assumiu o caso.
-  const aberto = c.status === 'pendente' || c.status === 'em_revisao' || c.status === 'retida_duplicidade';
+  const aberto =
+    c.status === 'pendente' || c.status === 'em_revisao' || c.status === 'retida_duplicidade';
   const meu = c.assigned_to_me;
   const podeDecidir = meu && (c.status === 'em_revisao' || c.status === 'retida_duplicidade');
   // Assumivel: pendente, ou recurso pendente ainda sem responsavel (mesma regra de private.verification_case_assign).
-  const assumivel = c.status === 'pendente' || (c.status === 'em_revisao' && !meu && c.appeal_status === 'pendente');
+  const assumivel =
+    c.status === 'pendente' ||
+    (c.status === 'em_revisao' && !meu && c.appeal_status === 'pendente');
 
   return (
     <div>
@@ -87,9 +92,15 @@ export function DetalheCaso({ estado, leituraErro }: DetalheCasoProps) {
           {!meu && aberto ? (
             <p className="verificacao-ajuda">Assuma o caso para abrir o documento.</p>
           ) : c.documentoDisponivel ? (
-            <form method="post" action={`/console/verificacao/${encodeURIComponent(c.id)}/documento`} className="pilha">
+            <form
+              method="post"
+              action={`/console/verificacao/${encodeURIComponent(c.id)}/documento`}
+              className="pilha"
+            >
               <input type="hidden" name="motivo" value={motivoLeituraPadrao(c.appeal_status)} />
-              <p className="verificacao-ajuda">O arquivo é baixado para o seu computador. Ele não aparece nesta página.</p>
+              <p className="verificacao-ajuda">
+                O arquivo é baixado para o seu computador. Ele não aparece nesta página.
+              </p>
               <div>
                 <button type="submit" className="btn btn-secondary btn-sm">
                   <Icone nome="documento" tamanho={18} />
@@ -107,12 +118,20 @@ export function DetalheCaso({ estado, leituraErro }: DetalheCasoProps) {
           {assumivel ? (
             <AssumirCaso caso={c.id} versao={c.version} />
           ) : podeDecidir ? (
-            <FormularioDecisao caso={c.id} versao={c.version} retido={c.status === 'retida_duplicidade'} />
+            <FormularioDecisao
+              caso={c.id}
+              versao={c.version}
+              retido={c.status === 'retida_duplicidade'}
+              semDocumento={!c.documentoDisponivel}
+            />
           ) : aberto ? (
-            <p className="verificacao-ajuda">Este caso está em revisão com outra pessoa da equipe.</p>
+            <p className="verificacao-ajuda">
+              Este caso está em revisão com outra pessoa da equipe.
+            </p>
           ) : (
             <p className="verificacao-ajuda">
-              Caso {rotuloEstado(c.status).toLowerCase()} em {formatarData(c.decididoEm)}. Motivo: {rotuloMotivo(c.motivo)}.
+              Caso {rotuloEstado(c.status).toLowerCase()} em {formatarData(c.decididoEm)}. Motivo:{' '}
+              {rotuloMotivo(c.motivo)}.
             </p>
           )}
         </section>

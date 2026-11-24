@@ -13,7 +13,8 @@ export const TEXTO_SEM_DOCUMENTO = 'Documento indisponível neste caso.';
 export const TEXTO_DECISAO_SALVA = 'Decisão registrada.';
 export const TEXTO_CONFLITO_DECISAO =
   'Este caso mudou enquanto você olhava. Recarregue a página e confira antes de decidir.';
-export const TEXTO_INVALIDO_DECISAO = 'Não foi possível aceitar esta decisão. Confira o motivo e o complemento.';
+export const TEXTO_INVALIDO_DECISAO =
+  'Não foi possível aceitar esta decisão. Confira o motivo e o complemento.';
 export const TEXTO_ERRO_DECISAO = 'Não foi possível registrar a decisão. Tente de novo.';
 export const TEXTO_SEM_ACESSO_DECISAO = 'Este caso não está disponível para você.';
 
@@ -157,25 +158,50 @@ export interface EstadoDecisao {
 
 export const ESTADO_INICIAL_DECISAO: EstadoDecisao = { situacao: 'inicial', mensagem: null };
 
-/** Mapeia a resposta da decisao: 409 = o caso mudou (recarregar), 422 = entrada recusada, 404 = sem acesso. */
-export function estadoDaDecisao(status: number): EstadoDecisao {
+/** Mapeia a resposta da decisao: 409 = o caso mudou (recarregar), 422 = recusa (mensagem pelo codigo), 404 = sem acesso. */
+/** Mensagem de cada recusa do banco (codigo da API no 422), para o revisor saber o que fazer. */
+export const TEXTO_RECUSA_DECISAO: Readonly<Record<string, string>> = {
+  identidade_nao_analisada:
+    'Não é possível aprovar: este caso não tem documento de identidade recebido. Recuse com o motivo adequado ou aguarde o envio.',
+  certificacao_pendente:
+    'Não é possível aprovar: faltam as certificações obrigatórias de um serviço regulamentado do profissional.',
+  perfil_suspenso: 'Não é possível aprovar: o perfil deste profissional está suspenso.',
+  original_vivo:
+    'Este cadastro não pode ser aprovado enquanto o documento estiver em uso por outro perfil ativo. Recuse ou aguarde.',
+  motivo_invalido: 'Este motivo não combina com a decisão escolhida.',
+  explicacao_invalida:
+    'Revise o complemento: ele é obrigatório para "Outro" e não pode ter CPF, CNPJ, e-mail ou telefone.',
+};
+
+export function estadoDaDecisao(status: number, codigo?: string): EstadoDecisao {
   if (status === 200) return { situacao: 'salvo', mensagem: TEXTO_DECISAO_SALVA };
   if (status === 409) return { situacao: 'conflito', mensagem: TEXTO_CONFLITO_DECISAO };
-  if (status === 422) return { situacao: 'invalido', mensagem: TEXTO_INVALIDO_DECISAO };
+  if (status === 422)
+    return {
+      situacao: 'invalido',
+      mensagem: (codigo && TEXTO_RECUSA_DECISAO[codigo]) || TEXTO_INVALIDO_DECISAO,
+    };
   if (status === 404) return { situacao: 'sem_acesso', mensagem: TEXTO_SEM_ACESSO_DECISAO };
   return { situacao: 'erro', mensagem: TEXTO_ERRO_DECISAO };
 }
 
 /** Motivos aceitos para cada decisao (mesma regra do dominio, motivoCombina): aprovar so com "aprovado", reter so
  * com duplicidade; recusar com os demais, e duplicidade_suspeita na recusa so de cadastro retido. */
-export function motivosDaDecisao(decisao: string, retido: boolean): readonly { readonly valor: string; readonly rotulo: string }[] {
+export function motivosDaDecisao(
+  decisao: string,
+  retido: boolean,
+): readonly { readonly valor: string; readonly rotulo: string }[] {
   if (decisao === 'aprovada') return MOTIVOS_DECISAO_TELA.filter((m) => m.valor === 'aprovado');
-  if (decisao === 'retida_duplicidade') return MOTIVOS_DECISAO_TELA.filter((m) => m.valor === 'duplicidade_suspeita');
-  return MOTIVOS_DECISAO_TELA.filter((m) => m.valor !== 'aprovado' && (retido || m.valor !== 'duplicidade_suspeita'));
+  if (decisao === 'retida_duplicidade')
+    return MOTIVOS_DECISAO_TELA.filter((m) => m.valor === 'duplicidade_suspeita');
+  return MOTIVOS_DECISAO_TELA.filter(
+    (m) => m.valor !== 'aprovado' && (retido || m.valor !== 'duplicidade_suspeita'),
+  );
 }
 
 export const TEXTO_CASO_ASSUMIDO = 'Caso assumido. Abra o documento e registre a decisão.';
-export const TEXTO_ERRO_ASSUMIR = 'Não foi possível assumir o caso. Recarregue a página e tente de novo.';
+export const TEXTO_ERRO_ASSUMIR =
+  'Não foi possível assumir o caso. Recarregue a página e tente de novo.';
 
 export const TEXTO_CASO_INDISPONIVEL =
   'Este caso não está disponível para você. Ele pode estar em revisão com outra pessoa da equipe.';

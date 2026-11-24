@@ -15,7 +15,9 @@ export function AssumirCaso({ caso, versao }: { readonly caso: string; readonly 
           {estado.mensagem}
         </p>
       ) : null}
-      <p className="verificacao-ajuda">Ao assumir, o caso passa a ser seu: só você abre o documento e decide.</p>
+      <p className="verificacao-ajuda">
+        Ao assumir, o caso passa a ser seu: só você abre o documento e decide.
+      </p>
       <button type="submit" className="btn btn-primary btn-bloco" disabled={pendente}>
         {pendente ? 'Assumindo...' : 'Assumir caso'}
       </button>

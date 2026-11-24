@@ -18,14 +18,21 @@ export interface FormularioDecisaoProps {
   readonly versao: number;
   /** Caso retido por duplicidade: a recusa pode usar "Duplicidade suspeita" e reter de novo nao se aplica. */
   readonly retido: boolean;
+  /** Sem documento de identidade recebido o banco nao aceita aprovar: a tela ja comeca em Recusar. */
+  readonly semDocumento?: boolean;
 }
 
 const CAMPO_OBRIGATORIO = 'Campo obrigatório.';
 
-export function FormularioDecisao({ caso, versao, retido }: FormularioDecisaoProps) {
+export function FormularioDecisao({
+  caso,
+  versao,
+  retido,
+  semDocumento = false,
+}: FormularioDecisaoProps) {
   const prefixo = useId();
   const [estado, despachar, pendente] = useActionState(decidirCaso, ESTADO_INICIAL_DECISAO);
-  const [decisao, setDecisao] = useState<string>('aprovada');
+  const [decisao, setDecisao] = useState<string>(semDocumento ? 'recusada' : 'aprovada');
   const motivos = motivosDaDecisao(decisao, retido);
   const [motivo, setMotivo] = useState<string>(motivos[0]?.valor ?? '');
   const [complemento, setComplemento] = useState('');
@@ -35,7 +42,10 @@ export function FormularioDecisao({ caso, versao, retido }: FormularioDecisaoPro
   const id = (nome: string) => `${prefixo}-${nome}`;
   const faltaComplemento = motivo === 'outro' && complemento.trim() === '';
   const mostrarFalta = tentou && faltaComplemento;
-  const decisoes = DECISOES_TELA.filter((d) => !(retido && d.valor === 'retida_duplicidade'));
+  const decisoes = DECISOES_TELA.filter(
+    (d) =>
+      !(retido && d.valor === 'retida_duplicidade') && !(semDocumento && d.valor === 'aprovada'),
+  );
 
   function escolher(valor: string) {
     setDecisao(valor);
@@ -74,6 +84,12 @@ export function FormularioDecisao({ caso, versao, retido }: FormularioDecisaoPro
         </p>
       ) : null}
 
+      {semDocumento ? (
+        <p className="verificacao-ajuda">
+          Sem documento de identidade recebido, o caso não pode ser aprovado.
+        </p>
+      ) : null}
+
       <fieldset className="verificacao-escolha">
         <legend>Decisão</legend>
         <div className="verificacao-opcoes">
@@ -93,7 +109,12 @@ export function FormularioDecisao({ caso, versao, retido }: FormularioDecisaoPro
 
       <div className="verificacao-campo">
         <label htmlFor={id('motivo')}>Motivo</label>
-        <select id={id('motivo')} value={motivo} onChange={(e) => setMotivo(e.target.value)} disabled={motivos.length === 1}>
+        <select
+          id={id('motivo')}
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+          disabled={motivos.length === 1}
+        >
           {motivos.map((m) => (
             <option key={m.valor} value={m.valor}>
               {m.rotulo}
@@ -103,7 +124,9 @@ export function FormularioDecisao({ caso, versao, retido }: FormularioDecisaoPro
       </div>
 
       <div className="verificacao-campo">
-        <label htmlFor={id('complemento')}>{motivo === 'outro' ? 'Complemento' : 'Complemento (opcional)'}</label>
+        <label htmlFor={id('complemento')}>
+          {motivo === 'outro' ? 'Complemento' : 'Complemento (opcional)'}
+        </label>
         <textarea
           id={id('complemento')}
           name="complemento"
@@ -124,13 +147,23 @@ export function FormularioDecisao({ caso, versao, retido }: FormularioDecisaoPro
         <p
           id={id('contador')}
           aria-live="polite"
-          className={contador.excedeu ? 'verificacao-contador verificacao-contador-excedido' : 'verificacao-contador'}
+          className={
+            contador.excedeu
+              ? 'verificacao-contador verificacao-contador-excedido'
+              : 'verificacao-contador'
+          }
         >
-          {contador.excedeu ? `${contador.rotulo}. Encurte o texto para registrar.` : contador.rotulo}
+          {contador.excedeu
+            ? `${contador.rotulo}. Encurte o texto para registrar.`
+            : contador.rotulo}
         </p>
       </div>
 
-      <button type="submit" className="btn btn-primary btn-bloco" disabled={pendente || contador.excedeu}>
+      <button
+        type="submit"
+        className="btn btn-primary btn-bloco"
+        disabled={pendente || contador.excedeu}
+      >
         {pendente ? 'Registrando...' : 'Registrar decisão'}
       </button>
     </form>

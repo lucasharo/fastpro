@@ -29,6 +29,7 @@ export default async function PaginaCaso({
   const estado = await carregarCaso(caso);
   // Sem sessao: igual a rota inexistente. Com sessao, a recusa da API (caso com outra pessoa da equipe ou inexistente,
   // sempre o mesmo 404) vira um aviso com o caminho de volta, sem dizer qual dos dois.
-  if (estado.tipo === 'sem_acesso' && (await cookies()).get(ADMIN_SESSION_COOKIE) === undefined) notFound();
+  if (estado.tipo === 'sem_acesso' && (await cookies()).get(ADMIN_SESSION_COOKIE) === undefined)
+    notFound();
   return <DetalheCaso estado={estado} leituraErro={leitura === 'erro'} />;
 }

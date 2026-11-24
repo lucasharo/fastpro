@@ -200,3 +200,18 @@ describe('caso indisponivel', () => {
     expect(container.querySelector('a[href="/console/verificacao"]')).not.toBeNull();
   });
 });
+
+describe('recusas do banco e caso sem documento', () => {
+  it('422 com codigo mostra a mensagem do motivo real', async () => {
+    const { estadoDaDecisao } = await import('../src/verification-detail-state');
+    expect(estadoDaDecisao(422, 'identidade_nao_analisada').mensagem).toContain('não tem documento de identidade recebido');
+    expect(estadoDaDecisao(422, 'codigo_novo').mensagem).toBe('Não foi possível aceitar esta decisão. Confira o motivo e o complemento.');
+  });
+
+  it('sem documento: Aprovar nao aparece e a decisao comeca em Recusar', () => {
+    montar(estadoDoDetalhe(200, { ...CORPO, documentoDisponivel: false }));
+    const botoes = Array.from(container.querySelectorAll('.verificacao-opcoes button')).map((b) => b.textContent);
+    expect(botoes).not.toContain('Aprovar');
+    expect(container.querySelector('.verificacao-opcoes button[aria-pressed="true"]')?.textContent).toBe('Recusar');
+  });
+});
