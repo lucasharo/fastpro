@@ -14,6 +14,7 @@ import { Aviso, CabecaPagina, Carregando, PaginaInterna, Vazio } from '@/compone
 import { chamarApi, MENSAGEM_INDISPONIVEL, MENSAGEM_LIMITE } from '@/lib/api';
 import { formatarData, formatarDataHora, rotuloUrgencia, STATUS_PEDIDO, UUID_RE } from '@/lib/formatos';
 import { fotoDoServico, urlFoto } from '@/lib/mock';
+import { FotosPedido } from '@/components/FotosPedido';
 
 interface Detalhe {
   serviceName?: string;
@@ -284,6 +285,7 @@ export default function DetalhePedido() {
                 </div>
               ) : null}
               <p style={{ color: 'var(--color-text-primary)', whiteSpace: 'pre-wrap', marginBottom: 0 }}>{p.description}</p>
+              <FotosPedido pedidoId={id} papel="dono" />
             </div>
           </div>
 

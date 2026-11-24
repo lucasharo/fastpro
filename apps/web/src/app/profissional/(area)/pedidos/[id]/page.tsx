@@ -9,6 +9,7 @@ import { Aviso, CabecaPagina, Carregando } from '@/components/ui';
 import { chamarApi, MENSAGEM_LIMITE } from '@/lib/api';
 import { formatarData, formatarDataHora, rotuloUrgencia, UUID_RE } from '@/lib/formatos';
 import { fotoDoServico, urlFoto } from '@/lib/mock';
+import { FotosPedido } from '@/components/FotosPedido';
 import { distancia, ROTULO_MODALIDADE } from '@/lib/profissional';
 
 interface Detalhe {
@@ -102,6 +103,7 @@ export default function PedidoRegiao() {
               {p.modality ? <span>{ROTULO_MODALIDADE[p.modality] ?? p.modality}</span> : null}
             </div>
             <p style={{ color: 'var(--color-text-primary)', whiteSpace: 'pre-wrap', marginBottom: 0 }}>{p.description}</p>
+            <FotosPedido pedidoId={id} papel="profissional" />
           </div>
         </div>
         <div className="glass-card painel-cartao pilha">
