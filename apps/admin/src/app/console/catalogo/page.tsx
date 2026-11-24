@@ -3,9 +3,10 @@
 // grupo, servico, pagina, editar, novo), entao a tela e renderizada no servidor e os links podem ser compartilhados.
 // A API decide o acesso: sem catalog.manage a resposta e 404 e a tela responde como inexistente (notFound).
 // Edicao e criacao continuam pelo FormularioItem (H-107), que grava pela rota /v1/admin/catalog.
+import Form from 'next/form';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { ADMIN_SESSION_COOKIE } from '@fastpro/domain';
 import { AvisoErro } from '../../../components/AvisoErro';
 import { CabecaPagina } from '../../../components/CabecaPagina';
@@ -94,6 +95,9 @@ export default async function PaginaCatalogo({ searchParams }: { readonly search
     return s ? `${CAMINHO}?${s}` : CAMINHO;
   };
 
+  // O formulario de filtros envia tambem os campos vazios: volta para a URL limpa (so os filtros usados).
+  if (Object.values(sp).some((v) => v === '')) redirect(url());
+
   const consulta = new URLSearchParams({ aba, pagina: String(pagina) });
   for (const [k, v] of Object.entries(filtros)) if (v) consulta.set(k, v);
   const [lista, opcoes] = await Promise.all([
@@ -152,7 +156,7 @@ export default async function PaginaCatalogo({ searchParams }: { readonly search
         ))}
       </nav>
 
-      <form method="get" action="/console/catalogo" className="catalogo-filtros cartao-plano">
+      <Form action={CAMINHO} scroll={false} className="catalogo-filtros cartao-plano">
         {aba !== 'grupos' ? <input type="hidden" name="aba" value={aba} /> : null}
         <div className="catalogo-campo">
           <label htmlFor="filtro-q">{aba === 'sinonimos' ? 'Termo' : 'Nome'}</label>
@@ -200,7 +204,7 @@ export default async function PaginaCatalogo({ searchParams }: { readonly search
             Limpar
           </Link>
         </div>
-      </form>
+      </Form>
 
       <div className="linha-entre">
         <p className="texto-suave" role="status">
