@@ -102,6 +102,7 @@ export default async function vercelHandler(
       ...(integracoes.conversations !== undefined ? { conversations: integracoes.conversations } : {}),
       ...(integracoes.me !== undefined ? { me: integracoes.me } : {}),
       ...(integracoes.draftSession !== undefined ? { draftSession: integracoes.draftSession } : {}),
+      ...(integracoes.adminCode !== undefined ? { adminCode: integracoes.adminCode } : {}),
       ...(integracoes.lifecycle !== undefined ? { lifecycle: integracoes.lifecycle } : {}),
       ...(integracoes.waves !== undefined ? { waves: integracoes.waves } : {}),
       ...(integracoes.reviews !== undefined ? { reviews: integracoes.reviews } : {}),

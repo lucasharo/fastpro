@@ -841,3 +841,54 @@ select option {
 :root[data-theme='dark'] .btn-primary {
   color: var(--color-text-primary);
 }
+
+/* ---------- Entrada por codigo (mesmo visual da web) ---------- */
+.pagina-estreita {
+  max-width: 32rem;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0.5rem 0.25rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  transition: color 0.2s;
+}
+
+.btn-link:hover {
+  color: var(--color-primary);
+}
+
+.codigo-caixas {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.codigo-caixas input {
+  width: 3rem;
+  height: 3.5rem;
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  border-radius: var(--radius-button);
+  border: 2px solid var(--color-border);
+  background: var(--color-field);
+  color: var(--color-text-primary);
+}
+
+.codigo-caixas input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.cartao-painel {
+  padding: 2rem;
+}
+
+.btn-bloco {
+  width: 100%;
+}

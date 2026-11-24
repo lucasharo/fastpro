@@ -123,6 +123,7 @@ import { handleRequestPublishRoute, REQUEST_PUBLISH_PATH, type PublishRouteOptio
 import { handleRequestDetailRoute, isRequestDetailRoute, type RequestDetailRouteOptions } from './requests/detail-route.js';
 import { handleConversationRoute, isConversationRoute, type ConversationRouteOptions } from './conversations/conversation-route.js';
 import { handleMeRoute, isMeRoute, type MeRouteOptions } from './conversations/me-route.js';
+import { handleAdminCodeRoute, isAdminCodeRoute, type AdminCodeRouteOptions } from './admin-login/admin-code-route.js';
 import { handleDraftSessionRoute, isDraftSessionRoute, type DraftSessionRouteOptions } from './conversations/draft-session-route.js';
 // Pacote A (H-061, H-077, H-078, H-080) | Ciclo do pedido e do aceite: concluir, desfazer, cancelar, retirar aceite.
 import { handleLifecycleRoute, isLifecycleRoute, type LifecycleRouteOptions } from './lifecycle/lifecycle-route.js';
@@ -248,6 +249,8 @@ export interface AppOptions {
   readonly conversations?: ConversationRouteOptions;
   /** GET /v1/auth/me: papel da sessao (cliente ou profissional). Sem esta opcao, 404 uniforme. */
   readonly me?: MeRouteOptions;
+  /** Entrada do admin por codigo no e-mail. Sem esta opcao, 404 uniforme. */
+  readonly adminCode?: AdminCodeRouteOptions;
   /** Pedido de quem ja esta logado (nome e e-mail da sessao no rascunho). Sem esta opcao, 404 uniforme. */
   readonly draftSession?: DraftSessionRouteOptions;
   /** Pacote A: concluir, desfazer conclusao, cancelar pedido e retirar aceite. Sem esta opcao as rotas respondem 404 uniforme. */
@@ -533,6 +536,12 @@ export async function handleRequest(
     return;
   }
   // Papel da sessao, para a tela mostrar so o menu do cliente ou do profissional.
+  if (isAdminCodeRoute(req.method ?? '', path)) {
+    if (opts.adminCode) return handleAdminCodeRoute(req, res, path, opts.adminCode);
+    res.writeHead(404, { 'Cache-Control': 'no-store' });
+    res.end();
+    return;
+  }
   if (isDraftSessionRoute(req.method ?? '', path)) {
     if (opts.draftSession) return handleDraftSessionRoute(req, res, opts.draftSession);
     const r = draftNotFound();

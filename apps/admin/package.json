@@ -2,7 +2,7 @@
   "name": "@fastpro/admin",
   "version": "0.0.0",
   "private": true,
-  "description": "Placeholder: Next.js admin, origem propria (historia futura)",
+  "description": "Console admin (Next.js) com a API montada em /api no mesmo app",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -13,9 +13,9 @@
     }
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 3001",
     "build": "next build",
-    "start": "next start",
+    "start": "next start --port 3001",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests"
@@ -31,6 +31,7 @@
     "@fastpro/tokens": "workspace:*",
     "next": "16.4.6",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "@fastpro/api": "workspace:*"
   }
 }
