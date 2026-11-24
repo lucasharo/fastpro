@@ -1,10 +1,11 @@
 'use client';
 // Casca do console admin no visual da web: cabecalho de vidro com a marca e o botao de tema, faixa de aurora
-// no topo da area interna e menu lateral de vidro (Verificacao, Catalogo, Operacao). A permissao continua na API:
+// no topo da area interna e menu lateral de vidro. Abaixo de 1024 px o menu lateral some e vira uma gaveta aberta
+// pelo botao de menu do cabecalho (mesmo padrao da web). A permissao continua na API:
 // cada tela responde como inexistente quando a sessao nao tem acesso, entao o menu so organiza a navegacao.
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Icone, type NomeIcone } from './Icone';
 import { TrocaTema } from './TrocaTema';
 
@@ -22,6 +23,32 @@ export function CascaAdmin({ children }: { readonly children: ReactNode }) {
   const caminho = usePathname() ?? '';
   const router = useRouter();
   const naEntrada = caminho === '/entrar';
+  const [aberto, setAberto] = useState(false);
+
+  // Fecha a gaveta ao trocar de tela e com a tecla Esc.
+  useEffect(() => setAberto(false), [caminho]);
+  useEffect(() => {
+    if (!aberto) return;
+    const tecla = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAberto(false);
+    };
+    window.addEventListener('keydown', tecla);
+    return () => window.removeEventListener('keydown', tecla);
+  }, [aberto]);
+
+  const itens = (aoClicar?: () => void) =>
+    MENU.map((m) => (
+      <Link
+        key={m.href}
+        href={m.href}
+        className="menu-item"
+        onClick={aoClicar}
+        aria-current={caminho === m.href || caminho.startsWith(`${m.href}/`) ? 'page' : undefined}
+      >
+        <Icone nome={m.icone} tamanho={18} />
+        {m.rotulo}
+      </Link>
+    ));
 
   async function sair() {
     await fetch('/api/v1/admin/auth/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => undefined);
@@ -40,12 +67,34 @@ export function CascaAdmin({ children }: { readonly children: ReactNode }) {
           <div className="nav-acoes">
             <TrocaTema />
             {naEntrada ? null : (
-              <button type="button" className="btn-link" onClick={() => void sair()}>
-                Sair
-              </button>
+              <>
+                <button type="button" className="btn-link so-largo" onClick={() => void sair()}>
+                  Sair
+                </button>
+                <button
+                  type="button"
+                  className="nav-menu-botao so-estreito"
+                  aria-expanded={aberto}
+                  aria-controls="menu-gaveta"
+                  aria-label={aberto ? 'Fechar menu' : 'Abrir menu'}
+                  onClick={() => setAberto((v) => !v)}
+                >
+                  <Icone nome={aberto ? 'fechar' : 'menu'} tamanho={24} />
+                </button>
+              </>
             )}
           </div>
         </nav>
+        {aberto && !naEntrada ? (
+          <nav id="menu-gaveta" className="menu-gaveta glass-card so-estreito" aria-label="Console administrativo">
+            {itens(() => setAberto(false))}
+            <hr className="divisor" />
+            <button type="button" className="menu-item menu-item-botao" onClick={() => void sair()}>
+              <Icone nome="sair" tamanho={18} />
+              Sair
+            </button>
+          </nav>
+        ) : null}
       </header>
       <div className="pagina">
         <div className="pagina-topo">
@@ -56,17 +105,7 @@ export function CascaAdmin({ children }: { readonly children: ReactNode }) {
         ) : (
         <div className="pagina-conteudo layout-painel">
           <nav className="glass-card menu-lateral" aria-label="Console administrativo">
-            {MENU.map((m) => (
-              <Link
-                key={m.href}
-                href={m.href}
-                className="menu-item"
-                aria-current={caminho === m.href || caminho.startsWith(`${m.href}/`) ? 'page' : undefined}
-              >
-                <Icone nome={m.icone} tamanho={18} />
-                {m.rotulo}
-              </Link>
-            ))}
+            {itens()}
           </nav>
           <main className="conteudo-console">{children}</main>
         </div>
