@@ -39,6 +39,21 @@ describe('estadoDaFila', () => {
     expect(estadoDaFila(200, 'texto')).toEqual({ tipo: 'erro' });
   });
 
+  it('aceita o formato da API (campos em portugues) e converte para a linha da tela', () => {
+    const api = {
+      id: 'c1', identificador: 'VER-001', status: 'aguardando_revisao', recurso: 'nenhum',
+      prazoMeta: '2026-11-25T12:00:00.000Z', recebidoEm: null, servicos: ['Pintor'], alemDaMeta: false, minha: true, versao: 3,
+    };
+    expect(estadoDaFila(200, { itens: [api], proximo: null })).toEqual({
+      tipo: 'lista',
+      itens: [{
+        id: 'c1', short_id: 'VER-001', status: 'aguardando_revisao', appeal_status: 'nenhum',
+        sla_target_at: '2026-11-25T12:00:00.000Z', received_at: null, services: ['Pintor'], overdue: false,
+        assigned_to_me: true, version: 3,
+      }],
+    });
+  });
+
   it('o texto de erro nao traz detalhe tecnico', () => {
     expect(TEXTO_ERRO_CARREGAR).not.toMatch(/sql|banco|stack|bucket|caminho/i);
   });

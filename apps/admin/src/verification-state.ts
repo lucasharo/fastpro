@@ -56,12 +56,35 @@ function linhaValida(x: unknown): x is LinhaFilaTela {
     && typeof l.sla_target_at === 'string' && Array.isArray(l.services) && typeof l.version === 'number';
 }
 
+/**
+ * A API (GET /v1/admin/verificacao/casos) devolve os campos em portugues (identificador, prazoMeta, recebidoEm,
+ * servicos, alemDaMeta, minha, versao, recurso). Converte para a linha da tela; item ja no formato da tela passa igual.
+ */
+function daApi(x: unknown): unknown {
+  if (typeof x !== 'object' || x === null || !('identificador' in x)) return x;
+  const l = x as Record<string, unknown>;
+  return {
+    id: l.id,
+    short_id: l.identificador,
+    status: l.status,
+    appeal_status: l.recurso,
+    sla_target_at: l.prazoMeta,
+    received_at: l.recebidoEm ?? null,
+    services: l.servicos,
+    overdue: l.alemDaMeta === true,
+    assigned_to_me: l.minha === true,
+    version: l.versao,
+  };
+}
+
 /** Mapeia status HTTP e corpo em um estado da tela. Corpo fora do formato vira erro generico. */
 export function estadoDaFila(status: number, corpo: unknown): EstadoFila {
   if (status === 404) return { tipo: 'sem_acesso' };
   if (status !== 200 || typeof corpo !== 'object' || corpo === null) return { tipo: 'erro' };
-  const itens = (corpo as { itens?: unknown }).itens;
-  if (!Array.isArray(itens) || !itens.every(linhaValida)) return { tipo: 'erro' };
+  const brutos = (corpo as { itens?: unknown }).itens;
+  if (!Array.isArray(brutos)) return { tipo: 'erro' };
+  const itens = brutos.map(daApi);
+  if (!itens.every(linhaValida)) return { tipo: 'erro' };
   return itens.length === 0 ? { tipo: 'vazia' } : { tipo: 'lista', itens };
 }
 
