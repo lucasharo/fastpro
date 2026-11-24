@@ -892,3 +892,69 @@ select option {
 .btn-bloco {
   width: 100%;
 }
+
+/* ---------- Catalogo em abas, filtros e paginacao (2026-11-24) ---------- */
+.abas {
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+}
+
+.aba {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.aba:hover {
+  color: var(--color-text-primary);
+}
+
+.aba-ativa {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.catalogo-filtros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-3);
+  align-items: end;
+}
+
+.catalogo-filtros-acoes {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.tabela-acao {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tabela-linha-aberta td {
+  border-bottom-color: transparent;
+}
+
+.tabela-linha-form td {
+  background: var(--color-background);
+  padding: var(--space-4);
+}
+
+.paginacao {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+.paginacao [aria-disabled='true'] {
+  opacity: 0.5;
+  pointer-events: none;
+}

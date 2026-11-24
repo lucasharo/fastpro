@@ -8,16 +8,21 @@ const ADMIN = 'https://admin.fastpro.example';
 const DENUNCIA = '11111111-1111-4111-8111-111111111111';
 let permissoes: string[] = ['moderation.decide'];
 const consultas: string[] = [];
+let ultimaPagina: unknown[] | undefined;
 
 const opts: AdminModerationRouteOptions = {
   adminUrl: ADMIN,
   clock: { nowMs: () => Date.UTC(2026, 10, 24, 12) },
   client: {
-    query: async (sql: string) => {
+    query: async (sql: string, params?: unknown[]) => {
       consultas.push(sql);
       if (sql.includes('admin_guard')) return { rows: permissoes.length ? [{ out_user_id: 'adm-1', out_permissions: permissoes }] : [] };
       if (sql.includes('admin_reports_list')) return { rows: [{ out_id: DENUNCIA, out_reason: 'spam', out_status: 'aberto', out_service_name: 'Pintor' }] };
       if (sql.includes('admin_report_decide')) return { rows: [{ r: 'ok' }] };
+      if (sql.includes('catalog_admin_page')) {
+        ultimaPagina = params;
+        return { rows: [{ r: { total: 1253, items: [{ id: 'y1' }] } }] };
+      }
       return { rows: [] };
     },
   },
@@ -84,5 +89,17 @@ describe('console admin: moderacao', () => {
     expect((await fetch(`${base}/v1/admin/audit/recent`, { headers: COOKIE })).status).toBe(404);
     permissoes = ['audit.read'];
     expect((await fetch(`${base}/v1/admin/audit/recent`, { headers: COOKIE })).status).toBe(200);
+  });
+
+  it('catalogo: exige catalog.manage e pagina no banco de 50 em 50 com os filtros', async () => {
+    permissoes = ['moderation.decide'];
+    expect((await fetch(`${base}/v1/admin/listas/catalogo?aba=sinonimos`, { headers: COOKIE })).status).toBe(404);
+    permissoes = ['catalog.manage'];
+    const r = await fetch(`${base}/v1/admin/listas/catalogo?aba=sinonimos&pagina=3&q=pia&situacao=ativos&grupo=nao-uuid`, { headers: COOKIE });
+    expect(r.status).toBe(200);
+    const corpo = (await r.json()) as { total: number; pagina: number; porPagina: number };
+    expect(corpo).toMatchObject({ total: 1253, pagina: 3, porPagina: 50 });
+    expect(ultimaPagina).toEqual(['synonym', 'pia', true, null, null, 100, 50]);
+    expect((await fetch(`${base}/v1/admin/listas/catalogo?aba=outra`, { headers: COOKIE })).status).toBe(400);
   });
 });

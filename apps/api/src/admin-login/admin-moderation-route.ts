@@ -5,12 +5,15 @@
 //   POST /v1/admin/moderation/reviews/:id/visibility {oculta}              moderation.decide
 //   GET  /v1/admin/audit/recent                                            audit.read
 //   GET  /v1/admin/staff                                                   admin.role.manage
+//   GET  /v1/admin/listas/catalogo?aba&pagina&q&situacao&grupo&servico      catalog.manage (50 por pagina, no banco)
+//   GET  /v1/admin/listas/catalogo-opcoes                                  catalog.manage (grupos e servicos leves)
 // Guarda: cookie __Host-fp_admin -> private.admin_guard (sessao, conta e papel ativos). Sem sessao ou sem a
 // permissao: 404 vazio, igual a rota inexistente. Mutacoes exigem Origin do admin. Sem log de cookie ou corpo.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { ADMIN_SESSION_COOKIE, checkDraftOrigin, cookieValue, siteOriginOf } from '@fastpro/domain';
 import { hashSessionSecret, type SqlClient } from '@fastpro/db';
 
+const POR_PAGINA = 50;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CABECALHOS = {
   'Cache-Control': 'no-store',
@@ -30,7 +33,9 @@ type Rota =
   | { readonly tipo: 'avaliacoes' }
   | { readonly tipo: 'visibilidade'; readonly id: string }
   | { readonly tipo: 'auditoria' }
-  | { readonly tipo: 'equipe' };
+  | { readonly tipo: 'equipe' }
+  | { readonly tipo: 'catalogo' }
+  | { readonly tipo: 'catalogoOpcoes' };
 
 const PERMISSAO: Record<Rota['tipo'], string> = {
   denuncias: 'moderation.decide',
@@ -39,6 +44,8 @@ const PERMISSAO: Record<Rota['tipo'], string> = {
   visibilidade: 'moderation.decide',
   auditoria: 'audit.read',
   equipe: 'admin.role.manage',
+  catalogo: 'catalog.manage',
+  catalogoOpcoes: 'catalog.manage',
 };
 
 export function adminModerationRoute(metodo: string, path: string): Rota | null {
@@ -46,6 +53,8 @@ export function adminModerationRoute(metodo: string, path: string): Rota | null 
   if (metodo === 'GET' && path === '/v1/admin/moderation/reviews') return { tipo: 'avaliacoes' };
   if (metodo === 'GET' && path === '/v1/admin/audit/recent') return { tipo: 'auditoria' };
   if (metodo === 'GET' && path === '/v1/admin/staff') return { tipo: 'equipe' };
+  if (metodo === 'GET' && path === '/v1/admin/listas/catalogo') return { tipo: 'catalogo' };
+  if (metodo === 'GET' && path === '/v1/admin/listas/catalogo-opcoes') return { tipo: 'catalogoOpcoes' };
   let m = /^\/v1\/admin\/moderation\/reports\/([^/]+)\/decision$/.exec(path);
   if (m && metodo === 'POST') return { tipo: 'decidir', id: m[1] ?? '' };
   m = /^\/v1\/admin\/moderation\/reviews\/([^/]+)\/visibility$/.exec(path);
@@ -197,6 +206,33 @@ export async function handleAdminModerationRoute(
           objectId: String(l.out_object_id),
         })),
       });
+    }
+    if (rota.tipo === 'catalogo') {
+      const p = new URL(req.url ?? '/', 'http://x').searchParams;
+      const entidade = ({ grupos: 'group', servicos: 'service', sinonimos: 'synonym' } as Record<string, string>)[p.get('aba') ?? 'grupos'];
+      if (entidade === undefined) return enviar(res, 400, { code: 'aba_invalida' });
+      const pagina = Math.max(1, Math.min(10_000, Number.parseInt(p.get('pagina') ?? '1', 10) || 1));
+      const situacao = p.get('situacao');
+      const uuidOuNulo = (v: string | null) => (v !== null && UUID_RE.test(v) ? v : null);
+      const busca = (p.get('q') ?? '').trim().slice(0, 80);
+      const q = await opts.client.query(
+        'select private.catalog_admin_page($1, $2, $3, $4::uuid, $5::uuid, $6, $7) as r',
+        [
+          entidade,
+          busca === '' ? null : busca,
+          situacao === 'ativos' ? true : situacao === 'inativos' ? false : null,
+          uuidOuNulo(p.get('grupo')),
+          uuidOuNulo(p.get('servico')),
+          (pagina - 1) * POR_PAGINA,
+          POR_PAGINA,
+        ],
+      );
+      const r = (q.rows[0]?.r ?? { total: 0, items: [] }) as { total?: number; items?: unknown[] };
+      return enviar(res, 200, { total: Number(r.total ?? 0), pagina, porPagina: POR_PAGINA, items: r.items ?? [] });
+    }
+    if (rota.tipo === 'catalogoOpcoes') {
+      const q = await opts.client.query('select private.catalog_admin_options() as r');
+      return enviar(res, 200, q.rows[0]?.r ?? { groups: [], services: [] });
     }
     const q = await opts.client.query('select * from private.admin_staff_list()');
     return enviar(res, 200, {

@@ -16,13 +16,18 @@ import {
 } from '../../../catalog-state';
 
 export type EntidadeCatalogo = 'group' | 'service' | 'synonym';
+export interface OpcaoCatalogo {
+  readonly id: string;
+  readonly name: string;
+}
 
 export interface FormularioItemProps {
   readonly entidade: EntidadeCatalogo;
   /** Ausente = criacao. */
   readonly item?: CatalogoGrupo | CatalogoServico | CatalogoSinonimo;
-  readonly grupos: readonly CatalogoGrupo[];
-  readonly servicos: readonly CatalogoServico[];
+  /** So id e nome sao usados (campos Grupo e Servico); a tela passa as opcoes leves. */
+  readonly grupos: readonly OpcaoCatalogo[];
+  readonly servicos: readonly OpcaoCatalogo[];
   readonly titulo: string;
 }
 
