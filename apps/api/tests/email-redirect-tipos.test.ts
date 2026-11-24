@@ -73,7 +73,10 @@ function paramsPara(tipo: string): Record<string, unknown> {
     return paramsDe(politica.params);
   }
   if (PROFESSIONAL_TEMPLATE_KEYS.includes(tipo)) {
-    return tipo === PASSWORD_CHANGED_TEMPLATE ? {} : { link: LINK, minutos: 15 };
+    if (tipo === PASSWORD_CHANGED_TEMPLATE) return {};
+    // Verificacao do cadastro do profissional e por codigo de 6 digitos (OTP), sem link.
+    if (tipo === 'professional_verificacao') return { code: '482913', minutos: 15 };
+    return { link: LINK, minutos: 15 };
   }
   throw new Error(`tipo sem parametros de teste: ${tipo}`);
 }

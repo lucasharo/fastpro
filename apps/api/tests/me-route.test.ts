@@ -47,6 +47,11 @@ describe('GET /v1/auth/me', () => {
     expect((await chamar()).corpo).toEqual({ papel: 'profissional' });
   });
 
+  it('profissional que ainda nao confirmou o e-mail aparece como profissional_pendente', async () => {
+    atual = { ...opcoes('cliente'), pendente: async () => true };
+    expect((await chamar()).corpo).toEqual({ papel: 'profissional_pendente' });
+  });
+
   it('quando a sessao e renovada, reenvia o cookie com 7 dias; sem renovacao, nao mexe no cookie', async () => {
     atual = opcoes('cliente', true);
     const renovada = await chamar();

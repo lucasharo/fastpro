@@ -1,7 +1,7 @@
 // H-016 | Rotas do cadastro, da verificacao e do login por senha do profissional
 // (docs/factory/33-DESENHO-H016.md §2, §3, §4, §5; CA-H016-01 a 13).
 //   POST /v1/auth/professional/register              202 uniforme (cadastro ou e-mail ja existente).
-//   POST /v1/auth/professional/verification/confirm  204 (consumiu o link) ou 410 unico.
+//   POST /v1/auth/professional/verification/confirm  {email, code}: 204 (confirmou) ou 410 unico; 429 no excesso.
 //   POST /v1/auth/professional/login                 200 + cookie de sessao de 7 dias; 401/403/429.
 // Ordem: Content-Type JSON, corpo com teto de 4 KB, depois a regra. Cadastro e login respondem so
 // depois de um piso de tempo (33 §5.1 passo 4), para o tempo nao revelar se o e-mail existe.
@@ -20,7 +20,6 @@ import {
   SERVICE_UNAVAILABLE_BODY,
   SESSION_MAX_AGE_SECONDS,
   checkProfessionalRegister,
-  isProfessionalLinkToken,
   loginEmailOrNull,
   loginPasswordOrNull,
   normalizeClientIp,
@@ -149,25 +148,34 @@ export async function handleProfessionalRegister(
   return enviar(piso, res, 202, {}, PROFESSIONAL_ACCEPTED_BODY);
 }
 
-/** Consumo do link (POST; o GET da pagina nao consome). 410 unico para qualquer link que nao sirva. */
+/**
+ * Confirmacao do e-mail por codigo de 6 digitos (OTP; decisao do dono, 2026-11-23). Corpo {email, code}.
+ * O contador de tentativas (proposito proprio) vem antes do banco: excesso = 429 com Retry-After.
+ * 204 confirmou; 410 unico para codigo errado, vencido ou ja usado (nao diz qual).
+ */
 export async function handleProfessionalVerifyConfirm(
   req: IncomingMessage,
   res: ServerResponse,
   opts: ProfessionalRouteOptions,
 ): Promise<void> {
+  const piso = iniciarPiso({ ...opts, responseFloorMs: 0 });
   const corpo = await lerJson(req);
-  if (!corpo.ok) return enviar(iniciarPiso({ ...opts, responseFloorMs: 0 }), res, corpo.status, {}, undefined);
-  const token = (corpo.value as { token?: unknown } | null)?.token;
-  if (!isProfessionalLinkToken(token)) {
-    return enviar(iniciarPiso({ ...opts, responseFloorMs: 0 }), res, 410, {}, LINK_INVALID_BODY);
-  }
+  if (!corpo.ok) return enviar(piso, res, corpo.status, {}, undefined);
+  const dados = (corpo.value ?? {}) as { email?: unknown; code?: unknown };
+  const email = loginEmailOrNull(dados.email);
+  const code = typeof dados.code === 'string' && /^[0-9]{6}$/.test(dados.code) ? dados.code : null;
+  if (email === null || code === null) return enviar(piso, res, 410, {}, LINK_INVALID_BODY);
+  const agora = opts.clock.nowMs();
   let ok: boolean;
   try {
-    ok = await opts.port.confirmVerification(token, opts.clock.nowMs());
+    const portao = await opts.port.verifyGate(email, agora);
+    if (portao.kind === 'bloqueada') {
+      return enviar(piso, res, 429, { 'Retry-After': String(portao.retryAfterSeconds) }, LOGIN_BLOCKED_BODY);
+    }
+    ok = await opts.port.confirmVerification(email, code, agora);
   } catch {
-    return enviar(iniciarPiso({ ...opts, responseFloorMs: 0 }), res, 503, {}, SERVICE_UNAVAILABLE_BODY);
+    return enviar(piso, res, 503, {}, SERVICE_UNAVAILABLE_BODY);
   }
-  const piso = iniciarPiso({ ...opts, responseFloorMs: 0 });
   return ok ? enviar(piso, res, 204, {}, undefined) : enviar(piso, res, 410, {}, LINK_INVALID_BODY);
 }
 

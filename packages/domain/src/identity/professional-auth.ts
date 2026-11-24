@@ -155,8 +155,10 @@ export type ProfessionalGateOutcome =
 export interface ProfessionalAuthPort {
   /** Cadastro sem revelar existencia: cria ou trata o e-mail ja existente do mesmo jeito. Lanca em falha. */
   register(email: string, password: string, nowMs: number): Promise<void>;
-  /** Consome o link de verificacao. true so na primeira vez e dentro do prazo. */
-  confirmVerification(token: string, nowMs: number): Promise<boolean>;
+  /** Confirma o e-mail com o codigo de 6 digitos (OTP). true so na primeira vez e dentro do prazo. */
+  confirmVerification(email: string, code: string, nowMs: number): Promise<boolean>;
+  /** Contador de tentativas do codigo (bloqueio progressivo, proposito separado do login). */
+  verifyGate(email: string, nowMs: number): Promise<ProfessionalGateOutcome>;
   /** Decide o bloqueio progressivo e grava a tentativa (ja contada, quando passa). */
   loginGate(email: string, nowMs: number): Promise<ProfessionalGateOutcome>;
   /** Confere a senha. Nulo para senha errada ou e-mail inexistente (mesma resposta). */

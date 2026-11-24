@@ -1,9 +1,11 @@
 'use client';
 // Cadastro do profissional (POST /v1/auth/professional/register). Resposta igual para e-mail novo ou ja usado.
+// Confirmacao do e-mail por codigo de 6 digitos na propria tela; com o codigo certo, ja entra no painel.
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { MolduraConta, MOTIVOS_SENHA } from '@/components/ContaProfissional';
 import { Icone } from '@/components/Icone';
+import { ConfirmarCodigoProfissional } from '@/components/ConfirmarCodigoProfissional';
 import { Aviso, Campo } from '@/components/ui';
 import { chamarApi, MENSAGEM_LIMITE } from '@/lib/api';
 
@@ -13,7 +15,8 @@ export default function Cadastro() {
   const [erros, setErros] = useState<{ email?: string; senha?: string; geral?: string }>({});
   const [enviado, setEnviado] = useState(false);
   const [ocupado, setOcupado] = useState(false);
-  const [info, setInfo] = useState('');
+  // Senha so em memoria, para entrar logo depois da confirmacao do codigo.
+  const [senhaEnviada, setSenhaEnviada] = useState('');
 
   async function enviar(e: FormEvent) {
     e.preventDefault();
@@ -27,37 +30,29 @@ export default function Cadastro() {
       body: { email: email.trim(), password: senha },
     });
     setOcupado(false);
+    if (r.status === 202) {
+      setSenhaEnviada(senha);
+      setSenha('');
+      setEnviado(true);
+      return;
+    }
     setSenha('');
-    if (r.status === 202) setEnviado(true);
-    else if (r.status === 422)
+    if (r.status === 422)
       setErros(r.corpo?.campo === 'email' ? { email: 'Digite um e-mail válido.' } : { senha: MOTIVOS_SENHA[r.corpo?.motivo ?? ''] ?? 'Escolha outra senha.' });
     else setErros({ geral: r.status === 429 ? MENSAGEM_LIMITE : 'Não foi possível criar a conta agora. Tente de novo.' });
-  }
-
-  async function reenviar() {
-    const r = await chamarApi('/v1/auth/professional/verification/resend', { body: { email: email.trim() } });
-    setInfo(r.status === 202 ? 'Se houver uma conta para este e-mail, enviamos o link de novo.' : r.status === 429 ? MENSAGEM_LIMITE : 'Não foi possível reenviar agora.');
   }
 
   return (
     <MolduraConta sobretitulo="Para profissionais" titulo="Crie sua" destaque="conta grátis" texto="Depois, envie seu documento. Com a aprovação, você ganha 14 dias grátis.">
       {enviado ? (
-        <div className="form">
-          <div className="circulo-icone">
-            <Icone nome="email" />
-          </div>
-          <h2 style={{ fontSize: '1.25rem' }}>Confira seu e-mail</h2>
-          <p className="texto-suave">
-            Se o endereço {email.trim()} puder ser usado, enviamos um link para confirmar. Abra o link para continuar.
-          </p>
-          {info ? <Aviso tipo="info">{info}</Aviso> : null}
-          <button type="button" className="btn btn-secondary" onClick={() => void reenviar()}>
-            Reenviar link
-          </button>
-          <Link href="/profissional/entrar" className="btn btn-primary">
-            Ir para a entrada
-          </Link>
-        </div>
+        <ConfirmarCodigoProfissional
+          email={email.trim()}
+          senha={senhaEnviada}
+          aoTrocarEmail={() => {
+            setEnviado(false);
+            setSenhaEnviada('');
+          }}
+        />
       ) : (
         <form className="form" onSubmit={enviar} noValidate>
           <Campo id="email" rotulo="E-mail" erro={erros.email}>

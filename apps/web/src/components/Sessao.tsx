@@ -7,6 +7,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { chamarApi } from '@/lib/api';
 import { Carregando } from './ui';
 
+/** 'anonimo' tambem cobre o profissional que ainda nao confirmou o e-mail (navega como visitante). */
 export type Papel = 'cliente' | 'profissional' | 'anonimo';
 
 interface ValorSessao {
@@ -57,6 +58,7 @@ export function ProvedorSessao({ children }: { readonly children: ReactNode }) {
   const recarregar = useCallback(async () => {
     const r = await chamarApi<{ papel?: string }>('/v1/auth/me');
     if (r.status === 200 && (r.corpo?.papel === 'cliente' || r.corpo?.papel === 'profissional')) setPapel(r.corpo.papel);
+    else if (r.status === 200 && r.corpo?.papel === 'profissional_pendente') setPapel('anonimo');
     else if (r.status === 401 || r.status === 404) setPapel('anonimo');
     // Falha de rede: mantem o papel conhecido (nao derruba a navegacao).
     else setPapel((atual) => atual ?? 'anonimo');

@@ -1,5 +1,5 @@
 // GET /v1/auth/me | Diz a tela quem esta logado e com qual papel, para mostrar so o menu e as telas desse papel.
-// Resposta minima: { papel: 'cliente' | 'profissional' }. Sem sessao valida: 401. Sem e-mail, nome ou id.
+// Resposta minima: { papel: 'cliente' | 'profissional' | 'profissional_pendente' } (pendente = cadastro sem e-mail confirmado). Sem sessao valida: 401. Sem e-mail, nome ou id.
 // Quem tem perfil profissional e tratado como profissional (a mesma conta nao navega como cliente).
 // Sessao que se renova (2026-11-23): com sessao valida, empurra o fim para agora + 7 dias e reenvia o cookie.
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -17,6 +17,8 @@ const CABECALHOS = {
 export interface MeRouteOptions {
   readonly sessions: { authenticate(hash: string, nowMs: number): Promise<{ readonly userId: string } | null> };
   readonly profissional: { existe(userId: string): Promise<boolean> };
+  /** Profissional que ainda nao confirmou o e-mail (sessao so de verificacao). Opcional. */
+  readonly pendente?: (userId: string) => Promise<boolean>;
   readonly clock: { nowMs(): number };
   /** Renovacao da sessao (opcional): devolve o novo fim quando renovou. */
   readonly renovar?: (hash: string, nowMs: number) => Promise<{ readonly renovada: boolean; readonly fimMs: number | null }>;
@@ -41,6 +43,7 @@ export async function handleMeRoute(req: IncomingMessage, res: ServerResponse, o
     const sessao = await opts.sessions.authenticate(hash, agora);
     if (sessao === null) return enviar(res, 401, { code: 'sessao_necessaria' });
     const ehProfissional = await opts.profissional.existe(sessao.userId);
+    const pendente = !ehProfissional && opts.pendente !== undefined && (await opts.pendente(sessao.userId));
     let extra: Record<string, string> = {};
     if (opts.renovar) {
       try {
@@ -51,7 +54,7 @@ export async function handleMeRoute(req: IncomingMessage, res: ServerResponse, o
         // Renovar e conveniencia: a falha nao derruba a resposta (a sessao atual continua valendo).
       }
     }
-    return enviar(res, 200, { papel: ehProfissional ? 'profissional' : 'cliente' }, extra);
+    return enviar(res, 200, { papel: ehProfissional ? 'profissional' : pendente ? 'profissional_pendente' : 'cliente' }, extra);
   } catch {
     if (!res.headersSent) enviar(res, 503, { code: 'indisponivel' });
   }

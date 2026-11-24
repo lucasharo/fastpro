@@ -7,14 +7,19 @@
 import { randomUUID } from 'node:crypto';
 import { challengeHmacHex, challengeSha256Hex, generateChallengeToken } from './challenges-crypto.js';
 import type { SqlClient } from './jobs-tick.js';
-import { PROFESSIONAL_LOGIN_KEY_PURPOSE, type ProfessionalAuthGateway } from './professional-auth.js';
+import {
+  PROFESSIONAL_LOGIN_KEY_PURPOSE,
+  gerarCodigoVerificacao,
+  hashCodigoVerificacao,
+  type ProfessionalAuthGateway,
+} from './professional-auth.js';
 
 export type RecoveryPurpose = 'password_reset' | 'professional_activate';
 
 /** Envio do link de recuperacao ou de ativacao (Mailpit em dev; envio real desligado ate o lancamento). */
 export interface RecoveryMailPort {
   recoveryLink(email: string, token: string, purpose: RecoveryPurpose): Promise<void>;
-  verificationLink(email: string, token: string): Promise<void>;
+  verificationCode(email: string, code: string): Promise<void>;
   passwordChangedNotice(email: string): Promise<void>;
 }
 
@@ -26,6 +31,8 @@ export interface PgProfessionalRecoveryDeps {
   readonly pepperEmail: string;
   readonly newId?: () => string;
   readonly newSecret?: () => string;
+  /** Codigos de verificacao (padrao: 6 digitos aleatorios). Injetado nos testes. */
+  readonly newCode?: () => string;
 }
 
 const iso = (ms: number): string => new Date(ms).toISOString();
@@ -55,12 +62,12 @@ export class PgProfessionalRecovery {
 
   /** Reenvio do link de verificacao: so para conta profissional ainda nao verificada (professional_verify). */
   async resendVerification(email: string, nowMs: number): Promise<void> {
-    const token = this.newSecret();
+    const code = (this.deps.newCode ?? gerarCodigoVerificacao)();
     const res = await this.deps.client.query(
       'select * from private.professional_challenge_create($1, $2, $3, $4, $5, $6::timestamptz)',
-      [email, this.emailHash(email), 'professional_verify', this.newId(), challengeSha256Hex(token), iso(nowMs)],
+      [email, this.emailHash(email), 'professional_verify', this.newId(), hashCodigoVerificacao(email, code), iso(nowMs)],
     );
-    if (res.rows.length > 0) await this.deps.mail.verificationLink(email, token);
+    if (res.rows.length > 0) await this.deps.mail.verificationCode(email, code);
   }
 
   /**

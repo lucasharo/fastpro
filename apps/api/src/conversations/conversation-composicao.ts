@@ -1,7 +1,7 @@
 // Ciclo central (2026-11-23) | Montagem das rotas de conversa a partir do ambiente: papel app_system
 // (DATABASE_URL_APP_SYSTEM), SITE_URL e a fabrica do cliente SQL. Faltando algo, nada monta (404 uniforme).
 import { createHash } from 'node:crypto';
-import { PgConversationStore, PgProfessionalProfile, PgSessionRepository, challengeHmacHex, type SqlClient } from '@fastpro/db';
+import { PgConversationStore, PgSessionRepository, challengeHmacHex, type SqlClient } from '@fastpro/db';
 import type { DraftSessionRouteOptions } from './draft-session-route.js';
 import type { MeRouteOptions } from './me-route.js';
 import type { ConversationRouteOptions } from './conversation-route.js';
@@ -41,10 +41,24 @@ export function montarQuemSou(env: Ambiente, opcoes: ConversaOpcoes = {}): MeRou
   const url = (env.DATABASE_URL_APP_SYSTEM ?? '').trim();
   if (url === '' || opcoes.abrirCliente === undefined) return undefined;
   const cliente = opcoes.abrirCliente(url);
-  const perfil = new PgProfessionalProfile({ client: cliente });
   return {
     sessions: new PgSessionRepository(cliente),
-    profissional: { existe: async (userId) => (await perfil.find(userId)) !== null },
+    // So conta como profissional quem ja confirmou o e-mail: a sessao "so de verificacao" do cadastro fica como
+    // cliente para a guarda nao tirar a pessoa da tela onde ela digita o codigo.
+    profissional: {
+      existe: async (userId) => {
+        const r = await cliente.query(
+          'select exists (select 1 from app.professional_profile p join app.app_user u on u.id = p.user_id ' +
+            'where p.user_id = $1::uuid and u.email_verified_at is not null) as ok',
+          [userId],
+        );
+        return r.rows[0]?.ok === true;
+      },
+    },
+    pendente: async (userId) => {
+      const r = await cliente.query('select exists (select 1 from app.professional_profile p where p.user_id = $1::uuid) as ok', [userId]);
+      return r.rows[0]?.ok === true;
+    },
     clock: opcoes.relogio ?? { nowMs: () => Date.now() },
     renovar: async (hash, nowMs) => {
       const r = await cliente.query('select * from private.app_session_refresh($1, $2::timestamptz)', [hash, new Date(nowMs).toISOString()]);

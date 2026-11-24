@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { MolduraConta } from '@/components/ContaProfissional';
 import { Icone } from '@/components/Icone';
+import { ConfirmarCodigoProfissional } from '@/components/ConfirmarCodigoProfissional';
 import { Aviso, Campo } from '@/components/ui';
 import { chamarApi, MENSAGEM_LIMITE } from '@/lib/api';
 
@@ -14,7 +15,8 @@ export default function EntrarProfissional() {
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
   const [precisaConfirmar, setPrecisaConfirmar] = useState(false);
-  const [info, setInfo] = useState('');
+  // Senha so em memoria, para entrar logo depois de confirmar o codigo.
+  const [senhaEnviada, setSenhaEnviada] = useState('');
   const [ocupado, setOcupado] = useState(false);
 
   async function enviar(e: FormEvent) {
@@ -28,26 +30,41 @@ export default function EntrarProfissional() {
     const r = await chamarApi<{ email_verified?: boolean; access_level?: string }>('/v1/auth/professional/login', {
       body: { email: email.trim(), password: senha },
     });
-    setOcupado(false);
-    setSenha('');
     if (r.status === 200 && r.corpo) {
-      if (r.corpo.email_verified === true && r.corpo.access_level === 'full') router.push('/profissional/painel');
-      else setPrecisaConfirmar(true);
+      if (r.corpo.email_verified === true && r.corpo.access_level === 'full') {
+        setOcupado(false);
+        setSenha('');
+        router.push('/profissional/painel');
+        return;
+      }
+      // Conta ainda sem e-mail confirmado: manda um codigo novo e pede na tela.
+      await chamarApi('/v1/auth/professional/verification/resend', { body: { email: email.trim() } });
+      setOcupado(false);
+      setSenhaEnviada(senha);
+      setSenha('');
+      setPrecisaConfirmar(true);
       return;
     }
+    setOcupado(false);
+    setSenha('');
     if (r.status === 401) setErro('E-mail ou senha incorretos.');
     else if (r.status === 403) setErro('Esta conta não está disponível. Fale com o suporte.');
     else if (r.status === 429) setErro(MENSAGEM_LIMITE);
     else setErro('Não foi possível entrar agora. Tente de novo.');
   }
 
-  async function reenviar() {
-    const r = await chamarApi('/v1/auth/professional/verification/resend', { body: { email: email.trim() } });
-    setInfo(r.status === 202 ? 'Enviamos o link de confirmação de novo.' : r.status === 429 ? MENSAGEM_LIMITE : 'Não foi possível reenviar agora.');
-  }
-
   return (
     <MolduraConta sobretitulo="Área do profissional" titulo="Bem-vindo" destaque="de volta" texto="Entre para ver os pedidos da sua região.">
+      {precisaConfirmar ? (
+        <ConfirmarCodigoProfissional
+          email={email.trim()}
+          senha={senhaEnviada}
+          aoTrocarEmail={() => {
+            setPrecisaConfirmar(false);
+            setSenhaEnviada('');
+          }}
+        />
+      ) : (
       <form className="form" onSubmit={enviar} noValidate>
         <Campo id="email" rotulo="E-mail">
           <input id="email" className="entrada" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -61,15 +78,6 @@ export default function EntrarProfissional() {
           </Link>
         </div>
         {erro ? <Aviso tipo="erro">{erro}</Aviso> : null}
-        {precisaConfirmar ? (
-          <Aviso tipo="alerta">
-            Falta confirmar seu e-mail. Abra o link que enviamos.{' '}
-            <button type="button" onClick={() => void reenviar()} style={{ background: 'none', border: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer', fontWeight: 700 }}>
-              Reenviar link
-            </button>
-          </Aviso>
-        ) : null}
-        {info ? <Aviso tipo="info">{info}</Aviso> : null}
         <button type="submit" className="btn btn-primary btn-bloco" disabled={ocupado}>
           {ocupado ? 'Entrando…' : 'Entrar'} <Icone nome="seta" tamanho={18} />
         </button>
@@ -77,6 +85,7 @@ export default function EntrarProfissional() {
           Ainda não tem conta? <Link href="/profissional/cadastro" style={{ color: 'var(--color-primary)', fontWeight: 700 }}>Cadastre-se grátis</Link>
         </p>
       </form>
+      )}
     </MolduraConta>
   );
 }

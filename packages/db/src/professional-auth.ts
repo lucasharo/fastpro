@@ -2,7 +2,7 @@
 // 33-DESENHO-H016.md §3 a §5; 67-DESENHO-H016.md §6). So chama as funcoes private.professional_*
 // (migracao 20261111400000) e o Supabase Auth por HTTP. A senha entra aqui so para ir ao Auth: nunca
 // e guardada, logada ou devolvida. O token do link sai so para o envio, e o banco guarda o hash.
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import {
   challengeHmacHex,
   challengeSha256Hex,
@@ -31,9 +31,25 @@ export interface ProfessionalAuthGateway {
   signInWithPassword(email: string, password: string): Promise<{ readonly authUserId: string } | null>;
 }
 
-/** Envio do link de verificacao (Mailpit em dev; a fila de e-mail entra na proxima etapa). */
+/** Envio do codigo de verificacao do e-mail (OTP de 6 digitos; decisao do dono, 2026-11-23). */
 export interface ProfessionalMailPort {
-  verificationLink(email: string, token: string): Promise<void>;
+  verificationCode(email: string, code: string): Promise<void>;
+}
+
+/** Proposito separado do login no contador de tentativas: errar o codigo nao trava o login e vice-versa. */
+export const PROFESSIONAL_VERIFY_KEY_PURPOSE = 'professional-verify-code|';
+
+/** Codigo de 6 digitos (OTP) do cadastro do profissional. */
+export function gerarCodigoVerificacao(): string {
+  return String(randomInt(0, 1_000_000)).padStart(6, '0');
+}
+
+/**
+ * O banco guarda so o hash de "e-mail|codigo": o mesmo codigo nao serve para outra conta, e o codigo sozinho nao
+ * acha nada. O limite de tentativas fica no contador do login, com proposito proprio.
+ */
+export function hashCodigoVerificacao(email: string, code: string): string {
+  return challengeSha256Hex(`${email.trim().toLowerCase()}|${code}`);
 }
 
 export interface PgProfessionalAuthDeps {
@@ -48,6 +64,8 @@ export interface PgProfessionalAuthDeps {
   readonly newId?: () => string;
   /** Segredos novos (padrao: 32 bytes em base64url). Injetado nos testes. */
   readonly newSecret?: () => string;
+  /** Codigos de verificacao (padrao: 6 digitos aleatorios). Injetado nos testes. */
+  readonly newCode?: () => string;
 }
 
 const iso = (ms: number): string => new Date(ms).toISOString();
@@ -59,10 +77,12 @@ function linhaUnica(rows: unknown[]): Record<string, unknown> | undefined {
 export class PgProfessionalAuth implements ProfessionalAuthPort {
   private readonly newId: () => string;
   private readonly newSecret: () => string;
+  private readonly newCode: () => string;
 
   constructor(private readonly deps: PgProfessionalAuthDeps) {
     this.newId = deps.newId ?? randomUUID;
     this.newSecret = deps.newSecret ?? generateChallengeToken;
+    this.newCode = deps.newCode ?? gerarCodigoVerificacao;
   }
 
   private emailHash(email: string): string {
@@ -105,12 +125,12 @@ export class PgProfessionalAuth implements ProfessionalAuthPort {
 
     const userId = this.newId();
     const challengeId = this.newId();
-    const token = this.newSecret();
+    const code = this.newCode();
     let resultado: string;
     try {
       const res = await this.deps.client.query(
         'select * from private.professional_register_create($1, $2, $3, $4, $5, $6, $7::timestamptz)',
-        [userId, criado.authUserId, email, this.emailHash(email), challengeId, challengeSha256Hex(token), iso(nowMs)],
+        [userId, criado.authUserId, email, this.emailHash(email), challengeId, hashCodigoVerificacao(email, code), iso(nowMs)],
       );
       resultado = String(linhaUnica(res.rows)?.out_resultado ?? '');
     } catch (err) {
@@ -121,7 +141,7 @@ export class PgProfessionalAuth implements ProfessionalAuthPort {
       await this.desfazerAuth(criado.authUserId, 'existente_no_banco');
       return;
     }
-    await this.deps.mail.verificationLink(email, token);
+    await this.deps.mail.verificationCode(email, code);
   }
 
   /** Reenvio: conta de profissional nao verificada. Troca a senha no Auth, troca o link e revoga sessoes. */
@@ -131,24 +151,38 @@ export class PgProfessionalAuth implements ProfessionalAuthPort {
       const linha = linhaUnica(conta.rows);
       if (!linha || linha.out_professional !== true || linha.out_verified === true) return;
       await this.deps.gateway.updatePassword(String(linha.out_auth_user_id), password);
-      const token = this.newSecret();
+      const code = this.newCode();
       const res = await this.deps.client.query(
         'select * from private.professional_register_resend($1, $2, $3, $4, $5::timestamptz)',
-        [String(linha.out_user_id), this.emailHash(email), this.newId(), challengeSha256Hex(token), iso(nowMs)],
+        [String(linha.out_user_id), this.emailHash(email), this.newId(), hashCodigoVerificacao(email, code), iso(nowMs)],
       );
       if (linhaUnica(res.rows)?.out_resultado !== 'reenviado') return;
-      await this.deps.mail.verificationLink(email, token);
+      await this.deps.mail.verificationCode(email, code);
     } catch {
       this.evento('professional_reenvio_falhou', { etapa: 'reenvio' });
     }
   }
 
-  async confirmVerification(token: string, nowMs: number): Promise<boolean> {
+  /** Confirma o e-mail com o codigo de 6 digitos (uso unico). Falso para codigo errado, vencido ou ja usado. */
+  async confirmVerification(email: string, code: string, nowMs: number): Promise<boolean> {
     const res = await this.deps.client.query(
       'select * from private.professional_verify_confirm($1, $2::timestamptz)',
-      [challengeSha256Hex(token), iso(nowMs)],
+      [hashCodigoVerificacao(email, code), iso(nowMs)],
     );
     return res.rows.length > 0;
+  }
+
+  /** Contador de tentativas do codigo (mesmo mecanismo do login, com proposito proprio). */
+  async verifyGate(email: string, nowMs: number): Promise<ProfessionalGateOutcome> {
+    const res = await this.deps.client.query(
+      'select * from private.professional_login_gate($1, $2::timestamptz)',
+      [challengeHmacHex(this.deps.pepperEmail, `${PROFESSIONAL_VERIFY_KEY_PURPOSE}${email.trim().toLowerCase()}`), iso(nowMs)],
+    );
+    const linha = linhaUnica(res.rows);
+    if (linha?.out_bloqueada === true) {
+      return { kind: 'bloqueada', retryAfterSeconds: Number(linha.out_retry_after) };
+    }
+    return { kind: 'tentativa' };
   }
 
   async loginGate(email: string, nowMs: number): Promise<ProfessionalGateOutcome> {

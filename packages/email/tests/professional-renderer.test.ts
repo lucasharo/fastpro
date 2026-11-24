@@ -21,7 +21,6 @@ const renderer = createProfessionalAwareRenderer(createMinimalRenderer());
 
 describe('modelos com link (verificacao, recuperacao, ativacao)', () => {
   it.each([
-    [PROFESSIONAL_VERIFY_TEMPLATE, 'Confirme seu e-mail no FastPro'],
     [PROFESSIONAL_RECOVERY_TEMPLATE, 'Redefina sua senha do FastPro'],
     [PROFESSIONAL_ACTIVATE_TEMPLATE, 'Confirme para criar seu perfil de profissional no FastPro'],
   ])('%s tem assunto proprio e corpo com link e prazo', (modelo, assunto) => {
@@ -30,6 +29,15 @@ describe('modelos com link (verificacao, recuperacao, ativacao)', () => {
     expect(out.text).toContain(LINK);
     expect(out.text).toContain('valido por 15 minutos, uso unico');
     expect(out.text).toContain('ignore-a');
+  });
+
+  it('professional_verificacao traz so o codigo de 6 digitos e o prazo (sem link)', () => {
+    const out = renderer.render(PROFESSIONAL_VERIFY_TEMPLATE, { code: '482913', minutos: 15 });
+    expect(out.subject).toBe('Confirme seu e-mail no FastPro');
+    expect(out.text).toContain('482913');
+    expect(out.text).toContain('valido por 15 minutos, uso unico');
+    expect(out.text).not.toContain('http');
+    expect(() => renderer.render(PROFESSIONAL_VERIFY_TEMPLATE, { code: '12345', minutos: 15 })).toThrow();
   });
 
   it('a ativacao deixa claro que a senha de cliente nao muda', () => {

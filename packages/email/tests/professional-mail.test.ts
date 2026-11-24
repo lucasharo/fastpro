@@ -27,15 +27,16 @@ function montar(sink: ProfessionalMailSink = capturaEmMemoria()) {
 }
 
 describe('links do profissional vao ao sink com modelo, versao e prazo (CA-H016-06)', () => {
-  it('verificacao: modelo professional_verificacao, link no fragmento, prazo de 15 min', async () => {
+  it('verificacao: modelo professional_verificacao com codigo de 6 digitos (sem link), prazo de 15 min', async () => {
     const sink = capturaEmMemoria();
-    await montar(sink).verificationLink(EMAIL, TOKEN);
+    await montar(sink).verificationCode(EMAIL, '482913');
     expect(sink.enviadas).toHaveLength(1);
     const m = sink.enviadas[0]!;
     expect(m.to).toBe(EMAIL);
     expect(m.templateKey).toBe('professional_verificacao');
     expect(m.templateVersion).toBe(1);
-    expect(m.text).toContain(`${BASE}/profissional/verificar#t=${TOKEN}`);
+    expect(m.text).toContain('482913');
+    expect(m.text).not.toContain('#t=');
     expect(m.text).toContain('valido por 15 minutos');
   });
 
@@ -74,9 +75,9 @@ describe('aviso de senha alterada (CA-H016-20)', () => {
 });
 
 describe('entradas e configuracao recusadas antes de qualquer envio', () => {
-  it('token com formato errado nao sai', async () => {
+  it('codigo com formato errado nao sai', async () => {
     const sink = capturaEmMemoria();
-    await expect(montar(sink).verificationLink(EMAIL, 'curto')).rejects.toBeInstanceOf(ProfessionalMailInputError);
+    await expect(montar(sink).verificationCode(EMAIL, '12345')).rejects.toBeInstanceOf(ProfessionalMailInputError);
     expect(sink.enviadas).toEqual([]);
   });
 
@@ -100,7 +101,7 @@ describe('entradas e configuracao recusadas antes de qualquer envio', () => {
         throw new Error('falha do sink');
       },
     };
-    await expect(montar(sink).verificationLink(EMAIL, TOKEN)).rejects.toThrow('falha do sink');
+    await expect(montar(sink).recoveryLink(EMAIL, TOKEN, 'password_reset')).rejects.toThrow('falha do sink');
   });
 });
 
@@ -148,15 +149,15 @@ describe('envio pelo provedor do login (decisao 55 de 11-DECISOES.md)', () => {
       sink: providerSink(prov, (nome) => eventos.push(nome)),
       baseUrl: BASE,
     });
-    await adaptador.verificationLink('conta.sintetica@example.test', TOKEN);
+    await adaptador.recoveryLink('conta.sintetica@example.test', TOKEN, 'password_reset');
     expect(eventos).toEqual([]);
     expect(pedidos).toHaveLength(1);
     expect(pedidos[0]?.url).toBe('https://api.resend.com/emails');
     expect(pedidos[0]?.headers.Authorization).toBe(`Bearer ${CHAVE}`);
     const corpo = JSON.parse(pedidos[0]!.body) as { to: string; subject: string; text: string };
     expect(corpo.to).toBe('conta.sintetica@example.test');
-    expect(corpo.subject).toBe('Confirme seu e-mail no FastPro');
-    expect(corpo.text).toContain(`${BASE}/profissional/verificar#t=${TOKEN}`);
+    expect(corpo.subject).toBe('Redefina sua senha do FastPro');
+    expect(corpo.text).toContain(`${BASE}/profissional/redefinir#t=${TOKEN}`);
   });
 
   it('o mesmo link gera a mesma chave de idempotencia (reenvio nao duplica)', async () => {
@@ -190,7 +191,7 @@ describe('envio pelo provedor do login (decisao 55 de 11-DECISOES.md)', () => {
     const eventos: string[] = [];
     const sink = providerSink(prov, (nome, motivo) => eventos.push(`${nome}:${motivo}`));
     await expect(
-      createProfessionalMailAdapter({ renderer, sink, baseUrl: BASE }).verificationLink('conta.sintetica@example.test', TOKEN),
+      createProfessionalMailAdapter({ renderer, sink, baseUrl: BASE }).recoveryLink('conta.sintetica@example.test', TOKEN, 'password_reset'),
     ).resolves.toBeUndefined();
     expect(eventos).toEqual(['professional_envio_nao_aceito:resend_http_500']);
     expect(eventos.join(' ')).not.toContain(TOKEN);

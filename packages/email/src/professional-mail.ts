@@ -105,7 +105,7 @@ export class ProfessionalMailInputError extends Error {
 }
 
 export interface ProfessionalMailAdapter {
-  verificationLink(email: string, token: string): Promise<void>;
+  verificationCode(email: string, code: string): Promise<void>;
   recoveryLink(email: string, token: string, purpose: 'password_reset' | 'professional_activate'): Promise<void>;
   passwordChangedNotice(email: string): Promise<void>;
 }
@@ -124,7 +124,7 @@ export function createProfessionalMailAdapter(opts: ProfessionalMailAdapterOptio
     const rendered = opts.renderer.render(templateKey, params);
     // A chave nao contem o link: so o digest dele, para o provedor deduplicar sem ver o segredo.
     const idempotencyKey = createHash('sha256')
-      .update(`${templateKey}|${email}|${String(params.link ?? '')}`)
+      .update(`${templateKey}|${email}|${String(params.link ?? params.code ?? '')}`)
       .digest('hex');
     await opts.sink.deliver({
       to: email,
@@ -143,8 +143,9 @@ export function createProfessionalMailAdapter(opts: ProfessionalMailAdapterOptio
   }
 
   return {
-    async verificationLink(email, token) {
-      await enviar(email, PROFESSIONAL_VERIFY_TEMPLATE, linkParams(PROFESSIONAL_VERIFY_PATH, token));
+    async verificationCode(email, code) {
+      if (!/^[0-9]{6}$/.test(code)) throw new ProfessionalMailInputError();
+      await enviar(email, PROFESSIONAL_VERIFY_TEMPLATE, { code, minutos: PROFESSIONAL_LINK_MINUTES });
     },
     async recoveryLink(email, token, purpose) {
       if (purpose === 'password_reset') {

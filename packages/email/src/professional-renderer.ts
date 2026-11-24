@@ -39,7 +39,6 @@ const ASSUNTO: Readonly<Record<string, string>> = {
 };
 
 const CORPO_LINK: Readonly<Record<string, string>> = {
-  [PROFESSIONAL_VERIFY_TEMPLATE]: 'Use o link abaixo para confirmar seu e-mail no FastPro.',
   [PROFESSIONAL_RECOVERY_TEMPLATE]: 'Use o link abaixo para criar uma nova senha no FastPro.',
   [PROFESSIONAL_ACTIVATE_TEMPLATE]:
     'Use o link abaixo para confirmar e criar seu perfil de profissional no FastPro. Sua senha de cliente nao muda.',
@@ -88,11 +87,39 @@ export function renderPasswordChangedEmail(): RenderedEmail {
   };
 }
 
+/**
+ * Confirmacao do cadastro do profissional por codigo de 6 digitos (OTP; decisao do dono, 2026-11-23). Sem link.
+ */
+export function renderProfessionalVerifyCodeEmail(params: Readonly<Record<string, unknown>>): RenderedEmail {
+  const { code, minutos } = params;
+  if (
+    typeof code !== 'string' ||
+    !/^[0-9]{6}$/.test(code) ||
+    typeof minutos !== 'number' ||
+    !Number.isInteger(minutos) ||
+    minutos < 1 ||
+    minutos > 60
+  ) {
+    throw new ProfessionalRenderError();
+  }
+  return {
+    subject: ASSUNTO[PROFESSIONAL_VERIFY_TEMPLATE] ?? '',
+    text: [
+      'Use o codigo abaixo para confirmar seu e-mail no FastPro.',
+      '',
+      `Codigo (valido por ${minutos} minutos, uso unico): ${code}`,
+      '',
+      'Se voce nao pediu esta mensagem, ignore-a. Ninguem vai pedir sua senha por e-mail.',
+    ].join('\n'),
+  };
+}
+
 /** Renderizador dos modelos do profissional; os demais templates seguem o renderizador base. */
 export function createProfessionalAwareRenderer(base: EmailRenderer): EmailRenderer {
   return {
     render(templateKey, params) {
       if (templateKey === PASSWORD_CHANGED_TEMPLATE) return renderPasswordChangedEmail();
+      if (templateKey === PROFESSIONAL_VERIFY_TEMPLATE) return renderProfessionalVerifyCodeEmail(params);
       if (templateKey in CORPO_LINK) return renderProfessionalLinkEmail(templateKey, params);
       return base.render(templateKey, params);
     },

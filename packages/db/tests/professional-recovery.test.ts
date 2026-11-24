@@ -49,7 +49,7 @@ function montar(opcoes: { aplicavel?: Aplicavel; peek?: boolean; consome?: boole
     async recoveryLink(email: string, token: string, purpose: string) {
       envios.push({ email, token, purpose });
     },
-    async verificationLink(email: string, token: string) {
+    async verificationCode(email: string, token: string) {
       envios.push({ email, token, purpose: 'professional_verify' });
     },
     async passwordChangedNotice(email: string) {
@@ -63,6 +63,7 @@ function montar(opcoes: { aplicavel?: Aplicavel; peek?: boolean; consome?: boole
     pepperEmail: 'p'.repeat(32),
     newId: () => '00000000-0000-4000-8000-000000000001',
     newSecret: () => TOKEN,
+    newCode: () => '482913',
   });
   return { adaptador, sql, envios, auth, avisos };
 }
@@ -95,7 +96,7 @@ describe('PgProfessionalRecovery.resendVerification (CA-H016-09)', () => {
     const m = montar({ aplicavel: null });
     const m2 = montar({ aplicavel: 'professional_verify' });
     await m2.adaptador.resendVerification(EMAIL, T0);
-    expect(m2.envios).toEqual([{ email: EMAIL, token: TOKEN, purpose: 'professional_verify' }]);
+    expect(m2.envios).toEqual([{ email: EMAIL, token: '482913', purpose: 'professional_verify' }]);
     expect(m.envios).toEqual([]);
   });
 

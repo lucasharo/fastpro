@@ -68,12 +68,21 @@ class PortaMemoria implements ProfessionalAuthPort {
       verified: false,
       active: true,
     });
-    const token = novoSegredo();
-    this.links.set(token, { email, expiresAtMs: nowMs + 15 * MIN, used: false });
+    // Codigo de 6 digitos (OTP): a chave e e-mail|codigo, como o hash guardado no banco.
+    const code = String(100000 + this.seq);
+    this.links.set(`${email}|${code}`, { email, expiresAtMs: nowMs + 15 * MIN, used: false });
   }
 
-  async confirmVerification(token: string, nowMs: number): Promise<boolean> {
-    const link = this.links.get(token);
+  readonly tentativasCodigo = new Map<string, number>();
+
+  async verifyGate(email: string): Promise<{ kind: 'bloqueada'; retryAfterSeconds: number } | { kind: 'tentativa' }> {
+    const n = (this.tentativasCodigo.get(email) ?? 0) + 1;
+    this.tentativasCodigo.set(email, n);
+    return n > 5 ? { kind: 'bloqueada', retryAfterSeconds: 60 } : { kind: 'tentativa' };
+  }
+
+  async confirmVerification(email: string, code: string, nowMs: number): Promise<boolean> {
+    const link = this.links.get(`${email}|${code}`);
     if (!link || link.used || link.expiresAtMs <= nowMs) return false;
     link.used = true;
     const usuario = this.usuarios.get(link.email);
@@ -214,9 +223,9 @@ beforeEach(async () => {
 async function criarConta(email = EMAIL, senha = SENHA): Promise<string> {
   const r = await post('/v1/auth/professional/register', json({ email, password: senha }));
   expect(r.status).toBe(202);
-  const token = [...porta.links.entries()].find(([, l]) => l.email === email.toLowerCase())?.[0];
-  if (!token) throw new Error('link nao gerado');
-  return token;
+  const chave = [...porta.links.entries()].find(([, l]) => l.email === email.toLowerCase())?.[0];
+  if (!chave) throw new Error('codigo nao gerado');
+  return chave.split('|')[1] ?? '';
 }
 
 describe('T-H016-01 cadastro (CA-H016-01)', () => {
@@ -278,24 +287,39 @@ describe('T-H016-03 politica de senha no cadastro (CA-H016-03)', () => {
 });
 
 describe('T-H016-07 e T-H016-08 verificacao do e-mail (CA-H016-07, CA-H016-08)', () => {
-  it('confirma o link uma vez (204); reuso e link desconhecido devolvem o mesmo 410', async () => {
-    const token = await criarConta();
-    const ok = await post(PATH_CONFIRM, json({ token }));
+  it('confirma o codigo uma vez (204); reuso e codigo desconhecido devolvem o mesmo 410', async () => {
+    const code = await criarConta();
+    const ok = await post(PATH_CONFIRM, json({ email: EMAIL, code }));
     expect(ok.status).toBe(204);
     expect(porta.usuarios.get(EMAIL)?.verified).toBe(true);
-    const reuso = await post(PATH_CONFIRM, json({ token }));
-    const desconhecido = await post(PATH_CONFIRM, json({ token: 'a'.repeat(43) }));
-    const malformado = await post(PATH_CONFIRM, json({ token: 'curto' }));
+    const reuso = await post(PATH_CONFIRM, json({ email: EMAIL, code }));
+    const desconhecido = await post(PATH_CONFIRM, json({ email: EMAIL, code: '000000' }));
+    const malformado = await post(PATH_CONFIRM, json({ email: EMAIL, code: '12' }));
     expect(reuso.status).toBe(410);
     expect(desconhecido.text).toBe(reuso.text);
     expect(malformado.text).toBe(reuso.text);
     expect(JSON.parse(reuso.text)).toEqual({ code: 'link_invalid' });
   });
 
-  it('link expirado aos 15 min devolve 410', async () => {
-    const token = await criarConta();
+  it('codigo de outro e-mail nao confirma (o codigo e preso ao e-mail)', async () => {
+    const code = await criarConta();
+    const r = await post(PATH_CONFIRM, json({ email: 'outra.conta@example.test', code }));
+    expect(r.status).toBe(410);
+    expect(porta.usuarios.get(EMAIL)?.verified).toBe(false);
+  });
+
+  it('tentativas demais com o codigo: 429 com Retry-After', async () => {
+    const outro = 'trava.codigo@example.test';
+    await criarConta(outro);
+    let ultimo = 0;
+    for (let i = 0; i < 6; i++) ultimo = (await post(PATH_CONFIRM, json({ email: outro, code: '000000' }))).status;
+    expect(ultimo).toBe(429);
+  });
+
+  it('codigo expirado aos 15 min devolve 410', async () => {
+    const code = await criarConta();
     agora += 15 * MIN;
-    const r = await post(PATH_CONFIRM, json({ token }));
+    const r = await post(PATH_CONFIRM, json({ email: EMAIL, code }));
     expect(r.status).toBe(410);
     expect(porta.usuarios.get(EMAIL)?.verified).toBe(false);
   });
@@ -303,8 +327,8 @@ describe('T-H016-07 e T-H016-08 verificacao do e-mail (CA-H016-07, CA-H016-08)',
 
 describe('T-H016-11 login e anti-enumeracao (CA-H016-10, CA-H016-11, CA-H016-13)', () => {
   it('senha certa e conta verificada: 200, cookie de 7 dias e acesso completo', async () => {
-    const token = await criarConta();
-    await post(PATH_CONFIRM, json({ token }));
+    const code = await criarConta();
+    await post(PATH_CONFIRM, json({ email: EMAIL, code }));
     const r = await post(PATH_LOGIN, json({ email: EMAIL, password: SENHA }));
     expect(r.status).toBe(200);
     expect(JSON.parse(r.text)).toEqual({ access_level: 'full', email_verified: true });

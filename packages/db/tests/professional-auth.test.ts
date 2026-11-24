@@ -3,10 +3,10 @@
 // e pela ordem das chamadas. A prova no Postgres real fica para o teste de banco (dbtest).
 import { describe, it, expect } from 'vitest';
 import { createHmac } from 'node:crypto';
-import { challengeSha256Hex } from '../src/challenges-crypto.js';
 import { hashSessionSecret } from '../src/session.js';
 import {
   PgProfessionalAuth,
+  hashCodigoVerificacao,
   PROFESSIONAL_LOGIN_KEY_PURPOSE,
   SupabaseAuthGateway,
   type ProfessionalAuthGateway,
@@ -73,9 +73,9 @@ function montar(opcoes: { cliente?: ClienteFalso; auth?: AuthFalso; mailFalha?: 
   const auth = opcoes.auth ?? new AuthFalso();
   const enviados: Array<{ email: string; token: string }> = [];
   const mail: ProfessionalMailPort = {
-    async verificationLink(email, token) {
+    async verificationCode(email, code) {
       if (opcoes.mailFalha) throw new Error('falha de envio simulada');
-      enviados.push({ email, token });
+      enviados.push({ email, token: code });
     },
   };
   let n = 0;
@@ -87,6 +87,7 @@ function montar(opcoes: { cliente?: ClienteFalso; auth?: AuthFalso; mailFalha?: 
     evento: (nome, dados) => eventos.push([nome, dados]),
     newId: () => `id-${++n}`,
     newSecret: () => 'segredo-x',
+    newCode: () => '482913',
   });
   return { porta, cliente, auth, enviados, eventos };
 }
@@ -104,10 +105,10 @@ describe('T-H016-01 cadastro no adaptador (CA-H016-01, 33 §3.2)', () => {
       EMAIL,
       hmac(EMAIL),
       'id-2',
-      challengeSha256Hex('segredo-x'),
+      hashCodigoVerificacao(EMAIL, '482913'),
       AGORA_ISO,
     ]);
-    expect(enviados).toEqual([{ email: EMAIL, token: 'segredo-x' }]);
+    expect(enviados).toEqual([{ email: EMAIL, token: '482913' }]);
     expect(auth.removidos).toEqual([]);
   });
 
@@ -140,19 +141,19 @@ describe('T-H016-01 cadastro no adaptador (CA-H016-01, 33 §3.2)', () => {
 });
 
 describe('T-H016-07 e T-H016-08 consumo do link no adaptador', () => {
-  it('confere pelo hash do segredo; linha devolvida = consumido', async () => {
+  it('confere pelo hash de e-mail e codigo; linha devolvida = consumido', async () => {
     const cliente = new ClienteFalso([{ contem: 'professional_verify_confirm', rows: [{ out_user_id: 'u-1' }] }]);
     const { porta } = montar({ cliente });
-    expect(await porta.confirmVerification('segredo-x', AGORA)).toBe(true);
+    expect(await porta.confirmVerification(EMAIL, '482913', AGORA)).toBe(true);
     expect(cliente.chamada('professional_verify_confirm')?.params).toEqual([
-      challengeSha256Hex('segredo-x'),
+      hashCodigoVerificacao(EMAIL, '482913'),
       AGORA_ISO,
     ]);
   });
 
   it('sem linha (usado, vencido, desconhecido): falso, sem detalhe', async () => {
     const { porta } = montar();
-    expect(await porta.confirmVerification('outro-segredo', AGORA)).toBe(false);
+    expect(await porta.confirmVerification(EMAIL, '000000', AGORA)).toBe(false);
   });
 });
 
@@ -264,10 +265,10 @@ describe('cadastro: falhas de envio e de compensacao (33 §3.2, pedido de revisa
       'u-1',
       hmac(EMAIL),
       'id-1',
-      challengeSha256Hex('segredo-x'),
+      hashCodigoVerificacao(EMAIL, '482913'),
       AGORA_ISO,
     ]);
-    expect(mailOk.enviados).toEqual([{ email: EMAIL, token: 'segredo-x' }]);
+    expect(mailOk.enviados).toEqual([{ email: EMAIL, token: '482913' }]);
   });
 
   it('conta verificada ou sem perfil profissional: nada e trocado nem enviado', async () => {
