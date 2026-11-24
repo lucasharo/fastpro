@@ -904,13 +904,15 @@ select option {
   border-radius: 1rem;
   overflow-x: auto;
   user-select: none;
-  width: fit-content;
-  max-width: 100%;
+  width: 100%;
 }
 
+
 .aba {
+  flex: 1 1 0;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   min-height: 2.75rem;
   padding: 0.5rem 0.875rem;
@@ -925,6 +927,7 @@ select option {
 
 .aba:hover {
   color: var(--color-text-primary);
+  text-decoration: none;
 }
 
 .aba-ativa,
