@@ -1,0 +1,88 @@
+// Console admin | Guarda por sessao e permissao (404 vazio sem acesso), Origin nas decisoes e respostas das listas.
+import { createServer, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { handleAdminModerationRoute, type AdminModerationRouteOptions } from '../src/admin-login/admin-moderation-route.js';
+
+const ADMIN = 'https://admin.fastpro.example';
+const DENUNCIA = '11111111-1111-4111-8111-111111111111';
+let permissoes: string[] = ['moderation.decide'];
+const consultas: string[] = [];
+
+const opts: AdminModerationRouteOptions = {
+  adminUrl: ADMIN,
+  clock: { nowMs: () => Date.UTC(2026, 10, 24, 12) },
+  client: {
+    query: async (sql: string) => {
+      consultas.push(sql);
+      if (sql.includes('admin_guard')) return { rows: permissoes.length ? [{ out_user_id: 'adm-1', out_permissions: permissoes }] : [] };
+      if (sql.includes('admin_reports_list')) return { rows: [{ out_id: DENUNCIA, out_reason: 'spam', out_status: 'aberto', out_service_name: 'Pintor' }] };
+      if (sql.includes('admin_report_decide')) return { rows: [{ r: 'ok' }] };
+      return { rows: [] };
+    },
+  },
+};
+
+let server: Server;
+let base = '';
+beforeAll(async () => {
+  server = createServer((req, res) => void handleAdminModerationRoute(req, res, new URL(req.url ?? '/', 'http://x').pathname, opts));
+  await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
+  base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+});
+afterAll(() => new Promise<void>((r) => server.close(() => r())));
+
+const COOKIE = { Cookie: `__Host-fp_admin=${'a'.repeat(43)}` };
+
+describe('console admin: moderacao', () => {
+  it('sem cookie: 404 vazio, sem consultar o banco', async () => {
+    consultas.length = 0;
+    const r = await fetch(`${base}/v1/admin/moderation/reports`);
+    expect(r.status).toBe(404);
+    expect(await r.text()).toBe('');
+    expect(consultas).toEqual([]);
+  });
+
+  it('sessao sem a permissao: 404 vazio (igual a rota inexistente)', async () => {
+    permissoes = ['catalog.manage'];
+    const r = await fetch(`${base}/v1/admin/moderation/reports`, { headers: COOKIE });
+    expect(r.status).toBe(404);
+    expect(await r.text()).toBe('');
+  });
+
+  it('moderador lista as denuncias', async () => {
+    permissoes = ['moderation.decide'];
+    const r = await fetch(`${base}/v1/admin/moderation/reports?status=aberto`, { headers: COOKIE });
+    expect(r.status).toBe(200);
+    const corpo = (await r.json()) as { items: { id: string }[] };
+    expect(corpo.items[0]?.id).toBe(DENUNCIA);
+  });
+
+  it('decisao exige Origin do admin e decisao valida', async () => {
+    const semOrigem = await fetch(`${base}/v1/admin/moderation/reports/${DENUNCIA}/decision`, {
+      method: 'POST',
+      headers: { ...COOKIE, Origin: 'https://outro.example', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decisao: 'resolvido' }),
+    });
+    expect(semOrigem.status).toBe(403);
+    const invalida = await fetch(`${base}/v1/admin/moderation/reports/${DENUNCIA}/decision`, {
+      method: 'POST',
+      headers: { ...COOKIE, Origin: ADMIN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decisao: 'apagar' }),
+    });
+    expect(invalida.status).toBe(400);
+    const ok = await fetch(`${base}/v1/admin/moderation/reports/${DENUNCIA}/decision`, {
+      method: 'POST',
+      headers: { ...COOKIE, Origin: ADMIN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decisao: 'resolvido' }),
+    });
+    expect(ok.status).toBe(200);
+  });
+
+  it('auditoria exige audit.read', async () => {
+    permissoes = ['moderation.decide'];
+    expect((await fetch(`${base}/v1/admin/audit/recent`, { headers: COOKIE })).status).toBe(404);
+    permissoes = ['audit.read'];
+    expect((await fetch(`${base}/v1/admin/audit/recent`, { headers: COOKIE })).status).toBe(200);
+  });
+});

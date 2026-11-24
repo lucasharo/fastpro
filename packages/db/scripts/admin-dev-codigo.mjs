@@ -1,6 +1,6 @@
 // Admin de DESENVOLVIMENTO com entrada por codigo no e-mail (decisao do dono, 2026-11-24). Execucao LOCAL, por
 // quem tem a conexao do banco DEV. Cria (se ainda nao existir) uma conta so de admin para o e-mail informado, ativa
-// na equipe, com o papel superadmin de origem bootstrap. A conta de admin precisa ser separada da de cliente e da de
+// na equipe, com os papeis superadmin, moderador, verificacao e auditor (origem bootstrap; so DEV). A conta de admin precisa ser separada da de cliente e da de
 // profissional (regra H-017: o banco recusa os papeis juntos); use, por exemplo, o mesmo e-mail com "+admin".
 // Uso (raiz do repositorio):
 //   node packages/db/scripts/admin-dev-codigo.mjs --email <e-mail> --confirmar-host <host do banco DEV>
@@ -50,16 +50,19 @@ async function main(argv) {
        on conflict (user_id) do update set status = 'ativo', status_changed_at = now()`,
       [userId],
     );
-    const { rows: [papel] } = await client.query(
-      `select 1 from app.admin_user_role where user_id = $1 and role_code = 'superadmin' and revoked_at is null`,
-      [userId],
-    );
-    if (papel === undefined) {
-      await client.query(
-        `insert into app.admin_user_role (id, user_id, role_code, granted_by, grant_origin, granted_at)
-         values (gen_random_uuid(), $1, 'superadmin', null, 'bootstrap', now())`,
-        [userId],
+    // No DEV a mesma pessoa testa todas as telas: superadmin (equipe e catalogo), moderador, verificacao e auditor.
+    for (const papel of ['superadmin', 'moderador', 'verificacao', 'auditor']) {
+      const { rows: [ja] } = await client.query(
+        'select 1 from app.admin_user_role where user_id = $1 and role_code = $2 and revoked_at is null',
+        [userId, papel],
       );
+      if (ja === undefined) {
+        await client.query(
+          `insert into app.admin_user_role (id, user_id, role_code, granted_by, grant_origin, granted_at)
+           values (gen_random_uuid(), $1, $2, null, 'bootstrap', now())`,
+          [userId, papel],
+        );
+      }
     }
     await client.query('commit');
     process.stdout.write('admin-dev-codigo: pronto. Entre no admin com este e-mail e o codigo que chegar.\n');

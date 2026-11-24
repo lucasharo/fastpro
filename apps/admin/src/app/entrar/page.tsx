@@ -85,7 +85,7 @@ export default function EntrarAdmin() {
 
   return (
     <div>
-      <CabecaPagina titulo="Entrar no console" descricao="Mandamos um código de 6 dígitos para o e-mail da equipe." />
+      <CabecaPagina titulo="Entrar no painel administrativo" descricao="Mandamos um código de 6 dígitos para o e-mail da equipe." />
       <div className="glass-card cartao-painel">
         {etapa === 'email' ? (
           <form className="form" onSubmit={pedirCodigo} noValidate>

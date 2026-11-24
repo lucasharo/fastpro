@@ -12,6 +12,10 @@ const MENU: readonly { readonly href: string; readonly rotulo: string; readonly 
   { href: '/console/verificacao', rotulo: 'Verificação', icone: 'escudo' },
   { href: '/console/catalogo', rotulo: 'Catálogo', icone: 'documento' },
   { href: '/console/operacao', rotulo: 'Operação', icone: 'painel' },
+  { href: '/console/denuncias', rotulo: 'Denúncias', icone: 'alerta' },
+  { href: '/console/avaliacoes', rotulo: 'Avaliações', icone: 'estrela' },
+  { href: '/console/auditoria', rotulo: 'Auditoria', icone: 'documento' },
+  { href: '/console/equipe', rotulo: 'Equipe', icone: 'usuario' },
 ];
 
 export function CascaAdmin({ children }: { readonly children: ReactNode }) {

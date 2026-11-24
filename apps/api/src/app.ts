@@ -124,6 +124,7 @@ import { handleRequestDetailRoute, isRequestDetailRoute, type RequestDetailRoute
 import { handleConversationRoute, isConversationRoute, type ConversationRouteOptions } from './conversations/conversation-route.js';
 import { handleMeRoute, isMeRoute, type MeRouteOptions } from './conversations/me-route.js';
 import { handleAdminCodeRoute, isAdminCodeRoute, type AdminCodeRouteOptions } from './admin-login/admin-code-route.js';
+import { handleAdminModerationRoute, isAdminModerationRoute, type AdminModerationRouteOptions } from './admin-login/admin-moderation-route.js';
 import { handleDraftSessionRoute, isDraftSessionRoute, type DraftSessionRouteOptions } from './conversations/draft-session-route.js';
 // Pacote A (H-061, H-077, H-078, H-080) | Ciclo do pedido e do aceite: concluir, desfazer, cancelar, retirar aceite.
 import { handleLifecycleRoute, isLifecycleRoute, type LifecycleRouteOptions } from './lifecycle/lifecycle-route.js';
@@ -251,6 +252,8 @@ export interface AppOptions {
   readonly me?: MeRouteOptions;
   /** Entrada do admin por codigo no e-mail. Sem esta opcao, 404 uniforme. */
   readonly adminCode?: AdminCodeRouteOptions;
+  /** Console admin: moderacao, auditoria recente e equipe. Sem esta opcao, 404 vazio. */
+  readonly adminModeration?: AdminModerationRouteOptions;
   /** Pedido de quem ja esta logado (nome e e-mail da sessao no rascunho). Sem esta opcao, 404 uniforme. */
   readonly draftSession?: DraftSessionRouteOptions;
   /** Pacote A: concluir, desfazer conclusao, cancelar pedido e retirar aceite. Sem esta opcao as rotas respondem 404 uniforme. */
@@ -536,6 +539,12 @@ export async function handleRequest(
     return;
   }
   // Papel da sessao, para a tela mostrar so o menu do cliente ou do profissional.
+  if (isAdminModerationRoute(req.method ?? '', path)) {
+    if (opts.adminModeration) return handleAdminModerationRoute(req, res, path, opts.adminModeration);
+    res.writeHead(404, { 'Cache-Control': 'no-store' });
+    res.end();
+    return;
+  }
   if (isAdminCodeRoute(req.method ?? '', path)) {
     if (opts.adminCode) return handleAdminCodeRoute(req, res, path, opts.adminCode);
     res.writeHead(404, { 'Cache-Control': 'no-store' });

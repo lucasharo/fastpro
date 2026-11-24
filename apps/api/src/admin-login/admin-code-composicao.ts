@@ -5,6 +5,7 @@ import type { SqlClient } from '@fastpro/db';
 import type { ClockPort, EmailProviderPort } from '@fastpro/domain';
 import { createAuthAwareRenderer, createEmailProvider, createFetchHttpTransport, createMinimalRenderer } from '@fastpro/email';
 import type { AdminCodeRouteOptions } from './admin-code-route.js';
+import type { AdminModerationRouteOptions } from './admin-moderation-route.js';
 
 type Ambiente = Readonly<Record<string, string | undefined>>;
 
@@ -62,4 +63,15 @@ export function montarEntradaAdmin(
       await cliente.query('select private.admin_session_revoke($1, $2::timestamptz)', [secretHash, iso(nowMs)]);
     },
   };
+}
+
+/** Console admin (moderacao, auditoria recente e equipe): banco app_system e ADMIN_BASE_URL. */
+export function montarModeracaoAdmin(
+  env: Ambiente,
+  opcoes: { readonly abrirCliente?: (connectionString: string) => SqlClient } = {},
+): AdminModerationRouteOptions | undefined {
+  const url = (env.DATABASE_URL_APP_SYSTEM ?? '').trim();
+  const adminUrl = (env.ADMIN_BASE_URL ?? '').trim();
+  if (url === '' || adminUrl === '' || opcoes.abrirCliente === undefined) return undefined;
+  return { adminUrl, client: opcoes.abrirCliente(url), clock: RELOGIO };
 }
