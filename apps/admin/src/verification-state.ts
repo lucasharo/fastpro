@@ -60,20 +60,22 @@ function linhaValida(x: unknown): x is LinhaFilaTela {
  * A API (GET /v1/admin/verificacao/casos) devolve os campos em portugues (identificador, prazoMeta, recebidoEm,
  * servicos, alemDaMeta, minha, versao, recurso). Converte para a linha da tela; item ja no formato da tela passa igual.
  */
-function daApi(x: unknown): unknown {
+export function daApi(x: unknown): unknown {
   if (typeof x !== 'object' || x === null || !('identificador' in x)) return x;
   const l = x as Record<string, unknown>;
+  const { identificador, recurso, prazoMeta, recebidoEm, servicos, alemDaMeta, minha, versao, ...resto } = l;
   return {
+    ...resto,
     id: l.id,
-    short_id: l.identificador,
+    short_id: identificador,
     status: l.status,
-    appeal_status: l.recurso,
-    sla_target_at: l.prazoMeta,
-    received_at: l.recebidoEm ?? null,
-    services: l.servicos,
-    overdue: l.alemDaMeta === true,
-    assigned_to_me: l.minha === true,
-    version: l.versao,
+    appeal_status: recurso,
+    sla_target_at: prazoMeta,
+    received_at: recebidoEm ?? null,
+    services: servicos,
+    overdue: alemDaMeta === true,
+    assigned_to_me: minha === true,
+    version: versao,
   };
 }
 

@@ -22,7 +22,7 @@ export async function chamarVerificacao(
     cabecalhos['sec-fetch-site'] = 'same-origin';
   }
   try {
-    return await fetch(`${base}/v1/admin/verificacao/casos${caminho}`, {
+    return await fetch(`${base}/v1/admin/verificacao${caminho}`, {
       method: metodo,
       headers: cabecalhos,
       body: corpo === undefined ? undefined : JSON.stringify(corpo),

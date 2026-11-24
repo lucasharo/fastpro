@@ -84,16 +84,26 @@ export default async function PaginaVerificacao({
                 <th scope="col">Enviado em</th>
                 <th scope="col">Estado</th>
                 <th scope="col">Prazo</th>
+                <th scope="col">
+                  <span className="sr-only">Ações</span>
+                </th>
               </tr>
             </thead>
             <tbody>
               {estado.itens.map((item) => (
                 <tr key={item.id}>
-                  <td>{item.short_id}</td>
+                  <td>
+                    <a href={`/console/verificacao/${encodeURIComponent(item.id)}`}>{item.short_id}</a>
+                  </td>
                   <td>{item.services.length > 0 ? item.services.join(', ') : 'Não informado'}</td>
                   <td>{formatarData(item.received_at)}</td>
                   <td>{rotuloEstado(item.status)}</td>
                   <td>{rotuloPrazo(item.overdue)}</td>
+                  <td className="tabela-acao">
+                    <a href={`/console/verificacao/${encodeURIComponent(item.id)}`} className="btn btn-secondary btn-sm">
+                      Abrir caso
+                    </a>
+                  </td>
                 </tr>
               ))}
             </tbody>

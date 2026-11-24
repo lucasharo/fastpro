@@ -16,20 +16,20 @@ import {
   type EstadoDetalhe,
 } from '../src/verification-detail-state';
 
-vi.mock('../src/app/console/verificacao/[caso]/acoes', () => ({ decidirCaso: vi.fn() }));
+vi.mock('../src/app/console/verificacao/[caso]/acoes', () => ({ decidirCaso: vi.fn(), assumirCaso: vi.fn() }));
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const CORPO = {
   id: 'caso-sintetico-1',
   short_id: 'ABC123',
-  status: 'pendente',
+  status: 'em_revisao',
   appeal_status: 'nenhum',
   sla_target_at: '2026-11-20T12:00:00.000Z',
   received_at: '2026-11-13T10:00:00.000Z',
   services: ['Servico sintetico'],
   overdue: false,
-  assigned_to_me: false,
+  assigned_to_me: true,
   version: 3,
   motivo: null,
   explicacao: null,
@@ -148,5 +148,47 @@ describe('formulario de decisao', () => {
     digitar('a'.repeat(500));
     const botao = container.querySelector('form[aria-label="Decisão do caso"] button[type="submit"]') as HTMLButtonElement | null;
     expect(botao?.disabled).toBe(false);
+  });
+});
+
+describe('acoes conforme a situacao do caso', () => {
+  it('pendente: mostra "Assumir caso" e nao o formulario nem o documento', () => {
+    montar(estadoDoDetalhe(200, { ...CORPO, status: 'pendente', assigned_to_me: false }));
+    const botoes = Array.from(container.querySelectorAll('button')).map((b) => b.textContent);
+    expect(botoes).toContain('Assumir caso');
+    expect(container.querySelector('form[aria-label="Decisão do caso"]')).toBeNull();
+    expect(container.textContent).toContain('Assuma o caso para abrir o documento.');
+  });
+
+  it('em revisao com outra pessoa: sem acoes', () => {
+    montar(estadoDoDetalhe(200, { ...CORPO, assigned_to_me: false }));
+    expect(container.textContent).toContain('em revisão com outra pessoa');
+    expect(container.querySelector('form[aria-label="Decisão do caso"]')).toBeNull();
+  });
+
+  it('o motivo acompanha a decisao: Aprovar so "Documento conferido", Recusar sem ele', () => {
+    montar(OK);
+    const opcoes = () => Array.from(container.querySelectorAll('select option')).map((o) => o.getAttribute('value'));
+    expect(opcoes()).toEqual(['aprovado']);
+    const recusar = Array.from(container.querySelectorAll('button')).find((b) => b.textContent === 'Recusar');
+    act(() => recusar?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(opcoes()).not.toContain('aprovado');
+    expect(opcoes()).not.toContain('duplicidade_suspeita');
+    expect(opcoes()).toContain('outro');
+  });
+
+  it('API em portugues: o detalhe le identificador, minha e versao', () => {
+    const api = {
+      id: 'c9', identificador: 'XYZ9', status: 'pendente', recurso: 'nenhum', prazoMeta: '2026-11-20T12:00:00.000Z',
+      recebidoEm: null, servicos: [], alemDaMeta: true, minha: false, versao: 7, motivo: null, explicacao: null,
+      decididoEm: null, documentoDisponivel: true, documento: 'DOC-X', documentoRecebidoEm: null,
+    };
+    const estado = estadoDoDetalhe(200, api);
+    expect(estado.tipo).toBe('ok');
+    if (estado.tipo === 'ok') {
+      expect(estado.caso.short_id).toBe('XYZ9');
+      expect(estado.caso.version).toBe(7);
+      expect(JSON.stringify(estado.caso)).not.toContain('DOC-X');
+    }
   });
 });

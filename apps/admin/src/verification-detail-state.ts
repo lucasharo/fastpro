@@ -1,7 +1,7 @@
 // Issue 52 (H-039) | Estado do detalhe do caso, do formulario de decisao e da leitura do documento
 // (docs/factory/124-DESENHO-H039.md §5.4; decs. 375, 386, 387). Funcoes puras, sem React e sem I/O.
 // O estado copia so os campos da tela: o identificador do documento nunca entra aqui e nunca chega ao navegador.
-import type { LinhaFilaTela } from './verification-state';
+import { daApi, type LinhaFilaTela } from './verification-state';
 
 /** Limite tecnico do complemento livre da decisao (dec. 375). */
 export const COMPLEMENTO_MAX = 500;
@@ -110,8 +110,9 @@ function paraDetalhe(c: Record<string, unknown>): DetalheTela {
 /** 404 e a negacao uniforme (o caso nao existe ou nao e visivel); resposta fora do formato vira erro generico. */
 export function estadoDoDetalhe(status: number, corpo: unknown): EstadoDetalhe {
   if (status === 404) return { tipo: 'sem_acesso' };
-  if (status !== 200 || !casoValido(corpo)) return { tipo: 'erro' };
-  return { tipo: 'ok', caso: paraDetalhe(corpo) };
+  const caso = daApi(corpo);
+  if (status !== 200 || !casoValido(caso)) return { tipo: 'erro' };
+  return { tipo: 'ok', caso: paraDetalhe(caso) };
 }
 
 export function rotuloMotivo(valor: string | null): string {
@@ -164,3 +165,14 @@ export function estadoDaDecisao(status: number): EstadoDecisao {
   if (status === 404) return { situacao: 'sem_acesso', mensagem: TEXTO_SEM_ACESSO_DECISAO };
   return { situacao: 'erro', mensagem: TEXTO_ERRO_DECISAO };
 }
+
+/** Motivos aceitos para cada decisao (mesma regra do dominio, motivoCombina): aprovar so com "aprovado", reter so
+ * com duplicidade; recusar com os demais, e duplicidade_suspeita na recusa so de cadastro retido. */
+export function motivosDaDecisao(decisao: string, retido: boolean): readonly { readonly valor: string; readonly rotulo: string }[] {
+  if (decisao === 'aprovada') return MOTIVOS_DECISAO_TELA.filter((m) => m.valor === 'aprovado');
+  if (decisao === 'retida_duplicidade') return MOTIVOS_DECISAO_TELA.filter((m) => m.valor === 'duplicidade_suspeita');
+  return MOTIVOS_DECISAO_TELA.filter((m) => m.valor !== 'aprovado' && (retido || m.valor !== 'duplicidade_suspeita'));
+}
+
+export const TEXTO_CASO_ASSUMIDO = 'Caso assumido. Abra o documento e registre a decisão.';
+export const TEXTO_ERRO_ASSUMIR = 'Não foi possível assumir o caso. Recarregue a página e tente de novo.';

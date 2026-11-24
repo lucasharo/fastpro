@@ -1064,3 +1064,27 @@ select option {
 .menu-gaveta .divisor {
   margin: 0.5rem 0;
 }
+
+/* ---------- Decisao da verificacao: escolha em botoes empilhados (largura total) ---------- */
+.verificacao-escolha {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.verificacao-escolha legend {
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: var(--space-2);
+}
+
+.verificacao-opcoes {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.verificacao-decisao {
+  max-width: none;
+}
