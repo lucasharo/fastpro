@@ -88,6 +88,7 @@ export default async function vercelHandler(
       ...(integracoes.accessCase !== undefined ? { accessCase: integracoes.accessCase } : {}),
       ...(integracoes.adminStepUp !== undefined ? { adminStepUp: integracoes.adminStepUp } : {}),
       ...(integracoes.adminOps !== undefined ? { adminOps: integracoes.adminOps } : {}),
+      ...(integracoes.verification !== undefined ? { verification: integracoes.verification } : {}),
       ...(integracoes.professionalProfile !== undefined ? { professionalProfile: integracoes.professionalProfile } : {}),
       ...(integracoes.professionalVerification !== undefined ? { professionalVerification: integracoes.professionalVerification } : {}),
       ...(integracoes.professionalTrial !== undefined ? { professionalTrial: integracoes.professionalTrial } : {}),
