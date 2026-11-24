@@ -10,6 +10,7 @@ import { ADMIN_SESSION_COOKIE } from '@fastpro/domain';
 import { AvisoErro } from '../../../components/AvisoErro';
 import { CabecaPagina } from '../../../components/CabecaPagina';
 import { EstadoVazio } from '../../../components/EstadoVazio';
+import { ModalUrl } from '../../../components/ModalUrl';
 import {
   rotuloModalidade,
   rotuloSituacao,
@@ -118,7 +119,20 @@ export default async function PaginaCatalogo({ searchParams }: { readonly search
   const paginas = Math.max(1, Math.ceil(total / porPagina));
   const inicio = total === 0 ? 0 : (pagina - 1) * porPagina + 1;
   const fim = Math.min(total, pagina * porPagina);
-  const colunas = aba === 'servicos' ? 7 : 5;
+  const itemEditado = editar ? items.find((i) => i.id === editar) : undefined;
+  // Rotulo acessivel do item (formulario e link Editar) e titulo curto do modal.
+  const tituloDe = (item: LinhaGrupo | LinhaServico | LinhaSinonimo): string =>
+    aba === 'grupos'
+      ? `Grupo ${(item as LinhaGrupo).name}, ${rotuloSituacao(item.active)}`
+      : aba === 'servicos'
+        ? `Serviço ${(item as LinhaServico).name}, ${rotuloModalidade((item as LinhaServico).modality)}, ${rotuloSituacao(item.active)}`
+        : `Sinônimo ${(item as LinhaSinonimo).term} do serviço ${(item as LinhaSinonimo).service_name}, ${rotuloSituacao(item.active)}`;
+  const tituloModal = (item: LinhaGrupo | LinhaServico | LinhaSinonimo): string =>
+    aba === 'grupos'
+      ? `Editar grupo: ${(item as LinhaGrupo).name}`
+      : aba === 'servicos'
+        ? `Editar serviço: ${(item as LinhaServico).name}`
+        : `Editar sinônimo: ${(item as LinhaSinonimo).term} (${(item as LinhaSinonimo).service_name})`;
 
   return (
     <div className="pilha">
@@ -192,21 +206,27 @@ export default async function PaginaCatalogo({ searchParams }: { readonly search
         <p className="texto-suave" role="status">
           {total === 0 ? 'Nenhum item encontrado.' : `Mostrando ${inicio} a ${fim} de ${total}`}
         </p>
-        {novo ? (
-          <Link href={url({ novo: '' })} className="btn-link">
-            Fechar
-          </Link>
-        ) : (
-          <Link href={url({ novo: '1', editar: '' })} className="btn btn-primary btn-sm">
-            {abaAtual.novo}
-          </Link>
-        )}
+        <Link href={url({ novo: '1', editar: '' })} className="btn btn-primary btn-sm" scroll={false}>
+          {abaAtual.novo}
+        </Link>
       </div>
 
       {novo ? (
-        <div className="cartao-plano">
+        <ModalUrl titulo={abaAtual.novo} fecharHref={url({ novo: '' })}>
           <FormularioItem entidade={abaAtual.entidade} grupos={grupos} servicos={servicos} titulo={abaAtual.novo} />
-        </div>
+        </ModalUrl>
+      ) : null}
+      {itemEditado ? (
+        <ModalUrl key={itemEditado.id} titulo={tituloModal(itemEditado)} fecharHref={url({ editar: '' })}>
+          <FormularioItem
+            key={`${itemEditado.id}-${itemEditado.version}`}
+            entidade={abaAtual.entidade}
+            item={itemEditado}
+            grupos={grupos}
+            servicos={servicos}
+            titulo={tituloDe(itemEditado)}
+          />
+        </ModalUrl>
       ) : null}
 
       {items.length === 0 ? (
@@ -251,13 +271,10 @@ export default async function PaginaCatalogo({ searchParams }: { readonly search
             </thead>
             <tbody>
               {items.map((item) => {
-                const aberto = editar === item.id;
                 const situacao = <span className={`selo ${item.active ? '' : 'selo-neutro'}`}>{item.active ? 'Ativo' : 'Inativo'}</span>;
                 let celulas;
-                let titulo: string;
                 if (aba === 'grupos') {
                   const g = item as LinhaGrupo;
-                  titulo = `Grupo ${g.name}, ${rotuloSituacao(g.active)}`;
                   celulas = (
                     <>
                       <td>{g.position}</td>
@@ -268,7 +285,6 @@ export default async function PaginaCatalogo({ searchParams }: { readonly search
                   );
                 } else if (aba === 'servicos') {
                   const s = item as LinhaServico;
-                  titulo = `Serviço ${s.name}, ${rotuloModalidade(s.modality)}, ${rotuloSituacao(s.active)}`;
                   celulas = (
                     <>
                       <td>{s.name}</td>
@@ -281,7 +297,6 @@ export default async function PaginaCatalogo({ searchParams }: { readonly search
                   );
                 } else {
                   const y = item as LinhaSinonimo;
-                  titulo = `Sinônimo ${y.term} do serviço ${y.service_name}, ${rotuloSituacao(y.active)}`;
                   celulas = (
                     <>
                       <td>{y.term}</td>
@@ -291,30 +306,16 @@ export default async function PaginaCatalogo({ searchParams }: { readonly search
                     </>
                   );
                 }
-                return [
-                  <tr key={item.id} className={aberto ? 'tabela-linha-aberta' : undefined}>
+                return (
+                  <tr key={item.id}>
                     {celulas}
                     <td className="tabela-acao">
-                      <Link href={url({ editar: aberto ? '' : item.id, novo: '' })} className="btn-link" scroll={false}>
-                        {aberto ? 'Fechar' : 'Editar'}
+                      <Link href={url({ editar: item.id, novo: '' })} className="btn-link" scroll={false} aria-label={`Editar ${tituloDe(item)}`}>
+                        Editar
                       </Link>
                     </td>
-                  </tr>,
-                  aberto ? (
-                    <tr key={`${item.id}-form`} className="tabela-linha-form">
-                      <td colSpan={colunas}>
-                        <FormularioItem
-                          key={`${item.id}-${item.version}`}
-                          entidade={abaAtual.entidade}
-                          item={item}
-                          grupos={grupos}
-                          servicos={servicos}
-                          titulo={titulo}
-                        />
-                      </td>
-                    </tr>
-                  ) : null,
-                ];
+                  </tr>
+                );
               })}
             </tbody>
           </table>

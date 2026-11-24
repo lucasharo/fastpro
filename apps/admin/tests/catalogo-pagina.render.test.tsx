@@ -10,7 +10,7 @@ import { notFound } from 'next/navigation';
 vi.mock('next/headers', () => ({
   cookies: async () => ({ get: () => ({ value: 'sessao-sintetica-do-teste' }) }),
 }));
-vi.mock('next/navigation', () => ({ notFound: vi.fn() }));
+vi.mock('next/navigation', () => ({ notFound: vi.fn(), useRouter: () => ({ push: vi.fn() }) }));
 vi.mock('next/link', () => ({
   default: ({ href, children, className }: { href: string; children: ReactNode; className?: string }) => (
     <a href={href} className={className}>
@@ -97,5 +97,20 @@ describe('catalogo em abas com tabela paginada no banco', () => {
     statusLista = 404;
     await renderizar({}).catch(() => undefined);
     expect(notFound).toHaveBeenCalled();
+  });
+
+  it('editar abre o formulario em modal (dialog) com o titulo do item, fora da tabela', async () => {
+    pagina = {
+      total: 1,
+      pagina: 1,
+      porPagina: 50,
+      items: [{ id: 'y1', term: 'aparelho', service_id: 's1', service_name: 'Dentista', group_name: 'Saúde', active: true, version: 1 }],
+    };
+    await renderizar({ aba: 'sinonimos', editar: 'y1' });
+    const modal = container.querySelector('dialog.modal');
+    expect(modal).not.toBeNull();
+    expect(modal?.querySelector('h2')?.textContent).toBe('Editar sinônimo: aparelho (Dentista)');
+    expect(modal?.querySelector('input[name="term"]')?.getAttribute('value') ?? (modal?.querySelector('input[name="term"]') as HTMLInputElement | null)?.value).toBe('aparelho');
+    expect(container.querySelector('table form')).toBeNull();
   });
 });

@@ -962,13 +962,46 @@ select option {
   white-space: nowrap;
 }
 
-.tabela-linha-aberta td {
-  border-bottom-color: transparent;
+/* ---------- Modal (dialog nativo) ---------- */
+.modal {
+  width: min(32rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  box-shadow: 0 12px 40px color-mix(in srgb, var(--color-brand) 20%, transparent);
 }
 
-.tabela-linha-form td {
-  background: var(--color-background);
-  padding: var(--space-4);
+.modal::backdrop {
+  background: color-mix(in srgb, var(--color-background) 70%, transparent);
+  backdrop-filter: blur(4px);
+}
+
+.modal-corpo {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+}
+
+.modal-cabeca {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.modal-cabeca h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+  .modal-corpo {
+    padding: var(--space-4);
+  }
 }
 
 .paginacao {
