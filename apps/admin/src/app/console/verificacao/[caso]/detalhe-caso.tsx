@@ -9,6 +9,7 @@ import { FormularioDecisao } from './formulario-decisao';
 import {
   motivoLeituraPadrao,
   rotuloMotivo,
+  TEXTO_CASO_INDISPONIVEL,
   TEXTO_ERRO_CASO,
   TEXTO_ERRO_LEITURA,
   TEXTO_SEM_DOCUMENTO,
@@ -38,7 +39,7 @@ export function DetalheCaso({ estado, leituraErro }: DetalheCasoProps) {
           <Icone nome="voltar" tamanho={18} />
           Voltar para a fila
         </a>
-        <AvisoErro texto={TEXTO_ERRO_CASO} />
+        <AvisoErro texto={estado.tipo === 'sem_acesso' ? TEXTO_CASO_INDISPONIVEL : TEXTO_ERRO_CASO} />
       </div>
     );
   }

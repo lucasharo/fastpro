@@ -176,3 +176,6 @@ export function motivosDaDecisao(decisao: string, retido: boolean): readonly { r
 
 export const TEXTO_CASO_ASSUMIDO = 'Caso assumido. Abra o documento e registre a decisão.';
 export const TEXTO_ERRO_ASSUMIR = 'Não foi possível assumir o caso. Recarregue a página e tente de novo.';
+
+export const TEXTO_CASO_INDISPONIVEL =
+  'Este caso não está disponível para você. Ele pode estar em revisão com outra pessoa da equipe.';

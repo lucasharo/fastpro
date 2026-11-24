@@ -90,22 +90,30 @@ export default async function PaginaVerificacao({
               </tr>
             </thead>
             <tbody>
-              {estado.itens.map((item) => (
-                <tr key={item.id}>
-                  <td>
-                    <a href={`/console/verificacao/${encodeURIComponent(item.id)}`}>{item.short_id}</a>
-                  </td>
-                  <td>{item.services.length > 0 ? item.services.join(', ') : 'Não informado'}</td>
-                  <td>{formatarData(item.received_at)}</td>
-                  <td>{rotuloEstado(item.status)}</td>
-                  <td>{rotuloPrazo(item.overdue)}</td>
-                  <td className="tabela-acao">
-                    <a href={`/console/verificacao/${encodeURIComponent(item.id)}`} className="btn btn-secondary btn-sm">
-                      Abrir caso
-                    </a>
-                  </td>
-                </tr>
-              ))}
+              {estado.itens.map((item) => {
+                // Em revisao com outra pessoa (fora o recurso sem dono): o banco nao deixa abrir.
+                const comOutra =
+                  item.status === 'em_revisao' &&
+                  !item.assigned_to_me &&
+                  item.appeal_status !== 'pendente';
+                const link = `/console/verificacao/${encodeURIComponent(item.id)}`;
+                return (
+                  <tr key={item.id}>
+                    <td>{comOutra ? item.short_id : <a href={link}>{item.short_id}</a>}</td>
+                    <td>{item.services.length > 0 ? item.services.join(', ') : 'Não informado'}</td>
+                    <td>{formatarData(item.received_at)}</td>
+                    <td>{comOutra ? 'Em revisão com outra pessoa' : rotuloEstado(item.status)}</td>
+                    <td>{rotuloPrazo(item.overdue)}</td>
+                    <td className="tabela-acao">
+                      {comOutra ? null : (
+                        <a href={link} className="btn btn-secondary btn-sm">
+                          Abrir caso
+                        </a>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -192,3 +192,11 @@ describe('acoes conforme a situacao do caso', () => {
     }
   });
 });
+
+describe('caso indisponivel', () => {
+  it('recusa da API com sessao: aviso claro e caminho de volta, sem 404', () => {
+    montar({ tipo: 'sem_acesso' });
+    expect(container.textContent).toContain('não está disponível para você');
+    expect(container.querySelector('a[href="/console/verificacao"]')).not.toBeNull();
+  });
+});
