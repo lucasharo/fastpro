@@ -1,6 +1,7 @@
 // Issue 68 (H-055) | Limite de taxa da descoberta com cliente falso (docs/factory/153-DESENHO-H055.md, §2 A-3;
 // T-H055-10, base). Sem banco: chave com prefixo discovery:, parametros na ordem de rl_check/rl_hit e
 // Retry-After limitado. O id do profissional nunca aparece na chave enviada.
+import { createHash } from 'node:crypto';
 import { describe, it, expect } from 'vitest';
 import { DISCOVERY_RATE_LIMIT, PgDiscoveryRateLimit } from '../src/discovery-rate-limit.js';
 
@@ -8,6 +9,8 @@ type Chamada = { sql: string; params: unknown[] | undefined };
 
 const PROF = '00000000-0000-4000-8000-000000000001';
 const HMAC = 'a'.repeat(64);
+// Chave enviada ao banco: SHA-256 do prefixo + HMAC (ops.rate_counter exige key_hmac com 64 hexadecimais).
+const chaveDoBanco = (prefixo: string): string => createHash('sha256').update(`${prefixo}${HMAC}`, 'utf8').digest('hex');
 const NOW = Date.parse('2099-08-15T12:00:00.000Z');
 
 function clienteFalso(linha: Record<string, unknown> | undefined) {
@@ -32,12 +35,12 @@ describe('PgDiscoveryRateLimit (Issue 68)', () => {
     expect(DISCOVERY_RATE_LIMIT).toEqual({ limit: 60, spanSeconds: 60, bucketSeconds: 60 });
   });
 
-  it('check chama rl_check com chave discovery: + HMAC e os parametros na ordem', async () => {
+  it('check chama rl_check com a chave SHA-256 de discovery: + HMAC e os parametros na ordem', async () => {
     const f = clienteFalso({ out_ok: true, out_retry_after: 0 });
     const decisao = await limitador(f.client).check(PROF, NOW);
     expect(decisao).toEqual({ decision: 'permitido' });
     expect(f.chamadas[0].sql).toContain('private.rl_check');
-    expect(f.chamadas[0].params).toEqual([`discovery:${HMAC}`, 60, 60, 60, new Date(NOW).toISOString()]);
+    expect(f.chamadas[0].params).toEqual([chaveDoBanco('discovery:'), 60, 60, 60, new Date(NOW).toISOString()]);
   });
 
   it('barrado devolve Retry-After vindo do banco, limitado pelo dominio', async () => {
@@ -55,11 +58,11 @@ describe('PgDiscoveryRateLimit (Issue 68)', () => {
     await expect(limitador(f.client).check(PROF, NOW)).rejects.toThrow('rate_limit_resposta_invalida');
   });
 
-  it('record chama rl_hit com chave discovery: e o instante', async () => {
+  it('record chama rl_hit com a chave SHA-256 de discovery: e o instante', async () => {
     const f = clienteFalso(undefined);
     await limitador(f.client).record(PROF, NOW);
     expect(f.chamadas[0].sql).toContain('private.rl_hit');
-    expect(f.chamadas[0].params).toEqual([`discovery:${HMAC}`, 60, new Date(NOW).toISOString()]);
+    expect(f.chamadas[0].params).toEqual([chaveDoBanco('discovery:'), 60, new Date(NOW).toISOString()]);
   });
 
   it('o id do profissional nunca aparece na chave enviada ao banco', async () => {
@@ -69,5 +72,16 @@ describe('PgDiscoveryRateLimit (Issue 68)', () => {
     for (const c of f.chamadas) {
       expect(JSON.stringify(c.params)).not.toContain(PROF);
     }
+  });
+
+  it('a chave enviada ao banco tem sempre 64 hexadecimais, com qualquer prefixo, e prefixos separam contadores', async () => {
+    const chaves: string[] = [];
+    for (const prefixo of ['discovery:', 'photo_view:', 'photo_deliver:', '']) {
+      const f = clienteFalso(undefined);
+      await new PgDiscoveryRateLimit({ client: f.client, chaveDoProfissional: () => HMAC, prefixo }).record(PROF, NOW);
+      chaves.push(String(f.chamadas[0].params[0]));
+    }
+    for (const c of chaves) expect(c).toMatch(/^[0-9a-f]{64}$/);
+    expect(new Set(chaves).size).toBe(chaves.length);
   });
 });

@@ -1,6 +1,7 @@
 // H-056 (Issue 69) | Adaptador das fotos elegiveis com cliente falso (docs/factory/167-DESENHO-H056.md, §3 e §4.2).
 // Prova: funcoes certas e parametros na ordem, negacao = null/false, lista vazia autorizada, erro fixo sem texto
 // do driver, e limite de taxa com politica e prefixo proprios (a descoberta segue com o padrao).
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { PgPhotoViewStore, PhotoViewStoreError } from '../src/photo-view-store.js';
 import { PHOTO_VIEW_RATE_LIMIT, PgDiscoveryRateLimit } from '../src/discovery-rate-limit.js';
@@ -99,12 +100,14 @@ describe('limite de taxa parametrizado (lista e link compartilham o balde da fot
       politica: PHOTO_VIEW_RATE_LIMIT,
       prefixo: 'photo_view:',
     }).check(PROF, AGORA);
-    expect(chamadas[0]?.params[0]).toBe('photo_view:abc');
+    // A chave enviada ao banco e o SHA-256 do prefixo + HMAC (ops.rate_counter exige 64 hexadecimais).
+    const sha = (t: string): string => createHash('sha256').update(t, 'utf8').digest('hex');
+    expect(chamadas[0]?.params[0]).toBe(sha('photo_view:abc'));
     expect(chamadas[0]?.params[3]).toBe(60);
 
     const padrao = clienteFalso([{ out_ok: true, out_retry_after: 0 }]);
     await new PgDiscoveryRateLimit({ client: padrao.cliente, chaveDoProfissional: () => 'abc' }).check(PROF, AGORA);
-    expect(padrao.chamadas[0]?.params[0]).toBe('discovery:abc');
+    expect(padrao.chamadas[0]?.params[0]).toBe(sha('discovery:abc'));
     expect(padrao.chamadas[0]?.params[3]).toBe(60);
   });
 });

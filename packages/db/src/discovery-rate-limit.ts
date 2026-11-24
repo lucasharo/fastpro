@@ -4,6 +4,7 @@
 // ao banco nem aparece em log. Erro do banco segue o caminho do SqlClient (sem texto de driver aqui).
 import { clampRetryAfter, type RateWindowDecision } from '@fastpro/domain';
 import type { SqlClient } from './jobs-tick.js';
+import { createHash } from 'node:crypto';
 
 /** 60 por minuto (decisao 610). Janela e bucket de 60 s. */
 export const DISCOVERY_RATE_LIMIT = { limit: 60, spanSeconds: 60, bucketSeconds: 60 } as const;
@@ -63,7 +64,13 @@ export class PgDiscoveryRateLimit {
     return this.deps.politica ?? DISCOVERY_RATE_LIMIT;
   }
 
+  /**
+   * Chave do contador: o prefixo (dominio da politica) e o HMAC do profissional viram um SHA-256 em hexadecimal.
+   * ops.rate_counter so aceita key_hmac com exatamente 64 hexadecimais; o prefixo em claro quebrava o registro
+   * (erro 503 nas rotas de fotos e de descoberta). Prefixos diferentes continuam gerando contadores separados.
+   */
   private chave(professionalId: string): string {
-    return `${this.deps.prefixo ?? PREFIXO_CHAVE}${this.deps.chaveDoProfissional(professionalId)}`;
+    const bruta = `${this.deps.prefixo ?? PREFIXO_CHAVE}${this.deps.chaveDoProfissional(professionalId)}`;
+    return createHash('sha256').update(bruta, 'utf8').digest('hex');
   }
 }
