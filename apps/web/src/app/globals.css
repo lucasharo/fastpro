@@ -1842,3 +1842,9 @@ select option {
   gap: 0.75rem;
   margin-top: 0.75rem;
 }
+
+/* Escolha de arquivo (e outras opcoes) com erro: borda vermelha com ou sem foco. */
+.opcao[aria-invalid='true'],
+.opcao[aria-invalid='true']:hover {
+  border-color: var(--color-error-text);
+}
