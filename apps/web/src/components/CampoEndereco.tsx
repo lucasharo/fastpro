@@ -18,7 +18,7 @@ export interface CampoEnderecoProps {
   /** Classe do campo (padrao: entrada do formulario). Na busca da inicial o campo e transparente. */
   readonly className?: string;
   /** Chamado no primeiro foco ou digitacao (ex.: criar o rascunho que libera as sugestoes). */
-  readonly onPreparar?: () => void;
+  readonly onPreparar?: (texto: string) => void;
 }
 
 export function CampoEndereco({
@@ -88,7 +88,7 @@ export function CampoEndereco({
         value={valor}
         onFocus={() => {
           focado.current = true;
-          onPreparar?.();
+          onPreparar?.(valor);
         }}
         onBlur={() => {
           focado.current = false;
@@ -97,7 +97,7 @@ export function CampoEndereco({
         onChange={(e) => {
           escolhido.current = null;
           digitou.current = true;
-          onPreparar?.();
+          onPreparar?.(e.target.value);
           onMudar(e.target.value);
         }}
         onKeyDown={(e) => {

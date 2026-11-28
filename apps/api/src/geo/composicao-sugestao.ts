@@ -2,15 +2,15 @@
 // Docs: docs/factory/56-DESENHO-H020.md (§2.1, §2.3, §4.1, §4.2) e 74-DESENHO-H025.md (§1, §3 R5).
 // So monta a rota (POST /v1/geo/address-suggest) com as variaveis completas e com o rascunho ligado.
 // Sem qualquer uma delas, undefined: a rota continua inexistente (404). Nenhum valor e registrado; so nomes.
-import type { SqlClient } from '@fastpro/db';
-import type { DraftRatePolicy, DraftRatePort } from '@fastpro/domain';
+import { PgSessionRepository, hashSessionSecret, type SqlClient } from '@fastpro/db';
+import { SESSION_COOKIE_NAME, cookieValue, type DraftRatePolicy, type DraftRatePort } from '@fastpro/domain';
 import type { DraftHasher } from '../drafts/draft-hash.js';
 import type { DraftRouteOptions } from '../drafts/draft-route.js';
 import { createDraftGate } from '../drafts/draft-gate.js';
 import type { AddressSuggestDeps } from './address-suggest-service.js';
 import type { GeoRouteOptions } from './address-suggest-route.js';
 import { createMapboxTempAdapter } from './mapbox-temp-adapter.js';
-import type { ClockPort, QuotaAlertSink, QuotaPort, RateCheck, RateLimitPort } from './ports.js';
+import type { ClockPort, DraftGatePort, QuotaAlertSink, QuotaPort, RateCheck, RateLimitPort } from './ports.js';
 
 /** Variaveis da sugestao (nomes de .env.example). O token nunca e registrado. */
 export const MAPBOX_TOKEN_ENV = 'MAPBOX_ACCESS_TOKEN' as const;
@@ -133,7 +133,39 @@ export class RateSugestao implements RateLimitPort {
   }
 }
 
+/** Sessao de quem esta logado: libera a sugestao do endereco base sem rascunho de pedido. */
+export interface SessaoSugestao {
+  authenticate(hash: string, nowMs: number): Promise<{ readonly userId: string } | null>;
+}
+
+/**
+ * Endereco base do profissional (context 'professional_base'): com sessao valida a consulta e liberada, com o
+ * limite de taxa por conta. Sem sessao, e nos pedidos, vale a porta do rascunho.
+ */
+export function comSessaoNoEnderecoBase(
+  rascunho: DraftGatePort,
+  sessoes: SessaoSugestao,
+  clock: ClockPort,
+): DraftGatePort {
+  return {
+    async check(contexto, cookie) {
+      const segredo = contexto === 'professional_base' ? cookieValue(cookie, SESSION_COOKIE_NAME) : undefined;
+      if (segredo !== undefined) {
+        try {
+          const sessao = await sessoes.authenticate(hashSessionSecret(segredo), clock.nowMs());
+          if (sessao !== null) return { status: 'ok', principal: `sessao:${sessao.userId}` };
+        } catch {
+          return { status: 'indisponivel' };
+        }
+      }
+      return rascunho.check(contexto, cookie);
+    },
+  };
+}
+
 export interface SugestaoComposicaoOpcoes {
+  /** Leitura de sessao. Padrao: o repositorio sobre o papel app_system. */
+  readonly sessoes?: SessaoSugestao;
   /** Abre um cliente SQL por URL (memoizado pelo chamador). Usado so para a cota (app_system). */
   readonly abrirCliente: (connectionString: string) => SqlClient;
   /** Rascunho ja montado (store, hasher, relogio e limite de taxa). Sem ele, a rota nao existe. */
@@ -160,7 +192,11 @@ export function montarSugestaoEndereco(
 
   const { store, hasher, clock } = rascunho.deps;
   const deps: AddressSuggestDeps = {
-    gate: createDraftGate({ store, hasher, clock }),
+    gate: comSessaoNoEnderecoBase(
+      createDraftGate({ store, hasher, clock }),
+      opcoes.sessoes ?? new PgSessionRepository(opcoes.abrirCliente(url)),
+      clock,
+    ),
     rate: new RateSugestao(rascunho.deps.rate, hasher, clock),
     quota: new PgMapboxTempQuota(opcoes.abrirCliente(url), limites),
     provider: createMapboxTempAdapter({

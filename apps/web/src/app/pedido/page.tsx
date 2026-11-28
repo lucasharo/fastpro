@@ -97,9 +97,10 @@ function PedidoConteudo() {
   const preparando = useRef<Promise<boolean> | null>(null);
 
   /** A API so sugere endereco para quem ja tem rascunho: cria um na primeira vez que a pessoa mexe no campo. */
-  function preparar() {
+  function preparar(texto: string) {
     if (criado || preparando.current) return;
-    const corpo = servico ? { service_id: servico.service_id } : endereco.trim().length >= ENDERECO_MIN ? { address_text: endereco.trim() } : null;
+    // Usa o texto que acabou de entrar no campo: colar o endereco de uma vez tambem cria o rascunho.
+    const corpo = servico ? { service_id: servico.service_id } : texto.trim().length >= ENDERECO_MIN ? { address_text: texto.trim() } : null;
     if (corpo === null) return;
     preparando.current = (async () => {
       const r = await chamarApi('/v1/drafts', { method: 'POST', body: corpo });
