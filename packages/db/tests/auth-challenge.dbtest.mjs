@@ -234,10 +234,10 @@ test('T-H011-27 permissoes: anon e authenticated sem acesso; app_system com o mi
         has_table_privilege('authenticated', 'app.auth_challenge', 'select') as auth_select,
         has_table_privilege('app_system', 'app.auth_challenge', 'select') as system_select,
         has_function_privilege('anon',
-          'private.auth_challenge_create(uuid,text,text,text,text,bytea,bytea,uuid,text,timestamptz)',
+          'private.auth_challenge_create(uuid,text,text,text,text,bytea,bytea,uuid,text,timestamptz,uuid)',
           'execute') as anon_exec,
         has_function_privilege('app_system',
-          'private.auth_challenge_create(uuid,text,text,text,text,bytea,bytea,uuid,text,timestamptz)',
+          'private.auth_challenge_create(uuid,text,text,text,text,bytea,bytea,uuid,text,timestamptz,uuid)',
           'execute') as system_exec`);
     assert.equal(rows[0].anon_select, false);
     assert.equal(rows[0].auth_select, false);

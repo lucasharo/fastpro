@@ -26,7 +26,7 @@
 ### Revisão 2 — 2026-11-09 (Rodadas 5, 6 e 7; T6, T8)
 - **Invariantes:** I-01..I-06 reescritas para aceite (sem oferta); I-03 vira "um aceite ⇒ uma conversa ⇒ uma mensagem de sistema"; novas **I-22..I-27** (retirada mantém a vaga, interruptores de e-mail, sem boleto/carência 72 h, sem campos de preço, `auth_*` travados, e-mail de teste redirecionado).
 - **Contratos:** `POST /requests/{id}/acceptances`, `POST /requests/{id}/acceptances/me/withdraw`, `POST /requests/{id}/second-wave` (rótulo "Chamar mais profissionais"), (revogado na revisão 3) `PUT /admin/notification-flags/{type}`. Removido `PUT …/offer`. Eventos `WorkAccepted`/`AcceptanceWithdrawn` no lugar de `ParticipationCreated`/`Offer*`.
-- **Riscos:** R-12 extinto (H4); R-08/R-10/R-11 revistos para Vercel e H3; novos **R-26..R-33** (aceite abusivo, cliente sem aviso, termos da Vercel, NestJS serverless, cron, mídia em serverless, backup manual, domínio/Resend).
+- [SUPERADO — Rodada 73/75, #151] **Riscos:** R-12 extinto (H4); R-08/R-10/R-11 revistos para Vercel e H3; novos **R-26..R-33** (aceite abusivo, cliente sem aviso, termos da Vercel, NestJS serverless, cron, mídia em serverless, backup manual, domínio/Resend).
 - **Spikes:** S-03 sem boleto; novos **S-09** (NestJS na Vercel), **S-10** (agendador do tick), **S-11** (Resend: domínio, cota, SMTP do Supabase Auth, modo de teste). Leitura de documentação só quando autorizada (Rodada 7, nº 12): tudo `[NÃO VERIFICADO]`.
 - **Testes:** corrida de aceites (nunca 9) C-01/C-02/C-04b/C-17; idempotência da mensagem de sistema C-16/F-10; e-mail desativado não enfileira/não envia N-01..N-10; carência 72 h com Pix B-01..B-10; e-mail local em dev e **redirecionamento único do Resend em modo de teste (T8)** N-09/N-10; Q-08..Q-10.
 - **Segredos:** este documento cita apenas **nomes** de variáveis (ex.: `RESEND_API_KEY`, `EMAIL_TEST_REDIRECT_TO`, `EMAIL_PROVIDER`, `TICK_SECRET`), nunca valores.
@@ -68,7 +68,7 @@ Cada invariante tem (a) onde é imposta, (b) como é verificada continuamente. "
 | I-24 | Cota do provedor: contagem **por destinatário** em `external_quota(email)`; acima do limiar só `auth` (e crítico) passam; `auth` nunca é descartado por política; a mensagem automática no chat independe do e-mail | contador + prioridade + reserva | N-08, Q-01, Q-11 | FA-003, FA-029 |
 | I-25 | `payment.method ∈ {cartao, pix}`; boleto inexistente; carência de 72 h = `period_end + 72 h` para pago sem `cancel_at_period_end`; trial sem carência | CHECK + função `commercial_access` | B-01..B-10 | FA-006 |
 | I-26 | Nenhuma tabela de pedido/aceite/mensagem guarda preço, prazo ou valor do serviço; sem campos extras no aceite | revisão de esquema (teste de catálogo) + 422 | T-17 | FA-011 |
-| I-27 | Em dev/CI todo e-mail vai ao **Mailpit local** (nenhum envio externo); envio real só com domínio verificado e segredo presente | adapter por ambiente (`EMAIL_PROVIDER`) | N-09, N-10 | FA-029 |
+| I-27 | Em dev e teste todo e-mail vai pelo **Resend**, somente para a conta cadastrada (destino fora dela é recusado antes da API); envio real só com domínio verificado e segredo presente | adapter por ambiente (`EMAIL_PROVIDER`) | N-09, N-10 | FA-029 |
 | I-28 | Toda coordenada persistida (`exact_point`, `base_point`) vem de geocodificação `permanent=true`; nenhum resultado temporário é gravado, em cache ou em log; no máximo 3 chamadas permanentes por rascunho | CHECK `geocode_mode` + única função de persistência + teto | G-01..G-04 | FA-001, FA-007 |
 | I-29 | No máximo 5 fotos por pedido/rascunho; cada uma persistida **só em versão reduzida** (≤ 1.280 px, bytes ≤ teto); sem original/*master* no Storage; a 6ª é recusada | trigger + CHECK + 422 `photo_limit` | P-01..P-05 | FA-001, FA-007 |
 | I-30 | O chat é somente texto: nenhum anexo (imagem ou PDF) existe em mensagem; não há bucket, tabela, URL assinada, miniatura nem marca d'água de chat | a API rejeita qualquer anexo + ausência de tabela/bucket | M-01, M-02 | FA-027, FA-028 |
@@ -115,7 +115,7 @@ Cada invariante tem (a) onde é imposta, (b) como é verificada continuamente. "
 | Conversas/mensagens | GET/POST `/conversations/{id}/messages` | membro | **sim** (mensagem) | conversa ativa | `MessageSent` | 409 `read_only` |
 | Arquivar | PUT `/conversations/{id}/archive` | membro | sim | — | preferência | — |
 | Denunciar/bloquear | POST `/reports`, `/blocks` | autenticado | sim | — | caso de moderação | — |
-| Foto (visualizar) | GET `/requests/{id}/photos/{pid}/view` | dono/participante/elegível | — | política de mídia; rate limit | log de acesso; URL curta | 404/429 |
+| Foto (visualizar) | GET `/requests/{id}/photos/{pid}/view` | dono/participante/elegível | — | política de mídia; rate limit | contador de limite; URL curta | 404/429 |
 | Avaliar | POST `/requests/{id}/review` | cliente | **sim** | conclusão válida | `ReviewSubmitted` → `ReviewPublished|Rejected|Held` | 409, 422 |
 | Resposta/contestação | POST `/reviews/{id}/reply`, `/dispute` | profissional | sim | — | caso | — |
 | Cadastro profissional | Supabase Auth + POST `/professionals` | profissional | sim | e-mail verificado | `ProfessionalRegistered` | — |
@@ -190,12 +190,12 @@ Severidade: A (alta), M (média), B (baixa). Probabilidade: A/M/B.
 |---|---|---|---|---|
 | R-01 | Divergência NestJS × RLS gera vazamento ou bloqueio indevido | A/M | Matriz única + testes de paridade; RLS default-deny | Falha em T-05/T-06 ⇒ bloquear release |
 | R-02 | Concorrência: 9º participante, seleção dupla, republicação dupla | A/M | ADR-003, I-01..I-11, testes C-xx | Qualquer falha ⇒ P1 |
-| R-03 | Fotos revelam fachada/interior sem EXIF; raspagem por elegíveis (inclui trial) | A/M | D10, marca d'água, rate limit, aviso ao cliente | Sinal de raspagem ⇒ suspensão cautelar do acesso a fotos |
+| R-03 | Fotos revelam fachada/interior sem EXIF; raspagem por elegíveis (inclui trial) | A/M | D10, marca d'água, rate limit, aviso ao cliente | Sinal de raspagem ⇒ suspensão cautelar do acesso a fotos. Risco aceito (Issue 150): sem registro por acesso, perde-se prova por foto e dia e detecção além da janela |
 | R-04 | Mapbox: coordenadas só podem ser guardadas via geocodificação **permanente** (US$ 5/1.000, sem faixa gratuita, cartão); termos de produto (PDF) não lidos | M/A **VERIFICADO (doc 13)** | Decisão 29: 1 chamada permanente por rascunho revisto; limite de gasto na conta; contador e breaker (R-36); G-xx | Antes de implementar Geo |
 | R-05 | Complexidade/desempenho de RLS com `set_config` por transação e views | M/M | pgTAP, `EXPLAIN` com dados sintéticos | Latência p95 > meta |
 | R-06 | Mercado Pago não cobre o modelo (recorrência por plano, Pix recorrente, webhooks) | A/M `[NÃO VERIFICADO]` | S-03; porta de gateway; fallback avulso | Resultado do S-03 |
 | R-07 | **Reduzido (decisão 33):** sem anexos no chat; resta documento de verificação malicioso enviado por profissional (visto só pela Verificação) | B/B | Bucket privado, validação por conteúdo, reencode de imagens, sem renderização no servidor; SD-12 (a) | Incidente ⇒ SD-12 |
-| R-08 | Supabase gratuito: pausa de projeto, sem backup gerenciado (H3 aceito pelo usuário) | A/A `[NÃO VERIFICADO]` | ADR-020; *keep-alive*; **backup manual periódico (`12-TODO.md`)**; reavaliar antes de cobrar | **Bloqueia cobrança real e dados reais** |
+| R-08 | Supabase gratuito: pausa de projeto e perda de dados. **Risco aceito pelo usuário** (Rodada 73; decisão 350; #151). Sem mitigação de cópia. | A/A `[NÃO VERIFICADO]` | ADR-020; *keep-alive* (D-04); migrações compensatórias; reavaliar antes de cobrar | Risco aceito pelo usuário (Rodada 73; decisão 350; #151). Bloqueia cobrança real e dados reais |
 | R-09 | Cota de e-mail esgota ⇒ links de login não chegam | A/M | Prioridade de classes; digest elástico; teto por pedido | 70% da cota |
 | R-10 | Cold start da função serverless derruba UX e webhooks | M/A `[NÃO VERIFICADO]` | Webhook só grava; login síncrono; S-09 mede | p95 de resposta |
 | R-11 | Reencode de imagem estoura memória/duração da função (ver R-31) | M/M | Um ativo por invocação; limites de resolução; reprocesso; S-06 | OOM/timeouts |
@@ -204,7 +204,7 @@ Severidade: A (alta), M (média), B (baixa). Probabilidade: A/M/B.
 | R-14 | Sessão de 7 dias em dispositivo compartilhado | M/M | Step-up; sair de todos | — |
 | R-15 | Login CSRF/link aberto por terceiro (cenário do e-mail alheio) | M/M | Nonce de navegador; sessão nasce onde ocorre o POST; rascunho só anexa se e-mail igual | Teste |
 | R-16 | Acúmulo de dados sem política de retenção | A/M | ADR-016; não lançar com dados reais antes de L1/L2 | Jurídico |
-| R-17 | Backup contém dados "excluídos" | M/M | Política de rotação `[PENDENTE JURÍDICO]` | L1 |
+| R-17 | [SUPERADO — Rodada 73/75, #151] Backup contém dados "excluídos" | M/M | Política de rotação `[PENDENTE JURÍDICO]` | L1 |
 | R-18 | Provedores como suboperadores sem contrato | M/A `[PENDENTE JURÍDICO]` | SD-11 | L2 |
 | R-19 | Mobile: IAP/contas pagas/exclusão de conta | M/M `[NÃO VERIFICADO]` | ADR-019; SD-13 | Início do mobile |
 | R-20 | Falha parcial entre cancelar republicação e selecionar | A/B | Transação única; teste F-02 | — |
@@ -219,8 +219,8 @@ Severidade: A (alta), M (média), B (baixa). Probabilidade: A/M/B.
 | R-29 | NestJS inviável/lento em serverless (cold start, pacote, bibliotecas nativas) | M/M `[NÃO VERIFICADO]` | S-09; alternativas B/C/D (ADR-018) | Resultado do S-09 |
 | R-30 | Cron do Hobby roda 1x/dia (±59 min): digest/lembretes atrasariam | M/A **VERIFICADO (doc 13)** | Sem depender do cron da Vercel: `pg_cron`/`pg_net` (R-38), plano B chamada externa, plano C tick oportunista; login e mensagem automática independem do tick | Resultado do S-10 |
 | R-31 | Limites de corpo/resposta/memória de função inviabilizam foto servida com marca d'água | M/M `[NÃO VERIFICADO]` | Derivada pequena; upload direto ao Storage; S-06/S-09 | Teste Q-08 |
-| R-32 | Backup manual atrasado ou perdido | A/M | Rotina e periodicidade em `12-TODO.md` (adiada); teste D-01 | Antes de dados reais |
-| R-33 | **Resend exige domínio verificado para enviar** (doc 13); sem domínio não há envio real nem login de usuários reais | A/A (VERIFICADO) | Mailpit em dev/CI; homologação só com endereços `resend.dev` (consomem cota); lançamento bloqueado até o domínio (decisão 15) | **Bloqueia login de usuários reais** |
+| R-32 | [SUPERADO — Rodada 73/75, #151] Backup manual atrasado ou perdido | A/M | Rotina e periodicidade em `12-TODO.md` (adiada); teste D-01 | Antes de dados reais |
+| R-33 | **Resend exige domínio verificado para enviar** (doc 13); sem domínio não há envio real nem login de usuários reais | A/A (VERIFICADO) | em dev e teste, envio pelo Resend somente para a conta cadastrada; homologação só com endereços `resend.dev` (consomem cota); lançamento bloqueado até o domínio (decisão 15) | **Bloqueia login de usuários reais** |
 | R-34 | Cota gratuita do Resend (100/dia UTC, 3.000/mês, por destinatário, 10 req/s) esgota com todos os e-mails habilitados | A/M | Contador e alertas (≥ 90/dia, ≥ 2.700/mês); reserva de 10/dia e 300/mês para `auth`; agrupamento 15 min; degradação (chat/site seguem); remetente ≤ 5/s | ≥ 70% em 3 dias ⇒ decisão de upgrade |
 | R-35 | Storage de 1 GB: 5 fotos × ≈ 0,5 MB ≈ 2,5 MB/pedido ⇒ ≈ 280 pedidos em ≈ 700 MB; documentos de verificação consomem o restante (chat sem anexos) | M/A (hipótese sobre limite VERIFICADO) | Redução no envio e só versão reduzida (decisão 31); chat sem imagens (decisão 32); gatilho de upgrade | ≥ 70% do Storage |
 | R-36 | Mapbox permanente: custo desde o 1º pedido e cartão obrigatório; abandono de rascunhos gera custo | M/M | Chamada só após e-mail verificado e revisão; teto 3; limite de gasto na conta; breaker; alternativa "permanente na publicação" | Gasto ≥ 70% do limite |
@@ -315,21 +315,17 @@ Todos exercitam **chamada direta de API e acesso direto ao banco com papéis**, 
 ---
 
 ## 9. Plano de recuperação
-Metas provisórias para o plano gratuito com **backup manual periódico (H3)**: **RPO = intervalo entre exports** (proposta semanal, `12-TODO.md`) e **RTO ≤ 8 h** `[PROPOSTA]`; metas melhores só após o gatilho SD-04. Nenhum desses números foi medido.
-
 | ID | Cenário | Procedimento a validar | Critério de sucesso |
 |---|---|---|---|
-| D-01 | Restauração do banco a partir do backup lógico em ambiente limpo | restaurar dump criptografado, aplicar migrações, rodar monitores I-xx | invariantes sem violações; tempo ≤ RTO |
-| D-02 | Restauração de objetos (Storage) e conferência de integridade | reconciliar `media_asset` × objetos | órfãos e ausentes reportados |
-| D-03 | Pós-restauração: webhooks e e-mails | reconciliação com MP; reenfileirar `email_outbox` sem duplicar | acesso e cobranças corretos |
+| D-01 | REMOVIDA do escopo (Rodada 73/75, #151). Texto original no histórico do git. | — | — |
+| D-02 | REMOVIDA do escopo (Rodada 73/75, #151). Texto original no histórico do git. | — | — |
+| D-03 | REMOVIDA do escopo (Rodada 73/75, #151). Texto original no histórico do git. | — | — |
 | D-04 | Projeto pausado/indisponível | retomar, verificar jobs, *keep-alive* | sem perda; alertas |
 | D-05 | Migração malsucedida | rollback via compensação (expand/contract) em staging | sem perda |
 | D-06 | Rotação de segredos (MP, Mapbox, pepper, chave de criptografia) | rotacionar com chave versionada | sem indisponibilidade; dados antigos legíveis |
 | D-07 | Comprometimento de conta admin | revogar sessão, redefinir MFA com dupla aprovação, revisar auditoria | tempo de resposta documentado |
-| D-08 | Exclusão do titular × backups | procedimento definido com jurídico | `[PENDENTE JURÍDICO]` |
+| D-08 | REMOVIDA do escopo (Rodada 73/75, #151). Texto original no histórico do git. | — | — |
 | D-09 | Incidente de dados | runbook: detecção por métricas, contenção, avaliação, comunicação | `[PENDENTE JURÍDICO]` para notificações |
-Teste de restauração: antes do lançamento e periodicamente `[PROPOSTA]`; backups com dados sintéticos em ambientes de teste.
-
 ---
 
 ## 9b. Testes de billing (B-xx): Pix, cartão e carência de 72 h [H5]
@@ -349,11 +345,11 @@ Relógio controlado no banco (`now()` simulado); instante do vencimento = `perio
 | B-10 | Pagamento antecipado de Pix antes do vencimento | novo período começa em `period_end` vigente; sem perda de dias |
 
 ## 9c. Testes de notificações por e-mail (N-xx) [Rodada 12 nº 27, T6]
-Ambiente de teste: Mailpit local, relógio controlado; nenhum envio externo. Segredos só por nome de variável.
+Ambiente de teste: relógio controlado; e-mail pelo Resend, somente para a conta cadastrada; nenhum outro destino. Segredos só por nome de variável.
 
 | ID | Cenário | Esperado |
 |---|---|---|
-| N-01 | Ocorre aceite | mensagem automática no chat **e** 1 linha em `email_outbox` (aviso de aceite) enviada pelo `EmailProviderPort`; capturada no Mailpit; sem endereço/telefone/e-mail de terceiros |
+| N-01 | Ocorre aceite | mensagem automática no chat **e** 1 linha em `email_outbox` (aviso de aceite) enviada pelo `EmailProviderPort`; entregue pelo Resend somente à conta cadastrada; sem endereço/telefone/e-mail de terceiros |
 | N-02 | 4 aceites do mesmo pedido em 15 min | 1º e-mail imediato; os demais agrupados em 1 resumo (economia de cota); aceite visto antes do resumo ⇒ resumo omitido; pedido selecionado/cancelado ⇒ sem resumo obsoleto |
 | N-03 | Mensagem humana não lida | e-mail imediato na primeira, seguintes agrupadas (15 min); a mensagem automática do aceite não aciona este aviso |
 | N-04 | Lembrete T-24h, vencimento, seleção, cancelamento, desistência, trial/ciclo, verificação | cada um enfileira e envia; lembretes rechecam o estado (selecionado/cancelado ⇒ não enviam) |
@@ -361,8 +357,8 @@ Ambiente de teste: Mailpit local, relógio controlado; nenhum envio externo. Seg
 | N-06 | Todos os tipos habilitados simultaneamente | nenhum duplicado (dedupe_key); `email_type` correto no corpo; contador de uso por destinatário incrementado |
 | N-07 | Procurar interruptor, tabela de flags, ponto de ativação ou rotina de reenvio | **não existem** (teste de catálogo e de rotas/jobs); aceites anteriores não geram e-mail retroativo |
 | N-08 | Cota: 85/90/100 destinatários no dia UTC; 2.700/3.000 no mês | alertas; acima do limiar só `auth`/crítico; demais `adiado_cota` e reavaliados; chat/site continuam; login nunca descartado |
-| N-09 | Dev/CI com Mailpit | e-mail capturado localmente; zero chamadas externas |
-| N-10 | Adapter Resend com domínio **não** verificado/segredo ausente | recusa enviar (erro explícito), nada é perdido (fica `pendente`); com `EMAIL_PROVIDER` de dev usa Mailpit |
+| N-09 | Dev/teste com Resend | envio só para a conta cadastrada; destino fora dela é recusado antes da API (zero chamadas) |
+| N-10 | Adapter Resend com domínio **não** verificado/segredo ausente | recusa enviar (erro explícito), nada é perdido (fica `pendente`); em dev e teste o envio segue pelo Resend, somente para a conta cadastrada |
 
 ## 9d. Testes de geocodificação e fotos (G-xx, P-xx) [decisões 29 e 30]
 Provedor Mapbox simulado em teste (respostas "temporária" e "permanente" distintas); nenhuma chamada externa.
@@ -416,7 +412,7 @@ Checklist (sem execução):
 - [ ] Matriz de acesso (`access-matrix`) escrita e revisada pelo PO/Reviewer.
 - [ ] Política de retenção (L1/L2) antes de dados reais.
 - [ ] Gatilho SD-04 aceito antes de cobrança real.
-- [ ] SD-09 respondida; SD-15 e backup (`12-TODO.md`) tratados antes da primeira cobrança/dados reais (SD-16, 18, 19, 20 respondidas).
+- [ ] SD-09 respondida; SD-15 tratado antes da primeira cobrança/dados reais (SD-16, 18, 19, 20 respondidas).
 - [ ] S-09..S-11 concluídos quando a leitura de documentação for autorizada.
 - [ ] Domínio verificado antes de qualquer e-mail real (SD-03).
 - [ ] RF-146 (telas/permissões de admin) detalhado.

@@ -3,7 +3,8 @@
 //    imports relativos sao resolvidos contra o diretorio do arquivo antes de comparar o modulo
 //    (import dentro do proprio modulo, ex. ../domain/entity, e livre);
 //  - billing nunca importa requests, distribution, selection nem chat;
-//  - packages/* nunca importam apps/*; packages/domain nao importa nada de I/O.
+//  - packages/* nunca importam apps/*; packages/domain/src nao importa nada de I/O
+//    (testes em packages/domain/tests podem usar I/O; so apps/* continua proibido para eles).
 // Ainda nao ha modulos em apps/api; o script passa vazio e passa a valer quando existirem.
 import { posix } from 'node:path';
 import { listFiles, readText, hasExt, report } from './lib/files.mjs';
@@ -81,7 +82,7 @@ for (const file of listFiles(root)) {
       if (/^@fastpro\/(web|admin|api)(\/|$)/.test(spec) || /(?:^|\/)apps\//.test(spec)) {
         violations.push(`${file}: package nao pode importar apps (${spec})`);
       }
-      if (pkg[1] === 'domain' && IO_MODULES.test(spec)) {
+      if (pkg[1] === 'domain' && file.startsWith('packages/domain/src/') && IO_MODULES.test(spec)) {
         violations.push(`${file}: packages/domain nao pode importar I/O (${spec})`);
       }
     }

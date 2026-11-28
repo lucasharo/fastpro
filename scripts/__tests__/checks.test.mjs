@@ -95,6 +95,36 @@ test('check-hex: aceita variaveis, transparent/currentColor e palavras que nao s
     check('check-hex.mjs', { [path]: content }, false);
 });
 
+test('check-hex: referencia numerica de 3 ou 4 digitos em comentario passa (CA-149-02)', () => {
+  const ok = {
+    'apps/web/src/a.ts': '// (#105)\n',
+    'apps/web/src/b.ts': '/** E3 (#141): limite de reducoes. */\n',
+    'apps/web/src/c.ts': '// Issue #1234\n',
+    'apps/web/src/d.ts': ' * continuacao de bloco comentado (#140)\n',
+    'apps/web/src/e.ts': 'const x = 1; /* ref (#118) */\n',
+  };
+  for (const [path, content] of Object.entries(ok))
+    check('check-hex.mjs', { [path]: content }, false);
+});
+
+test('check-hex: hex real continua reprovado, inclusive ao lado de comentario (CA-149-02)', () => {
+  const bad = {
+    'apps/web/src/a.css': ['a { color: #fff; }\n', /a\.css:1 cor literal \(hex\)/],
+    'apps/web/src/b.ts': ['// cor #a1b2c3\n', /b\.ts:1 cor literal \(hex\)/],
+    'apps/web/src/c.ts': ["const c = '#123';\n", /c\.ts:1 cor literal \(hex\)/],
+    'apps/web/src/d.ts': ['const c = "#12345678";\n', /d\.ts:1 cor literal \(hex\)/],
+    'apps/web/src/e.ts': ["const c = '#1234';\n", /e\.ts:1 cor literal \(hex\)/],
+    'apps/web/src/f.ts': ['// (#123456)\n', /f\.ts:1 cor literal \(hex\)/],
+    'apps/web/src/g.ts': ['const x = 1; // #123 e #fff\n', /g\.ts:1 cor literal \(hex\)/],
+    // Marcador dentro de string nao torna o resto um comentario.
+    'apps/web/src/h.ts': ["const u = 'https://x.io' + '#123';\n", /h\.ts:1 cor literal \(hex\)/],
+    'apps/web/src/i.ts': ["const s = '// #123';\n", /i\.ts:1 cor literal \(hex\)/],
+  };
+  for (const [path, [content, match]] of Object.entries(bad)) {
+    check('check-hex.mjs', { [path]: content }, true, match);
+  }
+});
+
 test('check-logs: reprova console.*, campos fora da allowlist e interpolacao sensivel', () => {
   const bad = [
     ["console.log('x');\n", /console/],
@@ -175,6 +205,38 @@ test('check-logs: aceita logger com allowlist, ids e testes', () => {
   }
 });
 
+test('check-logs: literal de rota com console no caminho passa (CA-149-04)', () => {
+  const ok = {
+    'apps/web/src/a.ts': "redirect('/console');\n",
+    'apps/web/src/b.tsx': 'revalidatePath(`/console/${t.id}`);\n',
+    'apps/web/src/c.ts': "import './admin-console-route.js';\n",
+    'apps/web/src/d.ts': "import x from '../console-state';\n",
+    'apps/web/src/e.ts': 'const u = new URL(`/console/verificacao?leitura=erro`, base);\n',
+  };
+  for (const [path, content] of Object.entries(ok)) check('check-logs.mjs', { [path]: content }, false);
+});
+
+test('check-logs: console real continua reprovado, inclusive em template e fora de literal (CA-149-04)', () => {
+  const bad = {
+    'apps/api/src/a.ts': ['console.log(x);\n', /a\.ts:1 uso de console/],
+    'apps/api/src/i.ts': ["console.log('x' + y);\n", /i\.ts:1 uso de console/],
+    'apps/api/src/b.ts': ['const c = console;\n', /b\.ts:1 uso de console/],
+    'apps/api/src/c.ts': ['const s = `${console.log(1)}`;\n', /c\.ts:1 uso de console/],
+    'apps/api/src/d.ts': ['const x = y ? 0 :-console.log(1);\n', /d\.ts:1 uso de console/],
+    'apps/api/src/e.ts': ['globalThis.console.log(1);\n', /e\.ts:1 uso de console/],
+    'apps/api/src/f.ts': ["const p = '/console/' + console.log(1);\n", /f\.ts:1 uso de console/],
+    'apps/api/src/g.ts': ["const z = `/console/${console.log(1)}`;\n", /g\.ts:1 uso de console/],
+    // Aspa dentro de regex: o trecho entre aspas tem espaco e ponto e virgula, nao e caminho.
+    'apps/api/src/h.ts': [
+      "const r = /'/; -console.log(1); const q = '-';\n",
+      /h\.ts:1 uso de console/,
+    ],
+  };
+  for (const [path, [content, match]] of Object.entries(bad)) {
+    check('check-logs.mjs', { [path]: content }, true, match);
+  }
+});
+
 test('check-typography: reprova fonte e peso fora do permitido', () => {
   check('check-typography.mjs', { 'apps/web/a.css': 'a { font-family: Arial; }\n' }, true, /Arial/);
   check('check-typography.mjs', { 'apps/web/a.css': 'a { font-weight: 600; }\n' }, true, /600/);
@@ -252,6 +314,29 @@ test('check-module-boundaries: import profundo, billing e packages -> apps', () 
     'check-module-boundaries.mjs',
     { 'packages/domain/src/a.ts': 'export const a = 1;\n' },
     false,
+  );
+});
+
+test('check-module-boundaries: I/O liberado em packages/domain/tests, proibido em src (CA-149-03)', () => {
+  // Teste de dominio pode usar I/O (ex.: fixture de arquivo).
+  check(
+    'check-module-boundaries.mjs',
+    { 'packages/domain/tests/x.test.ts': "import fs from 'node:fs';\n" },
+    false,
+  );
+  // Codigo de producao do dominio continua proibido de I/O.
+  check(
+    'check-module-boundaries.mjs',
+    { 'packages/domain/src/x.ts': "import fs from 'node:fs';\n" },
+    true,
+    /packages\/domain nao pode importar I\/O/,
+  );
+  // Teste de dominio continua proibido de importar apps/*.
+  check(
+    'check-module-boundaries.mjs',
+    { 'packages/domain/tests/x.test.ts': "import { x } from '@fastpro/api';\n" },
+    true,
+    /nao pode importar apps/,
   );
 });
 
@@ -363,6 +448,90 @@ test('check-secrets: usos legitimos nao sao falso positivo', () => {
   );
 });
 
+test('check-secrets: excecoes estreitas passam (CA-149-05)', () => {
+  const ok = (path, line) => check('check-secrets.mjs', { [path]: line }, false);
+  // service_role: prefixo packages/db/tests/ e arquivos exatos da API.
+  ok('packages/db/tests/a.dbtest.mjs', "select has_function_privilege('service_role', 'f', 'execute');\n");
+  ok('apps/api/src/professional-composicao.ts', "const k = env.SUPABASE_SECRET_KEY ?? '';\n");
+  ok('apps/api/tests/professional-composicao.test.ts', "const s = { SUPABASE_SECRET_KEY: 'dummy-x' };\n");
+  // Nomes de rota e regex com valor que comeca com barra.
+  ok('apps/api/src/rotas.ts', "export const PASSWORD_PATH = '/v1/a/password';\n");
+  ok('packages/email/src/x.ts', 'const TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;\n');
+  // Placeholders estruturais: undefined, null, geradores aleatorios e parametro SQL.
+  ok('apps/api/src/a.ts', 'const x = { PEPPER_IP_HMAC: undefined };\n');
+  ok('apps/api/src/a.ts', 'const y = { PEPPER_IP_HMAC: null };\n');
+  ok('packages/db/tests/a.dbtest.mjs', "const pepperEmail = randomBytes(24).toString('base64url');\n");
+  ok('packages/db/tests/a.dbtest.mjs', "await c.query('delete from t where key_hmac = any($1::text[])', [ips]);\n");
+  ok('packages/db/tests/a.dbtest.mjs', "assert.deepEqual(c, { dedupe_key: 'ops.purge:2099-01-01' });\n");
+  // Senha de exemplo "senha" em URL de banco.
+  ok('apps/api/tests/a.test.ts', "const u = 'postgres://usuario:senha@host/db';\n");
+});
+
+test('check-secrets: excecoes estreitas continuam reprovando (CA-149-05)', () => {
+  // service_role: fora do prefixo e fora do arquivo exato (nome parecido na mesma pasta).
+  check(
+    'check-secrets.mjs',
+    { 'apps/api/src/professional-composicao-x.ts': 'const r = "service_role";\n' },
+    true,
+    /service_role/,
+  );
+  check(
+    'check-secrets.mjs',
+    { 'apps/api/tests/outro.test.ts': 'const r = "service_role";\n' },
+    true,
+    /service_role/,
+  );
+  // Atribuicao de valor a SUPABASE_SECRET_KEY segue verificada em teste de banco.
+  check(
+    'check-secrets.mjs',
+    { 'packages/db/tests/a.dbtest.mjs': "const SUPABASE_SECRET_KEY = 'abcdef123456';\n" },
+    true,
+    /valor atribuido a SUPABASE_SECRET_KEY/,
+  );
+  // Sufixo de rota sem barra no valor continua reprovado (nome sensivel, para o valor ser lido).
+  check(
+    'check-secrets.mjs',
+    { 'apps/api/src/rotas.ts': "export const PASSWORD_PATH = 'abc12345secret';\n" },
+    true,
+    /valor atribuido a PASSWORD_PATH/,
+  );
+  check(
+    'check-secrets.mjs',
+    { 'apps/api/src/rotas.ts': "const TOKEN_RE = 'abc12345secret';\n" },
+    true,
+    /valor atribuido a TOKEN_RE/,
+  );
+  // Placeholder so vale na forma exata: undefined colado a texto continua verificado.
+  check(
+    'check-secrets.mjs',
+    { 'apps/api/src/a.ts': "const x = { PEPPER_IP_HMAC: 'undefinedsegredo12' };\n" },
+    true,
+    /PEPPER_IP_HMAC/,
+  );
+  // Chave de HMAC com valor literal (nao parametro SQL) continua reprovada.
+  check(
+    'check-secrets.mjs',
+    { 'apps/api/src/a.ts': "const key_hmac = 'Ab12cd34Ef56Gh78';\n" },
+    true,
+    /key_hmac/,
+  );
+  // Senha real em URL de banco continua reprovada; senha "senha" nao.
+  check(
+    'check-secrets.mjs',
+    { 'apps/api/tests/a.test.ts': "const u = 'postgres://u:s3cr3tReal@h/db';\n" },
+    true,
+    /banco/,
+  );
+  // Chaves reais continuam reprovadas (sb_secret_ e Bearer literal).
+  const body = 'A1b2C3d4E5f6';
+  check(
+    'check-secrets.mjs',
+    { 'apps/api/src/a.ts': `const s = "sb_secret_${body}${body}";\n` },
+    true,
+    /sb_secret_/,
+  );
+});
+
 test('check-secrets --history: falha de leitura do historico FALHA (nao vira ok)', () => {
   const dir = fixture({ 'a.txt': 'ok\n' });
   try {
@@ -438,4 +607,19 @@ test('check-secrets --history: acha segredo removido depois', () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('check-secrets: derivacao PBKDF2 e chave de deduplicacao (camel e snake) passam (ajuste estreito)', () => {
+  const ok = (path, line) => check('check-secrets.mjs', { [path]: line }, false);
+  ok('packages/db/scripts/dev-logins.mjs', "const saltedPassword = pbkdf2Sync(senha, salt, iteracoes, 32, 'sha256');\n");
+  ok('packages/domain/tests/a.test.ts', "dedupeKey: 'req:prazo_t24:abc',\n");
+  ok('docs/a.md', "1. `ops.job.dedupe_key = 'reminder:assunto:marco:id'`\n");
+  // Excecao exata: o arquivo de composicao do extrato (Storage) pode ler a chave; o vizinho nao.
+  ok('apps/api/src/privacy/privacy-composicao.ts', "const secretKey = env.SUPABASE_SECRET_KEY ?? '';\n");
+});
+
+test('check-secrets: a excecao de derivacao e de dedupe nao esconde literal sensivel (ajuste estreito)', () => {
+  check('check-secrets.mjs', { 'packages/db/scripts/dev-logins.mjs': "const saltedPassword = 'abc123def456';\n" }, true, /valor atribuido a saltedPassword/);
+  check('check-secrets.mjs', { 'packages/domain/tests/a.test.ts': "dedupeKey: 'sb_secret_TESTE_NAO_REAL_987654',\n" }, true, /chave Supabase/);
+  check('check-secrets.mjs', { 'apps/api/src/privacy/outro.ts': 'const k = env.SUPABASE_SECRET_KEY;\n' }, true, /service_role/);
 });

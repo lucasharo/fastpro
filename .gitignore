@@ -11,6 +11,7 @@ dist/
 .turbo/
 .vercel/
 .supabase/
+supabase/.temp/
 coverage/
 # Sistema
 .DS_Store
@@ -20,3 +21,22 @@ Thumbs.db
 *.gpg
 *.partial
 backups/
+
+# artefato de build do TypeScript
+*.tsbuildinfo
+# H-035: copia publicada dos tokens (gerada por apps/web/scripts/copy-tokens.mjs; a fonte e packages/tokens)
+apps/web/public/tokens.css
+# E3 (#141): bundle publico do envio de foto (gerado por apps/web/scripts/build-fotos-envio.mjs; fonte em apps/web/src/media)
+apps/web/public/fotos-envio.js
+# #155 (desenho 178, AD-155-12): bundle publico da situacao do profissional (gerado por apps/web/scripts/build-situacao.mjs)
+apps/web/public/situacao-bundle.js
+# H-030 (#43): saida do Playwright (relatorios e capturas); os binarios do navegador ficam fora do repositorio
+apps/web/test-results/
+apps/web/playwright-report/
+blob-report/
+
+# App Expo: geradas e credenciais do Firebase
+.expo/
+apps/mobile/android/
+apps/mobile/ios/
+apps/mobile/google-services.json

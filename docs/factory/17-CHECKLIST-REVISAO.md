@@ -125,10 +125,10 @@ A coluna **Origem** liga cada critério à regra de projeto. Os critérios opera
 | B-47 | Carência de 72 h aplicada ao trial, ou não aplicada ao Pix; Pix `pendente` que estende acesso; trial que cria assinatura ou cobrança; segundo trial para a mesma identidade | I-14, I-25; B-01 a B-08 |
 | B-48 | Chamada ao Mercado Pago de produção ou cobrança real antes do marco M4 e do gate H-054. Em desenvolvimento, **somente sandbox com dados sintéticos** | Decisões 37, 40; H-054 |
 | B-49 | **Cota Resend**: envio sem contador por destinatário (`external_quota`); sem reserva para `auth` (10/dia e 300/mês); `auth` (link/código de login) descartável; mais de 5 envios/s; descarte por cota sem estado `adiado_cota`/reavaliação; limites diferentes de 100/dia UTC e 3.000/mês `[VERIFICADOS no 13]` | I-24; ADR-022; Q-01, Q-10, Q-11, N-08 |
-| B-50 | E-mail real saindo de dev/CI (deve ir ao Mailpit); adapter Resend enviando sem domínio verificado ou sem segredo (deve recusar e manter `pendente`); interruptor, tabela de flags, rota ou rotina de reenvio/backfill de e-mails (proibidos: e-mails nascem ativos e não retroativos) | I-23, I-27; decisões 23, 27; N-07, N-09, N-10 |
+| B-50 | E-mail para destino que não é a conta cadastrada, em dev ou teste (deve ser recusado antes da API; o envio em dev e teste é pelo Resend, somente para a conta cadastrada); adapter Resend enviando sem domínio verificado ou sem segredo (deve recusar e manter `pendente`); interruptor, tabela de flags, rota ou rotina de reenvio/backfill de e-mails (proibidos: e-mails nascem ativos e não retroativos) | I-23, I-27; decisões 23, 27; N-07, N-09, N-10 |
 | B-51 | **Mapbox permanente fora do ponto permitido**: `permanent=true` em autocomplete/digitação; mais de uma chamada por revisão; 4ª chamada por rascunho (teto 3); coordenada gravada sem `geocode_mode` igual a `permanent`; resultado temporário em cache, rascunho ou log; sem breaker de gasto; chamada permanente para visitante anônimo ou antes de e-mail verificado | I-28; decisões 29, 36; G-01 a G-07; R-36 |
 | B-52 | **Limites do plano gratuito** ignorados em solução nova: dependência de PostGIS/pg_cron/pg_net sem fallback `[NÃO VERIFICADO no Free; S-02]`; cron da Vercel Hobby (1x/dia) usado para algo mais frequente; tarefa acima de 300 s ou da memória do plano; consumo de egress/Storage/banco sem métrica e alerta; serviço ou conta paga introduzidos sem decisão do usuário | Restrição de orçamento; ADR-020; R-28, R-30, R-37, R-38 |
-| B-53 | Cobrança real ou página de pagamento em produção servida no Vercel Hobby (uso comercial proibido); gate de lançamento ignorado (domínio no Resend, Vercel Pro, backup, tarifas MP, L1 a L4 e L7) | R-28; H-054; H-121 |
+| B-53 | Cobrança real ou página de pagamento em produção servida no Vercel Hobby (uso comercial proibido); gate de lançamento ignorado (domínio no Resend, Vercel Pro, tarifas MP, L1 a L4 e L7) | R-28; H-054; H-121 |
 
 ### 2.7 Fotos, Storage e chat sem anexos
 
@@ -229,7 +229,7 @@ Marcar cada item no relatório. Falha em item da §2 = BLOQUEADOR.
 
 - [ ] Todo evento com e-mail previsto gera linha em `email_outbox` com `dedupe_key`; envio via `EmailProviderPort` (I-23).
 - [ ] Sem interruptor, tabela de flags, rota ou ponto de ativação; sem reenvio ou backfill de aceites/mensagens antigas (B-50).
-- [ ] Dev/CI: adapter Mailpit, zero chamada externa; Resend recusa sem domínio verificado/segredo e mantém o item pendente (B-50).
+- [ ] Dev/teste: envio pelo Resend somente para a conta cadastrada (destino fora dela recusado antes da API); Resend recusa sem domínio verificado/segredo e mantém o item pendente (B-50).
 - [ ] Cota por destinatário (dia UTC e mês); alertas em 70, 85 e 95%; aviso a partir de 90/dia e 2.700/mês; reserva `auth` de 10/dia e 300/mês; itens `adiado_cota` reavaliados; limite de 5 envios/s com recuo em 429 (B-49).
 - [ ] Link/código de login: enviado na requisição, prioridade máxima, fora do tick, resposta uniforme 202; falha do provedor = fila com recuo, sem duplicação.
 - [ ] Agrupamento: cooldown de 15 min por (destinatário, categoria, escopo); primeiro aviso imediato, seguintes em resumo; resumo omitido se já visto; estado rechecado antes de enviar lembrete (selecionado/cancelado não envia).
@@ -245,7 +245,7 @@ Marcar cada item no relatório. Falha em item da §2 = BLOQUEADOR.
 - [ ] Redução no envio e reencode no servidor: lado ≤ 1.280 px, ≈ 0,5 MB, só a versão reduzida persistida; EXIF removido após aplicar a rotação; tipo pelo conteúdo (B-54, B-56).
 - [ ] Máximo de 5 fotos, 6ª recusada na API e no banco (B-55); sem canal de foto extra; sem anexo no chat (B-57).
 - [ ] Foto a elegível: URL assinada ≈ 60 s, marca d’água com identificador do profissional, `no-store`, prévia ≈ 320 px na listagem (B-18).
-- [ ] Rate limit de visualização por profissional, log de acesso e sinal de raspagem; suspensão cautelar só do acesso a fotos.
+- [ ] Rate limit de visualização por profissional e sinal de raspagem (sem log de acesso; Issue 150); suspensão cautelar só do acesso a fotos.
 - [ ] Documentos de identidade: imagem (reduzida no envio) ou PDF de até 2 MB, até 5 arquivos (provisório); bucket privado; validação por conteúdo; leitura só pela Verificação (B-58). Retenção `[PENDENTE JURÍDICO L1]`.
 - [ ] Consumo registrado em `external_quota(storage)`; alertas em 70/85/95% do 1 GB; egress estimado contra 5 GB.
 - [ ] Teste de memória e tempo do reencode de 10 MB de entrada (S-06, Q-08); imagem-bomba e arquivo falso recusados.
@@ -285,7 +285,7 @@ Marcar cada item no relatório. Falha em item da §2 = BLOQUEADOR.
 | Banco/migração | Log da migração do zero e incremental; pgTAP verde; teste de catálogo de RLS; monitores de invariante retornando zero; plano de rollback |
 | UI | Saída da varredura de hex (zero ocorrências); capturas claro/escuro; roteiro de teclado e foco; verificação de contraste dos tokens; leitor de tela nos fluxos tocados; estados vazio/erro/carregando |
 | Billing | Testes B-01 a B-10 relevantes (relógio controlado); webhook duplicado/fora de ordem/assinatura inválida; evidência de sandbox, sem chamada de produção |
-| Notificações | N-01 a N-10 relevantes (Mailpit); simulação de cota (Q-10/Q-11); prova de ausência de interruptor/backfill (N-07) |
+| Notificações | N-01 a N-10 relevantes (Resend, somente para a conta cadastrada); simulação de cota (Q-10/Q-11); ausência de interruptor/backfill verificada na revisão (N-07 sem teste automático) |
 | Storage | P-01 a P-06 relevantes: 6ª foto recusada; Storage sem original; EXIF ausente; dimensões e bytes dentro do teto; URL expira |
 | Admin | T-08: sem MFA nega, papel inadequado nega, autoaprovação nega, leitura sem `access_case` nega, log gerado |
 | Concorrência (aceite, seleção, republicação, webhook) | Execução com N de pelo menos 100 iterações e monitores de invariante sem violação (C-xx e F-xx citados) |
@@ -338,7 +338,7 @@ Nenhuma foi implementada ou executada. Planejar em H-004 (CI), H-002 (tokens), H
 
 ### 7.5 Banco e RLS (B-02 a B-04, B-22, B-54, B-57)
 - pgTAP: toda tabela de domínio com RLS habilitada e forçada; nenhuma tabela legível por `anon`/`authenticated` sem política; funções `SECURITY DEFINER` com `search_path` fixo.
-- Teste de catálogo de ausência: colunas de preço/valor/prazo em pedido, aceite e mensagem (T-17); bucket `chat-attachments`, tabela `message_attachment` e `media_asset` de mensagem (M-02); coluna de original em `media_asset` (P-04); boleto em enum ou tabela; interruptor ou flag de e-mail (N-07).
+- Teste de catálogo de ausência: colunas de preço/valor/prazo em pedido, aceite e mensagem (T-17); bucket `chat-attachments`, tabela `message_attachment` e `media_asset` de mensagem (M-02); coluna de original em `media_asset` (P-04); boleto em enum ou tabela; interruptor ou flag de e-mail (N-07, verificado na revisão).
 - Monitores de invariante I-01 a I-30 (consultas que retornam zero linhas) ao fim da suíte e diariamente.
 - Teste de paridade API e banco gerado a partir da `access-matrix` (T-06).
 - CI falha se a migração não subir do zero em Postgres efêmero.
@@ -380,7 +380,7 @@ Nenhuma foi implementada ou executada. Planejar em H-004 (CI), H-002 (tokens), H
 | 3 (M1) | **Núcleo:** vagas (B-22 a B-25), chat (B-19, B-57), mensagem de sistema, fotos a elegíveis (B-18) |
 | 4 (M2) | Billing (B-45 a B-48), seleção/cancelamento/republicação (B-26, B-28, B-29), cotas de e-mail (B-49, B-50) |
 | 5 (M3) | Admin (B-07 a B-09), avaliação, retenção, a11y com evidência (B-36), suíte completa de concorrência |
-| Gate M4 | Itens de H-054 e H-121: domínio no Resend, Vercel Pro, backup, tarifas MP, L1 a L4 e L7. **Aprovação técnica não substitui o CONCLUIR humano** |
+| Gate M4 | Itens de H-054 e H-121: domínio no Resend, Vercel Pro, tarifas MP, L1 a L4 e L7. **Aprovação técnica não substitui o CONCLUIR humano** |
 
 ---
 

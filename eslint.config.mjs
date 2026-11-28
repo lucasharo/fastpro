@@ -3,7 +3,16 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/.next/**', '**/.turbo/**', '**/node_modules/**', '**/coverage/**'],
+    // Saida de cobertura gerada: so na raiz ou em apps/x e packages/x (nao em src/coverage).
+    ignores: [
+      '**/dist/**',
+      '**/.next/**',
+      '**/.turbo/**',
+      '**/node_modules/**',
+      'coverage/**',
+      '*/*/coverage/**',
+      'apps/web/next-env.d.ts',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -20,7 +29,15 @@ export default tseslint.config(
   {
     files: ['**/*.mjs', '**/*.js'],
     languageOptions: {
-      globals: { console: 'readonly', process: 'readonly', URL: 'readonly' },
+      // Globais do Node usadas por testes e scripts .mjs.
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        URL: 'readonly',
+        Buffer: 'readonly',
+        performance: 'readonly',
+        setTimeout: 'readonly',
+      },
     },
   },
 );

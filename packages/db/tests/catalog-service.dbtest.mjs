@@ -1,0 +1,649 @@
+// Testes de banco do catalogo de servicos (H-018, desenho 53-DESENHO-H018 §6.2): T-H018-10, 14 a 21.
+// Rodam no banco de desenvolvimento COMPARTILHADO: cada caso roda dentro de transacao com ROLLBACK
+// (nunca COMMIT). A semente NAO e aplicada aqui (a aplicacao real e comando explicito, depois da QA).
+// Executar: pnpm db:test (exige a migracao 20261111200000 aplicada).
+import { test, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { connect } from '../scripts/lib/env.mjs';
+
+// Semente versionada (somente leitura). Os testes T-H018-11..13 a aplicam DENTRO de transacao com
+// rollback, com a funcao de aplicacao; nada e gravado. A aplicacao real e comando explicito.
+const SEED = JSON.parse(readFileSync(new URL('../../../supabase/seed/catalog/catalog.v1.json', import.meta.url), 'utf8'));
+const SEED_SYNONYMS = SEED.services.reduce((n, s) => n + s.synonyms.length, 0);
+
+let client;
+before(async () => {
+  client = await connect();
+});
+after(async () => {
+  await client?.end();
+});
+
+const TABLES = ['service_group', 'service', 'service_synonym', 'catalog_revision', 'catalog_seed_run'];
+const PUBLIC_VIEW_COLUMNS = [
+  'group_id',
+  'group_name',
+  'group_position',
+  'service_id',
+  'service_name',
+  'modality',
+  'regulated',
+];
+
+// --- Utilitarios ------------------------------------------------------------------------------------
+
+/** Executa fn dentro de transacao que sempre termina em ROLLBACK. */
+async function inTx(fn) {
+  await client.query('begin');
+  try {
+    // Concessao valida so dentro da transacao (desfeita pelo rollback): permite SET LOCAL ROLE.
+    await client.query('grant app_system, app_api to current_user');
+    return await fn();
+  } finally {
+    await client.query('rollback');
+  }
+}
+
+/** Exige que o comando falhe com o SQLSTATE indicado; a transacao segue viva (savepoint). */
+async function expectError(sql, params, code) {
+  await client.query('savepoint sp_expect');
+  let err = null;
+  try {
+    await client.query(sql, params);
+  } catch (e) {
+    err = e;
+  }
+  if (err) await client.query('rollback to savepoint sp_expect');
+  else await client.query('release savepoint sp_expect');
+  assert.ok(err, `deveria falhar com ${code}`);
+  assert.equal(err.code, code, `codigo inesperado (${err.code}): ${err.message}`);
+  return err;
+}
+
+/** Define o principal da transacao (GUCs locais). Sem valor = ausente. */
+async function asPrincipal({ type, id = '', aal = '', perms = '' }) {
+  await client.query(
+    `select set_config('app.principal_type', $1, true), set_config('app.principal_id', $2, true),
+            set_config('app.aal', $3, true), set_config('app.permissions', $4, true)`,
+    [type, id, aal, perms],
+  );
+}
+
+const ADMIN = { type: 'admin', id: randomUUID(), aal: 'aal2', perms: 'catalog.manage' };
+
+async function asAppApi(principal) {
+  await client.query('set local role app_api');
+  await asPrincipal(principal);
+}
+
+async function asOwner() {
+  await client.query('reset role');
+}
+
+/** Cria, como dono, um grupo ativo com servico ativo, um grupo inativo com servico ativo e sinonimos. */
+async function criarBase() {
+  const b = { gA: randomUUID(), gB: randomUUID(), sA: randomUUID(), sB: randomUUID(), sSens: randomUUID() };
+  await client.query(
+    `insert into app.service_group (id, name, position, active) values
+       ($1, 'Grupo teste A', 901, true), ($2, 'Grupo teste B', 902, false)`,
+    [b.gA, b.gB],
+  );
+  await client.query(
+    `insert into app.service (id, group_id, name, modality, regulated, active, council_body, moderation_sensitive)
+     values ($1, $2, 'Servico teste A', 'online', false, true, null, false),
+            ($3, $4, 'Servico teste B', 'presencial', false, true, null, false),
+            ($5, $2, 'Servico teste sensivel', 'ambos', true, true, 'CRM', true)`,
+    [b.sA, b.gA, b.sB, b.gB, b.sSens],
+  );
+  await client.query(
+    `insert into app.service_synonym (service_id, term, active) values
+       ($1, 'termo teste ativo', true), ($1, 'termo teste inativo', false)`,
+    [b.sA],
+  );
+  return b;
+}
+
+// --- T-H018-10: catalogo do banco (RLS forcada; leitura publica so por funcao, sem politica nem view) --
+
+test('T-H018-10 tabelas do catalogo com RLS habilitada e forcada; sem politicas; leitura publica por funcao', async () => {
+  const res = await client.query(
+    `select c.relname, c.relrowsecurity, c.relforcerowsecurity
+       from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'app' and c.relname = any($1)`,
+    [TABLES],
+  );
+  assert.equal(res.rows.length, TABLES.length);
+  for (const r of res.rows) {
+    assert.equal(r.relrowsecurity, true, `${r.relname} sem RLS habilitada`);
+    assert.equal(r.relforcerowsecurity, true, `${r.relname} sem RLS forcada`);
+  }
+  const pol = await client.query(
+    `select tablename from pg_policies where schemaname = 'app' and tablename = any($1)`,
+    [TABLES],
+  );
+  assert.deepEqual(pol.rows, [], 'nao deve haver politica de RLS nas tabelas do catalogo (decisao #31)');
+  const fn = await client.query(
+    `select p.prosecdef, p.proconfig from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'private' and p.proname = 'catalog_public_list'`,
+  );
+  assert.equal(fn.rows[0].prosecdef, true);
+  assert.ok(fn.rows[0].proconfig.some((x) => x.startsWith('search_path=')), 'search_path deve ser vazio');
+});
+
+// --- T-H018-14: leitura anonima ---------------------------------------------------------------------
+
+test('T-H018-14 leitura anonima: so pela funcao publica (so ativos, colunas publicas); tabelas negadas (42501)', () =>
+  inTx(async () => {
+    const b = await criarBase();
+    await asAppApi({ type: 'anonymous' });
+
+    await expectError('select id from app.service_group', [], '42501');
+    await expectError('select id from app.service', [], '42501');
+    await expectError('select term from app.service_synonym', [], '42501');
+    await expectError('select council_body from app.service', [], '42501');
+    await expectError('select seed_key from app.service_group', [], '42501');
+    await expectError('select id from app.catalog_revision', [], '42501');
+    await expectError('select id from app.catalog_seed_run', [], '42501');
+
+    const rows = (await client.query('select * from private.catalog_public_list()')).rows;
+    assert.deepEqual(Object.keys(rows[0] ?? {}).sort(), [...PUBLIC_VIEW_COLUMNS].sort());
+    assert.ok(rows.some((r) => r.service_id === b.sA), 'servico de grupo ativo deveria aparecer');
+    assert.ok(!rows.some((r) => r.service_id === b.sB || r.group_id === b.gB), 'grupo inativo nao aparece');
+  }));
+
+// --- T-H018-15: escrita negada ----------------------------------------------------------------------
+
+test('T-H018-15 escrita negada: DML direto e funcoes catalog_*_save falham com 42501 e nada muda', () =>
+  inTx(async () => {
+    await criarBase();
+    const cases = [
+      { type: 'anonymous' },
+      { type: 'customer', id: randomUUID(), aal: 'aal2', perms: 'catalog.manage' },
+      { type: 'professional', id: randomUUID(), aal: 'aal2', perms: 'catalog.manage' },
+      { type: 'admin', id: randomUUID(), aal: 'aal1', perms: 'catalog.manage' },
+      { type: 'admin', id: randomUUID(), aal: 'aal2', perms: '' },
+      { type: 'admin', id: randomUUID(), aal: 'aal2', perms: 'outra.permissao' },
+    ];
+    for (const principal of cases) {
+      await asAppApi(principal);
+      await expectError(`insert into app.service_group (name, position, active) values ('Negado X', 1, false)`, [], '42501');
+      await expectError(`update app.service_group set name = 'Negado Y'`, [], '42501');
+      await expectError('delete from app.service_group', [], '42501');
+      await expectError('insert into app.service_synonym (service_id, term) values ($1, $2)', [randomUUID(), 'x'], '42501');
+      await expectError(
+        `select private.catalog_group_save(null, null, '{"name":"Negado X","position":1}'::jsonb)`,
+        [],
+        '42501',
+      );
+      await expectError(
+        `select private.catalog_service_save(null, null, '{"name":"Negado X"}'::jsonb)`,
+        [],
+        '42501',
+      );
+      await expectError(
+        `select private.catalog_synonym_save(null, null, '{"term":"Negado X"}'::jsonb)`,
+        [],
+        '42501',
+      );
+      await expectError('select private.catalog_admin_list()', [], '42501');
+    }
+    await asOwner();
+    const negados = await client.query("select count(*)::int as n from app.service_group where name like 'Negado%'");
+    assert.equal(negados.rows[0].n, 0, 'nada deveria ter sido gravado');
+  }));
+
+// --- T-H018-16: escrita permitida (administrador aal2 com catalog.manage) ---------------------------
+
+test('T-H018-16 administrador: cria, altera e desativa; version sobe; versao errada = CT003; chave fora = CT004', () =>
+  inTx(async () => {
+    await asAppApi(ADMIN);
+    const gid = (
+      await client.query(
+        'select private.catalog_group_save(null, null, $1::jsonb) as id',
+        [JSON.stringify({ name: 'Grupo admin X', position: 950, active: false })],
+      )
+    ).rows[0].id;
+
+    await client.query(
+      'select private.catalog_group_save($1, 1, $2::jsonb)',
+      [gid, JSON.stringify({ name: 'Grupo admin Y', active: false })],
+    );
+    await expectError('select private.catalog_group_save($1, 1, $2::jsonb)', [gid, '{"name":"Z"}'], 'CT003');
+    await expectError('select private.catalog_group_save($1, 2, $2::jsonb)', [gid, '{"cor":"azul"}'], 'CT004');
+    await expectError('select private.catalog_group_save($1, 2, $2::jsonb)', [gid, '{"name":""}'], 'CT004');
+
+    const sid = (
+      await client.query(
+        'select private.catalog_service_save(null, null, $1::jsonb) as id',
+        [JSON.stringify({ name: 'Servico admin X', group_id: gid, modality: 'online', regulated: false })],
+      )
+    ).rows[0].id;
+    await expectError(
+      'select private.catalog_service_save(null, null, $1::jsonb)',
+      [JSON.stringify({ name: 'Servico ruim', group_id: gid, modality: 'remoto', regulated: false })],
+      'CT004',
+    );
+    await expectError(
+      'select private.catalog_service_save(null, null, $1::jsonb)',
+      [JSON.stringify({ name: 'Servico ruim 2', group_id: gid, modality: 'online', regulated: false, council_body: 'CRM' })],
+      'CT004',
+    );
+    const yid = (
+      await client.query(
+        'select private.catalog_synonym_save(null, null, $1::jsonb) as id',
+        [JSON.stringify({ service_id: sid, term: 'termo admin' })],
+      )
+    ).rows[0].id;
+    await client.query('select private.catalog_synonym_save($1, 1, $2::jsonb)', [
+      yid,
+      JSON.stringify({ active: false }),
+    ]);
+
+    await asOwner();
+    const v = await client.query(
+      `select (select version from app.service_group where id = $1) as g,
+              (select version from app.service where id = $2) as s,
+              (select version from app.service_synonym where id = $3) as y`,
+      [gid, sid, yid],
+    );
+    assert.deepEqual(v.rows[0], { g: 2, s: 1, y: 2 });
+
+    await asAppApi(ADMIN);
+    const list = (await client.query('select private.catalog_admin_list() as j')).rows[0].j;
+    assert.ok(list.groups.some((g) => g.id === gid && g.name === 'Grupo admin Y' && g.active === false));
+  }));
+
+// --- T-H018-17: auditoria e revisao na mesma transacao ----------------------------------------------
+
+test('T-H018-17 cada mudanca gera 1 evento e 1 revisao (antes/depois completos); falha de auditoria desfaz', () =>
+  inTx(async () => {
+    await asOwner();
+    const before = (
+      await client.query("select count(*)::int as n from audit.audit_event where action = 'catalog.group.changed'")
+    ).rows[0].n;
+    await asAppApi(ADMIN);
+    const gid = (
+      await client.query('select private.catalog_group_save(null, null, $1::jsonb) as id', [
+        JSON.stringify({ name: 'Grupo auditado', position: 960, active: false }),
+      ])
+    ).rows[0].id;
+    await asOwner();
+    const after = (
+      await client.query("select count(*)::int as n from audit.audit_event where action = 'catalog.group.changed'")
+    ).rows[0].n;
+    assert.equal(after, before + 1, 'deveria haver exatamente 1 evento');
+    const rev = await client.query(
+      `select r.before, r.after, e.actor_ref, e.actor_role, e.object_type
+         from app.catalog_revision r join audit.audit_event e on e.id = r.audit_event_id
+        where r.entity_id = $1`,
+      [gid],
+    );
+    assert.equal(rev.rows.length, 1, 'deveria haver exatamente 1 revisao');
+    assert.equal(rev.rows[0].before, null);
+    assert.equal(rev.rows[0].after.name, 'Grupo auditado');
+    assert.equal(rev.rows[0].actor_ref, `admin:${ADMIN.id}`);
+    assert.equal(rev.rows[0].actor_role, 'admin');
+    assert.equal(rev.rows[0].object_type, 'service_group');
+
+    const chain = (await client.query('select ok from private.audit_verify_chain()')).rows[0];
+    assert.equal(chain.ok, true, 'cadeia de auditoria deveria estar integra');
+
+    // Falha forcada da auditoria: substitui a funcao so nesta transacao (o rollback restaura).
+    await client.query(`create or replace function private.audit_append(
+        p_actor_ref text, p_actor_role text, p_action text, p_object_type text, p_object_id uuid,
+        p_before_state jsonb, p_after_state jsonb, p_reason_code text default null,
+        p_correlation_id uuid default null)
+      returns uuid language plpgsql set search_path = '' as $$
+      begin raise exception 'auditoria forcada para o teste' using errcode = 'AU002'; end $$`);
+    await asAppApi(ADMIN);
+    await expectError(
+      'select private.catalog_group_save(null, null, $1::jsonb)',
+      [JSON.stringify({ name: 'Grupo sem auditoria', position: 961, active: false })],
+      'AU002',
+    );
+    await asOwner();
+    const sem = await client.query("select count(*)::int as n from app.service_group where name = 'Grupo sem auditoria'");
+    assert.equal(sem.rows[0].n, 0, 'a mudanca deveria ter sido desfeita junto com a auditoria');
+  }));
+
+// --- T-H018-18: invariante de grupo ativo com servico ativo (CT002 no COMMIT, aqui forcado) ---------
+
+test('T-H018-18 invariante: grupo ativo sem servico ativo falha (CT002); desativar grupo e servico juntos passa', () =>
+  inTx(async () => {
+    await asAppApi(ADMIN);
+    const a = (
+      await client.query('select private.catalog_group_save(null, null, $1::jsonb) as id', [
+        JSON.stringify({ name: 'Grupo inv A', position: 970, active: false }),
+      ])
+    ).rows[0].id;
+    const b = (
+      await client.query('select private.catalog_group_save(null, null, $1::jsonb) as id', [
+        JSON.stringify({ name: 'Grupo inv B', position: 971, active: false }),
+      ])
+    ).rows[0].id;
+    const s = (
+      await client.query('select private.catalog_service_save(null, null, $1::jsonb) as id', [
+        JSON.stringify({ name: 'Servico inv', group_id: a, modality: 'online', regulated: false, active: true }),
+      ])
+    ).rows[0].id;
+    // A partir daqui, as verificacoes adiadas valem a cada comando (equivale ao COMMIT).
+    await client.query('set constraints all immediate');
+    await client.query('select private.catalog_group_save($1, 1, $2::jsonb)', [a, '{"active":true}']);
+    await expectError('select private.catalog_service_save($1, 1, $2::jsonb)', [s, '{"active":false}'], 'CT002');
+    // Mover o ultimo servico ativo para outro grupo: falha pelo grupo de origem.
+    await expectError('select private.catalog_service_save($1, 1, $2::jsonb)', [s, JSON.stringify({ group_id: b })], 'CT002');
+    // Desativar grupo e servico na mesma transacao: passa.
+    await client.query('select private.catalog_group_save($1, 2, $2::jsonb)', [a, '{"active":false}']);
+    await client.query('select private.catalog_service_save($1, 1, $2::jsonb)', [s, '{"active":false}']);
+    await asOwner();
+    const estado = (
+      await client.query('select active from app.service_group where id = $1', [a])
+    ).rows[0];
+    assert.equal(estado.active, false);
+  }));
+
+// --- T-H018-19: unicidade por normalizacao (acento e caixa) -----------------------------------------
+
+test('T-H018-19 unicidade: nome igual com acento/caixa no mesmo grupo e sinonimo repetido = 23505; outro grupo aceita', () =>
+  inTx(async () => {
+    await asAppApi(ADMIN);
+    const g1 = (
+      await client.query('select private.catalog_group_save(null, null, $1::jsonb) as id', [
+        JSON.stringify({ name: 'Grupo unic 1', position: 980, active: false }),
+      ])
+    ).rows[0].id;
+    const g2 = (
+      await client.query('select private.catalog_group_save(null, null, $1::jsonb) as id', [
+        JSON.stringify({ name: 'Grupo unic 2', position: 981, active: false }),
+      ])
+    ).rows[0].id;
+    const svc = (name, gid) =>
+      `select private.catalog_service_save(null, null, '${JSON.stringify({ name, group_id: gid, modality: 'online', regulated: false })}'::jsonb)`;
+    await client.query(svc('Pintor residencial', g1));
+    await expectError(svc('PINTOR  Residêncial', g1), [], '23505');
+    await client.query(svc('Pintor residencial', g2));
+    await asOwner();
+    const sid = (
+      await client.query(
+        `select id from app.service where group_id = $1 and name = 'Pintor residencial'`,
+        [g1],
+      )
+    ).rows[0].id;
+    await asAppApi(ADMIN);
+    await client.query('select private.catalog_synonym_save(null, null, $1::jsonb)', [
+      JSON.stringify({ service_id: sid, term: 'pintura' }),
+    ]);
+    await expectError(
+      'select private.catalog_synonym_save(null, null, $1::jsonb)',
+      [JSON.stringify({ service_id: sid, term: 'PINTURA' })],
+      '23505',
+    );
+  }));
+
+// --- T-H018-20: revisao e auditoria imutaveis (ate para o dono) -------------------------------------
+
+test('T-H018-20 catalog_revision e audit_event: update/delete falham com AU001 mesmo para o dono', () =>
+  inTx(async () => {
+    await asAppApi(ADMIN);
+    await client.query('select private.catalog_group_save(null, null, $1::jsonb)', [
+      JSON.stringify({ name: 'Grupo imutavel', position: 990, active: false }),
+    ]);
+    await asOwner();
+    await client.query(
+      `insert into app.catalog_seed_run (seed_version, checksum, groups_inserted, services_inserted,
+              synonyms_inserted, skipped_conflict, groups_total, services_total, audit_event_id)
+       values ('teste-imutavel', repeat('a', 64), 0, 0, 0, 0, 0, 0,
+               (select id from audit.audit_event order by seq desc limit 1))`,
+    );
+    await expectError('update app.catalog_revision set version = 9', [], 'AU001');
+    await expectError('delete from app.catalog_revision', [], 'AU001');
+    await expectError('update audit.audit_event set object_type = object_type', [], 'AU001');
+    await expectError('delete from audit.audit_event', [], 'AU001');
+    await expectError("update app.catalog_seed_run set seed_version = 'x'", [], 'AU001');
+  }));
+
+// --- T-H018-21: council_body exige regulamentado; SENS e conselho fora da leitura publica -----------
+
+test('T-H018-21 council_body sem regulated e rejeitado; leitura publica nao traz conselho nem sensibilidade', () =>
+  inTx(async () => {
+    const b = await criarBase();
+    await asOwner();
+    await expectError(
+      `insert into app.service (group_id, name, modality, regulated, council_body, active)
+       values ($1, 'Conselho sem regulado', 'online', false, 'CRM', true)`,
+      [b.gA],
+      '23514',
+    );
+    await asAppApi(ADMIN);
+    await expectError(
+      'select private.catalog_service_save(null, null, $1::jsonb)',
+      [JSON.stringify({ name: 'Conselho sem regulado', group_id: b.gA, modality: 'online', regulated: false, council_body: 'CRM' })],
+      'CT004',
+    );
+    await asAppApi({ type: 'anonymous' });
+    const rows = (await client.query('select * from private.catalog_public_list() where service_id = $1', [b.sSens])).rows;
+    assert.equal(rows.length, 1, 'o servico sensivel ativo aparece na leitura publica');
+    assert.deepEqual(Object.keys(rows[0]).sort(), [...PUBLIC_VIEW_COLUMNS].sort());
+    assert.equal(
+      Object.keys(rows[0]).some((k) => ['council_body', 'moderation_sensitive', 'seed_key', 'version'].includes(k)),
+      false,
+    );
+  }));
+
+// --- T-H018-05 (lado do banco): private.catalog_norm dá os mesmos resultados fixos do espelho TypeScript/JS.
+
+test('T-H018-05 paridade: private.catalog_norm produz os pares fixos usados em catalog-seed.test.mjs', async () => {
+  const pairs = [
+    ['  Reformas   e  Construção ', 'reformas e construcao'],
+    ['ÁGUA', 'agua'],
+    ['Pé de Moleque', 'pe de moleque'],
+    ['Ação', 'acao'],
+    ['Lâmpada  LED', 'lampada led'],
+    ['Ç', 'c'],
+  ];
+  for (const [input, expected] of pairs) {
+    const res = await client.query('select private.catalog_norm($1) as n', [input]);
+    assert.equal(res.rows[0].n, expected, input);
+  }
+});
+
+// --- T-H018-11, 12, 13: semente aplicada dentro de transacao (rollback). Funcao executada como app_system.
+
+async function aplicarSemente(seed) {
+  await client.query('set local role app_system');
+  const res = await client.query('select private.catalog_seed_apply($1::jsonb) as r', [JSON.stringify(seed)]);
+  return res.rows[0].r;
+}
+
+test('T-H018-11 semente na transacao: 25 grupos e contagens do arquivo; reaplicacao (mesmo checksum) = no-op', () =>
+  inTx(async () => {
+    const r1 = await aplicarSemente(SEED);
+    // 'ja_aplicada': o DEV ja tem a semente gravada (mesmo checksum). Os contadores so valem para a
+    // primeira aplicacao; as contagens finais abaixo checam o conteudo em qualquer dos dois casos (#140).
+    assert.ok(['aplicada', 'ja_aplicada'].includes(r1.status), r1.status);
+    if (r1.status === 'aplicada') {
+      assert.equal(r1.groups_inserted, 25);
+      assert.equal(r1.services_inserted, SEED.services.length);
+      assert.equal(r1.synonyms_inserted, SEED_SYNONYMS);
+      assert.equal(r1.skipped_conflict, 0);
+    }
+
+    await client.query('reset role');
+    // Verificacao imediata das invariantes adiadas (CA-02) com os dados da semente.
+    await client.query('set constraints all immediate');
+    // Contagens so da semente (seed_key): o DEV compartilhado tem grupos e servicos sinteticos com
+    // marcador H031 deixados pelos testes da Issue 44, que nao pertencem a semente. Sinonimos nao tem
+    // seed_key; contam os que pertencem a servicos da semente.
+    const count = async () =>
+      (
+        await client.query(
+          `select (select count(*)::int from app.service_group where seed_key is not null) g,
+                  (select count(*)::int from app.service where seed_key is not null) s,
+                  (select count(*)::int from app.service_synonym y
+                     join app.service v on v.id = y.service_id where v.seed_key is not null) y`,
+        )
+      ).rows[0];
+    const after1 = await count();
+    assert.deepEqual(after1, { g: 25, s: SEED.services.length, y: SEED_SYNONYMS });
+    const names = (
+      await client.query('select name from app.service_group where seed_key is not null order by position')
+    ).rows.map((r) => r.name);
+    assert.deepEqual(names, SEED.groups.map((g) => g.name));
+
+    const r2 = await aplicarSemente(SEED);
+    assert.equal(r2.status, 'ja_aplicada');
+    assert.equal(r2.groups_inserted + r2.services_inserted + r2.synonyms_inserted, 0);
+    await client.query('reset role');
+    assert.deepEqual(await count(), after1, 'reaplicacao nao pode duplicar nem alterar contagens');
+  }));
+
+test('T-H018-12 preservacao: alteracoes do administrador sobrevivem a reaplicacao da semente (novo checksum)', () =>
+  inTx(async () => {
+    await aplicarSemente(SEED);
+    await client.query('reset role');
+    const idOf = async (sql, params = []) => (await client.query(sql, params)).rows[0];
+    const g01 = (await idOf("select id from app.service_group where seed_key = 'g01'")).id;
+    const g02 = (await idOf("select id from app.service_group where seed_key = 'g02'")).id;
+    const g05 = (await idOf("select id from app.service_group where seed_key = 'g05'")).id;
+    const g03svc = await idOf(
+      `select id, version from app.service where group_id = (select id from app.service_group where seed_key = 'g03')
+        and active order by name limit 1`,
+    );
+    const g04svc = await idOf(
+      `select id, version from app.service where group_id = (select id from app.service_group where seed_key = 'g04')
+        and active order by name limit 1`,
+    );
+
+    await asAppApi(ADMIN);
+    await client.query('select private.catalog_group_save($1, 1, $2::jsonb)', [
+      g01,
+      JSON.stringify({ name: 'Grupo renomeado pelo admin' }),
+    ]);
+    await client.query('select private.catalog_group_save($1, 1, $2::jsonb)', [g02, JSON.stringify({ position: 99 })]);
+    await client.query('select private.catalog_service_save($1, $2, $3::jsonb)', [
+      g03svc.id,
+      g03svc.version,
+      '{"active":false}',
+    ]);
+    await client.query('select private.catalog_service_save($1, $2, $3::jsonb)', [
+      g04svc.id,
+      g04svc.version,
+      JSON.stringify({ group_id: g05 }),
+    ]);
+
+    // Mesmo conteudo com um sinonimo a mais: outro checksum, o caminho completo de insercao roda.
+    const modified = JSON.parse(JSON.stringify(SEED));
+    modified.services[0].synonyms = [...modified.services[0].synonyms, 'termo de teste preservacao'];
+    const r = await aplicarSemente(modified);
+    assert.equal(r.status, 'aplicada');
+    assert.equal(r.groups_inserted, 0);
+    assert.equal(r.services_inserted, 0);
+    assert.equal(r.synonyms_inserted, 1);
+
+    await client.query('reset role');
+    const g01row = await idOf('select name, version, seed_key from app.service_group where id = $1', [g01]);
+    assert.equal(g01row.name, 'Grupo renomeado pelo admin', 'nome do administrador deve ser preservado');
+    assert.equal(g01row.version, 2);
+    assert.equal((await idOf('select position from app.service_group where id = $1', [g02])).position, 99);
+    assert.equal((await idOf('select active from app.service where id = $1', [g03svc.id])).active, false);
+    assert.equal((await idOf('select group_id from app.service where id = $1', [g04svc.id])).group_id, g05);
+    // So a semente (seed_key): grupos e servicos sinteticos com marcador H031 nao entram na contagem.
+    const c = await idOf(
+      `select (select count(*)::int from app.service_group where seed_key is not null) g,
+              (select count(*)::int from app.service where seed_key is not null) s`,
+    );
+    assert.deepEqual(c, { g: 25, s: SEED.services.length }, 'sem duplicatas');
+  }));
+
+test('T-H018-13 conflito por nome: grupo manual com nome da semente (outra caixa e acento) e pulado e contado, sem erro; sem residuos', async () => {
+  // Marcador unico por execucao: nomes, versao e chaves de servico levam o mesmo sufixo. O banco e
+  // compartilhado, entao nada aqui depende de contagem global nem do conteudo da semente oficial.
+  const hex = randomUUID().slice(0, 8);
+  const tag = `T146-${hex}`;
+  const idSok1 = `g99-t146-${hex}-sok1`;
+  // Semente sintetica minima (2 grupos, 3 servicos), na forma aceita por private.catalog_seed_validate.
+  // O grupo g98 entra em conflito de nome com o grupo manual; o grupo g99 nao tem conflito.
+  const TEST_SEED = {
+    version: tag,
+    groups: [
+      { key: 'g98', position: 9100, name: `Grupo Sintético Conflito ${tag}` },
+      { key: 'g99', position: 9101, name: `Grupo Sintético Regular ${tag}` },
+    ],
+    services: [
+      {
+        key: `g98-t146-${hex}-sc1`, group_key: 'g98', name: `Servico conflito um ${tag}`,
+        modality: 'online', regulated: false, council_body: null, sensitive: false, active: true,
+        synonyms: ['termo conflito um'],
+      },
+      {
+        key: `g98-t146-${hex}-sc2`, group_key: 'g98', name: `Servico conflito dois ${tag}`,
+        modality: 'presencial', regulated: false, council_body: null, sensitive: false, active: true,
+        synonyms: [],
+      },
+      {
+        key: idSok1, group_key: 'g99', name: `Servico regular ${tag}`,
+        modality: 'ambos', regulated: false, council_body: null, sensitive: false, active: true,
+        synonyms: ['termo regular um', 'termo regular dois'],
+      },
+    ],
+  };
+
+  let auditId = null;
+  await inTx(async () => {
+    // Grupo criado a mao com o nome do grupo em conflito, em outra caixa e sem acento (normalizacao).
+    const manualName = `GRUPO SINTETICO CONFLITO ${tag.toUpperCase()}`;
+    const manualId = randomUUID();
+    await client.query(
+      'insert into app.service_group (id, name, position, active) values ($1, $2, 500, false)',
+      [manualId, manualName],
+    );
+    const r = await aplicarSemente(TEST_SEED);
+    assert.equal(r.status, 'aplicada', 'versao propria: nao pode responder ja_aplicada');
+    assert.equal(r.groups_inserted, 1, 'so o grupo sem conflito entra');
+    assert.equal(r.services_inserted, 1, 'so o servico do grupo sem conflito entra');
+    assert.equal(r.synonyms_inserted, 2, 'sinonimos do servico que entrou');
+    assert.equal(r.skipped_conflict, 3, 'grupo em conflito mais os 2 servicos dele');
+
+    await client.query('reset role');
+    const manual = (
+      await client.query('select seed_key, name, position, active from app.service_group where id = $1', [manualId])
+    ).rows[0];
+    assert.equal(manual.seed_key, null, 'o item manual nao recebe chave da semente');
+    assert.equal(manual.name, manualName, 'nome do item manual intacto');
+    assert.equal(manual.position, 500, 'posicao do item manual intacta');
+    assert.equal(manual.active, false, 'ativo do item manual intacto');
+
+    // Verificacao restrita as linhas do marcador deste teste (sem contagem global).
+    const grupos = (
+      await client.query(
+        'select seed_key from app.service_group where name ilike $1 order by seed_key nulls first',
+        [`%${tag}%`],
+      )
+    ).rows.map((x) => x.seed_key);
+    assert.deepEqual(grupos, [null, 'g99'], 'manual preservado e so o grupo sem conflito da semente');
+    const servicos = (
+      await client.query('select seed_key from app.service where name ilike $1', [`%${tag}%`])
+    ).rows.map((x) => x.seed_key);
+    assert.deepEqual(servicos, [idSok1], 'so o servico sem conflito entra');
+
+    const run = (
+      await client.query('select audit_event_id from app.catalog_seed_run where id = $1', [r.run_id])
+    ).rows[0];
+    auditId = run.audit_event_id;
+  });
+
+  assert.ok(auditId, 'a execucao deveria ter gerado um evento de auditoria dentro da transacao');
+  // Sem residuos (CA-07): consulta fora da transacao, ja depois do rollback, pelo marcador do teste.
+  const resto = (
+    await client.query(
+      `select (select count(*)::int from app.service_group where name ilike $1) as grupos,
+              (select count(*)::int from app.service where name ilike $1) as servicos,
+              (select count(*)::int from app.catalog_seed_run where seed_version = $2) as execucoes,
+              (select count(*)::int from audit.audit_event where id = $3) as auditoria`,
+      [`%${tag}%`, TEST_SEED.version, auditId],
+    )
+  ).rows[0];
+  assert.deepEqual(resto, { grupos: 0, servicos: 0, execucoes: 0, auditoria: 0 }, 'o rollback deveria desfazer tudo');
+});

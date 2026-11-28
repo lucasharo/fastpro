@@ -10,8 +10,8 @@ import {
   normalizeDomain,
   RESEND_TEST_DOMAIN,
   RESEND_TEST_SENDER,
-  sameAddress,
 } from './address.js';
+import { decidirDestino, marcarRedirecionado } from './destination.js';
 import type { EmailEnv } from './env.js';
 import { idempotencyToken } from './idempotency.js';
 import type { EmailRenderer } from './renderer.js';
@@ -124,12 +124,17 @@ export class ResendProvider implements EmailProviderPort {
   private async attempt(message: EmailMessage): Promise<SendResult> {
     const fromRaw = (this.env.EMAIL_FROM ?? '').trim();
     const from = extractAddress(fromRaw);
+    // Issue 160 (desenho 188 D-188-01): unico ponto que decide o destino real. message.to nao muda.
+    const destino = decidirDestino({
+      appEnv: this.env.APP_ENV,
+      from,
+      recipient: message.to,
+      accountRecipient: this.env.RESEND_ACCOUNT_RECIPIENT,
+    });
 
     if (from === RESEND_TEST_SENDER) {
-      // Remetente de teste: so para o e-mail da conta, sem depender de dominio verificado.
-      if (!sameAddress(message.to, this.env.RESEND_ACCOUNT_RECIPIENT)) {
-        return recusa('destinatario_nao_permitido');
-      }
+      // Remetente de teste: so para a conta, ou redirecionado para a conta em local e test (decisao 1000).
+      if (destino.kind === 'recusado') return recusa(destino.code);
     } else {
       // Ordem do desenho 37 §3: marcador, remetente no dominio, depois segredo.
       const domain = normalizeDomain(this.env.RESEND_VERIFIED_DOMAIN);
@@ -143,7 +148,9 @@ export class ResendProvider implements EmailProviderPort {
     if (key === '') return naoConfigurado('segredo_ausente');
     if (!isSafeAddress(message.to)) return recusa('destinatario_invalido');
 
-    const rendered = this.deps.renderer.render(message.templateKey, message.params);
+    let rendered = this.deps.renderer.render(message.templateKey, message.params);
+    // Marcador so no envio redirecionado (D-188-06). Antes do JSON: o original entra so no corpo HTTP.
+    if (destino.kind === 'redirecionado') rendered = marcarRedirecionado(rendered, message.to);
     const res = await this.deps.http.post({
       url: RESEND_ENDPOINT,
       headers: {
@@ -153,7 +160,7 @@ export class ResendProvider implements EmailProviderPort {
       },
       body: JSON.stringify({
         from: fromRaw,
-        to: message.to,
+        to: destino.kind === 'redirecionado' ? destino.to : message.to,
         subject: rendered.subject,
         text: rendered.text,
       }),

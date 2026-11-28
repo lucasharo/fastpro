@@ -1,13 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "X-Frame-Options", "value": "DENY" }
-      ]
-    }
-  ]
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "regions": ["gru1"],
+  "buildCommand": "cd ../.. && npx turbo run build --filter=@fastpro/web..."
 }

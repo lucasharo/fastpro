@@ -102,14 +102,41 @@ test('parametros de sessao: somente leitura por padrao nos dois papeis', async (
   }
 });
 
-test('T-BK-09: app_backup_reader le toda tabela e sequencia de dominio (nenhuma fica de fora do backup)', async () => {
+// Excecoes deliberadas de leitura do backup (decisao de desenho, nao esquecimento). Cada uma tem um
+// teste estatico que exige a revogacao na propria migracao (geocode-point-migration, draft-migration):
+//   app.geocode_point, app.geocode_budget: 68-DESENHO-H021 §2.3 (leitura direta so por funcao).
+//   app.request_draft: H-025, teste D-10 (revoke total a papeis de API e de backup).
+//   app.professional_area, app.professional_area_history, app.professional_service: H-036 (#49), desenho §3
+//     (revoke total a papeis de API e de backup; base e raio sao dados de localizacao privados).
+//   app.identity_document: 107-DESENHO-H037 (revoke de app_backup_reader, sem leitura).
+//   app.admin_credential: hash de senha do admin fica fora do backup (migracao 20261127200000); recria-se pelo script.
+// NAO esta na lista: app.media_asset. A migracao 20261112120000 revoga o papel de backup, mas nao ha
+// decisao registrada que aceite excluir essa tabela do backup (#140, secao 12). Falha conhecida ate decidir.
+// Motivo: dados pessoais e geograficos restritos (geocodificacao). DECISAO A CONFIRMAR PELO ARQUITETO (#29): a exclusao do backup e aceita ate la.
+const EXCECOES_BACKUP_LEITURA = new Set([
+  'app.geocode_point',
+  'app.geocode_budget',
+  'app.request_draft',
+  'app.professional_area',
+  'app.professional_area_history',
+  'app.professional_service',
+  'app.identity_document',
+  'app.admin_credential',
+]);
+
+test('T-BK-09: app_backup_reader le toda tabela e sequencia de dominio (exceto as excecoes declaradas)', async () => {
   const tables = await tablePrivileges();
   assert.ok(tables.length > 0, 'deveria haver tabelas de dominio nos esquemas do produto');
   assert.deepEqual(
-    tables.filter((t) => !t.reader_select).map((t) => t.objeto),
+    tables.filter((t) => !t.reader_select && !EXCECOES_BACKUP_LEITURA.has(t.objeto)).map((t) => t.objeto),
     [],
     'tabela de dominio sem SELECT ao papel de leitura (o backup sairia incompleto)',
   );
+  for (const excecao of EXCECOES_BACKUP_LEITURA) {
+    const linha = tables.find((t) => t.objeto === excecao);
+    if (linha === undefined) continue;
+    assert.equal(linha.reader_select, false, `${excecao} esta na lista de excecoes, mas o papel de leitura tem SELECT`);
+  }
   assert.deepEqual(
     (await sequencePrivileges()).filter((s) => !s.reader_select).map((s) => s.objeto),
     [],

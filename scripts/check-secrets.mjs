@@ -27,7 +27,24 @@ const SERVICE_ROLE_ALLOWED = [
   'apps/api/src/modules/media/',
   'apps/api/src/modules/identity/',
   'packages/config/',
+  // Testes de privilegio de papel no banco (decisao 803).
+  'packages/db/tests/',
 ];
+// Arquivos exatos da API que montam o segredo de servico (decisao 803). Comparacao por caminho
+// inteiro: um arquivo de nome parecido na mesma pasta continua reprovado.
+const SERVICE_ROLE_EXACT = new Set([
+  'apps/api/src/identity-docs/identity-doc-montagem.ts',
+  'apps/api/src/professional-composicao.ts',
+  // Composicao do download do extrato de direitos do titular (leitura do Storage; decisao 803).
+  'apps/api/src/privacy/privacy-composicao.ts',
+  'apps/api/tests/identity-docs-montagem.test.ts',
+  'apps/api/tests/professional-composicao.test.ts',
+]);
+
+// Excecao exata de um caminho: lista publica de senhas comuns, nao segredo (decisao do usuario,
+// 11/11, H-016). So a verificacao de atribuicao (assignments) e dispensada para este arquivo;
+// padroes de token, chave e hexadecimal continuam valendo nele. Nao usar para outros caminhos.
+const PUBLIC_WORDLIST_EXEMPT = new Set(['packages/domain/src/identity/common-passwords.ts']);
 
 const HEX_LONG = /(?<![0-9A-Fa-f])[0-9A-Fa-f]{64,}(?![0-9A-Fa-f])/;
 const SECRET_PATTERNS = [
@@ -44,7 +61,7 @@ const SECRET_PATTERNS = [
   [/\bBearer\s+[A-Za-z0-9._~+/-]{20,}=*/, 'cabecalho Bearer com token'],
   [HEX_LONG, 'valor hexadecimal longo (>= 64 digitos)'],
   [
-    /\bpostgres(?:ql)?:\/\/[^:\s/@]+:(?![<$%{]|\s|your|password|xxx|changeme|\*+)[^@\s]{4,}@/i,
+    /\bpostgres(?:ql)?:\/\/[^:\s/@]+:(?![<$%{]|\s|your|password|xxx|changeme|\*+|senha@)[^@\s]{4,}@/i,
     'URL de banco com senha',
   ],
 ];
@@ -56,8 +73,17 @@ const SENSITIVE_NAME =
   /secret|token|passw(?:or)?d|pepper|hmac|api[_-]?key|private[_-]?key|service[_-]?role|enc[_-]?key|signing[_-]?key/i;
 const KEY_SUFFIX = /[a-z0-9]Key$|_KEY$|_key$/;
 // Valores que nao sao segredo: modelos, expressoes de leitura/validacao de env e referencias.
+// undefined/null, geradores aleatorios (randomBytes/randomUUID) e parametro SQL (any($1...)) nao
+// carregam segredo literal (decisao 805). Valores inteiros: "undefinedX" continua verificado.
 const PLACEHOLDER =
-  /^(?:<.*|\$.*|%.*|x{3,}|\*{3,}|changeme.*|your[-_].*|example.*|placeholder.*|dummy.*|\.{3}|z\..*|process\.env.*|import\.meta.*|env\..*|config\..*|secrets\..*)$/i;
+  /^(?:<.*|\$.*|%.*|x{3,}|\*{3,}|changeme.*|your[-_].*|example.*|placeholder.*|dummy.*|\.{3}|z\..*|process\.env.*|import\.meta.*|env\..*|config\..*|secrets\..*|undefined|null|random(?:Bytes|UUID)\(.*|any\(\$\d.*)$/i;
+// Nomes de rota e de expressao regular (X_PATH = '/v1/...', TOKEN_RE = /^.../): so nao sao
+// segredo quando o valor comeca com "/" (decisao 804). Sem barra, o valor segue verificado.
+const ROUTE_NAME = /_(?:PATH|ROUTE|RE|REGEX)$/i;
+// Chave de deduplicacao de fila (dedupe_key, dedupeKey, ops.job.dedupe_key): identificador de idempotencia, nao segredo. So o nome; padroes de token seguem valendo no valor.
+const DEDUPE_NAME = /(?:^|\.)dedupe_?key$/i;
+// Derivacao de chave (PBKDF2/scrypt, ex.: verificador SCRAM no dev-logins): o valor e chamada de funcao, nao literal.
+const KDF_CALL = /^(?:pbkdf2(?:Sync)?|scrypt(?:Sync)?)\(/;
 
 function assignments(line) {
   const found = [];
@@ -65,6 +91,9 @@ function assignments(line) {
     const [, name, quote, value] = m;
     if (!(SENSITIVE_NAME.test(name) || KEY_SUFFIX.test(name))) continue;
     if (value === '' || PLACEHOLDER.test(value)) continue;
+    if (DEDUPE_NAME.test(name)) continue;
+    if (KDF_CALL.test(value)) continue;
+    if (ROUTE_NAME.test(name) && value.startsWith('/')) continue;
     const upper = /^[A-Z][A-Z0-9_]*$/.test(name);
     const looksSecret = quote
       ? (value.length >= 12 && /\d/.test(value)) || value.length >= 20
@@ -81,10 +110,11 @@ function scanLine(path, line) {
     if (re === HEX_LONG && /sha-?(?:256|512)\b/i.test(line)) continue;
     if (re.test(line)) found.push(kind);
   }
-  found.push(...assignments(line));
+  if (!PUBLIC_WORDLIST_EXEMPT.has(path)) found.push(...assignments(line));
   if (
     /service[_-]?role|SUPABASE_SECRET_KEY/i.test(line) &&
-    !startsWithAny(path, SERVICE_ROLE_ALLOWED)
+    !startsWithAny(path, SERVICE_ROLE_ALLOWED) &&
+    !SERVICE_ROLE_EXACT.has(path)
   ) {
     found.push('referencia a service_role fora de modulo permitido');
   }

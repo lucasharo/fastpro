@@ -1,5 +1,7 @@
 # Desenho H-010 — Backup manual e keep-alive (Issue #23, WF-03, Architect)
 
+> [SUPERADO em parte — Rodada 73/75, #151] A parte de backup/restauração deste documento saiu do escopo; o keep-alive continua válido. Texto original abaixo mantido.
+
 - **Rastro:** 27-REFINO-H010 (BK-01..BK-10, KA-01..KA-08, Q1..Q7); 08-ARQUITETURA §16.2 (D), §16.7, §17; 10-ADRS ADR-020; 11-ARQ R-08, R-32, D-01; 17-CHECKLIST B-39, B-44; 24-DESENHO-H008 (rota separada, `CRON_SECRET`); spikes/S-02 (papel atual com `rolbypassrls = true`; host direto só IPv6, alcançável desta máquina) e S-10 (S10-2); supabase/README e `packages/db/scripts` (executor `pg` fixado, `.env.local` lido por código).
 - **Natureza:** SOMENTE documento. Nada foi executado: nenhum dump, conexão ao banco, download, papel, conta ou agendamento foi criado. Os itens abaixo são desenho para o DEV.
 - **Inspeção local feita:** `pg_dump`, `psql`, `docker` e `supabase` CLI **não** estão no PATH desta máquina (busca por `pg_dump.exe` em C: e D: com 5 níveis ficou sem resultado; busca parcial). Existem: Node 22 e `pg@8.23.1` do monorepo, Python 3.13 (sem `psycopg`), `openssl 3.5` e `gpg 2.4` (do Git for Windows), `tar`.

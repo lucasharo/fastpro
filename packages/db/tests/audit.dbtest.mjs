@@ -89,6 +89,9 @@ function append(c, a) {
 }
 
 const AT_SQL = `to_char(at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
+// ATENCAO: o alias `seq` (texto) esconde a coluna. Em `order by seq` o PostgreSQL ordena pelo alias
+// (texto: 1, 10, 11, ..., 2) e nao pela coluna bigint; por isso as consultas ordenam por
+// `audit.audit_event.seq` (Issue 140, triagem do T-02).
 const ROW_SQL = `select id, seq::text as seq, ${AT_SQL} as at, actor_ref, actor_role, action, object_type,
   object_id, before_state, after_state, reason_code, correlation_id, hash_version, prev_hash, row_hash
   from audit.audit_event`;
@@ -186,9 +189,54 @@ test('D-02b regressao: app_api executa apenas audit_append entre as funcoes de p
        join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'private' and has_function_privilege('app_api', p.oid, 'EXECUTE')`,
   );
+  // Excecoes EXPLICITAS, por desenho, de funcoes de private executaveis por app_api. Qualquer outra
+  // funcao de private segue proibida. Cada familia tem o desenho que a autoriza:
+  // - catalogo (H-018, decisao do Orquestrador no #31): docs/factory/53-DESENHO-H018 §2 e §3.1;
+  //   leitura e busca (H-019: docs/factory/64-DESENHO-H019, catalog_search) e revisoes (H-107:
+  //   docs/factory/81-DESENHO-H107, catalog_revision_list).
+  // - rascunho (H-013, H-025, H-030): docs/factory/91-DESENHO-H013, 74-DESENHO-H025, 90-DESENHO-H030.
+  // - midia (H-026, H-027, H-029): docs/factory/88-DESENHO-H026, 93-DESENHO-H027, 98-DESENHO-H029.
+  // - acesso comercial (H-045, Issue 58): docs/factory/114-DESENHO-H045 §4 e §6; decisao 279 (app_api e app_system).
+  // - planos e precos (H-046, Issue 59): docs/factory/120-DESENHO-H046 §3; decisao 345 (app_api e app_system).
+  // Lista atualizada na Issue 140 (triagem do db:test): a versao anterior so previa o catalogo do H-018.
   assert.deepEqual(
-    res.rows.map((r) => r.proname),
-    ['audit_append'],
+    res.rows.map((r) => r.proname).sort(),
+    [
+      'audit_append',
+      'catalog_admin_list',
+      'catalog_group_save',
+      'catalog_public_list',
+      'catalog_revision_list',
+      'catalog_search',
+      'catalog_service_save',
+      'catalog_synonym_save',
+      'commercial_access',
+      'draft_confirm',
+      'draft_create',
+      'draft_discard',
+      'draft_get',
+      'draft_identity_get',
+      'draft_identity_set',
+      'draft_patch',
+      'draft_review_get',
+      'media_delete',
+      'media_finalize',
+      'media_get',
+      'media_issue',
+      'media_known',
+      'media_list',
+      'media_original_cleanup_list',
+      'media_original_removed',
+      'media_purge_done',
+      'media_read_target',
+      'media_reduce_begin',
+      'media_reduce_done',
+      'media_reduce_reject',
+      'media_reduce_release',
+      'media_reorder',
+      'media_sweep',
+      'plan_price_at',
+    ].sort(),
   );
   const ex = await client.query(
     `select p.oid::regprocedure::text as fn from pg_proc p
@@ -252,7 +300,7 @@ test('D-05 funcoes de escrita/verificacao: SECURITY DEFINER com search_path vazi
   );
 });
 
-test('D-06 catalogo semeia as 5 acoes do CA-14 e nenhuma chave semeada e proibida', async () => {
+test('D-06 catalogo semeia as 6 acoes (5 do CA-14 + audit.queried do H-104) e nenhuma chave semeada e proibida', async () => {
   const res = await client.query(
     `select action, object_type, reason_required, active, private.audit_keys_are_clean(state_keys) as clean
        from audit.action_catalog`,
@@ -264,6 +312,7 @@ test('D-06 catalogo semeia as 5 acoes do CA-14 e nenhuma chave semeada e proibid
     'completion.corrected': ['service_request', true],
     'payment.refunded': ['payment', true],
     'consent.changed': ['contact_consent', false],
+    'audit.queried': ['audit_query', false],
   };
   for (const [action, [objectType, reason]] of Object.entries(seeded)) {
     assert.ok(by[action], `acao ${action} ausente`);
@@ -458,7 +507,9 @@ test('T-02 CA-08: seq consecutivo, encadeamento, paridade de hash SQL x TS e ver
         ).rows[0].id,
       );
     }
-    const rows = (await client.query(`${ROW_SQL} where id = any($1) order by seq`, [ids])).rows;
+    const rows = (
+      await client.query(`${ROW_SQL} where id = any($1) order by audit.audit_event.seq`, [ids])
+    ).rows;
     assert.equal(rows.length, 3);
     let prev = start.last_hash;
     let seq = BigInt(start.last_seq);
@@ -480,7 +531,7 @@ test('T-02 CA-08: seq consecutivo, encadeamento, paridade de hash SQL x TS e ver
       reason: null,
     });
     // O espelho TS tambem valida a cadeia inteira lida do banco.
-    const all = (await client.query(`${ROW_SQL} order by seq`)).rows.map((r) => ({
+    const all = (await client.query(`${ROW_SQL} order by audit.audit_event.seq`)).rows.map((r) => ({
       ...toFields(r),
       rowHash: r.row_hash,
     }));

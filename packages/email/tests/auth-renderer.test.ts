@@ -16,10 +16,10 @@ const PARAMS = {
 describe('T-H011-04 renderizador de acesso_login', () => {
   const renderer = createAuthAwareRenderer(createMinimalRenderer());
 
-  it('assunto generico e corpo com link, codigo, prazo e orientacao', () => {
+  it('assunto generico e corpo so com codigo, prazo e orientacao (sem link: login por OTP)', () => {
     const out = renderer.render('acesso_login', PARAMS);
     expect(out.subject).toBe(ACCESS_SUBJECT);
-    expect(out.text).toContain(PARAMS.link);
+    expect(out.text).not.toContain(PARAMS.link);
     expect(out.text).toContain('482913');
     expect(out.text).toContain('15 minutos');
     expect(out.text).toContain('ignore esta mensagem');
@@ -40,7 +40,6 @@ describe('T-H011-04 renderizador de acesso_login', () => {
   it('parametros fora do formato recusam sem devolver os valores', () => {
     const casos = [
       { ...PARAMS, code: '12345' },
-      { ...PARAMS, link: 'javascript:alert(1)' },
       { ...PARAMS, minutos: 0 },
       { link: PARAMS.link, code: PARAMS.code },
     ];

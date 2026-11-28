@@ -131,7 +131,7 @@ Nenhuma implementação iniciada (Gate 3 depende de autorização do usuário).
 | H-116 | #125 |
 | H-117 | #126 |
 | H-118 | #127 |
-| H-119 | #128 |
+| H-119 | #128 — REMOVIDA do escopo (Rodada 73/75, #151) |
 | H-120 | #129 |
 | H-121 | #130 |
 | H-122 | #131 |

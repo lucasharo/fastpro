@@ -21,10 +21,11 @@ Conta de profissional com e-mail e senha no Supabase Auth; e-mail de verificaç�
 ### 2.2 Verificação de e-mail
 
 - **CA-H016-05 [APROVADO, FA-002; H-031].** Dado um profissional com e-mail não verificado, quando tenta publicar pedido ou aceitar trabalho, inclusive por chamada direta de API, então é recusado e nada é criado.
-- **CA-H016-06 [DELEGADO, H-093; I-27].** Dado um cadastro em desenvolvimento, quando o e-mail de verificação é enviado, então ele chega ao Mailpit local e nenhum e-mail sai para endereço real.
+- **CA-H016-06 [DELEGADO, H-093; I-27; atualizado pela decisão 77 de 11-DECISOES.md].** Dado um cadastro, quando o e-mail de verificação é enviado, então ele sai pelo adaptador Resend que o login já usa (decisão 55), sem interruptor de liga/desliga. Enquanto o remetente for o de teste, o destinatário só pode ser o e-mail da conta registrada; o envio segue os limites de cota já definidos. O Mailpit saiu do projeto (decisão do usuário de 2026-11-11, registrada em `packages/email/src/select.ts`).
 - **CA-H016-07 [PROPOSTA].** Dado o link de verificação, quando o profissional o confirma com ação na página (POST), então o e-mail fica verificado; abrir o link (GET) não consome o link (padrão D8). Validade e uso único conforme D-H016-2.
 - **CA-H016-08 [PROPOSTA].** Dado um link expirado ou já usado, quando aberto, então é recusado e a tela oferece reenvio, sem revelar se o e-mail existe.
 - **CA-H016-09 [PROPOSTA, RF-040].** Dado reenvios seguidos do e-mail de verificação, quando excedem o intervalo mínimo ou o teto por e-mail e IP, então a resposta é 429 com `Retry-After`.
+- **CA-H016-23 [PROPOSTA; D-H012-6, H-012].** Dado um e-mail que já tem usuário criado por link de cliente (H-012) ou por outro cadastro não verificado, quando um profissional cadastra esse e-mail, então a verificação não é herdada: a conta de profissional nasce com e-mail não verificado e exige nova verificação, e a verificação de um usuário existente não muda. Motivo: quem pré-cadastra com o e-mail de outra pessoa não ganha "e-mail verificado" porque a pessoa usou um link de cliente (R-3 de 46-DESENHO-H012).
 
 ### 2.3 Login
 

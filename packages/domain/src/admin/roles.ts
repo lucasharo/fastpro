@@ -1,0 +1,67 @@
+// H-102 | Papeis, permissoes e mapa papel x permissao (docs/factory/54-DESENHO-H102.md §1; semente de
+// app.admin_role_permission na migracao 20261111220000_admin_create_rbac). Logica pura.
+// Superadmin NAO herda as demais permissoes (segregacao, RF-145).
+
+export const ADMIN_ROLES = [
+  'superadmin',
+  'verificacao',
+  'moderador',
+  'financeiro',
+  'suporte',
+  'auditor',
+  'governanca_dados',
+] as const;
+export type AdminRole = (typeof ADMIN_ROLES)[number];
+
+/** Papeis que a tela de Equipe pode dar a um admin novo. Superadmin exige dupla aprovacao ou o script local. */
+export const ADMIN_GRANTABLE_ROLES: readonly AdminRole[] = ADMIN_ROLES.filter((r) => r !== 'superadmin');
+
+export const ADMIN_PERMISSIONS = [
+  'verification.review',
+  'moderation.decide',
+  'finance.refund.request',
+  'finance.refund.approve',
+  'support.completion.correct',
+  'audit.read',
+  'catalog.manage',
+  'admin.role.manage',
+  'case.open_sensitive',
+  'case.authorize_sensitive',
+  'ops.panel.read',
+  // H-105 (Issue 114, 80 §1): suspensao permanente pedida pelo Suporte e aprovada por Moderadores.
+  'account.suspend.request',
+  'account.suspend.approve',
+  // H-109 (82 §5): politica de retencao e hold. Papel governanca_dados.
+  'retention.policy.manage',
+  'retention.hold.manage',
+  // H-111 (Issue 120, 147 §6.3): direitos do titular. Papel dpo (e superadmin) decide; suporte so le (campos reduzidos).
+  'dsr.read',
+  'dsr.decide',
+  'dsr.open_assisted',
+] as const;
+export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
+
+export const ADMIN_ROLE_PERMISSIONS: Readonly<Record<AdminRole, readonly AdminPermission[]>> = {
+  superadmin: ['admin.role.manage', 'catalog.manage', 'case.authorize_sensitive', 'ops.panel.read'],
+  verificacao: ['verification.review'],
+  moderador: ['moderation.decide', 'account.suspend.approve'],
+  financeiro: ['finance.refund.request', 'finance.refund.approve'],
+  suporte: ['support.completion.correct', 'case.open_sensitive', 'account.suspend.request'],
+  auditor: ['audit.read'],
+  // H-109 (82 §5): papel proprio de governanca de dados. O Superadmin nao herda estas permissoes.
+  governanca_dados: ['retention.policy.manage', 'retention.hold.manage'],
+};
+
+export function isAdminRole(value: unknown): value is AdminRole {
+  return typeof value === 'string' && (ADMIN_ROLES as readonly string[]).includes(value);
+}
+
+/** Permissoes efetivas de um conjunto de papeis ativos. Papel desconhecido nao concede nada. */
+export function adminPermissionsOf(roles: readonly string[]): ReadonlySet<string> {
+  const out = new Set<string>();
+  for (const role of roles) {
+    if (!isAdminRole(role)) continue;
+    for (const permission of ADMIN_ROLE_PERMISSIONS[role]) out.add(permission);
+  }
+  return out;
+}

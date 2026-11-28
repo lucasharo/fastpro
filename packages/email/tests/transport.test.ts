@@ -10,7 +10,6 @@ import {
   RESEND_ENDPOINT,
 } from '../src/index.js';
 import type { EmailEnv } from '../src/index.js';
-import { FakeSmtp } from './doubles.js';
 
 const CHAVE_T = 'chave-ficticia-0002';
 const CHAVE_IDEM = 'chave-transporte-1';
@@ -36,7 +35,6 @@ function fakeFetch(calls: unknown[], status = 200) {
 
 function resendWith(env: EmailEnv, fetchImpl: typeof fetch) {
   return createEmailProvider(env, {
-    smtp: new FakeSmtp(),
     http: createFetchHttpTransport(fetchImpl),
     renderer: createMinimalRenderer(),
     clock: new FakeClock(),

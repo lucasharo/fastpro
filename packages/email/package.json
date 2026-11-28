@@ -2,7 +2,7 @@
   "name": "@fastpro/email",
   "version": "0.0.0",
   "private": true,
-  "description": "H-093: adaptadores de e-mail (Mailpit e Resend) atras de EmailProviderPort",
+  "description": "H-093: adaptador de e-mail (Resend) atras de EmailProviderPort",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

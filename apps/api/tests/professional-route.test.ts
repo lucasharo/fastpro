@@ -1,0 +1,529 @@
+// H-016 | Rotas do profissional em memoria (T-H016-01, 02, 03, 07, 08, 11, 12, 13; CA-H016-01 a 13).
+// Repositorio em memoria com as mesmas regras de contador (gateProfessionalLogin). Relogio injetado,
+// servidor de loopback, fetch bloqueado. Senhas e e-mails sinteticos. Sem banco, sem rede, sem e-mail.
+globalThis.fetch = () => {
+  throw new Error('rede bloqueada nos testes de H-016');
+};
+
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { createServer, request, type IncomingHttpHeaders, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { randomBytes } from 'node:crypto';
+import {
+  bucketStartSeconds,
+  decideRateWindow,
+  gateProfessionalLogin,
+  type ProfessionalAuthPort,
+  type ProfessionalCredential,
+  type ProfessionalSendLimitPort,
+  type ProfessionalSendRuleSpec,
+  type RateWindowDecision,
+  LOGIN_THROTTLE_EMPTY,
+  type LoginThrottleState,
+} from '@fastpro/domain';
+import { handleRequest } from '../src/app.js';
+
+
+const novoSegredo = (): string => randomBytes(32).toString('base64url');
+const MIN = 60 * 1000;
+const PATH_CONFIRM = '/v1/auth/professional/verification/confirm';
+const PATH_LOGIN = '/v1/auth/professional/login';
+const T0 = Date.UTC(2099, 0, 1, 12);
+const EMAIL = 'pessoa.sintetica@example.test';
+const SENHA = 'senha-sintetica-x';
+
+interface Usuario {
+  readonly id: string;
+  readonly email: string;
+  password: string;
+  verified: boolean;
+  active: boolean;
+}
+
+interface Link {
+  readonly email: string;
+  readonly expiresAtMs: number;
+  used: boolean;
+}
+
+/** Porta em memoria: mesmas regras do adaptador (contador, link de 15 min, uso unico). */
+class PortaMemoria implements ProfessionalAuthPort {
+  readonly usuarios = new Map<string, Usuario>();
+  readonly links = new Map<string, Link>();
+  readonly contadores = new Map<string, LoginThrottleState>();
+  readonly sessoes: string[] = [];
+  verificacoes = 0;
+  falhaCadastro = false;
+  falhaLogin = false;
+  private seq = 0;
+
+  async register(email: string, password: string, nowMs: number): Promise<void> {
+    if (this.falhaCadastro) throw new Error('falha de infraestrutura simulada');
+    if (this.usuarios.has(email)) return; // mesma saida do cadastro novo (anti-enumeracao)
+    this.seq += 1;
+    this.usuarios.set(email, {
+      id: `u-${this.seq}`,
+      email,
+      password,
+      verified: false,
+      active: true,
+    });
+    // Codigo de 6 digitos (OTP): a chave e e-mail|codigo, como o hash guardado no banco.
+    const code = String(100000 + this.seq);
+    this.links.set(`${email}|${code}`, { email, expiresAtMs: nowMs + 15 * MIN, used: false });
+  }
+
+  readonly tentativasCodigo = new Map<string, number>();
+
+  async verifyGate(email: string): Promise<{ kind: 'bloqueada'; retryAfterSeconds: number } | { kind: 'tentativa' }> {
+    const n = (this.tentativasCodigo.get(email) ?? 0) + 1;
+    this.tentativasCodigo.set(email, n);
+    return n > 5 ? { kind: 'bloqueada', retryAfterSeconds: 60 } : { kind: 'tentativa' };
+  }
+
+  async confirmVerification(email: string, code: string, nowMs: number): Promise<boolean> {
+    const link = this.links.get(`${email}|${code}`);
+    if (!link || link.used || link.expiresAtMs <= nowMs) return false;
+    link.used = true;
+    const usuario = this.usuarios.get(link.email);
+    if (usuario) usuario.verified = true;
+    return true;
+  }
+
+  async loginGate(
+    email: string,
+    nowMs: number,
+  ): Promise<{ kind: 'bloqueada'; retryAfterSeconds: number } | { kind: 'tentativa' }> {
+    if (this.falhaLogin) throw new Error('falha de infraestrutura simulada');
+    const estado = this.contadores.get(email) ?? LOGIN_THROTTLE_EMPTY;
+    const portao = gateProfessionalLogin(estado, nowMs);
+    this.contadores.set(email, portao.next);
+    if (portao.kind === 'bloqueada') return { kind: 'bloqueada', retryAfterSeconds: portao.retryAfterSeconds };
+    return { kind: 'tentativa' };
+  }
+
+  async verifyPassword(email: string, password: string): Promise<ProfessionalCredential | null> {
+    this.verificacoes += 1;
+    const usuario = this.usuarios.get(email);
+    if (!usuario || usuario.password !== password) return null;
+    return { userId: usuario.id, emailVerified: usuario.verified, active: usuario.active };
+  }
+
+  async loginSucceeded(email: string): Promise<void> {
+    this.contadores.delete(email);
+  }
+
+  async openSession(): Promise<{ secret: string }> {
+    const secret = novoSegredo();
+    this.sessoes.push(secret);
+    return { secret };
+  }
+}
+
+/**
+ * Contador de envios em memoria: mesma decisao do rl_check (decideRateWindow), baldes por regra e
+ * valor. `falha` simula a indisponibilidade do banco (a rota deve responder 503, sem conta).
+ */
+class LimitesMemoria implements ProfessionalSendLimitPort {
+  readonly baldes = new Map<string, Map<number, number>>();
+  falha = false;
+
+  private chave(spec: ProfessionalSendRuleSpec): string {
+    return `${spec.rule}|${spec.value}`;
+  }
+
+  async check(spec: ProfessionalSendRuleSpec, nowMs: number): Promise<RateWindowDecision> {
+    if (this.falha) throw new Error('falha de contador simulada');
+    const mapa = this.baldes.get(this.chave(spec)) ?? new Map<number, number>();
+    return decideRateWindow({
+      nowSeconds: Math.floor(nowMs / 1000),
+      bucketSeconds: spec.bucketSeconds,
+      spanSeconds: spec.spanSeconds,
+      limit: spec.limit,
+      buckets: [...mapa].map(([windowStart, count]) => ({ windowStart, count })),
+    });
+  }
+
+  async record(spec: ProfessionalSendRuleSpec, nowMs: number): Promise<void> {
+    if (this.falha) throw new Error('falha de contador simulada');
+    const chave = this.chave(spec);
+    const mapa = this.baldes.get(chave) ?? new Map<number, number>();
+    const inicio = bucketStartSeconds(Math.floor(nowMs / 1000), spec.bucketSeconds);
+    mapa.set(inicio, (mapa.get(inicio) ?? 0) + 1);
+    this.baldes.set(chave, mapa);
+  }
+}
+
+interface Resposta {
+  readonly status: number;
+  readonly headers: IncomingHttpHeaders;
+  readonly text: string;
+}
+
+let server: Server | undefined;
+const porta = new PortaMemoria();
+const limites = new LimitesMemoria();
+let agora = T0;
+let pisoMs = 0;
+
+function post(path: string, body: string, contentType = 'application/json'): Promise<Resposta> {
+  return new Promise((resolve, reject) => {
+    const req = request(
+      {
+        host: '127.0.0.1',
+        port: (server?.address() as AddressInfo).port,
+        path,
+        method: 'POST',
+        headers: { 'Content-Type': contentType, 'Content-Length': Buffer.byteLength(body) },
+      },
+      (res) => {
+        const partes: Buffer[] = [];
+        res.on('data', (c: Buffer) => partes.push(c));
+        res.on('end', () =>
+          resolve({ status: res.statusCode ?? 0, headers: res.headers, text: Buffer.concat(partes).toString('utf8') }),
+        );
+      },
+    );
+    req.on('error', reject);
+    req.end(body);
+  });
+}
+
+const json = (valor: unknown) => JSON.stringify(valor);
+
+async function iniciar(): Promise<void> {
+  server = createServer((req, res) => {
+    void handleRequest(req, res, {
+      tickSecret: undefined,
+      professional: { port: porta, limits: limites, clock: { nowMs: () => agora }, responseFloorMs: pisoMs },
+    });
+  });
+  await new Promise<void>((ok) => server?.listen(0, '127.0.0.1', ok));
+}
+
+afterAll(async () => {
+  await new Promise<void>((ok) => (server ? server.close(() => ok()) : ok()));
+});
+
+beforeEach(async () => {
+  agora = T0;
+  porta.usuarios.clear();
+  porta.links.clear();
+  porta.contadores.clear();
+  porta.sessoes.length = 0;
+  porta.verificacoes = 0;
+  porta.falhaCadastro = false;
+  porta.falhaLogin = false;
+  limites.baldes.clear();
+  limites.falha = false;
+  if (!server) await iniciar();
+});
+
+/** Cria a conta e devolve o link de verificacao (o e-mail real nao sai dos testes). */
+async function criarConta(email = EMAIL, senha = SENHA): Promise<string> {
+  const r = await post('/v1/auth/professional/register', json({ email, password: senha }));
+  expect(r.status).toBe(202);
+  const chave = [...porta.links.entries()].find(([, l]) => l.email === email.toLowerCase())?.[0];
+  if (!chave) throw new Error('codigo nao gerado');
+  return chave.split('|')[1] ?? '';
+}
+
+describe('T-H016-01 cadastro (CA-H016-01)', () => {
+  it('cria conta nao verificada e enfileira o link (sem devolver senha)', async () => {
+    const r = await post('/v1/auth/professional/register', json({ email: EMAIL, password: SENHA }));
+    expect(r.status).toBe(202);
+    expect(JSON.parse(r.text)).toEqual({ status: 'accepted' });
+    expect(porta.usuarios.get(EMAIL)?.verified).toBe(false);
+    expect(r.text).not.toContain(SENHA);
+    expect(r.text).not.toContain(EMAIL);
+  });
+});
+
+describe('T-H016-02 anti-enumeracao no cadastro (CA-H016-02)', () => {
+  it('e-mail ja existente recebe o mesmo status, o mesmo corpo e nao troca a senha', async () => {
+    await criarConta();
+    const novo = await post('/v1/auth/professional/register', json({ email: 'outra@example.test', password: SENHA }));
+    agora += 61 * 1000; // o intervalo minimo de 60 s por e-mail (CA-H016-09) nao e o assunto deste teste
+    const existente = await post('/v1/auth/professional/register', json({ email: EMAIL, password: 'outra-senha-x' }));
+    expect(existente.status).toBe(novo.status);
+    expect(existente.text).toBe(novo.text);
+    expect(porta.usuarios.get(EMAIL)?.password).toBe(SENHA);
+  });
+});
+
+describe('T-H016-03 politica de senha no cadastro (CA-H016-03)', () => {
+  it('recusa senha curta, comum e igual ao e-mail com 422 no campo, sem criar nada', async () => {
+    const casos: Array<[string, string, string]> = [
+      ['curta@example.test', 'Ab1-cd', 'curta'],
+      ['comum@example.test', 'password123', 'comum'],
+      ['igual@example.test', 'igual@example.test', 'igual_email'],
+    ];
+    for (const [email, senha, motivo] of casos) {
+      const r = await post('/v1/auth/professional/register', json({ email, password: senha }));
+      expect(r.status).toBe(422);
+      expect(JSON.parse(r.text)).toEqual({ code: 'campo_invalido', campo: 'password', motivo });
+      expect(r.text).not.toContain(senha);
+    }
+    expect(porta.usuarios.size).toBe(0);
+  });
+
+  it('recusa e-mail mal formado com 422 no campo e-mail', async () => {
+    const r = await post('/v1/auth/professional/register', json({ email: 'sem-arroba', password: SENHA }));
+    expect(r.status).toBe(422);
+    expect(JSON.parse(r.text)).toEqual({ code: 'campo_invalido', campo: 'email', motivo: 'email' });
+  });
+
+  it('falha de infraestrutura devolve 503, nunca 202 falso', async () => {
+    porta.falhaCadastro = true;
+    const r = await post('/v1/auth/professional/register', json({ email: EMAIL, password: SENHA }));
+    expect(r.status).toBe(503);
+    expect(r.text).not.toContain(SENHA);
+  });
+
+  it('corpo fora de JSON: 415 sem JSON, 400 para texto invalido', async () => {
+    expect((await post('/v1/auth/professional/register', 'x=1', 'text/plain')).status).toBe(415);
+    expect((await post('/v1/auth/professional/register', '{nao-json')).status).toBe(400);
+  });
+});
+
+describe('T-H016-07 e T-H016-08 verificacao do e-mail (CA-H016-07, CA-H016-08)', () => {
+  it('confirma o codigo uma vez (204); reuso e codigo desconhecido devolvem o mesmo 410', async () => {
+    const code = await criarConta();
+    const ok = await post(PATH_CONFIRM, json({ email: EMAIL, code }));
+    expect(ok.status).toBe(204);
+    expect(porta.usuarios.get(EMAIL)?.verified).toBe(true);
+    const reuso = await post(PATH_CONFIRM, json({ email: EMAIL, code }));
+    const desconhecido = await post(PATH_CONFIRM, json({ email: EMAIL, code: '000000' }));
+    const malformado = await post(PATH_CONFIRM, json({ email: EMAIL, code: '12' }));
+    expect(reuso.status).toBe(410);
+    expect(desconhecido.text).toBe(reuso.text);
+    expect(malformado.text).toBe(reuso.text);
+    expect(JSON.parse(reuso.text)).toEqual({ code: 'link_invalid' });
+  });
+
+  it('codigo de outro e-mail nao confirma (o codigo e preso ao e-mail)', async () => {
+    const code = await criarConta();
+    const r = await post(PATH_CONFIRM, json({ email: 'outra.conta@example.test', code }));
+    expect(r.status).toBe(410);
+    expect(porta.usuarios.get(EMAIL)?.verified).toBe(false);
+  });
+
+  it('tentativas demais com o codigo: 429 com Retry-After', async () => {
+    const outro = 'trava.codigo@example.test';
+    await criarConta(outro);
+    let ultimo = 0;
+    for (let i = 0; i < 6; i++) ultimo = (await post(PATH_CONFIRM, json({ email: outro, code: '000000' }))).status;
+    expect(ultimo).toBe(429);
+  });
+
+  it('codigo expirado aos 15 min devolve 410', async () => {
+    const code = await criarConta();
+    agora += 15 * MIN;
+    const r = await post(PATH_CONFIRM, json({ email: EMAIL, code }));
+    expect(r.status).toBe(410);
+    expect(porta.usuarios.get(EMAIL)?.verified).toBe(false);
+  });
+});
+
+describe('T-H016-11 login e anti-enumeracao (CA-H016-10, CA-H016-11, CA-H016-13)', () => {
+  it('senha certa e conta verificada: 200, cookie de 7 dias e acesso completo', async () => {
+    const code = await criarConta();
+    await post(PATH_CONFIRM, json({ email: EMAIL, code }));
+    const r = await post(PATH_LOGIN, json({ email: EMAIL, password: SENHA }));
+    expect(r.status).toBe(200);
+    expect(JSON.parse(r.text)).toEqual({ access_level: 'full', email_verified: true });
+    const cookie = String(r.headers['set-cookie']);
+    expect(cookie).toMatch(/^__Host-fp_sess=[A-Za-z0-9_-]{43};/);
+    expect(cookie).toContain('Max-Age=604800');
+    expect(cookie).toContain('HttpOnly');
+    expect(cookie).toContain('Secure');
+    expect(cookie).toContain('SameSite=Lax');
+  });
+
+  it('conta nao verificada entra so para verificar (verification_only)', async () => {
+    await criarConta();
+    const r = await post(PATH_LOGIN, json({ email: EMAIL, password: SENHA }));
+    expect(r.status).toBe(200);
+    expect(JSON.parse(r.text)).toEqual({ access_level: 'verification_only', email_verified: false });
+  });
+
+  it('senha errada e e-mail inexistente: mesma resposta', async () => {
+    await criarConta();
+    const errada = await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-y' }));
+    const inexistente = await post(PATH_LOGIN, json({ email: 'ninguem@example.test', password: 'senha-errada-y' }));
+    expect(errada.status).toBe(401);
+    expect(inexistente.status).toBe(401);
+    expect(inexistente.text).toBe(errada.text);
+    expect(JSON.parse(errada.text)).toEqual({ code: 'invalid_credentials' });
+  });
+
+  it('conta inativa com senha certa devolve 403 generico', async () => {
+    await criarConta();
+    const usuario = porta.usuarios.get(EMAIL);
+    if (usuario) usuario.active = false;
+    const r = await post(PATH_LOGIN, json({ email: EMAIL, password: SENHA }));
+    expect(r.status).toBe(403);
+    expect(JSON.parse(r.text)).toEqual({ code: 'account_unavailable' });
+  });
+
+  it('senha acima de 72 bytes ou corpo sem forma: 401 sem contar tentativa', async () => {
+    const r = await post(PATH_LOGIN, json({ email: EMAIL, password: 'ç'.repeat(40) }));
+    expect(r.status).toBe(401);
+    expect(porta.contadores.size).toBe(0);
+  });
+});
+
+describe('T-H016-12 bloqueio progressivo (CA-H016-12)', () => {
+  it('quatro tentativas passam; a quinta espera 30 s, e a senha certa tambem recebe 429', async () => {
+    await criarConta();
+    for (let i = 0; i < 4; i++) {
+      expect((await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }))).status).toBe(401);
+    }
+    const barrada = await post(PATH_LOGIN, json({ email: EMAIL, password: SENHA }));
+    expect(barrada.status).toBe(429);
+    expect(barrada.headers['retry-after']).toBe('30');
+    expect(JSON.parse(barrada.text)).toEqual({ code: 'login_temporarily_blocked' });
+  });
+
+  it('apos a espera, a senha certa entra e zera o contador', async () => {
+    await criarConta();
+    for (let i = 0; i < 4; i++) await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }));
+    expect((await post(PATH_LOGIN, json({ email: EMAIL, password: SENHA }))).status).toBe(429);
+    agora += 31 * 1000;
+    const r = await post(PATH_LOGIN, json({ email: EMAIL, password: SENHA }));
+    expect(r.status).toBe(200);
+    expect(porta.contadores.has(EMAIL)).toBe(false);
+  });
+
+  it('cada nova falha depois da espera dobra a espera (30 s, 60 s) e o pedido barrado nao conta', async () => {
+    await criarConta();
+    for (let i = 0; i < 4; i++) await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }));
+    expect((await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }))).status).toBe(429);
+    agora += 31 * 1000;
+    expect((await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }))).status).toBe(401);
+    agora += 31 * 1000;
+    expect((await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }))).status).toBe(401);
+    agora += 31 * 1000;
+    const barrada = await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }));
+    expect(barrada.status).toBe(429);
+    expect(barrada.headers['retry-after']).toBe('29');
+  });
+
+  it('e-mail inexistente tambem conta e recebe a mesma espera', async () => {
+    for (let i = 0; i < 4; i++) await post(PATH_LOGIN, json({ email: 'fantasma@example.test', password: 'senha-errada-x' }));
+    const r = await post(PATH_LOGIN, json({ email: 'fantasma@example.test', password: 'senha-errada-x' }));
+    expect(r.status).toBe(429);
+    expect(r.headers['retry-after']).toBe('30');
+  });
+
+  it('50 tentativas simultaneas: exatamente 4 verificacoes reais e o resto recebe 429', async () => {
+    await criarConta();
+    const respostas = await Promise.all(
+      Array.from({ length: 50 }, () => post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-x' }))),
+    );
+    const bloqueadas = respostas.filter((r) => r.status === 429).length;
+    expect(porta.verificacoes).toBe(4);
+    expect(bloqueadas).toBe(50 - 4);
+  });
+});
+
+describe('piso de tempo de resposta (33 §5.1 passo 4, pedido de revisao)', () => {
+  it('cadastro e login so respondem depois do piso, inclusive nas recusas', async () => {
+    pisoMs = 120;
+    try {
+      const inicio = Date.now();
+      const cadastro = await post('/v1/auth/professional/register', json({ email: 'x', password: 'y' }));
+      expect(cadastro.status).toBe(422);
+      expect(Date.now() - inicio).toBeGreaterThanOrEqual(110);
+      const inicio2 = Date.now();
+      const login = await post(PATH_LOGIN, json({ email: 'nao-e-email', password: 'y' }));
+      expect(login.status).toBe(401);
+      expect(Date.now() - inicio2).toBeGreaterThanOrEqual(110);
+    } finally {
+      pisoMs = 0;
+    }
+  });
+});
+
+describe('login com falha de infraestrutura', () => {
+  it('falha do contador devolve 503, sem sessao', async () => {
+    await criarConta();
+    porta.falhaLogin = true;
+    const r = await post(PATH_LOGIN, json({ email: EMAIL, password: SENHA }));
+    expect(r.status).toBe(503);
+    expect(r.headers['set-cookie']).toBeUndefined();
+    expect(porta.sessoes.length).toBe(0);
+  });
+});
+
+describe('T-H016-07 nenhuma senha ou e-mail em resposta de erro', () => {
+  it('nenhuma resposta de login traz a senha enviada', async () => {
+    await criarConta();
+    const r = await post(PATH_LOGIN, json({ email: EMAIL, password: 'senha-errada-z' }));
+    expect(r.text).not.toContain('senha-errada-z');
+    expect(r.text).not.toContain(EMAIL);
+  });
+});
+
+
+describe('limites de envio do cadastro e do reenvio (CA-H016-09; 33 §2, §3.1 passo 2, §4.4)', () => {
+  const REGISTRO = '/v1/auth/professional/register';
+
+  it('segundo envio ao mesmo e-mail antes de 60 s: 429 com Retry-After restante, sem conta nova', async () => {
+    await criarConta();
+    agora += 20 * 1000;
+    const r = await post(REGISTRO, json({ email: EMAIL, password: SENHA }));
+    expect(r.status).toBe(429);
+    expect(r.headers['retry-after']).toBe('40');
+    expect(JSON.parse(r.text)).toEqual({ code: 'muitos_pedidos', retry_after_seconds: 40 });
+    expect(r.text).not.toContain(EMAIL);
+    expect(porta.usuarios.size).toBe(1);
+    expect(porta.links.size).toBe(1);
+  });
+
+  it('depois de 60 s o mesmo e-mail volta a passar (202)', async () => {
+    await criarConta();
+    agora += 60 * 1000;
+    const r = await post(REGISTRO, json({ email: EMAIL, password: SENHA }));
+    expect(r.status).toBe(202);
+  });
+
+  it('quinto envio por hora passa; o sexto (com 61 s entre envios) e barrado pelo teto de hora', async () => {
+    await criarConta(); // envio 1 em t=0
+    for (let i = 0; i < 4; i++) {
+      agora += 61 * 1000; // envios 2 a 5 em t=61, 122, 183, 244 s
+      expect((await post(REGISTRO, json({ email: EMAIL, password: SENHA }))).status).toBe(202);
+    }
+    agora += 61 * 1000; // envio 6 em t=305 s: o intervalo ja passou; so o teto de hora barra
+    const r = await post(REGISTRO, json({ email: EMAIL, password: SENHA }));
+    expect(r.status).toBe(429);
+    expect(r.headers['retry-after']).toBe('3295');
+    expect(porta.usuarios.size).toBe(1);
+    expect(porta.links.size).toBe(1);
+  });
+
+  it('teto por IP: o 11o cadastro na mesma hora e barrado, mesmo com e-mails diferentes', async () => {
+    for (let i = 0; i < 10; i++) {
+      const r = await post(REGISTRO, json({ email: `pessoa${i}@example.test`, password: SENHA }));
+      expect(r.status).toBe(202);
+    }
+    const r = await post(REGISTRO, json({ email: 'pessoa10@example.test', password: SENHA }));
+    expect(r.status).toBe(429);
+    expect(r.headers['retry-after']).toBe('3600');
+    expect(porta.usuarios.has('pessoa10@example.test')).toBe(false);
+  });
+
+  it('falha do contador responde 503 e nao cria conta', async () => {
+    limites.falha = true;
+    const r = await post(REGISTRO, json({ email: EMAIL, password: SENHA }));
+    expect(r.status).toBe(503);
+    expect(r.text).not.toContain(SENHA);
+    expect(porta.usuarios.size).toBe(0);
+  });
+
+  it('pedido com senha fraca e barrado por forma (422) antes de contar envio', async () => {
+    const r = await post(REGISTRO, json({ email: EMAIL, password: 'curta' }));
+    expect(r.status).toBe(422);
+    expect(limites.baldes.size).toBe(0);
+  });
+});

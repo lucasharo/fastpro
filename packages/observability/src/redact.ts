@@ -8,7 +8,9 @@ interface Rule {
 }
 
 const SEP = String.raw`[\s.-]?`;
-const PII_KEYS = String.raw`e-?mail|phone|telefone|celular|cpf|cnpj|nome|name|endereco|address|senha|password|token|segredo`;
+// H-014: code, secret e sid entram como chave (JSON e chave: valor). Codigo de 6 digitos e segredo de
+// sessao nao podem sair em log (52 §5, item 5).
+const PII_KEYS = String.raw`e-?mail|phone|telefone|celular|cpf|cnpj|nome|name|endereco|address|senha|password|token|segredo|secret|code|sid`;
 
 // A ordem importa: padroes mais especificos primeiro.
 const RULES: readonly Rule[] = [
@@ -38,7 +40,7 @@ const RULES: readonly Rule[] = [
   // senha: x / password: x / token: x (dois-pontos, com espaco opcional).
   {
     kind: 'credential',
-    pattern: /\b(?:senha|password|passwd|pwd|secret|segredo|token|session|sessao)\s*:\s*[^\s,;]+/gi,
+    pattern: /\b(?:senha|password|passwd|pwd|secret|segredo|token|session|sessao|code|sid)\s*:\s*[^\s,;]+/gi,
   },
   // E-mail ofuscado: "a [at] b [dot] c", "a (at) b.c", "a @ b.c" (espacos ao redor).
   {

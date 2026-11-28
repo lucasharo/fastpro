@@ -175,11 +175,11 @@ Regra por classe: **permitido enquanto `used < corte`**, no dia **e** no mês.
 
 - Com `used=90`: `auth` passa, `critico` já é adiado (CA-17, CA-20, CA-21). O texto de 08 §12.6 ("acima de 90 passam `auth` e crítico") fica **superado** por esta regra; ajuste a aplicar em 08 §12.6 e ADR-022.
 - **Reserva atômica** `private.email_quota_reserve(class, p_now)`: cria as linhas `dia_utc` e `mes` se faltarem, trava dia e depois mês, aplica `decideQuota`, e incrementa **as duas** linhas na mesma transação. Devolve `{permitido, bloqueado_por, alert_level, proxima_tentativa}`. A devolução (`email_quota_release`) só decrementa se a linha de reserva existir (>0).
-- **Alertas:** ao cruzar 70/85/95% do limite e ao chegar a ≥ 90/dia ou ≥ 2.700/mês, grava `alert_level` e `alerted_at` e emite métrica sem PII. Painel e alerta persistente: H-094/H-108.
+- **Alertas (H-094, 59-DESENHO-H094 §2):** ao cruzar 70% e 85% do limite (dia: 70 e 85; mês: 2.100 e 2.550), grava `alert_level` e `alerted_at` uma vez por subida e emite evento sem PII. Não há alerta de 95%. Os cortes de 90/dia e 2.700/mês são o corte da classe `critico` (linha da tabela acima), não alerta. Painel: H-108.
 - **Adiados** voltam por prioridade (`auth`, `critico`, `digest`, `lembrete`, depois `created_at`) na virada do dia UTC; são revalidados (§5.4, passo 2) e, se obsoletos, descartados.
 - **Chat e site nunca dependem disto** (CA-19): a mensagem automática é gravada pelo domínio de chat na transação do aceite, sem passar pelo `email_outbox`. Teste de garantia na §10.
 - **Resposta uniforme do login** (CA-18): quando `auth` não passa por razão do provedor, a linha fica `pendente` com recuo; a resposta HTTP continua 202 (H-097).
-- **Fronteira H-092 × H-094:** H-092 entrega reserva/devolução, degraus, descarte e adiamento. H-094 entrega persistência e visibilidade de alertas, reconciliação com o provedor, alargamento da janela de digest por nível de cota (gancho `windowFactor` já previsto, valor 1 em H-092) e o painel. Ver dúvida D-2.
+- **Fronteira H-092 × H-094 (decidida em 59-DESENHO-H094 §7):** H-092 entrega reserva/devolução, degraus, descarte e adiamento. H-094 entrega o contador, os alertas em 70/85% (gravação e evento na subida) e os testes de virada e degradação. **Fora de H-094:** reconciliação com o provedor, alargamento da janela de digest (`windowFactor` não é implementado) e o painel (H-108).
 
 ## 8. Leitura e cancelamento de resumo (resumo das regras)
 
@@ -245,7 +245,7 @@ Regra por classe: **permitido enquanto `used < corte`**, no dia **e** no mês.
 |---|---|---|
 | R-1 | "Imediato" depende do tick (≥ 1 min, ADR-011): o primeiro aviso sai em até ~1–2 min | Documentar nos textos de H-095/H-096; `auth` continua direto na requisição (H-097) |
 | R-2 | Timeout/queda após o provedor aceitar e antes de gravar `enviado` ⇒ e-mail duplicado | `idempotencyKey = dedupe_key` (suporte do Resend **[NÃO VERIFICADO]**, a confirmar em H-093); duplicata é rara e aceita no pior caso |
-| R-3 | Contador local diverge do painel do Resend (S-11: cabeçalhos de cota vieram 0) | Contagem conservadora (reserva antes); reconciliação em H-094 |
+| R-3 | Contador local diverge do painel do Resend (S-11: cabeçalhos de cota vieram 0) | Contagem conservadora (reserva antes); reconciliação fora de H-094 (59-DESENHO-H094 §7) |
 | R-4 | Despachante sem agendador: eventos presos se o job chegar a `falha` e nenhum evento novo entrar | Métrica de idade do evento mais antigo; H-108 alerta; no pior caso o próximo evento reativa |
 | R-5 | Evento "venenoso" repete falha a cada execução | Falha isolada por evento e métrica; coluna de tentativas em `outbox_event` fica como melhoria se ocorrer |
 | R-6 | `NotificationRule.isStillRelevant` depende de tabelas futuras (pedido, conversa) | Contrato testado com `StubRule`; cada história de categoria entrega a regra real e o teste dela |

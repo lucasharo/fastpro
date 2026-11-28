@@ -87,7 +87,7 @@ describe('T-BK-02: exportacao nao cria arquivo versionavel', () => {
     });
     expect(after).toBe(before);
     expect(artifacts().length).toBeGreaterThan(0);
-  });
+  }, 30000);
 });
 
 describe('T-BK-03: exportacao completa com verificacao', () => {

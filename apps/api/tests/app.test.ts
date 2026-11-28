@@ -188,10 +188,8 @@ describe('mesma origem e configuracao de exemplo (CA-09 e CA-06, parte local)', 
   });
 
   it('web de exemplo define nosniff e nao libera origem cruzada (CORS)', () => {
-    const text = readFileSync(new URL('../../web/vercel.json', import.meta.url), 'utf8');
-    const json = JSON.parse(text) as { headers: { headers: { key: string }[] }[] };
-    const keys = json.headers.flatMap((h) => h.headers.map((k) => k.key));
-    expect(keys).toContain('X-Content-Type-Options');
+    const text = readFileSync(new URL('../../web/next.config.ts', import.meta.url), 'utf8');
+    expect(text).toContain('X-Content-Type-Options');
     expect(text).not.toMatch(/Access-Control-Allow-Origin/i);
   });
 

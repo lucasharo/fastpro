@@ -1,5 +1,7 @@
 # Refino H-010 — Keep-alive e backup manual (Issue #23, WF-03, Product Owner)
 
+> [SUPERADO em parte — Rodada 73/75, #151] A parte de backup/restauração deste documento saiu do escopo; o keep-alive continua válido. Texto original abaixo mantido.
+
 - **Rastro:** Issue #23 `[E0] Keep-alive e backup manual` (21-ISSUES-CRIADAS, linha H-010; 16-MANIFESTO item 21); 14-BACKLOG H-010 e H-119; 12-TODO item 1; 08-ARQUITETURA §16.2 (D) e §16.7, §17; 10-ADRS ADR-020 (linha Supabase projeto inativo; §20.3, H3); 11-ARQ-RISCOS-E-TESTES R-08, R-32, D-01; 17-CHECKLIST-REVISAO B-44; 24-DESENHO-H008 (D e CRON_SECRET); spikes/S-02-RESULTADO (nomes de variáveis, sem valores); spikes/S-10-RESULTADO (keep-alive independente, S10-2); 26-REFINO-S08 (CA-S08-02b).
 - **Natureza:** SOMENTE documento. Nenhum código, conta, projeto, chave, branch, PR ou Project foi criado ou alterado. Nenhum export, restauração ou chamada ao banco foi executado neste refino.
 - **EXEC-ID:** não atribuído. Esta sessão não tem ferramenta de shell; não há execução a registrar.

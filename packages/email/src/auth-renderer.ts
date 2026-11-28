@@ -1,5 +1,5 @@
 // H-011 | Renderizador do e-mail de acesso (docs/factory/39-DESENHO-H011.md, §5; CA-H011-14).
-// Para acesso_login o corpo traz SOMENTE: link de uso unico, codigo de 6 digitos, prazo e a
+// Para acesso_login o corpo traz SOMENTE: codigo de 6 digitos (sem link, decisao de 2026-11-23), prazo e a
 // orientacao de ignorar. Nenhum nome, endereco, estado de cadastro ou dado de terceiro.
 // Outros modelos seguem o renderizador base. Texto final: H-094/H-097.
 import type { EmailRenderer, RenderedEmail } from './renderer.js';
@@ -7,7 +7,6 @@ import type { EmailRenderer, RenderedEmail } from './renderer.js';
 export const ACCESS_TEMPLATE = 'acesso_login';
 export const ACCESS_SUBJECT = 'Seu acesso ao FastPro';
 
-const LINK_RE = /^https?:\/\/\S+$/;
 const CODE_RE = /^[0-9]{6}$/;
 
 /** Erro sem valores: so o codigo fixo. Nunca carrega o link ou o codigo. */
@@ -20,10 +19,10 @@ export class AuthRenderError extends Error {
 }
 
 export function renderAccessEmail(params: Readonly<Record<string, unknown>>): RenderedEmail {
-  const { link, code, minutos } = params;
+  // Decisao do dono (2026-11-23): o cliente entra SO com o codigo (OTP). O link continua sendo gerado pelo
+  // desafio (compatibilidade), mas nao vai mais no e-mail.
+  const { code, minutos } = params;
   if (
-    typeof link !== 'string' ||
-    !LINK_RE.test(link) ||
     typeof code !== 'string' ||
     !CODE_RE.test(code) ||
     typeof minutos !== 'number' ||
@@ -36,10 +35,7 @@ export function renderAccessEmail(params: Readonly<Record<string, unknown>>): Re
   return {
     subject: ACCESS_SUBJECT,
     text: [
-      'Use o link ou o codigo abaixo para entrar no FastPro.',
-      '',
-      `Link (valido por ${minutos} minutos, uso unico):`,
-      link,
+      'Use o codigo abaixo para entrar no FastPro.',
       '',
       `Codigo (valido por ${minutos} minutos, uso unico): ${code}`,
       '',
@@ -48,12 +44,62 @@ export function renderAccessEmail(params: Readonly<Record<string, unknown>>): Re
   };
 }
 
-/** Envolve o renderizador base: acesso_login usa o texto do desafio; os demais seguem o base. */
+/** H-014 (52 §4.3): codigo de step-up. Corpo traz SOMENTE o codigo e os minutos; nunca link. */
+export const STEPUP_TEMPLATE = 'acesso_stepup';
+export const STEPUP_SUBJECT = 'Codigo de confirmacao do FastPro';
+
+export function renderStepUpEmail(params: Readonly<Record<string, unknown>>): RenderedEmail {
+  const { code, minutos } = params;
+  if (
+    typeof code !== 'string' ||
+    !CODE_RE.test(code) ||
+    typeof minutos !== 'number' ||
+    !Number.isInteger(minutos) ||
+    minutos < 1 ||
+    minutos > 60
+  ) {
+    throw new AuthRenderError();
+  }
+  return {
+    subject: STEPUP_SUBJECT,
+    text: [
+      'Use o codigo abaixo para confirmar a acao no FastPro.',
+      '',
+      `Codigo (valido por ${minutos} minutos, uso unico): ${code}`,
+      '',
+      'Se voce nao pediu esta confirmacao, ignore esta mensagem.',
+    ].join('\n'),
+  };
+}
+
+/** H-111 (147-DESENHO-H111 §5.1): codigo do step-up do titular. Mesmo corpo minimo (so o codigo e os minutos). */
+export const DSR_STEPUP_TEMPLATE = 'dsr_stepup';
+export const DSR_STEPUP_SUBJECT = 'Codigo para confirmar seu pedido sobre seus dados no FastPro';
+
+export function renderDsrStepUpEmail(params: Readonly<Record<string, unknown>>): RenderedEmail {
+  // Valida codigo e minutos (lanca AuthRenderError se invalidos) antes de montar o corpo.
+  renderStepUpEmail(params);
+  const { code, minutos } = params as { code: string; minutos: number };
+  return {
+    subject: DSR_STEPUP_SUBJECT,
+    text: [
+      'Use o codigo abaixo para confirmar o pedido sobre seus dados no FastPro.',
+      '',
+      `Codigo (valido por ${minutos} minutos, uso unico): ${code}`,
+      '',
+      'Se voce nao pediu esta confirmacao, ignore esta mensagem.',
+    ].join('\n'),
+  };
+}
+
+/** Envolve o renderizador base: acesso_login e acesso_stepup tem texto proprio; os demais seguem o base. */
 export function createAuthAwareRenderer(base: EmailRenderer): EmailRenderer {
   return {
     render(templateKey, params) {
-      if (templateKey !== ACCESS_TEMPLATE) return base.render(templateKey, params);
-      return renderAccessEmail(params);
+      if (templateKey === ACCESS_TEMPLATE) return renderAccessEmail(params);
+      if (templateKey === STEPUP_TEMPLATE) return renderStepUpEmail(params);
+      if (templateKey === DSR_STEPUP_TEMPLATE) return renderDsrStepUpEmail(params);
+      return base.render(templateKey, params);
     },
   };
 }

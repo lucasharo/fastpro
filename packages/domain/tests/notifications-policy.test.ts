@@ -72,7 +72,9 @@ describe('T-H92-01 politica por categoria', () => {
   it('resumo de aceite e de mensagem tem tipo proprio', () => {
     expect(summaryTypeFor('aceite')).toBe('aceite_resumo');
     expect(summaryTypeFor('mensagem')).toBe('mensagem_resumo');
-    expect(Object.keys(EMAIL_TYPE_POLICY)).toHaveLength(14);
+    // 15 desde H-014 (acesso_stepup, 52 §4.3); 17 desde H-099 (acesso_trial_t3d e acesso_trial_t0, desenho 163 §3.3);
+    // 18 desde H-111 (dsr_stepup, desenho 147 §5.1); 21 desde o Pacote D (mensagem ao profissional x2 e selecao_outro).
+    expect(Object.keys(EMAIL_TYPE_POLICY)).toHaveLength(21);
   });
 });
 
@@ -118,13 +120,13 @@ describe('T-H92-02 cota: cortes por classe, dia e mes', () => {
     });
   });
 
-  it('degraus de alerta: 70, 85, 95 por cento e 90 no dia / 2.700 no mes', () => {
-    expect(alertLevelFor(69, 100, 90)).toBe(0);
-    expect(alertLevelFor(70, 100, 90)).toBe(1);
-    expect(alertLevelFor(85, 100, 90)).toBe(2);
-    expect(alertLevelFor(90, 100, 90)).toBe(3);
-    expect(alertLevelFor(2699, 3000, 2700)).toBe(2);
-    expect(alertLevelFor(2700, 3000, 2700)).toBe(3);
+  it('degraus de alerta: 70 e 85 por cento, sem nivel 3 (H-094; 90/2.700 sao corte critico)', () => {
+    expect(alertLevelFor(69, 100)).toBe(0);
+    expect(alertLevelFor(70, 100)).toBe(1);
+    expect(alertLevelFor(85, 100)).toBe(2);
+    expect(alertLevelFor(90, 100)).toBe(2);
+    expect(alertLevelFor(2699, 3000)).toBe(2);
+    expect(alertLevelFor(2700, 3000)).toBe(2);
   });
 });
 

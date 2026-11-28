@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   COLOR_ROLES,
@@ -161,37 +161,16 @@ describe('CSS variables geradas', () => {
 });
 
 describe('nenhum outro pacote/app tem cor literal (RF-160)', () => {
+  // Fonte unica da regra: scripts/check-hex.mjs (mesma varredura do CI, via git ls-files, que ja ignora
+  // build local como .next e test-results, e aceita referencia numerica de Issue em comentario).
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-  const SRC_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|css|scss|svg)$/;
-  const HEX = /(?<![\w&])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})(?![\w-])/;
-  const COLOR_FN = /\b(?:rgba?|hsla?|oklch|oklab|hwb)\s*\(/i;
-
-  function walk(dir: string, out: string[] = []): string[] {
-    for (const name of readdirSync(dir)) {
-      if (name === 'node_modules' || name === 'dist' || name === '.turbo') continue;
-      const p = join(dir, name);
-      if (statSync(p).isDirectory()) walk(p, out);
-      else if (SRC_EXT.test(name)) out.push(p);
-    }
-    return out;
-  }
 
   it('varre apps/* e packages/* exceto packages/tokens', () => {
-    const files: string[] = [];
-    for (const group of ['apps', 'packages']) {
-      const base = join(root, group);
-      if (!existsSync(base)) continue;
-      for (const pkg of readdirSync(base)) {
-        if (group === 'packages' && pkg === 'tokens') continue;
-        const dir = join(base, pkg);
-        if (statSync(dir).isDirectory()) walk(dir, files);
-      }
-    }
-    expect(files.length).toBeGreaterThan(0);
-    const offenders = files.filter((f) => {
-      const text = readFileSync(f, 'utf8');
-      return HEX.test(text) || COLOR_FN.test(text);
+    const r = spawnSync(process.execPath, ['scripts/check-hex.mjs'], {
+      cwd: root,
+      encoding: 'utf8',
     });
-    expect(offenders.map((f) => relative(root, f))).toEqual([]);
-  });
+    expect(r.stdout + r.stderr).toMatch(/check-hex/);
+    expect(r.status, r.stdout + r.stderr).toBe(0);
+  }, 120_000);
 });

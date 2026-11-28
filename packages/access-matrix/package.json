@@ -2,7 +2,7 @@
   "name": "@fastpro/access-matrix",
   "version": "0.0.0",
   "private": true,
-  "description": "Placeholder: matriz de acesso legivel por maquina",
+  "description": "Matriz de acesso legivel por maquina (H-115): principais, recursos, casos, sentinelas e relatorio de paridade",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

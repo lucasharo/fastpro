@@ -1,0 +1,15 @@
+# Issue 158 (desenho 182, D-6) | Arquivos que nao sobem no envio de preview (a CLI le este arquivo).
+# Segredos e ambiente local: nunca enviados.
+.env*
+# Documentos, banco e copias: fora do envio (nao sao usados pela funcao nem pela web).
+docs
+supabase
+backups
+**/test-results
+
+# App Expo (instalado e publicado a parte)
+apps/mobile
+
+# Caches locais (passam de 100 MB e quebram o envio)
+**/.turbo
+**/.next

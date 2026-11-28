@@ -1,5 +1,7 @@
 # FastPro — Relatório de ingestão (Gate 0, somente leitura)
 
+> [SUPERADO em parte — Rodada 73/75, #151] A parte de backup/restauração deste documento saiu do escopo; o keep-alive continua válido. Texto original abaixo mantido.
+
 - **Data:** 2026-11-09 · **Produto:** fastpro · **Executor:** Orquestrador (análise própria; nenhum especialista foi delegado nesta rodada)
 - **Natureza:** PROPOSTA para decisão. Nada foi implementado nem alterado em GitHub/serviços externos.
 - **Etiquetas:** `[APROVADO]` decisão do usuário no pacote · `[DELEGADO]` adotado por delegação · `[PROPOSTA]` sugestão deste relatório · `[NÃO VERIFICADO]` · `[PENDENTE JURÍDICO]`
