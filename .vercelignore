@@ -9,3 +9,7 @@ backups
 
 # App Expo (instalado e publicado a parte)
 apps/mobile
+
+# Caches locais (passam de 100 MB e quebram o envio)
+**/.turbo
+**/.next

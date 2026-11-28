@@ -1,8 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "regions": [
-    "gru1"
-  ],
+  "outputDirectory": ".next",
+  "regions": ["gru1"],
   "buildCommand": "cd ../.. && npx turbo run build --filter=@fastpro/web..."
 }
