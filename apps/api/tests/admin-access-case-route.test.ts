@@ -50,7 +50,7 @@ const LINHAS = new Map<string, AdminGuardRecord>([
   [SEG_SUPORTE, linha('u-suporte', ['suporte'], ['support.completion.correct', 'case.open_sensitive'])],
   [SEG_SUPERADMIN, linha('u-superadmin', ['superadmin'], ['admin.role.manage', 'catalog.manage', 'case.authorize_sensitive'])],
   [SEG_AUDITOR, linha('u-auditor', ['auditor'], ['audit.read'])],
-  [SEG_TOTP_ANTIGO, linha('u-suporte-antigo', ['suporte'], ['case.open_sensitive'], { totpAtMs: T0 - 30 * MIN })],
+  [SEG_TOTP_ANTIGO, linha('u-suporte-antigo', ['suporte'], ['case.open_sensitive'], { totpAtMs: T0 - 480 * MIN })],
   [SEG_VENCIDA, linha('u-vencida', ['suporte'], ['case.open_sensitive'], { expiresAtMs: T0 - 1 })],
 ]);
 

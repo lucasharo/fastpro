@@ -123,7 +123,7 @@ import { handleRequestPublishRoute, REQUEST_PUBLISH_PATH, type PublishRouteOptio
 import { handleRequestDetailRoute, isRequestDetailRoute, type RequestDetailRouteOptions } from './requests/detail-route.js';
 import { handleConversationRoute, isConversationRoute, type ConversationRouteOptions } from './conversations/conversation-route.js';
 import { handleMeRoute, isMeRoute, type MeRouteOptions } from './conversations/me-route.js';
-import { handleAdminCodeRoute, isAdminCodeRoute, type AdminCodeRouteOptions } from './admin-login/admin-code-route.js';
+import { handleAdminPasswordRoute, isAdminPasswordRoute, type AdminPasswordRouteOptions } from './admin-login/admin-password-route.js';
 import { handleAdminModerationRoute, isAdminModerationRoute, type AdminModerationRouteOptions } from './admin-login/admin-moderation-route.js';
 import { handleDraftSessionRoute, isDraftSessionRoute, type DraftSessionRouteOptions } from './conversations/draft-session-route.js';
 // Pacote A (H-061, H-077, H-078, H-080) | Ciclo do pedido e do aceite: concluir, desfazer, cancelar, retirar aceite.
@@ -132,6 +132,10 @@ import { handleLifecycleRoute, isLifecycleRoute, type LifecycleRouteOptions } fr
 import { handleWaveRoute, isWaveRoute, type WaveRouteOptions } from './waves/wave-route.js';
 // Pacote B (H-086, H-088, H-089) | Avaliacoes do servico, resposta do profissional e perfil publico de avaliacoes.
 import { handleReviewRoute, isReviewRoute, type ReviewRouteOptions } from './reviews/review-route.js';
+import { handleGalleryRoute, isGalleryRoute, type GalleryRouteOptions } from './gallery/gallery-route.js';
+import { handlePushRoute, isPushRoute, type PushRouteOptions } from './push/push-route.js';
+import { handleAccountEditRoute, isAccountEditRoute, type AccountEditRouteOptions } from './account-edit/account-edit-route.js';
+import { handleOwnFileRoute, isOwnFileRoute, type OwnFileRouteOptions } from './own-file/own-file-route.js';
 // Issue 120 (H-111) | Direitos do titular: POST/GET /v1/privacy/dsr-requests e detalhe/cancelamento do proprio caso.
 import {
   handlePrivacyTitularRoute,
@@ -251,7 +255,7 @@ export interface AppOptions {
   /** GET /v1/auth/me: papel da sessao (cliente ou profissional). Sem esta opcao, 404 uniforme. */
   readonly me?: MeRouteOptions;
   /** Entrada do admin por codigo no e-mail. Sem esta opcao, 404 uniforme. */
-  readonly adminCode?: AdminCodeRouteOptions;
+  readonly adminLogin?: AdminPasswordRouteOptions;
   /** Console admin: moderacao, auditoria recente e equipe. Sem esta opcao, 404 vazio. */
   readonly adminModeration?: AdminModerationRouteOptions;
   /** Pedido de quem ja esta logado (nome e e-mail da sessao no rascunho). Sem esta opcao, 404 uniforme. */
@@ -262,6 +266,14 @@ export interface AppOptions {
   readonly waves?: WaveRouteOptions;
   /** Pacote B: avaliacoes e resposta do profissional. Sem esta opcao as rotas respondem 404 uniforme. */
   readonly reviews?: ReviewRouteOptions;
+  /** Galeria de fotos do profissional. */
+  readonly gallery?: GalleryRouteOptions;
+  /** Aparelhos de notificacao push (web, Android e iOS). */
+  readonly push?: PushRouteOptions;
+  /** Nome publico, biografia e foto do profissional. */
+  readonly accountEdit?: AccountEditRouteOptions;
+  /** O profissional ve o proprio arquivo de verificacao. */
+  readonly ownFile?: OwnFileRouteOptions;
   /** Issue 120 (H-111): direitos do titular. Sem esta opcao as rotas /v1/privacy/dsr-requests respondem 404 uniforme. */
   readonly privacyTitular?: PrivacyTitularRouteOptions;
   /** Issue 120 (H-111): painel do DPO. Sem esta opcao, /v1/admin/privacy/dsr-cases responde 404 vazio. */
@@ -445,6 +457,14 @@ export async function handleRequest(
     await handleDraftRoute(req, res, path, opts.drafts);
     return;
   }
+  // Arquivo proprio do profissional: antes das rotas de documentos, que tratam o prefixo inteiro.
+  if (isOwnFileRoute(req.method ?? '', path)) {
+    if (opts.ownFile) return handleOwnFileRoute(req, res, path, opts.ownFile);
+    const r = draftNotFound();
+    res.writeHead(r.status, r.headers);
+    res.end(r.body);
+    return;
+  }
   // H-037 (#50): documentos de identidade. Sem a montagem completa (trava ou pendencia), o mesmo 404 uniforme do rascunho.
   if (isIdentityDocRoute(path)) {
     if (opts.identityDocs) {
@@ -531,6 +551,30 @@ export async function handleRequest(
     return;
   }
   // Pacote B (H-086, H-088, H-089): avaliacoes. Vem ANTES do bloco do perfil publico, que trata /v1/public/professionals/ inteiro.
+  // Notificacoes push: registro de aparelhos.
+  if (isPushRoute(req.method ?? '', path)) {
+    if (opts.push) return handlePushRoute(req, res, path, opts.push);
+    const r = draftNotFound();
+    res.writeHead(r.status, r.headers);
+    res.end(r.body);
+    return;
+  }
+  // Dados editaveis do profissional. Tambem vem antes do bloco do perfil publico.
+  if (isAccountEditRoute(req.method ?? '', path)) {
+    if (opts.accountEdit) return handleAccountEditRoute(req, res, path, opts.accountEdit);
+    const r = draftNotFound();
+    res.writeHead(r.status, r.headers);
+    res.end(r.body);
+    return;
+  }
+  // Galeria do profissional. Tambem vem antes do bloco do perfil publico.
+  if (isGalleryRoute(req.method ?? '', path)) {
+    if (opts.gallery) return handleGalleryRoute(req, res, path, opts.gallery);
+    const r = draftNotFound();
+    res.writeHead(r.status, r.headers);
+    res.end(r.body);
+    return;
+  }
   if (isReviewRoute(req.method ?? '', path)) {
     if (opts.reviews) return handleReviewRoute(req, res, path, opts.reviews);
     const r = draftNotFound();
@@ -545,8 +589,8 @@ export async function handleRequest(
     res.end();
     return;
   }
-  if (isAdminCodeRoute(req.method ?? '', path)) {
-    if (opts.adminCode) return handleAdminCodeRoute(req, res, path, opts.adminCode);
+  if (isAdminPasswordRoute(req.method ?? '', path)) {
+    if (opts.adminLogin) return handleAdminPasswordRoute(req, res, path, opts.adminLogin);
     res.writeHead(404, { 'Cache-Control': 'no-store' });
     res.end();
     return;

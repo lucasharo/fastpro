@@ -5,6 +5,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { chamarApi } from '@/lib/api';
+import { desligarPush, sincronizarPush } from '@/lib/push';
 import { Carregando } from './ui';
 
 /** 'anonimo' tambem cobre o profissional que ainda nao confirmou o e-mail (navega como visitante). */
@@ -69,7 +70,14 @@ export function ProvedorSessao({ children }: { readonly children: ReactNode }) {
     void recarregar();
   }, [caminho, recarregar]);
 
+  // Quem entra passa a receber neste navegador os avisos da propria conta (se as notificacoes ja estavam ligadas).
+  useEffect(() => {
+    if (papel === 'cliente' || papel === 'profissional') void sincronizarPush();
+  }, [papel]);
+
   const sair = useCallback(async () => {
+    // Antes de encerrar a sessao: o aparelho deixa de receber os avisos desta conta.
+    await desligarPush();
     await chamarApi('/v1/auth/logout', { body: {} });
     setPapel('anonimo');
     router.push('/');

@@ -28,6 +28,7 @@ export default function RootLayout({ children }: { readonly children: ReactNode 
           <Navegacao />
           <main>{children}</main>
           <Rodape />
+          <div id="toasts" className="toasts" />
         </ProvedorSessao>
       </body>
     </html>

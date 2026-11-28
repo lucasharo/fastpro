@@ -131,6 +131,7 @@ export function montarPublicacaoPedido(env: Ambiente, opcoes: PublicacaoPedidoOp
           hasher: createDraftHasher(chave),
           addressVault: cofre,
           telefone: telefoneDaPublicacao(env, cliente),
+          telefoneObrigatorio: true,
           chave,
           rateKey: (finalidade: string, identificador: string) =>
             createHmac('sha256', chave).update(`${finalidade}:${identificador}`, 'utf8').digest('hex'),

@@ -444,11 +444,6 @@ textarea.entrada {
   resize: vertical;
 }
 
-select option {
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-}
-
 .campo-erro {
   font-size: 0.8125rem;
   color: var(--color-error-text);
@@ -678,8 +673,7 @@ select option {
   font-weight: 500;
 }
 
-.catalogo-campo input:not([type='checkbox']),
-.catalogo-campo select {
+.catalogo-campo input:not([type='checkbox']) {
   width: 100%;
   min-height: var(--input-height);
   padding: 0.75rem 1rem;
@@ -689,15 +683,13 @@ select option {
   border-radius: var(--radius-button);
 }
 
-.catalogo-campo input:focus,
-.catalogo-campo select:focus {
+.catalogo-campo input:focus {
   outline: none;
   border-color: var(--color-primary);
   background: var(--color-surface);
 }
 
-.catalogo-campo input[aria-invalid='true'],
-.catalogo-campo select[aria-invalid='true'] {
+.catalogo-campo input[aria-invalid='true'] {
   border-color: var(--color-error-text);
 }
 
@@ -763,7 +755,6 @@ select option {
   font-weight: 500;
 }
 
-.verificacao-campo select,
 .verificacao-campo textarea {
   width: 100%;
   padding: 0.75rem 1rem;
@@ -773,15 +764,10 @@ select option {
   border-radius: var(--radius-button);
 }
 
-.verificacao-campo select {
-  min-height: var(--input-height);
-}
-
 .verificacao-campo textarea {
   resize: vertical;
 }
 
-.verificacao-campo select:focus,
 .verificacao-campo textarea:focus {
   outline: none;
   border-color: var(--color-primary);
@@ -842,7 +828,7 @@ select option {
   color: var(--color-text-primary);
 }
 
-/* ---------- Entrada por codigo (mesmo visual da web) ---------- */
+/* ---------- Entrada e formularios de conta (mesmo visual da web) ---------- */
 .pagina-estreita {
   max-width: 32rem;
 }
@@ -860,29 +846,6 @@ select option {
 
 .btn-link:hover {
   color: var(--color-primary);
-}
-
-.codigo-caixas {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: center;
-}
-
-.codigo-caixas input {
-  width: 3rem;
-  height: 3.5rem;
-  text-align: center;
-  font-size: 1.5rem;
-  font-weight: 700;
-  border-radius: var(--radius-button);
-  border: 2px solid var(--color-border);
-  background: var(--color-field);
-  color: var(--color-text-primary);
-}
-
-.codigo-caixas input:focus {
-  outline: none;
-  border-color: var(--color-primary);
 }
 
 .cartao-painel {
@@ -1065,26 +1028,171 @@ select option {
   margin: 0.5rem 0;
 }
 
-/* ---------- Decisao da verificacao: escolha em botoes empilhados (largura total) ---------- */
-.verificacao-escolha {
-  border: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
+/* ---------- Escolha em chips (decisao da verificacao) ---------- */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 
-.verificacao-escolha legend {
+.chip {
+  min-height: 2.25rem;
+  padding: 0.375rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--color-field);
+  color: var(--color-text-primary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.chip:hover {
+  border-color: var(--color-primary);
+}
+
+.chips[data-invalido='true'] .chip {
+  border-color: var(--color-error-text);
+}
+
+.chip[aria-checked='true'] {
+  border-color: var(--color-primary);
+  background: var(--color-button-primary-background);
+  color: var(--color-button-secondary-text);
+  font-weight: 700;
+}
+
+/* ---------- Selecao (substitui o select nativo; visual do Select do DriveMais) ---------- */
+.selecao {
+  position: relative;
+}
+
+.selecao-botao {
+  width: 100%;
+  min-height: var(--input-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
   font-size: 0.875rem;
   font-weight: 500;
-  margin-bottom: var(--space-2);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.verificacao-opcoes {
-  display: grid;
-  gap: var(--space-2);
+.selecao-botao:focus-visible,
+.selecao-botao[aria-expanded='true'] {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.selecao-botao[aria-invalid='true'] {
+  border-color: var(--color-error-text);
+}
+
+.selecao-botao:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.selecao-botao > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.selecao-seta {
+  flex-shrink: 0;
+  transform: rotate(90deg);
+  transition: transform 0.2s;
+}
+
+.selecao-seta-aberta {
+  transform: rotate(-90deg);
+}
+
+.selecao-lista {
+  position: absolute;
+  z-index: 50;
+  left: 0;
+  right: 0;
+  max-height: 16rem;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0.375rem;
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--color-brand) 16%, transparent);
+}
+
+.selecao-opcao {
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 1rem;
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.selecao-opcao-ativa {
+  background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.selecao-opcao[aria-selected='true'] {
+  background: var(--color-button-primary-background);
+  color: var(--color-button-secondary-text);
+  font-weight: 700;
+}
+
+/* Texto claro no tema escuro sobre o fundo principal. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .chip[aria-checked='true'],
+  :root:not([data-theme='light']) .selecao-opcao[aria-selected='true'] {
+    color: var(--color-text-primary);
+  }
+}
+
+:root[data-theme='dark'] .chip[aria-checked='true'],
+:root[data-theme='dark'] .selecao-opcao[aria-selected='true'] {
+  color: var(--color-text-primary);
 }
 
 .verificacao-decisao {
   max-width: none;
+}
+
+/* Certificacoes do caso: um servico por linha. */
+.verificacao-certificacoes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.verificacao-certificacoes li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* Respiro entre as listas (Pendentes, Minhas...) e a tabela. */
+.verificacao-listas {
+  margin-bottom: var(--space-4);
 }

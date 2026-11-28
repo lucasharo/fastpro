@@ -60,7 +60,7 @@ export default function Painel() {
         sobretitulo="Área do cliente"
         titulo="Meus"
         destaque="pedidos"
-        texto="Acompanhe quem aceitou, converse e escolha o profissional."
+        texto="Acompanhe quem aceitou e veja o perfil de cada profissional."
         acoes={
           <div className="linha">
             <Link href="/pedido" className="btn btn-primary btn-sm">

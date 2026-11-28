@@ -1,9 +1,10 @@
 'use client';
-// Painel do profissional: situacao da verificacao e da assinatura, numeros das conversas e os pedidos mais
+// Painel do profissional: situacao da verificacao e da assinatura, numeros dos aceites e os pedidos mais
 // recentes da regiao. Tudo real.
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { ResumoPassos } from '@/components/ResumoPassos';
 import { CartaoPedidoRegiao } from '@/components/CartaoPedidoRegiao';
 import { Icone } from '@/components/Icone';
 import { Aviso, CabecaPagina, Carregando, Vazio } from '@/components/ui';
@@ -27,7 +28,7 @@ const VERIFICACAO: Record<string, { titulo: string; texto: string; classe: strin
     titulo: 'Envie seu documento',
     texto: 'Para receber pedidos, preencha o cadastro e envie a foto do documento.',
     classe: 'selo-alerta',
-    acao: { href: '/profissional/documentos', rotulo: 'Enviar documento' },
+    acao: { href: '/profissional/gestao', rotulo: 'Enviar documento' },
   },
   em_analise: { titulo: 'Documento em análise', texto: 'Avisamos por e-mail assim que a análise terminar.', classe: 'selo-info' },
   aprovada: { titulo: 'Verificado', texto: 'Seu documento foi aprovado.', classe: 'selo-sucesso' },
@@ -35,7 +36,7 @@ const VERIFICACAO: Record<string, { titulo: string; texto: string; classe: strin
     titulo: 'Documento recusado',
     texto: 'Confira o motivo e envie de novo.',
     classe: 'selo-erro',
-    acao: { href: '/profissional/documentos', rotulo: 'Enviar de novo' },
+    acao: { href: '/profissional/gestao', rotulo: 'Enviar de novo' },
   },
   suspensa: { titulo: 'Conta suspensa', texto: 'Fale com o suporte para entender o motivo.', classe: 'selo-erro' },
 };
@@ -64,7 +65,7 @@ export default function PainelProfissional() {
         chamarApi<Verificacao>('/v1/professional/verificacao'),
         chamarApi<Assinatura>('/v1/billing/status'),
         lerDescoberta(),
-        chamarApi<{ items?: { state: string; selected: boolean; requestStatus: string }[] }>('/v1/conversations'),
+        chamarApi<{ items?: { state: string; requestStatus: string }[] }>('/v1/conversations'),
       ]);
       if (v.status === 401 || d.tipo === 'sessao') {
         router.replace('/profissional/entrar');
@@ -77,8 +78,11 @@ export default function PainelProfissional() {
       setNumeros([
         { valor: disponiveis, rotulo: 'Pedidos disponíveis na região' },
         { valor: String(conversas.length), rotulo: 'Pedidos que você aceitou' },
-        { valor: String(conversas.filter((x) => x.state === 'ativa').length), rotulo: 'Conversas abertas' },
-        { valor: String(conversas.filter((x) => x.selected).length), rotulo: 'Vezes que você foi escolhido' },
+        {
+          valor: String(conversas.filter((x) => x.state === 'ativa' && (x.requestStatus === 'publicado' || x.requestStatus === 'selecionado')).length),
+          rotulo: 'Em aberto para contato',
+        },
+        { valor: String(conversas.filter((x) => x.requestStatus === 'concluido').length), rotulo: 'Pedidos concluídos' },
       ]);
       if (d.tipo === 'ok') setPedidos(d.itens.slice(0, 3));
       else {
@@ -94,6 +98,7 @@ export default function PainelProfissional() {
   return (
     <>
       <CabecaPagina sobretitulo="Painel" titulo="Olá," destaque="bom trabalho hoje" texto="Veja os pedidos novos da sua região e acompanhe sua conta." />
+      <ResumoPassos />
       <div className="grade grade-2" style={{ marginBottom: '1.5rem' }}>
         <div className="glass-card painel-cartao pilha">
           <div className="linha-entre">

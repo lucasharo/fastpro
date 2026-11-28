@@ -8,15 +8,15 @@ import { DEPOIMENTOS, NOTA_MEDIA, NUMEROS_HERO, SERVICOS_POPULARES, urlFoto } fr
 
 const DIFERENCIAIS: readonly { icone: NomeIcone; titulo: string; texto: string }[] = [
   { icone: 'escudo', titulo: 'Profissionais verificados', texto: 'Documento conferido pela nossa equipe antes de o profissional receber pedidos.' },
-  { icone: 'carteira', titulo: 'Grátis para quem pede', texto: 'Você pede, conversa e escolhe sem pagar nada e sem criar conta.' },
-  { icone: 'conversa', titulo: 'Conversa direta', texto: 'Tire dúvidas e combine valores direto com o profissional, pelo chat.' },
+  { icone: 'carteira', titulo: 'Grátis para quem pede', texto: 'Você pede e combina o serviço sem pagar nada e sem criar conta.' },
+  { icone: 'conversa', titulo: 'Conversa direta', texto: 'Tire dúvidas e combine valores direto com o profissional, pelo WhatsApp.' },
   { icone: 'relogio', titulo: 'Resposta rápida', texto: 'Os profissionais da sua região recebem o pedido na hora em que você publica.' },
 ];
 
 const PASSOS: readonly { icone: NomeIcone; titulo: string; texto: string }[] = [
   { icone: 'documento', titulo: '1. Descreva o serviço', texto: 'Diga o que precisa, onde e quando. Fotos ajudam.' },
   { icone: 'maleta', titulo: '2. Receba interessados', texto: 'Profissionais verificados da região aceitam seu pedido.' },
-  { icone: 'conversa', titulo: '3. Converse', texto: 'Compare perfis, avaliações e combine os detalhes.' },
+  { icone: 'conversa', titulo: '3. Converse', texto: 'Quem aceitar chama você no WhatsApp. Veja o perfil e as avaliações.' },
   { icone: 'check', titulo: '4. Escolha e avalie', texto: 'Escolha um profissional e avalie depois do serviço.' },
 ];
 
@@ -35,7 +35,7 @@ export default function Inicio() {
               Encontre o profissional <span className="destaque">certo para o seu serviço</span>
             </h1>
             <p className="hero-texto">
-              Peça de graça, receba profissionais verificados da sua região e converse com eles antes de escolher.
+              Peça de graça, receba profissionais verificados da sua região e converse com eles pelo WhatsApp.
             </p>
             <BuscaHero />
             <div className="numeros">

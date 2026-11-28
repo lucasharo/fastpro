@@ -212,6 +212,12 @@ describe('H-037 | Banco: so funcoes private.idoc_* (CA-06, D-3)', () => {
     expect(r.documents[0]).toMatchObject({ kind: 'pdf', status: 'recebido', deletable: true });
   });
 
+  it('list aceita a data como o driver entrega (Date): antes a leitura falhava com 503', async () => {
+    const { cliente } = clienteFalso({ ...LINHA, out_status: 'recebido', out_received_at: new Date('2026-11-27T16:21:38.907Z') });
+    const r = await new PgIdentityDocStore(cliente).list(ID);
+    expect(r.documents[0]?.receivedAt).toBe('2026-11-27T16:21:38.907Z');
+  });
+
   it('confirmDone envia o SHA-256 como bytea e purgeDone sem ids nao consulta o banco', async () => {
     const { cliente, gravadas } = clienteFalso({ ...LINHA, out: 'received' });
     const store = new PgIdentityDocStore(cliente);

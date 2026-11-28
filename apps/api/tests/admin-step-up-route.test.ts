@@ -219,10 +219,10 @@ describe('POST /v1/admin/session/step-up (H-073, 60 §4)', () => {
     expect(chamadas).toEqual([]);
   });
 
-  it('prova valida: 200 confirmado, validade de 30 min a partir de agora, totp_at avancado; sem senha na resposta', async () => {
+  it('prova valida: 200 confirmado, validade de 8 h a partir de agora, totp_at avancado; sem senha na resposta', async () => {
     const r = await pedir(base, { password: SENHA, code: CODIGO_OK }, { segredo: SEG });
     expect(r.status).toBe(200);
-    expect(r.json).toEqual({ confirmado: true, confirmado_ate: T0 + 30 * MIN });
+    expect(r.json).toEqual({ confirmado: true, confirmado_ate: T0 + 480 * MIN });
     expect(chamadas).toEqual(['prova', 'stepUp']);
     expect(logs).toContainEqual({ evento: 'confirmacao_admin', resultado: 'ok' });
     expect(r.text).not.toContain(SENHA);

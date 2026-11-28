@@ -1,9 +1,11 @@
 'use client';
-// Issue 52 (H-039) | Formulario de decisao do caso (124 §5.4; decs. 375, 386, 387). A decisao e escolhida em botoes
+// Issue 52 (H-039) | Formulario de decisao do caso (124 §5.4; decs. 375, 386, 387). A decisao e escolhida em chips
 // (Aprovar, Recusar, Reter por duplicidade) e o motivo so lista os que combinam com ela (mesma regra do dominio).
 // "Outro" exige complemento. Complemento com contador de 500 e aviso sobre dados pessoais. O envio nao usa action
 // nativa: assim o texto digitado nao some quando a API recusa a decisao.
 import { useActionState, useId, useState, useTransition, type FormEvent } from 'react';
+import { Chips } from '../../../../components/Chips';
+import { Selecao } from '../../../../components/Selecao';
 import { decidirCaso } from './acoes';
 import {
   contadorComplemento,
@@ -90,37 +92,17 @@ export function FormularioDecisao({
         </p>
       ) : null}
 
-      <fieldset className="verificacao-escolha">
-        <legend>Decisão</legend>
-        <div className="verificacao-opcoes">
-          {decisoes.map((d) => (
-            <button
-              key={d.valor}
-              type="button"
-              className={`btn btn-bloco ${decisao === d.valor ? 'btn-primary' : 'btn-secondary'}`}
-              aria-pressed={decisao === d.valor}
-              onClick={() => escolher(d.valor)}
-            >
-              {d.rotulo}
-            </button>
-          ))}
-        </div>
-      </fieldset>
+      <Chips rotulo="Decisão" opcoes={decisoes} valor={decisao} onMudar={escolher} />
 
       <div className="verificacao-campo">
         <label htmlFor={id('motivo')}>Motivo</label>
-        <select
+        <Selecao
           id={id('motivo')}
-          value={motivo}
-          onChange={(e) => setMotivo(e.target.value)}
-          disabled={motivos.length === 1}
-        >
-          {motivos.map((m) => (
-            <option key={m.valor} value={m.valor}>
-              {m.rotulo}
-            </option>
-          ))}
-        </select>
+          opcoes={motivos}
+          valor={motivo}
+          onMudar={setMotivo}
+          desabilitado={motivos.length === 1}
+        />
       </div>
 
       <div className="verificacao-campo">

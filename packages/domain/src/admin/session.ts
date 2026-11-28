@@ -2,6 +2,7 @@
 // segundo fator: a prova (senha e codigo) passa pelo mesmo caminho do login (AdminAuthPort, mesmos
 // limites H-015) e so depois a sessao avanca totp_at no banco. Logica pura; a autoridade e o banco.
 
+import { ADMIN_SESSION_MAX_AGE_SECONDS } from './responses.js';
 import { ADMIN_STEP_UP_PATH, ADMIN_ROUTES_H102, type AdminMutationHeaders } from './routes.js';
 import { guardAdminRequest } from './guard.js';
 import { adminLoginBlocked } from './policy.js';
@@ -14,10 +15,10 @@ import {
   type AdminResponse,
 } from './responses.js';
 
-/** Janela da prova recente de TOTP: 30 minutos (60 §4). Estrita: aos 30:00 exatos ja exige nova prova. */
-export const ADMIN_TOTP_RECENT_MS = 30 * 60 * 1000;
+// Decisao do dono (2026-11-27): o admin nao pede login recente; a prova vale pela sessao inteira (8 horas).
+export const ADMIN_TOTP_RECENT_MS = ADMIN_SESSION_MAX_AGE_SECONDS * 1000;
 
-/** Prova recente se agora < totp_at + 30 min. Usada pelo dominio; o banco aplica a mesma regra. */
+/** Prova valida enquanto a sessao dura: agora < totp_at + duracao da sessao. O banco aplica a mesma regra. */
 export function isTotpRecent(totpAtMs: number, nowMs: number): boolean {
   return nowMs < totpAtMs + ADMIN_TOTP_RECENT_MS;
 }

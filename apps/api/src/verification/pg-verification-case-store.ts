@@ -18,6 +18,7 @@ import {
 
 const SQL_LISTA = 'select * from private.verification_queue_list($1::uuid, $2::text, $3::text, $4::integer, $5::timestamptz, $6::uuid, $7::timestamptz)';
 const SQL_DETALHE = 'select * from private.verification_case_detail($1::uuid, $2::text, $3::uuid, $4::timestamptz)';
+const SQL_CERTIFICACOES = 'select * from private.verification_case_certificates($1::uuid, $2::text, $3::uuid, $4::timestamptz)';
 const SQL_ATRIBUIR = 'select * from private.verification_case_assign($1::uuid, $2::text, $3::uuid, $4::integer, $5::timestamptz)';
 const SQL_REATRIBUIR =
   'select * from private.verification_case_reassign($1::uuid, $2::text, $3::uuid, $4::uuid, $5::integer, $6::timestamptz)';
@@ -72,6 +73,7 @@ function linha(r: Record<string, unknown>): LinhaFila {
     slaTargetAt: new Date(r.out_sla_target_at as string),
     receivedAt: iso(r.out_received_at),
     services: Array.isArray(r.out_services) ? (r.out_services as string[]) : [],
+    professionalEmail: typeof r.out_professional_email === 'string' ? r.out_professional_email : null,
     overdue: r.out_overdue === true,
     assignedToMe: r.out_assigned_to_me === true,
     version: Number(r.out_version),
@@ -115,8 +117,15 @@ export class PgVerificationCasePort implements VerificationCasePort {
   async detalhe(ctx: ContextoAtor, entrada: { readonly caseId: string; readonly now: Date }): Promise<DetalheCaso> {
     const r = await this.consulta1(SQL_DETALHE, [ctx.actorId, ctx.sessionHash, entrada.caseId, entrada.now.toISOString()]);
     if (!r) throw new VerificacaoErro('permissao_negada');
+    const certificados = await this.consulta(SQL_CERTIFICACOES, [ctx.actorId, ctx.sessionHash, entrada.caseId, entrada.now.toISOString()]);
     return {
       ...linha(r),
+      certifications: certificados.map((c) => ({
+        serviceId: texto(c.out_service_id),
+        serviceName: texto(c.out_service_name),
+        documentId: (c.out_document_id as string | null) ?? null,
+        receivedAt: iso(c.out_received_at),
+      })),
       reasonCode: (r.out_reason_code as MotivoDecisao | null) ?? null,
       explanation: (r.out_explanation as string | null) ?? null,
       decidedAt: iso(r.out_decided_at),

@@ -13,6 +13,9 @@ export const ADMIN_ROLES = [
 ] as const;
 export type AdminRole = (typeof ADMIN_ROLES)[number];
 
+/** Papeis que a tela de Equipe pode dar a um admin novo. Superadmin exige dupla aprovacao ou o script local. */
+export const ADMIN_GRANTABLE_ROLES: readonly AdminRole[] = ADMIN_ROLES.filter((r) => r !== 'superadmin');
+
 export const ADMIN_PERMISSIONS = [
   'verification.review',
   'moderation.decide',

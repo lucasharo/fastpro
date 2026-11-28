@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icone, type NomeIcone } from '@/components/Icone';
-import { Aviso, CabecaPagina, Carregando, PaginaInterna, Vazio } from '@/components/ui';
+import { Aviso, CabecaPagina, Campo, Carregando, PaginaInterna, Vazio } from '@/components/ui';
 import { chamarApi, MENSAGEM_LIMITE } from '@/lib/api';
 import { formatarDataHora, rotuloUrgencia } from '@/lib/formatos';
+import { celularValido, mascaraCelular } from '@/lib/whatsapp';
 
 interface Revisao {
   id: string;
@@ -27,10 +28,14 @@ type Estado =
   | { tipo: 'campos'; faltam: string[] }
   | { tipo: 'erro'; texto: string };
 
+const CHAVE_WHATSAPP = 'fastpro:pedido-whatsapp';
+
 const TEXTOS_PUBLICACAO: Record<string, string> = {
   conteudo_alterado: 'Seu pedido mudou. Confira de novo antes de publicar.',
   email_divergente: 'Entre com o mesmo e-mail do pedido.',
   fotos_em_processamento: 'Suas fotos ainda estão sendo preparadas. Tente de novo em instantes.',
+  telefone_invalido: 'Confira o número do WhatsApp, com DDD.',
+  telefone_obrigatorio: 'Informe o número do WhatsApp.',
   endereco_nao_encontrado: 'Não encontramos esse endereço. Corrija e tente de novo.',
   geocode_limit: 'Este pedido já usou o número máximo de endereços. Mantenha o endereço atual.',
 };
@@ -42,6 +47,15 @@ export default function RevisaoPedido() {
   const [duplicidade, setDuplicidade] = useState<string | null>(null);
   const [publicado, setPublicado] = useState<{ prazo?: string } | null>(null);
   const tentativa = useRef<{ chave: string; corpo: string } | null>(null);
+  // O numero fica aqui (o resumo sai da tela ao recarregar) e na aba, para sobreviver a ida as fotos.
+  const [whatsapp, setWhatsapp] = useState('');
+  useEffect(() => {
+    setWhatsapp(sessionStorage.getItem(CHAVE_WHATSAPP) ?? '');
+  }, []);
+  function guardarWhatsapp(numero: string) {
+    setWhatsapp(numero);
+    sessionStorage.setItem(CHAVE_WHATSAPP, numero);
+  }
 
   const carregar = useCallback(async () => {
     setEstado({ tipo: 'carregando' });
@@ -75,8 +89,8 @@ export default function RevisaoPedido() {
     else setErro(r.status === 429 ? MENSAGEM_LIMITE : 'Não foi possível confirmar agora. Seus dados continuam salvos.');
   }
 
-  async function publicar(view: Revisao) {
-    const dados: Record<string, unknown> = { draft_id: view.id, content_rev: view.content_rev };
+  async function publicar(view: Revisao, whatsapp: string) {
+    const dados: Record<string, unknown> = { draft_id: view.id, content_rev: view.content_rev, phone: whatsapp, sharePhone: true };
     if (duplicidade) dados.duplicate_ack = duplicidade;
     const corpo = JSON.stringify(dados);
     if (tentativa.current === null || tentativa.current.corpo !== corpo) tentativa.current = { chave: crypto.randomUUID(), corpo };
@@ -94,6 +108,7 @@ export default function RevisaoPedido() {
     tentativa.current = null;
     const codigo = r.corpo?.code ?? '';
     if ((r.status === 201 || r.status === 200) && r.corpo?.status === 'publicado') {
+      sessionStorage.removeItem(CHAVE_WHATSAPP);
       setPublicado({ ...(r.corpo.acceptanceDeadlineAt ? { prazo: r.corpo.acceptanceDeadlineAt } : {}) });
       return;
     }
@@ -188,7 +203,17 @@ export default function RevisaoPedido() {
           </button>
         </div>
       ) : null}
-      {estado.tipo === 'pronto' ? <Resumo view={estado.view} ocupado={ocupado} erro={erro} onConfirmar={confirmar} onPublicar={publicar} /> : null}
+      {estado.tipo === 'pronto' ? (
+        <Resumo
+          view={estado.view}
+          ocupado={ocupado}
+          erro={erro}
+          whatsapp={whatsapp}
+          onWhatsapp={guardarWhatsapp}
+          onConfirmar={confirmar}
+          onPublicar={publicar}
+        />
+      ) : null}
     </PaginaInterna>
   );
 }
@@ -211,16 +236,30 @@ function Resumo({
   view,
   ocupado,
   erro,
+  whatsapp,
+  onWhatsapp,
   onConfirmar,
   onPublicar,
 }: {
   readonly view: Revisao;
   readonly ocupado: boolean;
   readonly erro: string;
+  readonly whatsapp: string;
+  readonly onWhatsapp: (numero: string) => void;
   readonly onConfirmar: (v: Revisao) => void;
-  readonly onPublicar: (v: Revisao) => void;
+  readonly onPublicar: (v: Revisao, whatsapp: string) => void;
 }) {
   const confirmado = Boolean(view.confirmed_at);
+  const [erroWhatsapp, setErroWhatsapp] = useState('');
+
+  function publicarComContato() {
+    const numero = celularValido(whatsapp);
+    if (numero === null) {
+      setErroWhatsapp(whatsapp.trim() === '' ? 'Campo obrigatório.' : 'Informe um celular com DDD, por exemplo (11) 91234-5678.');
+      return;
+    }
+    onPublicar(view, numero);
+  }
   return (
     <div className="glass-card painel-cartao pilha">
       <Linha icone="ferramenta" rotulo="Serviço" valor={view.service?.name || 'Não informado'} />
@@ -237,10 +276,32 @@ function Resumo({
         </span>
         <Icone nome="seta" tamanho={18} />
       </Link>
+      <Campo
+        id="whatsapp"
+        rotulo="Seu WhatsApp"
+        erro={erroWhatsapp || undefined}
+        dica="Informe um WhatsApp onde os profissionais entrarão em contato."
+      >
+        <input
+          id="whatsapp"
+          className="entrada"
+          type="tel"
+          inputMode="numeric"
+          autoComplete="tel-national"
+          placeholder="(11) 91234-5678"
+          value={whatsapp}
+          aria-invalid={erroWhatsapp ? true : undefined}
+          aria-describedby={erroWhatsapp ? 'whatsapp-erro' : undefined}
+          onChange={(e) => {
+            onWhatsapp(mascaraCelular(e.target.value));
+            setErroWhatsapp('');
+          }}
+        />
+      </Campo>
       {confirmado ? <Aviso tipo="sucesso">Pedido confirmado. Agora é só publicar.</Aviso> : null}
       {erro ? <Aviso tipo="erro">{erro}</Aviso> : null}
       {confirmado ? (
-        <button type="button" className="btn btn-primary btn-bloco" disabled={ocupado} onClick={() => onPublicar(view)}>
+        <button type="button" className="btn btn-primary btn-bloco" disabled={ocupado} onClick={publicarComContato}>
           {ocupado ? 'Publicando…' : 'Publicar pedido'} <Icone nome="enviar" tamanho={18} />
         </button>
       ) : (

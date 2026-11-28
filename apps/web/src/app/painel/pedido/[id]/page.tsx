@@ -1,6 +1,6 @@
 'use client';
-// Detalhe do pedido do cliente: dados (GET /v1/requests/:id), quem aceitou (GET .../acceptances), conversa com cada
-// um e escolha do profissional (POST .../selection). Tudo real; sem dados de demonstracao.
+// Detalhe do pedido do cliente: dados (GET /v1/requests/:id) e quem aceitou (GET .../acceptances). O contato acontece
+// no WhatsApp (o profissional chama o cliente); aqui o cliente ve o perfil, encerra o pedido e avalia.
 // Pacote C: chamar mais profissionais (POST .../more-professionals) e republicar (POST .../republish), liberados por GET .../actions.
 import Image from 'next/image';
 import Link from 'next/link';
@@ -8,13 +8,14 @@ import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Confirmacao } from '@/components/Confirmacao';
 import { AvaliacaoPedido } from '@/components/AvaliacaoPedido';
-import { Conversa, iniciais } from '@/components/Conversa';
 import { Icone } from '@/components/Icone';
 import { Aviso, CabecaPagina, Carregando, PaginaInterna, Vazio } from '@/components/ui';
 import { chamarApi, MENSAGEM_INDISPONIVEL, MENSAGEM_LIMITE } from '@/lib/api';
 import { formatarData, formatarDataHora, rotuloUrgencia, STATUS_PEDIDO, UUID_RE } from '@/lib/formatos';
 import { fotoDoServico, urlFoto } from '@/lib/mock';
 import { FotosPedido } from '@/components/FotosPedido';
+import { iniciais } from '@/lib/iniciais';
+import { Toast } from '@/components/Toast';
 
 interface Detalhe {
   serviceName?: string;
@@ -37,8 +38,6 @@ interface Interessado {
   professionalSlug: string | null;
   status: string;
   acceptedAt: string | null;
-  conversationId: string | null;
-  selected: boolean;
 }
 
 type AcaoPedido = 'concluir' | 'desfazer' | 'cancelar';
@@ -51,8 +50,8 @@ const CAMINHO_ACAO: Record<AcaoPedido, string> = {
 
 const TEXTO_SUCESSO: Record<AcaoPedido, string> = {
   concluir: 'Pedido marcado como concluído. Você pode desfazer essa marcação em até 24 horas.',
-  desfazer: 'A conclusão foi desfeita. O pedido voltou para selecionado.',
-  cancelar: 'Pedido cancelado. As conversas com os profissionais ficaram somente de leitura.',
+  desfazer: 'A conclusão foi desfeita. O pedido voltou a ficar aberto.',
+  cancelar: 'Pedido cancelado. Os profissionais não veem mais o seu WhatsApp.',
 };
 
 const DIALOGO_ACAO: Record<AcaoPedido, { titulo: string; texto: string; confirmar: string }> = {
@@ -63,12 +62,12 @@ const DIALOGO_ACAO: Record<AcaoPedido, { titulo: string; texto: string; confirma
   },
   desfazer: {
     titulo: 'Desfazer a conclusão?',
-    texto: 'O pedido volta para selecionado e a conversa com o profissional escolhido continua disponível.',
+    texto: 'O pedido volta a ficar aberto e quem aceitou pode ver seu WhatsApp de novo.',
     confirmar: 'Desfazer conclusão',
   },
   cancelar: {
     titulo: 'Cancelar este pedido?',
-    texto: 'O pedido deixa de receber aceites. As conversas com os profissionais ficam somente de leitura.',
+    texto: 'O pedido deixa de receber aceites e os profissionais não veem mais o seu WhatsApp.',
     confirmar: 'Cancelar pedido',
   },
 };
@@ -79,26 +78,13 @@ export default function DetalhePedido() {
   const [p, setP] = useState<Detalhe | null>(null);
   const [erro, setErro] = useState('');
   const [interessados, setInteressados] = useState<Interessado[] | null>(null);
-  const [conversaAberta, setConversaAberta] = useState<string | null>(null);
   const [aviso, setAviso] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(null);
-  const [escolhendo, setEscolhendo] = useState<string | null>(null);
   // Pacote A: acao do pedido aguardando confirmacao (concluir, desfazer ou cancelar).
   const [acao, setAcao] = useState<AcaoPedido | null>(null);
   const [executando, setExecutando] = useState(false);
   const [acoes, setAcoes] = useState<Acoes | null>(null);
   const [acionando, setAcionando] = useState<'mais' | 'republicar' | null>(null);
   const [confirmandoRepublicar, setConfirmandoRepublicar] = useState(false);
-  // Nao lidas por conversa (H-101), lidas de GET /v1/conversations e atualizadas a cada 10 s.
-  const [naoLidas, setNaoLidas] = useState<Record<string, number>>({});
-
-  const atualizarNaoLidas = useCallback(async () => {
-    const r = await chamarApi<{ items?: { conversationId: string; unreadCount?: number }[] }>('/v1/conversations');
-    if (r.status !== 200 || !Array.isArray(r.corpo?.items)) return;
-    const mapa: Record<string, number> = {};
-    for (const c of r.corpo.items) if (c.unreadCount) mapa[c.conversationId] = c.unreadCount;
-    setNaoLidas(mapa);
-  }, []);
-
   const carregar = useCallback(async () => {
     const [d, a, ac] = await Promise.all([
       chamarApi<Detalhe>(`/v1/requests/${id}`),
@@ -114,9 +100,7 @@ export default function DetalhePedido() {
     else setErro(d.status === 404 ? 'Pedido não encontrado.' : 'Não foi possível abrir o pedido agora.');
     const lista = a.status === 200 && Array.isArray(a.corpo?.items) ? a.corpo.items : [];
     setInteressados(lista);
-    setConversaAberta((atual) => atual ?? lista.find((x) => x.selected)?.conversationId ?? lista[0]?.conversationId ?? null);
-    void atualizarNaoLidas();
-  }, [id, router, atualizarNaoLidas]);
+  }, [id, router]);
 
   useEffect(() => {
     if (!UUID_RE.test(id)) {
@@ -124,36 +108,7 @@ export default function DetalhePedido() {
       return;
     }
     void carregar();
-    const t = setInterval(() => {
-      if (document.visibilityState === 'visible') void atualizarNaoLidas();
-    }, 10000);
-    return () => clearInterval(t);
-  }, [id, carregar, atualizarNaoLidas]);
-
-  async function escolher(x: Interessado) {
-    setEscolhendo(x.acceptanceId);
-    setAviso(null);
-    const r = await chamarApi<{ code?: string }>(`/v1/requests/${id}/selection`, { body: { acceptance_id: x.acceptanceId } });
-    setEscolhendo(null);
-    if (r.status === 200) {
-      setAviso({ tipo: 'sucesso', texto: `Você escolheu ${x.professionalName}. Combine os detalhes pela conversa.` });
-      setConversaAberta(x.conversationId);
-      await carregar();
-      return;
-    }
-    const c = r.corpo?.code;
-    setAviso({
-      tipo: 'erro',
-      texto:
-        r.status === 429
-          ? MENSAGEM_LIMITE
-          : c === 'aceite_invalido'
-            ? 'Este profissional não está mais disponível para este pedido.'
-            : c === 'estado_invalido'
-              ? 'Este pedido já foi concluído ou cancelado.'
-              : 'Não foi possível escolher agora. Tente de novo.',
-    });
-  }
+  }, [id, carregar]);
 
   // Pacote A: concluir, desfazer a conclusao (ate 24 h) ou cancelar. A regra mora no banco; a tela so mostra o resultado.
   async function executarAcao(tipo: AcaoPedido) {
@@ -232,7 +187,7 @@ export default function DetalhePedido() {
 
   const st = STATUS_PEDIDO[p.status ?? ''];
   const ativos = interessados.filter((x) => x.status === 'ativo');
-  const podeEscolher = p.status === 'publicado' || p.status === 'selecionado';
+  const podeConcluir = (p.status === 'publicado' || p.status === 'selecionado') && ativos.length > 0;
 
   return (
     <PaginaInterna>
@@ -245,7 +200,7 @@ export default function DetalhePedido() {
       <div className="pilha" style={{ gap: '1.5rem' }}>
         {p.status === 'selecionado' || p.status === 'concluido' || p.status === 'publicado' || p.status === 'cancelado' ? (
           <div className="pacote-a-acoes" aria-label="Ações do pedido">
-            {p.status === 'selecionado' ? (
+            {podeConcluir ? (
               <button type="button" className="btn btn-primary btn-sm" disabled={executando} onClick={() => setAcao('concluir')}>
                 <Icone nome="check" tamanho={16} /> Marcar como concluído
               </button>
@@ -312,16 +267,14 @@ export default function DetalhePedido() {
               </div>
             ) : null}
             {interessados.map((x) => (
-              <div key={x.acceptanceId} className="item-lista" style={{ alignItems: 'flex-start', borderColor: x.selected ? 'var(--color-primary)' : undefined }}>
+              <div key={x.acceptanceId} className="item-lista" style={{ alignItems: 'flex-start' }}>
                 <span className="avatar-letra" style={{ width: '3.5rem', height: '3.5rem', fontSize: '1.125rem' }} aria-hidden="true">
                   {iniciais(x.professionalName)}
                 </span>
                 <div className="item-corpo">
                   <div className="linha-entre">
                     <span className="item-titulo">{x.professionalName}</span>
-                    {x.selected ? (
-                      <span className="selo selo-sm selo-sucesso">Escolhido</span>
-                    ) : x.status !== 'ativo' ? (
+                    {x.status !== 'ativo' ? (
                       <span className="selo selo-sm selo-neutro">Retirou o aceite</span>
                     ) : null}
                   </div>
@@ -340,26 +293,6 @@ export default function DetalhePedido() {
                       <Link href={`/p/${x.professionalSlug}`} className="btn btn-secondary btn-sm">
                         <Icone nome="usuario" tamanho={16} /> Ver perfil
                       </Link>
-                    ) : null}
-                    {x.conversationId ? (
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        aria-pressed={conversaAberta === x.conversationId}
-                        onClick={() => setConversaAberta(x.conversationId)}
-                      >
-                        <Icone nome="conversa" tamanho={16} /> Conversar
-                        {naoLidas[x.conversationId] ? (
-                          <span className="selo selo-sm selo-alerta selo-contador" aria-label={`${naoLidas[x.conversationId]} mensagens não lidas`}>
-                            {naoLidas[x.conversationId]}
-                          </span>
-                        ) : null}
-                      </button>
-                    ) : null}
-                    {x.status === 'ativo' && !x.selected && podeEscolher ? (
-                      <button type="button" className="btn btn-primary btn-sm" disabled={escolhendo !== null} onClick={() => void escolher(x)}>
-                        {escolhendo === x.acceptanceId ? 'Escolhendo…' : p.status === 'selecionado' ? 'Trocar para este' : 'Escolher'}
-                      </button>
                     ) : null}
                   </div>
                 </div>
@@ -394,15 +327,13 @@ export default function DetalhePedido() {
                 </div>
               </div>
             ) : null}
-            {aviso ? <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso> : null}
+            <Toast aviso={aviso} />
           </div>
         </div>
-        {p.status === 'concluido' ? <AvaliacaoPedido pedidoId={id} /> : null}
-        {conversaAberta ? (
-          <Conversa
-            conversationId={conversaAberta}
-            subtitulo={`Conversa sobre ${p.serviceName ?? 'o pedido'}`}
-            aoMudar={() => void atualizarNaoLidas()}
+        {p.status === 'concluido' ? (
+          <AvaliacaoPedido
+            pedidoId={id}
+            profissionais={ativos.map((x) => ({ valor: x.acceptanceId, rotulo: x.professionalName }))}
           />
         ) : null}
       </div>

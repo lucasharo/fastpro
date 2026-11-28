@@ -1,6 +1,6 @@
 // Pacote B (H-086, H-088, H-089) | Exibicao de avaliacoes: estrelas (so leitura) e cartao com a resposta do profissional.
 import { Icone } from './Icone';
-import { iniciais } from './Conversa';
+import { iniciais } from '@/lib/iniciais';
 import { AUTOR_AVALIACAO, type AvaliacaoPublicada } from '@/lib/avaliacoes';
 import { formatarDataHora } from '@/lib/formatos';
 

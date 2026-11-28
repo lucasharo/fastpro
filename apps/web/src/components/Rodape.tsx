@@ -33,7 +33,7 @@ const PROFISSIONAL_LOGADO = {
   links: [
     { href: '/profissional/painel', rotulo: 'Painel' },
     { href: '/profissional/pedidos', rotulo: 'Pedidos da região' },
-    { href: '/profissional/conversas', rotulo: 'Conversas' },
+    { href: '/profissional/aceitos', rotulo: 'Pedidos aceitos' },
     { href: '/profissional/assinatura', rotulo: 'Assinatura' },
   ],
 };

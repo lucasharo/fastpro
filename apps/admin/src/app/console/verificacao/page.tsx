@@ -60,7 +60,7 @@ export default async function PaginaVerificacao({
   return (
     <div>
       <CabecaPagina titulo="Verificação de identidade" />
-      <nav aria-label="Listas da verificação" className="linha">
+      <nav aria-label="Listas da verificação" className="linha verificacao-listas">
         {ESCOPOS_FILA.map((e) => (
           <a
             key={e.valor}
@@ -80,7 +80,7 @@ export default async function PaginaVerificacao({
             <thead>
               <tr>
                 <th scope="col">Caso</th>
-                <th scope="col">Serviços</th>
+                <th scope="col">E-mail</th>
                 <th scope="col">Enviado em</th>
                 <th scope="col">Estado</th>
                 <th scope="col">Prazo</th>
@@ -100,7 +100,7 @@ export default async function PaginaVerificacao({
                 return (
                   <tr key={item.id}>
                     <td>{comOutra ? item.short_id : <a href={link}>{item.short_id}</a>}</td>
-                    <td>{item.services.length > 0 ? item.services.join(', ') : 'Não informado'}</td>
+                    <td>{item.email || 'Não informado'}</td>
                     <td>{formatarData(item.received_at)}</td>
                     <td>{comOutra ? 'Em revisão com outra pessoa' : rotuloEstado(item.status)}</td>
                     <td>{rotuloPrazo(item.overdue)}</td>

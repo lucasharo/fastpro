@@ -397,11 +397,11 @@ describe('T-H105-11 motivo fora das respostas e negacoes identicas (CA-H105-11)'
     expect(JSON.stringify(negada)).not.toContain('curto');
   });
 
-  it('prova recente vencida (30 min) pede nova confirmacao: 403 step_up_required', async () => {
+  it('prova vencida junto com a sessao (8 h) pede nova entrada: 403 step_up_required', async () => {
     const f = portaFake();
     const resposta = await handleDualOpen(
       {
-        row: linha(['financeiro'], { totpAtMs: T0 - 30 * MIN }),
+        row: linha(['financeiro'], { totpAtMs: T0 - 480 * MIN }),
         secret: SEG,
         body: { payment_id: PAGAMENTO, amount_cents: 100, reason: MOTIVO },
       },

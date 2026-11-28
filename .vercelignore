@@ -6,3 +6,6 @@ docs
 supabase
 backups
 **/test-results
+
+# App Expo (instalado e publicado a parte)
+apps/mobile

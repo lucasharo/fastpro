@@ -12,6 +12,7 @@ import { AvisoErro } from '../../../components/AvisoErro';
 import { CabecaPagina } from '../../../components/CabecaPagina';
 import { EstadoVazio } from '../../../components/EstadoVazio';
 import { ModalUrl } from '../../../components/ModalUrl';
+import { Selecao } from '../../../components/Selecao';
 import {
   rotuloModalidade,
   rotuloSituacao,
@@ -164,36 +165,46 @@ export default async function PaginaCatalogo({ searchParams }: { readonly search
         </div>
         <div className="catalogo-campo">
           <label htmlFor="filtro-situacao">Situação</label>
-          <select id="filtro-situacao" name="situacao" defaultValue={filtros.situacao}>
-            <option value="">Todos</option>
-            <option value="ativos">Ativos</option>
-            <option value="inativos">Inativos</option>
-          </select>
+          <Selecao
+            key={filtros.situacao}
+            id="filtro-situacao"
+            nome="situacao"
+            valorInicial={filtros.situacao}
+            opcoes={[
+              { valor: '', rotulo: 'Todos' },
+              { valor: 'ativos', rotulo: 'Ativos' },
+              { valor: 'inativos', rotulo: 'Inativos' },
+            ]}
+          />
         </div>
         {aba !== 'grupos' ? (
           <div className="catalogo-campo">
             <label htmlFor="filtro-grupo">Grupo</label>
-            <select id="filtro-grupo" name="grupo" defaultValue={filtros.grupo}>
-              <option value="">Todos os grupos</option>
-              {grupos.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
+            <Selecao
+              key={filtros.grupo}
+              id="filtro-grupo"
+              nome="grupo"
+              valorInicial={filtros.grupo}
+              opcoes={[
+                { valor: '', rotulo: 'Todos os grupos' },
+                ...grupos.map((g) => ({ valor: g.id, rotulo: g.name })),
+              ]}
+            />
           </div>
         ) : null}
         {aba === 'sinonimos' ? (
           <div className="catalogo-campo">
             <label htmlFor="filtro-servico">Serviço</label>
-            <select id="filtro-servico" name="servico" defaultValue={filtros.servico}>
-              <option value="">Todos os serviços</option>
-              {servicosDoFiltro.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+            <Selecao
+              key={`${filtros.grupo}-${filtros.servico}`}
+              id="filtro-servico"
+              nome="servico"
+              valorInicial={filtros.servico}
+              opcoes={[
+                { valor: '', rotulo: 'Todos os serviços' },
+                ...servicosDoFiltro.map((s) => ({ valor: s.id, rotulo: s.name })),
+              ]}
+            />
           </div>
         ) : null}
         <div className="catalogo-filtros-acoes">

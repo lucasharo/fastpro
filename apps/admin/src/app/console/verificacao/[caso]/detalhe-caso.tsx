@@ -1,5 +1,5 @@
 // Issue 52 (H-039) | Tela de detalhe do caso (124 §5.4). So dados nao sensiveis. O documento nunca aparece como URL:
-// o botao envia um formulario para a rota de leitura, que devolve o arquivo como download.
+// o botao envia um formulario para a rota de leitura, que abre o arquivo em uma nova aba.
 import { AvisoErro } from '../../../../components/AvisoErro';
 import { CabecaPagina } from '../../../../components/CabecaPagina';
 import { EstadoVazio } from '../../../../components/EstadoVazio';
@@ -75,7 +75,11 @@ export function DetalheCaso({ estado, leituraErro }: DetalheCasoProps) {
             <dd>{rotuloEstado(c.status)}</dd>
             <dt>Prazo</dt>
             <dd>{rotuloPrazo(c.overdue)}</dd>
-            <dt>Motivo da decisão</dt>
+            <dt>
+              {(c.status === 'pendente' || c.status === 'em_revisao') && c.motivo !== null
+                ? 'Motivo da recusa anterior'
+                : 'Motivo da decisão'}
+            </dt>
             <dd>{rotuloMotivo(c.motivo)}</dd>
             {c.explicacao !== null ? (
               <>
@@ -95,12 +99,11 @@ export function DetalheCaso({ estado, leituraErro }: DetalheCasoProps) {
             <form
               method="post"
               action={`/console/verificacao/${encodeURIComponent(c.id)}/documento`}
+              target="_blank"
               className="pilha"
             >
               <input type="hidden" name="motivo" value={motivoLeituraPadrao(c.appeal_status)} />
-              <p className="verificacao-ajuda">
-                O arquivo é baixado para o seu computador. Ele não aparece nesta página.
-              </p>
+              <p className="verificacao-ajuda">O arquivo abre em uma nova aba.</p>
               <div>
                 <button type="submit" className="btn btn-secondary btn-sm">
                   <Icone nome="documento" tamanho={18} />
@@ -112,6 +115,45 @@ export function DetalheCaso({ estado, leituraErro }: DetalheCasoProps) {
             <EstadoVazio texto={TEXTO_SEM_DOCUMENTO} icone="documento" />
           )}
         </section>
+
+        {c.certificacoes.length > 0 ? (
+          <section className="cartao-plano" aria-labelledby="verificacao-certificacoes">
+            <h2 id="verificacao-certificacoes">Certificações</h2>
+            {!meu && aberto ? (
+              <p className="verificacao-ajuda">Assuma o caso para abrir as certificações.</p>
+            ) : null}
+            <ul className="verificacao-certificacoes">
+              {c.certificacoes.map((cert) => (
+                <li key={`${cert.servicoId}-${cert.posicao}`}>
+                  <div>
+                    <strong>
+                      {cert.servico}
+                      {cert.recebidoEm ? ` (arquivo ${cert.posicao + 1})` : ''}
+                    </strong>
+                    <p className="verificacao-ajuda">
+                      {cert.recebidoEm ? `Enviada em ${formatarData(cert.recebidoEm)}` : 'Não enviada'}
+                    </p>
+                  </div>
+                  {cert.recebidoEm && meu ? (
+                    <form
+                      method="post"
+                      action={`/console/verificacao/${encodeURIComponent(c.id)}/documento`}
+                      target="_blank"
+                    >
+                      <input type="hidden" name="motivo" value={motivoLeituraPadrao(c.appeal_status)} />
+                      <input type="hidden" name="servico" value={cert.servicoId} />
+                      <input type="hidden" name="posicao" value={cert.posicao} />
+                      <button type="submit" className="btn btn-secondary btn-sm">
+                        <Icone nome="documento" tamanho={18} />
+                        Abrir certificação
+                      </button>
+                    </form>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         <section className="cartao-plano" aria-labelledby="verificacao-decisao-titulo">
           <h2 id="verificacao-decisao-titulo">Decisão</h2>

@@ -14,7 +14,7 @@ const PLANOS = [
 const VANTAGENS: readonly { icone: NomeIcone; titulo: string; texto: string }[] = [
   { icone: 'carteira', titulo: 'Sem pagar por contato', texto: 'Uma assinatura fixa. Aceite quantos pedidos quiser.' },
   { icone: 'local', titulo: 'Pedidos da sua região', texto: 'Você define a base e o raio de atendimento.' },
-  { icone: 'conversa', titulo: 'Conversa direta', texto: 'Combine detalhes com o cliente antes de ir.' },
+  { icone: 'conversa', titulo: 'Conversa direta', texto: 'Fale com o cliente pelo WhatsApp antes de ir.' },
   { icone: 'escudo', titulo: 'Selo de verificado', texto: 'Clientes confiam mais em quem tem documento conferido.' },
 ];
 

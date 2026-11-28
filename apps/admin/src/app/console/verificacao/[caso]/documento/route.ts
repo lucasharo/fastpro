@@ -1,4 +1,4 @@
-// Issue 52 (H-039) | Leitura do documento para download (124 §5.3). POST com o motivo fixo do botao. O identificador do
+// Issue 52 (H-039) | Leitura do documento em nova aba (124 §5.3; 2026-11-27: inline no lugar de download). POST com o motivo fixo do botao. O identificador do
 // documento e buscado no servidor e nunca volta ao navegador. Falha volta para o caso com aviso generico; a
 // negacao vira 404 uniforme (igual ao caso inexistente).
 import { chamarVerificacao } from '../../verification-api';
@@ -19,7 +19,11 @@ export async function POST(
       303,
     );
 
-  const motivo = String((await request.formData()).get('motivo') ?? '');
+  const formulario = await request.formData();
+  const motivo = String(formulario.get('motivo') ?? '');
+  // Com `servico`, abre a certificacao daquele servico; sem ele, o documento de identidade.
+  const servico = String(formulario.get('servico') ?? '');
+  const posicao = Number(formulario.get('posicao') ?? 0);
   if (!ehMotivoLeitura(motivo)) return voltar();
 
   const base = `/casos/${encodeURIComponent(caso)}`;
@@ -27,8 +31,13 @@ export async function POST(
   if (detalhe === 'sem_acesso') return NAO_ENCONTRADO();
   if (detalhe === 'indisponivel' || detalhe.status !== 200)
     return detalhe === 'indisponivel' ? voltar() : NAO_ENCONTRADO();
-  const corpo = (await detalhe.json().catch(() => null)) as { documento?: unknown } | null;
-  const documento = corpo?.documento;
+  const corpo = (await detalhe.json().catch(() => null)) as {
+    documento?: unknown;
+    certificacoes?: readonly { servicoId?: unknown; documento?: unknown }[];
+  } | null;
+  const documento = servico
+    ? corpo?.certificacoes?.filter((c) => c.servicoId === servico)[posicao]?.documento
+    : corpo?.documento;
   if (typeof documento !== 'string') return voltar();
 
   const leitura = await chamarVerificacao(`${base}/documento/leitura`, 'POST', {
@@ -46,7 +55,7 @@ export async function POST(
     status: 200,
     headers: {
       'content-type': tipo,
-      'content-disposition': `attachment; filename="documento-identidade.${extensao}"`,
+      'content-disposition': `inline; filename="${servico ? 'certificacao' : 'documento-identidade'}.${extensao}"`,
       'x-content-type-options': 'nosniff',
       'cache-control': 'no-store',
     },

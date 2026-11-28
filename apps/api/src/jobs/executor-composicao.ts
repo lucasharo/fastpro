@@ -9,6 +9,7 @@ import {
   PgCycleSource,
   PgDsrTitularDirectory,
   PgJobStore,
+  PgPushStore,
   TickService,
   registerJobHandler,
   registerNotificationHandlers,
@@ -21,10 +22,13 @@ import {
 } from '@fastpro/db';
 import { NotificationRuleRegistry, registerCycleRules, type ClockPort, type EmailProviderPort } from '@fastpro/domain';
 import { createCycleAwareRenderer, createEmailProvider, createFetchHttpTransport, createMinimalRenderer } from '@fastpro/email';
+import { chavesVapid } from '../push/push-composicao.js';
+import { PushPedidoNovoHandler, PushSendHandler } from '../push/push-envio.js';
 
 type Ambiente = Readonly<Record<string, string | undefined>>;
 
-const TIPOS = ['outbox.dispatch', 'notification.flush', 'email.send'] as const;
+// push.send logo depois do despacho (que cria os itens): o push sai na mesma rodada. push.request: pedido novo.
+const TIPOS = ['outbox.dispatch', 'push.send', 'push.request', 'notification.flush', 'email.send'] as const;
 const CATEGORIAS_DO_CICLO = new Set(['aceite', 'mensagem', 'selecao', 'cancelamento']);
 
 const RELOGIO: ClockPort = {
@@ -88,6 +92,9 @@ export function montarExecutorJobs(env: Ambiente, opcoes: ExecutorOpcoes = {}): 
         };
         const base = new JobRegistry();
         registerNotificationHandlers(base, deps);
+        const push = { store: new PgPushStore(conexao), vapid: chavesVapid(env), expoToken: env.EXPO_ACCESS_TOKEN };
+        registerJobHandler(base, 'push.send', new PushSendHandler(push));
+        registerJobHandler(base, 'push.request', new PushPedidoNovoHandler(push));
         const registro = new JobRegistry();
         for (const tipo of TIPOS) {
           const handler = base.get(tipo);
@@ -107,21 +114,39 @@ export function montarExecutorJobs(env: Ambiente, opcoes: ExecutorOpcoes = {}): 
   };
 }
 
-/** Tick oportunista: no maximo uma execucao por minuto por instancia, uma por vez; nunca propaga erro. */
-export function montarTickOportunista(executor: ExecutorJobs | undefined): ((path: string) => Promise<void>) | undefined {
+/** Publicacao, segunda onda, aceite e cancelamento avisam na hora: a fila roda logo depois da resposta, sem esperar a janela de um minuto. */
+const AVISA_NA_HORA = /^\/v1\/requests(?:\/[^/]+\/(?:acceptances|cancel|more-professionals))?$/;
+
+export function avisaNaHora(metodo: string | undefined, path: string, status: number): boolean {
+  return metodo === 'POST' && status >= 200 && status < 300 && AVISA_NA_HORA.test(path);
+}
+
+/**
+ * Tick oportunista: no maximo uma execucao por minuto por instancia, uma por vez; nunca propaga erro. Com `jaAgora`,
+ * roda sempre (a reivindicacao no banco impede que duas rodadas peguem o mesmo job).
+ */
+export function montarTickOportunista(
+  executor: ExecutorJobs | undefined,
+): ((path: string, jaAgora?: boolean) => Promise<void>) | undefined {
   if (executor === undefined) return undefined;
   let rodando = false;
   let ultima = 0;
-  return async (path: string) => {
+  const rodar = async (): Promise<void> => {
+    try {
+      await executor.rodar('c');
+    } catch {
+      /* falha fechada: a proxima tentativa vem na proxima janela */
+    }
+  };
+  return async (path: string, jaAgora = false) => {
+    if (jaAgora) return rodar();
     if (rodando || path === '/health' || path.startsWith('/internal/')) return;
     const agora = Date.now();
     if (agora - ultima < 60_000) return;
     rodando = true;
     ultima = agora;
     try {
-      await executor.rodar('c');
-    } catch {
-      /* falha fechada: a proxima tentativa vem na proxima janela */
+      await rodar();
     } finally {
       rodando = false;
     }

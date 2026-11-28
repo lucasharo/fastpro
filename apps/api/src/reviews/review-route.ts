@@ -1,6 +1,6 @@
 // Pacote B (2026-11-23) | Rotas de avaliacao do servico, resposta do profissional e perfil publico de avaliacoes.
 //   GET    /v1/requests/:id/review          dono: pedido, selecao e avaliacao (ou null) {status, selected, review}
-//   POST   /v1/requests/:id/review          dono: cria a avaliacao {rating, comment?}
+//   POST   /v1/requests/:id/review          dono: cria a avaliacao {rating, comment?, acceptance_id?}
 //   PATCH  /v1/requests/:id/review          dono: edita ate 7 dias depois da publicacao {rating, comment?}
 //   POST   /v1/reviews/:id/reply            profissional avaliado: resposta unica {body}
 //   GET    /v1/professional/reviews         profissional logado: avaliacoes recebidas {items, summary}
@@ -202,14 +202,31 @@ export async function handleReviewRoute(
       }
       case 'criar':
       case 'editar': {
-        const entrada = corpoAvaliacao(objeto(await lerCorpo(req)));
+        const recebido = objeto(await lerCorpo(req));
+        // So a criacao aceita acceptance_id (qual profissional que aceitou esta sendo avaliado).
+        let aceite: string | undefined;
+        let semAceite = recebido;
+        if (rota.tipo === 'criar' && recebido !== null && 'acceptance_id' in recebido) {
+          const { acceptance_id: valor, ...resto } = recebido;
+          if (typeof valor !== 'string' || !UUID_RE.test(valor)) return enviar(res, 400, { code: 'corpo_invalido' });
+          aceite = valor;
+          semAceite = resto;
+        }
+        const entrada = corpoAvaliacao(semAceite);
         if (entrada === null) return enviar(res, 400, { code: 'corpo_invalido' });
         if (entrada.comentario !== null && entrada.comentario.trim().length > COMENTARIO_MAX) {
           return enviar(res, 422, { code: 'comentario_invalido' });
         }
         const r =
           rota.tipo === 'criar'
-            ? await opts.store.criar(rota.id, sessao.userId, entrada.nota, entrada.comentario, new Date(agora))
+            ? await opts.store.criar(
+                rota.id,
+                sessao.userId,
+                entrada.nota,
+                entrada.comentario,
+                new Date(agora),
+                ...(aceite === undefined ? [] : ([aceite] as const)),
+              )
             : await opts.store.editar(rota.id, sessao.userId, entrada.nota, entrada.comentario, new Date(agora));
         if (r.outcome === 'criada') return enviar(res, 201, { id: r.reviewId, publishedAt: r.publishedAt });
         if (r.outcome === 'atualizada') return enviar(res, 200, { id: r.reviewId, editedAt: r.editedAt });

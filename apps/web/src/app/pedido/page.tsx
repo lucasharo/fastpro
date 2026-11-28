@@ -3,7 +3,7 @@
 // Ao fim, a revisao (/pedido/revisao) confirma e publica.
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { CampoEndereco, ENDERECO_MIN } from '@/components/CampoEndereco';
 import { CampoServico } from '@/components/CampoServico';
 import { CodigoEmail, pedirCodigo } from '@/components/CodigoEmail';
@@ -94,8 +94,26 @@ function PedidoConteudo() {
     };
   }, [params]);
 
+  const preparando = useRef<Promise<boolean> | null>(null);
+
+  /** A API so sugere endereco para quem ja tem rascunho: cria um na primeira vez que a pessoa mexe no campo. */
+  function preparar() {
+    if (criado || preparando.current) return;
+    const corpo = servico ? { service_id: servico.service_id } : endereco.trim().length >= ENDERECO_MIN ? { address_text: endereco.trim() } : null;
+    if (corpo === null) return;
+    preparando.current = (async () => {
+      const r = await chamarApi('/v1/drafts', { method: 'POST', body: corpo });
+      preparando.current = null;
+      if (ok(r.status)) setCriado(true);
+      else if (r.status === 429) setAviso(MENSAGEM_LIMITE);
+      return ok(r.status);
+    })();
+  }
+
   async function salvar(parcial: Record<string, unknown>): Promise<boolean> {
-    const r = criado
+    // Rascunho ainda sendo criado pelo campo de endereco: espera, para nao criar outro.
+    const emCriacao = await preparando.current;
+    const r = criado || emCriacao
       ? await chamarApi('/v1/drafts/current', { method: 'PATCH', body: parcial })
       : await chamarApi('/v1/drafts', { method: 'POST', body: parcial });
     if (ok(r.status)) {
@@ -273,7 +291,7 @@ function PedidoConteudo() {
               />
             </Campo>
             <Campo id="endereco" rotulo="Onde o serviço será feito?" erro={erros.endereco} dica="O endereço completo só aparece para o profissional que você escolher.">
-              <CampoEndereco id="endereco" contexto="request_draft" valor={endereco} onMudar={setEndereco} podeConsultar={criado} invalido={Boolean(erros.endereco)} />
+              <CampoEndereco id="endereco" contexto="request_draft" valor={endereco} onMudar={setEndereco} podeConsultar={criado} onPreparar={preparar} invalido={Boolean(erros.endereco)} />
             </Campo>
             <button type="submit" className="btn btn-primary btn-bloco" disabled={salvando}>
               {salvando ? 'Salvando…' : 'Continuar'} <Icone nome="seta" tamanho={18} />

@@ -3,6 +3,7 @@
 // que a API devolveu: a API decide o acesso (404 = sem acesso, igual ao console) e a lista nao traz CPF/CNPJ,
 // nome, nome de arquivo nem hash. Erro de carregamento nunca mostra detalhe tecnico.
 
+// Desde 2026-11-27 a fila traz o e-mail do profissional (pedido do dono).
 export const ESCOPOS_FILA = [
   { valor: 'pendentes', rotulo: 'Pendentes' },
   { valor: 'minhas', rotulo: 'Minhas' },
@@ -32,6 +33,8 @@ export interface LinhaFilaTela {
   readonly sla_target_at: string;
   readonly received_at: string | null;
   readonly services: readonly string[];
+  /** E-mail do profissional (so na fila). */
+  readonly email?: string | null;
   readonly overdue: boolean;
   readonly assigned_to_me: boolean;
   readonly version: number;

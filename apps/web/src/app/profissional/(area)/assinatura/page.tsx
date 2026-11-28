@@ -6,6 +6,7 @@ import { Icone } from '@/components/Icone';
 import { Aviso, CabecaPagina, Carregando, type TipoAviso } from '@/components/ui';
 import { chamarApi } from '@/lib/api';
 import { formatarData, formatarReais } from '@/lib/formatos';
+import { Toast } from '@/components/Toast';
 
 const ROTULOS_PLANO: Record<string, string> = { mensal: 'Mensal', trimestral: 'Trimestral', semestral: 'Semestral', anual: 'Anual' };
 const ESTADOS: Record<string, string> = {
@@ -143,11 +144,7 @@ export default function Assinatura() {
   return (
     <>
       <CabecaPagina sobretitulo="Assinatura" titulo="Seu" destaque="plano" texto="Sem cobrança por contato. Pague por Pix ou cartão." />
-      {aviso ? (
-        <div style={{ marginBottom: '1.5rem' }}>
-          <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>
-        </div>
-      ) : null}
+      <Toast aviso={aviso} />
       <div className="glass-card painel-cartao linha-entre" style={{ marginBottom: '1.5rem' }}>
         <div>
           <div className="campo-dica">Situação</div>

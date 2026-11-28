@@ -59,6 +59,8 @@ export interface PublishServiceDeps {
    * publicacao sem telefone segue igual.
    */
   readonly telefone?: { readonly store: Pick<PgContactStore, 'attachPhone'>; readonly cofre: Pick<PhoneVault, 'seal'> };
+  /** Contato por WhatsApp (2026-11-27): exige numero compartilhado com quem aceitar. A montagem real liga. */
+  readonly telefoneObrigatorio?: boolean;
 }
 
 export interface PublishRequestInput {
@@ -128,6 +130,9 @@ export async function publishRequest(input: PublishRequestInput, deps: PublishSe
   // Issue 46 (H-033): telefone opcional, validado antes de qualquer escrita. Sem cifra configurada, 503 antes do banco.
   const telefoneE164 = body.phone === undefined ? undefined : normalizePhoneBr(body.phone);
   if (body.sharePhone === true && body.phone === undefined) return resposta(400, { code: 'telefone_necessario' });
+  if (deps.telefoneObrigatorio === true && (body.phone === undefined || body.sharePhone !== true)) {
+    return resposta(422, { code: 'telefone_obrigatorio' });
+  }
   if (body.phone !== undefined && telefoneE164 === null) return resposta(422, { code: 'telefone_invalido' });
   if (body.phone !== undefined && deps.telefone === undefined) {
     return resposta(503, { code: 'publicacao_indisponivel' }, { 'Retry-After': '10' });

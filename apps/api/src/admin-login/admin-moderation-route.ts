@@ -5,15 +5,25 @@
 //   POST /v1/admin/moderation/reviews/:id/visibility {oculta}              moderation.decide
 //   GET  /v1/admin/audit/recent                                            audit.read
 //   GET  /v1/admin/staff                                                   admin.role.manage
+//   POST /v1/admin/staff {email, password, roles}                          admin.role.manage (cadastra um admin)
 //   GET  /v1/admin/listas/catalogo?aba&pagina&q&situacao&grupo&servico      catalog.manage (50 por pagina, no banco)
 //   GET  /v1/admin/listas/catalogo-opcoes                                  catalog.manage (grupos e servicos leves)
 // Guarda: cookie __Host-fp_admin -> private.admin_guard (sessao, conta e papel ativos). Sem sessao ou sem a
 // permissao: 404 vazio, igual a rota inexistente. Mutacoes exigem Origin do admin. Sem log de cookie ou corpo.
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { ADMIN_SESSION_COOKIE, checkDraftOrigin, cookieValue, siteOriginOf } from '@fastpro/domain';
-import { hashSessionSecret, type SqlClient } from '@fastpro/db';
+import {
+  ADMIN_GRANTABLE_ROLES,
+  ADMIN_SESSION_COOKIE,
+  adminPasswordProblem,
+  checkDraftOrigin,
+  cookieValue,
+  normalizeAdminEmail,
+  siteOriginOf,
+} from '@fastpro/domain';
+import { hashAdminPassword, hashSessionSecret, type SqlClient } from '@fastpro/db';
 
 const POR_PAGINA = 50;
+const CORPO_MAX_BYTES = 2048;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CABECALHOS = {
   'Cache-Control': 'no-store',
@@ -34,6 +44,7 @@ type Rota =
   | { readonly tipo: 'visibilidade'; readonly id: string }
   | { readonly tipo: 'auditoria' }
   | { readonly tipo: 'equipe' }
+  | { readonly tipo: 'cadastrar' }
   | { readonly tipo: 'catalogo' }
   | { readonly tipo: 'catalogoOpcoes' };
 
@@ -44,6 +55,7 @@ const PERMISSAO: Record<Rota['tipo'], string> = {
   visibilidade: 'moderation.decide',
   auditoria: 'audit.read',
   equipe: 'admin.role.manage',
+  cadastrar: 'admin.role.manage',
   catalogo: 'catalog.manage',
   catalogoOpcoes: 'catalog.manage',
 };
@@ -53,6 +65,7 @@ export function adminModerationRoute(metodo: string, path: string): Rota | null 
   if (metodo === 'GET' && path === '/v1/admin/moderation/reviews') return { tipo: 'avaliacoes' };
   if (metodo === 'GET' && path === '/v1/admin/audit/recent') return { tipo: 'auditoria' };
   if (metodo === 'GET' && path === '/v1/admin/staff') return { tipo: 'equipe' };
+  if (metodo === 'POST' && path === '/v1/admin/staff') return { tipo: 'cadastrar' };
   if (metodo === 'GET' && path === '/v1/admin/listas/catalogo') return { tipo: 'catalogo' };
   if (metodo === 'GET' && path === '/v1/admin/listas/catalogo-opcoes') return { tipo: 'catalogoOpcoes' };
   let m = /^\/v1\/admin\/moderation\/reports\/([^/]+)\/decision$/.exec(path);
@@ -86,10 +99,10 @@ function lerCorpo(req: IncomingMessage): Promise<Record<string, unknown> | null>
     let total = 0;
     req.on('data', (c: Buffer) => {
       total += c.length;
-      if (total <= 1024) partes.push(c);
+      if (total <= CORPO_MAX_BYTES) partes.push(c);
     });
     req.on('end', () => {
-      if (total > 1024) return resolve(null);
+      if (total > CORPO_MAX_BYTES) return resolve(null);
       try {
         const v: unknown = JSON.parse(Buffer.concat(partes).toString('utf8') || '{}');
         resolve(v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null);
@@ -123,6 +136,36 @@ export async function handleAdminModerationRoute(
     const permissoes = Array.isArray(linha?.out_permissions) ? (linha.out_permissions as unknown[]).map(String) : [];
     if (linha === undefined || !permissoes.includes(PERMISSAO[rota.tipo])) return naoEncontrado(res);
     const adminId = String(linha.out_user_id);
+
+    if (rota.tipo === 'cadastrar') {
+      const origem = checkDraftOrigin(
+        { origin: cabecalho(req.headers.origin), secFetchSite: cabecalho(req.headers['sec-fetch-site']) },
+        siteOriginOf(opts.adminUrl),
+        true,
+      );
+      if (!origem.ok) return enviar(res, 403, { code: 'origem_invalida' });
+      const corpo = await lerCorpo(req);
+      if (corpo === null) return enviar(res, 400, { code: 'corpo_invalido' });
+      const invalido = (campo: string, motivo: string) => enviar(res, 422, { code: 'campo_invalido', campo, motivo });
+      const email = normalizeAdminEmail(corpo.email);
+      if (email === null) return invalido('email', 'formato');
+      const problema = adminPasswordProblem(corpo.password, email);
+      if (problema !== null) return invalido('password', problema);
+      const papeis = Array.isArray(corpo.roles) ? [...new Set<unknown>(corpo.roles)] : [];
+      if (papeis.length === 0 || !papeis.every((p) => (ADMIN_GRANTABLE_ROLES as readonly unknown[]).includes(p))) {
+        return invalido('roles', 'papel');
+      }
+      const q = await opts.client.query(
+        'select private.admin_staff_create($1::uuid, $2, $3, $4::text[], $5::timestamptz) as r',
+        [adminId, email, await hashAdminPassword(corpo.password as string), papeis, new Date(agora).toISOString()],
+      );
+      const r = String(q.rows[0]?.r ?? 'erro');
+      if (r === 'ok') return enviar(res, 201, { status: 'criado' });
+      if (r === 'permissao_negada') return naoEncontrado(res);
+      if (r === 'email_indisponivel') return enviar(res, 409, { code: r });
+      if (r === 'papel_invalido') return invalido('roles', 'papel');
+      return enviar(res, 503, { code: 'indisponivel' });
+    }
 
     if (rota.tipo === 'decidir' || rota.tipo === 'visibilidade') {
       const origem = checkDraftOrigin(

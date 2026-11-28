@@ -115,6 +115,20 @@ export interface AuditQueryRateLimit {
   take(adminUserId: string, nowMs: number): Promise<boolean>;
 }
 
+/** Conta admin que entra com senha. Adaptador: PgAdminPasswordAccounts. */
+export interface AdminPasswordAccounts {
+  /** Nulo se a conta nao pode entrar ou a senha nao confere (mesmo custo nos dois casos). */
+  verify(email: string, password: string): Promise<{ readonly userId: string } | null>;
+  /** Abre a sessao de 8 h. Nulo se a conta nao esta ativa com papel. */
+  openSession(userId: string, nowMs: number): Promise<{ readonly secret: string } | null>;
+}
+
+/** Limite do login por senha (H-015). reserve consome a vaga de forma atomica; release a devolve no acerto. */
+export interface AdminLoginAttempts {
+  reserve(input: { readonly email: string; readonly ip: string }, nowMs: number): Promise<boolean>;
+  release(input: { readonly email: string; readonly ip: string }, nowMs: number): Promise<void>;
+}
+
 export interface AdminLogEntry {
   readonly evento: string;
   readonly resultado: string;

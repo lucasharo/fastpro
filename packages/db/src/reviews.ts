@@ -110,8 +110,22 @@ export class PgReviewStore {
     return { requestStatus: String(l.out_request_status), selected: l.out_has_selected === true, review };
   }
 
-  async criar(requestId: string, customerId: string, nota: number, comentario: string | null, agora: Date): Promise<ResultadoEscritaAvaliacao> {
-    const r = await this.client.query('select * from private.review_create($1, $2, $3, $4, $5)', [requestId, customerId, nota, comentario, agora]);
+  async criar(
+    requestId: string,
+    customerId: string,
+    nota: number,
+    comentario: string | null,
+    agora: Date,
+    acceptanceId?: string,
+  ): Promise<ResultadoEscritaAvaliacao> {
+    const r = await this.client.query('select * from private.review_create($1, $2, $3, $4, $5, $6)', [
+      requestId,
+      customerId,
+      nota,
+      comentario,
+      agora,
+      acceptanceId ?? null,
+    ]);
     const l = r.rows[0] ?? {};
     const outcome = String(l.out_outcome ?? '');
     if (outcome === 'criada') {

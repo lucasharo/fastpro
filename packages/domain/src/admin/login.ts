@@ -1,10 +1,10 @@
-// H-102 | Login da conta admin (docs/factory/54-DESENHO-H102.md §3; CA-H102-05/06/07/08). Um unico pedido:
-// senha + TOTP. Toda falha (e-mail inexistente, nao-admin, pendente, sem papel, senha ou codigo) devolve o
-// MESMO 401 credenciais_invalidas. Limite excedido = 429 antes de qualquer tentativa.
-// O cookie __Host-fp_admin nao tem Domain e carrega so o segredo opaco (sem dado do provedor).
+// Login da conta admin por e-mail e senha (decisao do dono, 2026-11-27; substitui o codigo no e-mail e o desenho
+// de senha + TOTP do H-102). Toda falha (e-mail inexistente, nao-admin, desativado, sem papel, sem senha ou senha
+// errada) devolve o MESMO 401 credenciais_invalidas. Limite excedido = 429 antes de conferir a senha.
+// O cookie __Host-fp_admin nao tem Domain e carrega so o segredo opaco.
 
-import { adminLoginBlocked, normalizeAdminEmail } from './policy.js';
-import type { AdminAuthPort, AdminLogger, AdminLoginLimits, AdminRepository } from './ports.js';
+import { ADMIN_PASSWORD_MAX, normalizeAdminEmail } from './policy.js';
+import type { AdminLogger, AdminLoginAttempts, AdminPasswordAccounts } from './ports.js';
 import {
   ADMIN_CREDENTIALS_INVALID,
   ADMIN_RATE_LIMITED,
@@ -15,16 +15,14 @@ import {
 } from './responses.js';
 
 export interface AdminLoginDeps {
-  readonly repo: AdminRepository;
-  readonly auth: AdminAuthPort;
-  readonly limits: AdminLoginLimits;
+  readonly accounts: AdminPasswordAccounts;
+  readonly limits: AdminLoginAttempts;
   readonly log: AdminLogger;
 }
 
 export interface AdminLoginRequest {
   readonly email: unknown;
   readonly password: unknown;
-  readonly code: unknown;
   readonly ip: string;
 }
 
@@ -51,33 +49,33 @@ export async function loginAdmin(
   const email = normalizeAdminEmail(req.email);
   const key = { email: email ?? '', ip: req.ip };
 
-  const counts = await deps.limits.counts(key, nowMs);
-  if (adminLoginBlocked(counts)) {
+  // A vaga e consumida antes da conferencia (pedidos simultaneos nao furam o teto) e devolvida no acerto.
+  if (!(await deps.limits.reserve(key, nowMs))) {
     deps.log({ evento: 'login_admin', resultado: 'bloqueado', motivo: 'limite' });
     return ADMIN_RATE_LIMITED;
   }
 
-  const fail = async (motivo: string): Promise<AdminResponse> => {
-    await deps.limits.recordFailure(key, nowMs);
+  const fail = (motivo: string): AdminResponse => {
     deps.log({ evento: 'login_admin', resultado: 'recusado', motivo });
     return ADMIN_CREDENTIALS_INVALID;
   };
 
-  if (email === null || typeof req.password !== 'string' || typeof req.code !== 'string') {
+  const password = req.password;
+  if (email === null || typeof password !== 'string' || password === '' || password.length > ADMIN_PASSWORD_MAX) {
     return fail('entrada');
   }
 
-  const auth = await deps.auth.signInWithPasswordAndTotp(email, req.password, req.code);
-  if (auth === null) return fail('provedor');
+  const conta = await deps.accounts.verify(email, password);
+  if (conta === null) return fail('credencial');
 
-  const staff = await deps.repo.findActiveStaff(auth.authUserId);
-  if (staff === null || staff.roles.length === 0) return fail('sem_conta_ativa');
+  const session = await deps.accounts.openSession(conta.userId, nowMs);
+  if (session === null) return fail('sem_conta_ativa');
 
-  const session = await deps.repo.openSession(staff.userId, nowMs);
+  await deps.limits.release(key, nowMs);
   deps.log({ evento: 'login_admin', resultado: 'ok' });
   return adminReply(
     200,
-    { autenticado: true, papeis: [...staff.roles], expira_em: nowMs + ADMIN_SESSION_MAX_AGE_SECONDS * 1000 },
+    { autenticado: true, expira_em: nowMs + ADMIN_SESSION_MAX_AGE_SECONDS * 1000 },
     { setCookie: adminSessionCookieHeader(session.secret) },
   );
 }

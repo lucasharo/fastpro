@@ -48,22 +48,22 @@ function deps(world: FakeWorld, auth: AdminAuthPort = world.auth) {
   };
 }
 
-describe('isTotpRecent (janela de 30 min, estrita)', () => {
+describe('isTotpRecent (vale pela sessao de 8 h, estrita)', () => {
   const t0 = Date.parse('2099-01-01T12:00:00.000Z');
 
-  it('a 29:59 a prova ainda e recente', () => {
-    expect(isTotpRecent(t0, t0 + 29 * MIN + 59_000)).toBe(true);
+  it('a 7:59:59 a prova ainda vale', () => {
+    expect(isTotpRecent(t0, t0 + 479 * MIN + 59_000)).toBe(true);
   });
 
-  it('aos 30:00 exatos exige nova prova (limite estrito)', () => {
-    expect(ADMIN_TOTP_RECENT_MS).toBe(30 * MIN);
-    expect(isTotpRecent(t0, t0 + 30 * MIN)).toBe(false);
+  it('com 8 h exatas exige nova prova (limite estrito)', () => {
+    expect(ADMIN_TOTP_RECENT_MS).toBe(480 * MIN);
+    expect(isTotpRecent(t0, t0 + 480 * MIN)).toBe(false);
   });
 
-  it('no instante da prova e depois de 30:00 nega; 1 ms antes do limite passa', () => {
+  it('no instante da prova e depois de 8 h nega; 1 ms antes do limite passa', () => {
     expect(isTotpRecent(t0, t0)).toBe(true);
-    expect(isTotpRecent(t0, t0 + 30 * MIN - 1)).toBe(true);
-    expect(isTotpRecent(t0, t0 + 30 * MIN + 1)).toBe(false);
+    expect(isTotpRecent(t0, t0 + 480 * MIN - 1)).toBe(true);
+    expect(isTotpRecent(t0, t0 + 480 * MIN + 1)).toBe(false);
   });
 });
 

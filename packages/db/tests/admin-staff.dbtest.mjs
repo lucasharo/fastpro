@@ -128,17 +128,9 @@ test('T-H102-20 RLS forcada e nenhum acesso de papeis publicos nas tabelas admin
 // admin_staff: invariantes de origem, convite e MFA
 // ---------------------------------------------------------------------------------------------
 
-test('admin_staff: ativo exige TOTP confirmado; convite exige convidador; bootstrap nao tem', () =>
+test('admin_staff: convite exige convidador; bootstrap nao tem', () =>
   tx(async () => {
     const u = await usuario();
-    const sem = await falha(
-      `insert into app.admin_staff (user_id, status, origin, invited_by, mfa_enrolled_at,
-                                    created_at, status_changed_at)
-       values ($1, 'ativo', 'bootstrap', null, null, now(), now())`,
-      [u.id],
-    );
-    assert.ok(sem, 'ativo sem mfa_enrolled_at deve falhar');
-
     const conv = await falha(
       `insert into app.admin_staff (user_id, status, origin, invited_by, mfa_enrolled_at,
                                     created_at, status_changed_at)

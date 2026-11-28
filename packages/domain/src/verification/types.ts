@@ -47,13 +47,24 @@ export interface LinhaFila {
   readonly slaTargetAt: Date;
   readonly receivedAt: Date | null;
   readonly services: readonly string[];
+  /** E-mail do profissional; so a fila traz. */
+  readonly professionalEmail?: string | null;
   readonly overdue: boolean;
   readonly assignedToMe: boolean;
   readonly version: number;
 }
 
+export interface CertificacaoCaso {
+  readonly serviceId: string;
+  readonly serviceName: string;
+  readonly documentId: string | null;
+  readonly receivedAt: Date | null;
+}
+
 /** Detalhe do caso: a linha da fila mais o resultado da decisao e o identificador opaco do documento (124 §4.6). */
 export interface DetalheCaso extends LinhaFila {
+  /** Um item por servico regulamentado; documentId nulo = certificacao nao enviada. */
+  readonly certifications?: readonly CertificacaoCaso[];
   readonly reasonCode: MotivoDecisao | null;
   readonly explanation: string | null;
   readonly decidedAt: Date | null;

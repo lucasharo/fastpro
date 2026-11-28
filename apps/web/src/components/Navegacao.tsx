@@ -3,17 +3,15 @@
 // Os itens dependem do papel da sessao: visitante, cliente ou profissional (cada um ve so o que e seu).
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
-import { chamarApi } from '@/lib/api';
+import { useEffect, useRef, useState } from 'react';
 import { Icone } from './Icone';
+import { MENU_PROFISSIONAL } from './menu-profissional';
 import { useSessao, type Papel } from './Sessao';
 import { TrocaTema } from './TrocaTema';
 
 interface ItemMenu {
   readonly href: string;
   readonly rotulo: string;
-  /** Mostra o contador de conversas nao lidas ao lado deste item. */
-  readonly naoLidas?: boolean;
 }
 
 const MENU: Record<Papel, readonly ItemMenu[]> = {
@@ -24,12 +22,14 @@ const MENU: Record<Papel, readonly ItemMenu[]> = {
   ],
   cliente: [
     { href: '/', rotulo: 'Início' },
-    { href: '/painel', rotulo: 'Meus pedidos', naoLidas: true },
+    { href: '/painel', rotulo: 'Meus pedidos' },
+    { href: '/painel/configuracoes', rotulo: 'Configurações' },
   ],
   profissional: [
     { href: '/profissional/painel', rotulo: 'Painel' },
     { href: '/profissional/pedidos', rotulo: 'Pedidos da região' },
-    { href: '/profissional/conversas', rotulo: 'Conversas', naoLidas: true },
+    { href: '/profissional/aceitos', rotulo: 'Pedidos aceitos' },
+    { href: '/profissional/configuracoes', rotulo: 'Configurações' },
   ],
 };
 
@@ -46,37 +46,30 @@ export function Navegacao() {
   const caminho = usePathname() ?? '';
   const { papel, sair } = useSessao();
   const [aberto, setAberto] = useState(false);
-  // Total de conversas nao lidas (H-101). So com sessao.
-  const [naoLidas, setNaoLidas] = useState(0);
-  const logado = papel === 'cliente' || papel === 'profissional';
-  const atualizarNaoLidas = useCallback(async () => {
-    const r = await chamarApi<{ total?: number }>('/v1/conversations/unread');
-    setNaoLidas(r.status === 200 && typeof r.corpo?.total === 'number' ? r.corpo.total : 0);
-  }, []);
+  const cabecalho = useRef<HTMLElement>(null);
+  // A gaveta fecha com clique ou toque fora do cabecalho e com a tecla Esc.
   useEffect(() => {
-    if (!logado) {
-      setNaoLidas(0);
-      return;
-    }
-    void atualizarNaoLidas();
-    const t = setInterval(() => {
-      if (document.visibilityState === 'visible') void atualizarNaoLidas();
-    }, 30000);
-    return () => clearInterval(t);
-  }, [caminho, logado, atualizarNaoLidas]);
-
+    if (!aberto) return;
+    const fora = (e: PointerEvent) => {
+      if (!cabecalho.current?.contains(e.target as Node)) setAberto(false);
+    };
+    const tecla = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAberto(false);
+    };
+    document.addEventListener('pointerdown', fora);
+    document.addEventListener('keydown', tecla);
+    return () => {
+      document.removeEventListener('pointerdown', fora);
+      document.removeEventListener('keydown', tecla);
+    };
+  }, [aberto]);
   // Enquanto o papel nao chega, nenhum item de area (evita mostrar o menu do papel errado por um instante).
   const itens = papel === undefined ? [] : MENU[papel];
   const inicio = papel === 'profissional' ? '/profissional/painel' : '/';
-  const ativo = (href: string) => (caminho === href || (href !== '/' && caminho.startsWith(`${href}/`)) ? 'page' : undefined);
+  const cobre = (href: string) => caminho === href || (href !== '/' && caminho.startsWith(`${href}/`));
+  // So o item mais especifico fica marcado (ex.: Configuracoes, e nao tambem Meus pedidos).
+  const ativo = (href: string) => (cobre(href) && !itens.some((i) => i.href.length > href.length && cobre(i.href)) ? 'page' : undefined);
 
-  function contador(item: ItemMenu) {
-    return item.naoLidas && naoLidas > 0 ? (
-      <span className="selo selo-sm selo-alerta selo-contador" aria-label={`${naoLidas} conversas com mensagens não lidas`}>
-        {naoLidas}
-      </span>
-    ) : null;
-  }
 
   function acoes(fechar?: () => void) {
     if (papel === 'cliente') {
@@ -114,14 +107,13 @@ export function Navegacao() {
   }
 
   return (
-    <header className="nav">
+    <header className="nav" ref={cabecalho}>
       <nav className="nav-barra glass-card" aria-label="Principal">
         <Marca href={inicio} />
         <div className="nav-links">
           {itens.map((l) => (
             <Link key={l.href} href={l.href} className="nav-link" aria-current={ativo(l.href)}>
               {l.rotulo}
-              {contador(l)}
             </Link>
           ))}
         </div>
@@ -145,12 +137,19 @@ export function Navegacao() {
       </nav>
       {aberto ? (
         <div id="nav-gaveta" className="nav-gaveta glass-card">
-          {itens.map((l) => (
-            <Link key={l.href} href={l.href} className="nav-link" onClick={() => setAberto(false)}>
-              {l.rotulo}
-              {contador(l)}
-            </Link>
-          ))}
+          {papel === 'profissional'
+            ? // No celular a barra lateral some: a gaveta leva o menu completo da area.
+              MENU_PROFISSIONAL.map((m) => (
+                <Link key={m.href} href={m.href} className="menu-item" aria-current={cobre(m.href) ? 'page' : undefined} onClick={() => setAberto(false)}>
+                  <Icone nome={m.icone} tamanho={18} />
+                  {m.rotulo}
+                </Link>
+              ))
+            : itens.map((l) => (
+                <Link key={l.href} href={l.href} className="nav-link" onClick={() => setAberto(false)}>
+                  {l.rotulo}
+                </Link>
+              ))}
           {acoes(() => setAberto(false))}
         </div>
       ) : null}

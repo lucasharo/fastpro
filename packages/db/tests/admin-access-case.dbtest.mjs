@@ -185,17 +185,17 @@ test('T-H073-23 mesma transacao: leitura com gate deixa 1 log com audit_event_id
     assert.equal(n.n, 0, 'o log desfaz com a leitura');
   }));
 
-// T-H073-25 | prova recente no banco: 29:59 vale; 30:00 exige nova prova (ADM21)
-test('T-H073-25 TOTP recente: abrir com prova em 29:59 passa; em 30:00 exige nova prova (ADM21)', () =>
+// T-H073-25 | decisao 2026-11-27: sem login recente; a prova vale pela sessao de 8 h
+test('T-H073-25 sessao admin: abrir em 7:59:59 passa; com a sessao vencida (8 h) e negado', () =>
   tx(async () => {
     const abre = await staffComPapel('suporte');
     const conversa = randomUUID();
     const seg1 = await sessao(abre, T0, 'seg-a');
-    await abrir(abre, seg1, conversa, T0 + 29 * MIN + 59_000);
+    await abrir(abre, seg1, conversa, T0 + 479 * MIN + 59_000);
     const seg2 = await sessao(abre, T0, 'seg-b');
     const err = await falha('select private.access_case_open($1, $2, $3, $4, $5, $6)',
-      [abre, seg2, randomUUID(), JUST, randomUUID(), at(T0 + 30 * MIN)]);
-    assert.equal(err?.code, 'ADM21');
+      [abre, seg2, randomUUID(), JUST, randomUUID(), at(T0 + 480 * MIN)]);
+    assert.equal(err?.code, '42501');
   }));
 
 // T-H073-24 | aprovacao: nao autoaprova, exige permissao, nao aprova duas vezes; limites de abertura

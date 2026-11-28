@@ -292,23 +292,8 @@ describe('T-03 certificacoes_completas e certificacao_servico_ok', () => {
     }));
 });
 
-describe('T-05 unicidade e substituicao (sequencial)', () => {
-  test('segunda certificacao recebida para o mesmo servico viola o indice unico', () =>
-    tx(async () => {
-      const prof = await profissional();
-      const svc = await servico(true);
-      await vincular(prof, svc);
-      await certificar(prof, svc);
-      const err = await erroDe(
-        `insert into app.identity_document (professional_id, client_upload_id, kind, service_id, declared_type,
-           declared_bytes, status, stored_type, stored_bytes, content_sha256, received_at, pending_expires_at, created_at)
-         values ($1, $2, 'certificacao', $3, $4, 1000, 'recebido', $4, 1000, $5, now(), now() + interval '30 minutes', now())`,
-        [prof, randomUUID(), svc, JPEG, SHA],
-      );
-      assert.equal(err?.code, '23505');
-    }));
-
-  test('finalizacao sequencial deixa uma substituido e uma recebido', () =>
+describe('T-05 varios arquivos por servico (decisao 2026-11-27)', () => {
+  test('um envio novo soma ao anterior: os dois ficam recebidos', () =>
     tx(async () => {
       const prof = await profissional();
       const svc = await servico(true);
@@ -316,9 +301,17 @@ describe('T-05 unicidade e substituicao (sequencial)', () => {
       const a = await certificar(prof, svc);
       const b = await certificar(prof, svc);
       const porId = new Map((await certs(prof, svc)).map((x) => [x.id, x.status]));
-      assert.equal(porId.size, 2);
-      assert.equal(porId.get(a), 'substituido', 'a anterior vira substituido');
-      assert.equal(porId.get(b), 'recebido', 'a nova fica recebida');
+      assert.equal(porId.get(a), 'recebido');
+      assert.equal(porId.get(b), 'recebido');
+    }));
+
+  test('o sexto arquivo do mesmo servico e recusado', () =>
+    tx(async () => {
+      const prof = await profissional();
+      const svc = await servico(true);
+      await vincular(prof, svc);
+      for (let i = 0; i < 5; i += 1) await certificar(prof, svc);
+      assert.equal((await emitirCert(prof, svc)).rows[0].out_code, 'limite_certificacao');
     }));
 
   test('certificacao analisada nao muda quando perfil recusado recebe identidade nova', () =>
@@ -361,7 +354,7 @@ describe('T-06 cotas independentes e teto global', () => {
 });
 
 describe('T-10 auditoria dos eventos de certificacao', () => {
-  test('recebimento e substituicao gravam eventos sem nome, caminho ou IP', () =>
+  test('cada recebimento grava evento sem nome, caminho ou IP', () =>
     tx(async () => {
       const prof = await profissional();
       const svc = await servico(true);
@@ -376,7 +369,6 @@ describe('T-10 auditoria dos eventos de certificacao', () => {
       );
       const acoes = ev.rows.map((x) => `${x.action}:${x.object_id}`);
       assert.ok(acoes.includes(`identity.cert.received:${a}`));
-      assert.ok(acoes.includes(`identity.cert.replaced:${a}`));
       assert.ok(acoes.includes(`identity.cert.received:${b}`));
       const permitidas = new Set(['file_kind', 'size_bytes', 'reason_code']);
       for (const x of ev.rows) {

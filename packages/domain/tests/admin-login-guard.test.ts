@@ -1,6 +1,5 @@
-// H-102 | Testes puros do login e da guarda admin (docs/factory/54-DESENHO-H102.md §3, §4, §7).
-// T-H102-03 (login: mesma recusa para cada causa; 429 apos o limite; sucesso com cookie exato, sem
-// Domain, sem tokens do provedor) e T-H102-04 (guarda: 404 identico para sem cookie, cookie de cliente,
+// Testes puros do login por senha e da guarda admin (docs/factory/54-DESENHO-H102.md §3, §4, §7).
+// Login (mesma recusa para cada causa; 429 apos o limite; sucesso com cookie exato, sem Domain) e T-H102-04 (guarda: 404 identico para sem cookie, cookie de cliente,
 // vencida, revogada, sem papel, desativada e rota inexistente; 403 para papel sem permissao, sem efeito;
 // origem invalida antes da guarda; uma consulta ao repositorio por requisicao).
 // Sem rede, sem banco, relogio injetado. Valores sinteticos.
@@ -39,75 +38,86 @@ async function contaAtiva(world: FakeWorld, email: string, papeis: string[], sta
   return { userId, acc, secret: acc.secret };
 }
 
-function login(world: FakeWorld, email: string, password: string, code: string, ip = IP) {
-  return loginAdmin({ email, password, code, ip }, { repo: world.repo, auth: world.auth, limits: world.limits, log: (e) => world.logs.push(e) }, world.clock);
-}
-
-function codigoAgora(secret: string, world: FakeWorld): string {
-  return totp6(secret, Math.floor(world.clock / 1000));
-}
-
 describe('RFC 6238: vetor de teste do gerador de TOTP usado pelos testes', () => {
   it('SHA-1 com segredo ASCII de 20 bytes, t = 59 s, 6 digitos = 287082', () => {
     expect(totp6('12345678901234567890', 59)).toBe('287082');
   });
 });
 
-describe('T-H102-03 login admin', () => {
-  it('causas diferentes devolvem o MESMO 401 credenciais_invalidas (uniforme)', async () => {
-    const world = createFakeWorld();
-    await contaAtiva(world, 'ativo@example.test', ['auditor']);
-    const naoAdmin = await world.auth.enrollUser('cliente@example.test', SENHA);
-    if (naoAdmin === null) throw new Error('setup');
-    await world.auth.confirmEnrollment('cliente@example.test', SENHA, codigoAgora(naoAdmin.secret, world));
-    world.accounts.add('cliente@example.test');
-    const pendente = await contaAtiva(world, 'pendente@example.test', ['auditor'], 'pendente_mfa');
-    const semPapel = await contaAtiva(world, 'semrole@example.test', []);
-    expect(pendente.userId).toBeTruthy();
-    expect(semPapel.userId).toBeTruthy();
+describe('login admin por e-mail e senha', () => {
+  const ERRADA = ['senha', 'errada', '2099'].join('-');
+  const LONGA = SENHA.repeat(10);
+  const ENTRADA = { email: 'ativo@example.test', password: SENHA, ip: IP };
 
-    const casos: Array<[string, string, string, string]> = [
-      ['inexistente', 'ninguem@example.test', SENHA, '000000'],
-      ['nao-admin', 'cliente@example.test', SENHA, codigoAgora(naoAdmin.secret, world)],
-      ['pendente_mfa', 'pendente@example.test', SENHA, codigoAgora(pendente.secret, world)],
-      ['sem papel', 'semrole@example.test', SENHA, codigoAgora(semPapel.secret, world)],
-      ['senha errada', 'ativo@example.test', 'senha-errada-2099', '000000'],
-      ['codigo errado', 'ativo@example.test', SENHA, '000000'],
-    ];
-    for (const [i, [nome, email, senha, codigo]] of casos.entries()) {
-      const r = await login(world, email, senha, codigo, `198.51.100.${i + 1}`);
-      expect(r, nome).toEqual(ADMIN_CREDENTIALS_INVALID);
-      expect(r.setCookie, nome).toBeUndefined();
-    }
-  });
+  function mundo(opcoes: { sessao?: boolean } = {}) {
+    const chamadas: string[] = [];
+    const logs: unknown[] = [];
+    let vagas = 5;
+    const deps = {
+      accounts: {
+        verify: async (email: string, password: string) => {
+          chamadas.push('verify');
+          return email === ENTRADA.email && password === SENHA ? { userId: 'adm-1' } : null;
+        },
+        openSession: async () => (opcoes.sessao === false ? null : { secret: 'A'.repeat(43) }),
+      },
+      limits: {
+        reserve: async () => {
+          if (vagas === 0) return false;
+          vagas -= 1;
+          return true;
+        },
+        release: async () => {
+          vagas += 1;
+        },
+      },
+      log: (e: unknown) => {
+        logs.push(e);
+      },
+    };
+    return { deps, chamadas, logs, vagas: () => vagas };
+  }
 
-  it('sexta falha dentro da janela recebe 429 antes de qualquer checagem de senha', async () => {
-    const world = createFakeWorld();
-    const acc = await contaAtiva(world, 'limite@example.test', ['auditor']);
-    for (let i = 0; i < 5; i++) {
-      const r = await login(world, 'limite@example.test', 'senha-errada-2099', '000000', `198.51.100.${50 + i}`);
-      expect(r).toEqual(ADMIN_CREDENTIALS_INVALID);
-    }
-    const antes = world.provider.tokensDiscarded;
-    const sexta = await login(world, 'limite@example.test', SENHA, codigoAgora(acc.secret, world), '198.51.100.99');
-    expect(sexta).toEqual(ADMIN_RATE_LIMITED);
-    expect(world.provider.tokensDiscarded).toBe(antes);
-  });
-
-  it('sucesso: cookie exato e HttpOnly, Secure, SameSite=Strict, Path=/, Max-Age=28800, sem Domain', async () => {
-    const world = createFakeWorld();
-    const { acc, secret } = await contaAtiva(world, 'sucesso@example.test', ['auditor']);
-    const r = await login(world, 'sucesso@example.test', SENHA, codigoAgora(secret, world), '198.51.100.200');
+  it('sucesso: cookie HttpOnly, Secure, SameSite=Strict, Path=/, 8 h, sem Domain; a vaga volta', async () => {
+    const m = mundo();
+    const r = await loginAdmin({ ...ENTRADA, email: '  Ativo@Example.test ' }, m.deps, 1_000);
     expect(r.status).toBe(200);
-    expect(r.body.papeis).toEqual(['auditor']);
-    const cookie = r.setCookie ?? '';
-    expect(cookie).toMatch(/^__Host-fp_admin=[A-Za-z0-9_-]{43}; HttpOnly; Secure; SameSite=Strict; Path=\/; Max-Age=28800$/);
-    expect(cookie).not.toContain('Domain');
-    const valor = cookie.split(';')[0]?.split('=')[1] ?? '';
-    expect(valor).not.toContain(acc.authUserId);
-    expect(valor).not.toContain(secret);
-    expect(world.provider.tokensDiscarded).toBeGreaterThan(0);
-    expect(world.sessions.size).toBe(1);
+    expect(r.setCookie).toMatch(/^__Host-fp_admin=[A-Za-z0-9_-]{43}; HttpOnly; Secure; SameSite=Strict; Path=\/; Max-Age=28800$/);
+    expect(m.vagas()).toBe(5);
+  });
+
+  it('causas diferentes devolvem o MESMO 401, sem cookie, e gastam uma vaga', async () => {
+    const casos = [
+      { ...ENTRADA, email: 'ninguem@example.test' },
+      { ...ENTRADA, password: ERRADA },
+      { ...ENTRADA, password: '' },
+      { ...ENTRADA, password: LONGA },
+      { ...ENTRADA, password: 123 },
+      { ...ENTRADA, email: 'sem-arroba' },
+    ];
+    for (const caso of casos) {
+      const m = mundo();
+      expect(await loginAdmin(caso, m.deps, 1_000)).toEqual(ADMIN_CREDENTIALS_INVALID);
+      expect(m.vagas()).toBe(4);
+    }
+    expect(await loginAdmin(ENTRADA, mundo({ sessao: false }).deps, 1_000)).toEqual(ADMIN_CREDENTIALS_INVALID);
+  });
+
+  it('acima do limite: 429 antes de conferir a senha', async () => {
+    const m = mundo();
+    for (let i = 0; i < 5; i++) await loginAdmin({ ...ENTRADA, password: ERRADA }, m.deps, 1_000);
+    m.chamadas.length = 0;
+    expect(await loginAdmin(ENTRADA, m.deps, 1_000)).toEqual(ADMIN_RATE_LIMITED);
+    expect(m.chamadas).toEqual([]);
+  });
+
+  it('logs sem e-mail nem senha', async () => {
+    const m = mundo();
+    await loginAdmin(ENTRADA, m.deps, 1_000);
+    await loginAdmin({ ...ENTRADA, password: ERRADA }, m.deps, 1_000);
+    const texto = JSON.stringify(m.logs);
+    expect(texto).not.toContain(ENTRADA.email);
+    expect(texto).not.toContain('senha-');
   });
 
   it('cabecalho de sessao recusa segredo fora do formato', () => {

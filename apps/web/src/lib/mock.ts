@@ -82,7 +82,7 @@ export interface Depoimento {
 export const DEPOIMENTOS: readonly Depoimento[] = [
   {
     texto:
-      'Pedi um eletricista de manhã e à tarde já tinha três profissionais conversando comigo. Escolhi pelo perfil e foi impecável.',
+      'Pedi um eletricista de manhã e à tarde já tinha três profissionais no meu WhatsApp. Olhei os perfis e foi impecável.',
     servico: 'Eletricista',
     nome: 'Mariana Souza',
     cidade: 'Pinheiros, São Paulo',

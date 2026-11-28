@@ -13,6 +13,8 @@ export * from './admin-audit.js';
 export * from './admin-access-case.js';
 // H-073 (Issue 83) / H-015 | Limites de tentativas do login admin (rl_check e rl_hit) e HMAC das chaves.
 export * from './admin-login-limits.js';
+export * from './admin-password.js';
+export * from './admin-password-login.js';
 export { challengeHmacHex, loadChallengeKey } from './challenges-crypto.js';
 // H-097 (Issue 107) | Pedido de acesso, envio do login com prioridade e diretorio do desafio (challenges.ts).
 export {
@@ -74,6 +76,9 @@ export * from './role-exclusivity.js';
 export * from './ops-purge-store.js';
 export * from './ops-purge-jobs.js';
 export * from './ops-purge-storage.js';
+export * from './professional-gallery.js';
+export * from './push.js';
+export * from './professional-account-edit.js';
 // H-037 (Issue #50) | Documentos de identidade: adaptador Pg (app_system) e Storage (identity-incoming e identity-docs).
 export * from './identity-docs.js';
 export * from './identity-docs-storage.js';

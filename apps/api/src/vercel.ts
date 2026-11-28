@@ -4,7 +4,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { metric, waitUntil } from '@vercel/functions';
 import { handleRequest, routePath } from './app.js';
-import { montarExecutorJobs, montarTickOportunista } from './jobs/executor-composicao.js';
+import { avisaNaHora, montarExecutorJobs, montarTickOportunista } from './jobs/executor-composicao.js';
 import { montarIntegracoes, montarRetencaoAdmin } from './composicao.js';
 import { abrirClienteSql, abrirConexaoDedicadaSql } from './sql-pool.js';
 import { criarFabricaCatalogo } from './catalog/fabrica-pg.js';
@@ -103,11 +103,15 @@ export default async function vercelHandler(
       ...(integracoes.conversations !== undefined ? { conversations: integracoes.conversations } : {}),
       ...(integracoes.me !== undefined ? { me: integracoes.me } : {}),
       ...(integracoes.draftSession !== undefined ? { draftSession: integracoes.draftSession } : {}),
-      ...(integracoes.adminCode !== undefined ? { adminCode: integracoes.adminCode } : {}),
+      ...(integracoes.adminLogin !== undefined ? { adminLogin: integracoes.adminLogin } : {}),
       ...(integracoes.adminModeration !== undefined ? { adminModeration: integracoes.adminModeration } : {}),
       ...(integracoes.lifecycle !== undefined ? { lifecycle: integracoes.lifecycle } : {}),
       ...(integracoes.waves !== undefined ? { waves: integracoes.waves } : {}),
       ...(integracoes.reviews !== undefined ? { reviews: integracoes.reviews } : {}),
+      ...(integracoes.gallery !== undefined ? { gallery: integracoes.gallery } : {}),
+      ...(integracoes.ownFile !== undefined ? { ownFile: integracoes.ownFile } : {}),
+      ...(integracoes.push !== undefined ? { push: integracoes.push } : {}),
+      ...(integracoes.accountEdit !== undefined ? { accountEdit: integracoes.accountEdit } : {}),
       ...(integracoes.publicProfile !== undefined ? { publicProfile: integracoes.publicProfile } : {}),
       ...(integracoes.requestList !== undefined ? { requestList: integracoes.requestList } : {}),
       ...(integracoes.requestDiscovery !== undefined ? { requestDiscovery: integracoes.requestDiscovery } : {}),
@@ -118,8 +122,11 @@ export default async function vercelHandler(
       ...(integracoes.watermarkedPhoto !== undefined ? { watermarkedPhoto: integracoes.watermarkedPhoto } : {}),
       ...(executorJobs !== undefined ? { jobs: executorJobs } : {}),
     });
-    // Depois da resposta: processa avisos pendentes (no maximo uma vez por minuto por instancia).
-    if (tickOportunista !== undefined) waitUntil(tickOportunista(routePath(req.url)));
+    // Depois da resposta: processa avisos pendentes (aceite e cancelamento na hora; o resto, uma vez por minuto).
+    if (tickOportunista !== undefined) {
+      const path = routePath(req.url);
+      waitUntil(tickOportunista(path, avisaNaHora(req.method, path, res.statusCode)));
+    }
   } catch {
     // Sem detalhe de erro na resposta nem no log (ADR-013: sem dado sensivel).
     if (!res.headersSent) {

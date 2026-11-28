@@ -4,10 +4,13 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { CampoEndereco } from '@/components/CampoEndereco';
 import { CampoServico } from '@/components/CampoServico';
+import { DadosProfissional } from '@/components/DadosProfissional';
+import { TrocaSenha } from '@/components/TrocaSenha';
 import { Icone } from '@/components/Icone';
-import { Aviso, CabecaPagina, Campo, Carregando } from '@/components/ui';
+import { CabecaPagina, Campo, Carregando } from '@/components/ui';
 import { chamarApi, codigoDe, MENSAGEM_LIMITE } from '@/lib/api';
 import { formatarData } from '@/lib/formatos';
+import { Toast } from '@/components/Toast';
 
 interface ServicoPerfil {
   serviceId: string;
@@ -110,7 +113,11 @@ export default function Perfil() {
 
   return (
     <>
-      <CabecaPagina sobretitulo="Perfil" titulo="Serviços e" destaque="área de atendimento" texto="Você recebe só pedidos dos serviços escolhidos e dentro do seu raio." />
+      <CabecaPagina sobretitulo="Perfil" titulo="Perfil, serviços e" destaque="área" texto="Você recebe só pedidos dos serviços escolhidos e dentro do seu raio." />
+      <div className="grade grade-2" style={{ alignItems: 'start', marginBottom: '1.5rem' }}>
+        <DadosProfissional />
+        <TrocaSenha />
+      </div>
       <div className="grade grade-2" style={{ alignItems: 'start' }}>
         <div className="glass-card painel-cartao pilha">
           <div className="linha">
@@ -168,7 +175,7 @@ export default function Perfil() {
               </button>
             </div>
           ))}
-          {avisoServicos ? <Aviso tipo={avisoServicos.tipo}>{avisoServicos.texto}</Aviso> : null}
+          <Toast aviso={avisoServicos} />
         </div>
 
         <div className="glass-card painel-cartao form">
@@ -193,7 +200,7 @@ export default function Perfil() {
               {area.nextChangeAt ? ` · próxima troca liberada em ${formatarData(area.nextChangeAt)}` : ''}
             </p>
           ) : null}
-          {avisoArea ? <Aviso tipo={avisoArea.tipo}>{avisoArea.texto}</Aviso> : null}
+          <Toast aviso={avisoArea} />
           <button type="button" className="btn btn-primary btn-bloco" onClick={() => void salvarArea()} disabled={endereco.trim().length < 3}>
             Salvar área
           </button>

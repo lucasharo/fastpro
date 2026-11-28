@@ -5,7 +5,7 @@
 // cada tela responde como inexistente quando a sessao nao tem acesso, entao o menu so organiza a navegacao.
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icone, type NomeIcone } from './Icone';
 import { TrocaTema } from './TrocaTema';
 
@@ -25,15 +25,24 @@ export function CascaAdmin({ children }: { readonly children: ReactNode }) {
   const naEntrada = caminho === '/entrar';
   const [aberto, setAberto] = useState(false);
 
-  // Fecha a gaveta ao trocar de tela e com a tecla Esc.
+  const cabecalho = useRef<HTMLElement>(null);
+
+  // Fecha a gaveta ao trocar de tela, com a tecla Esc e com clique ou toque fora do cabecalho.
   useEffect(() => setAberto(false), [caminho]);
   useEffect(() => {
     if (!aberto) return;
     const tecla = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setAberto(false);
     };
+    const fora = (e: PointerEvent) => {
+      if (!cabecalho.current?.contains(e.target as Node)) setAberto(false);
+    };
     window.addEventListener('keydown', tecla);
-    return () => window.removeEventListener('keydown', tecla);
+    document.addEventListener('pointerdown', fora);
+    return () => {
+      window.removeEventListener('keydown', tecla);
+      document.removeEventListener('pointerdown', fora);
+    };
   }, [aberto]);
 
   const itens = (aoClicar?: () => void) =>
@@ -58,7 +67,7 @@ export function CascaAdmin({ children }: { readonly children: ReactNode }) {
 
   return (
     <>
-      <header className="nav">
+      <header className="nav" ref={cabecalho}>
         <nav className="nav-barra glass-card" aria-label="Principal">
           <Link href="/console" className="marca" aria-label="FastPro Admin, página inicial">
             <Icone nome="raio" tamanho={28} className="marca-icone" preenchido />

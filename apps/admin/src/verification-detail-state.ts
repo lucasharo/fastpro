@@ -49,6 +49,16 @@ export interface DetalheTela extends LinhaFilaTela {
   readonly decididoEm: string | null;
   readonly documentoDisponivel: boolean;
   readonly documentoRecebidoEm: string | null;
+  /** Um item por servico regulamentado. O identificador do arquivo fica no servidor. */
+  readonly certificacoes: readonly CertificacaoTela[];
+}
+
+export interface CertificacaoTela {
+  readonly servicoId: string;
+  readonly servico: string;
+  readonly recebidoEm: string | null;
+  /** Posicao deste arquivo entre os do mesmo servico (o identificador fica no servidor). */
+  readonly posicao: number;
 }
 
 export type EstadoDetalhe =
@@ -87,6 +97,18 @@ function casoValido(x: unknown): x is Record<string, unknown> {
   );
 }
 
+function certificacoesDaApi(x: unknown): CertificacaoTela[] {
+  if (!Array.isArray(x)) return [];
+  const vistos = new Map<string, number>();
+  return x.flatMap((item: unknown) => {
+    const c = (item ?? {}) as Record<string, unknown>;
+    if (!texto(c.servicoId) || !texto(c.servico)) return [];
+    const posicao = vistos.get(c.servicoId) ?? 0;
+    vistos.set(c.servicoId, posicao + 1);
+    return [{ servicoId: c.servicoId, servico: c.servico, recebidoEm: texto(c.recebidoEm) ? c.recebidoEm : null, posicao }];
+  });
+}
+
 /** Copia explicitamente os campos da tela; qualquer outro campo da resposta (inclusive o do documento) fica de fora. */
 function paraDetalhe(c: Record<string, unknown>): DetalheTela {
   return {
@@ -105,6 +127,7 @@ function paraDetalhe(c: Record<string, unknown>): DetalheTela {
     decididoEm: c.decididoEm as string | null,
     documentoDisponivel: c.documentoDisponivel as boolean,
     documentoRecebidoEm: c.documentoRecebidoEm as string | null,
+    certificacoes: certificacoesDaApi(c.certificacoes),
   };
 }
 

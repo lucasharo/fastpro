@@ -78,9 +78,9 @@ import type { PublishRouteOptions } from './requests/publish-route.js';
 // Issue 45 (H-032) | Leitura do pedido por papel: liga so com ADDRESS_ENC_KEY e a fabrica do papel app_system.
 import { montarDetalhePedido } from './requests/detail-composicao.js';
 import { montarConversas, montarIdentidadeDaSessao, montarQuemSou } from './conversations/conversation-composicao.js';
-import { montarEntradaAdmin, montarModeracaoAdmin } from './admin-login/admin-code-composicao.js';
+import { montarEntradaAdmin, montarModeracaoAdmin } from './admin-login/admin-login-composicao.js';
 import type { AdminModerationRouteOptions } from './admin-login/admin-moderation-route.js';
-import type { AdminCodeRouteOptions } from './admin-login/admin-code-route.js';
+import type { AdminPasswordRouteOptions } from './admin-login/admin-password-route.js';
 import type { DraftSessionRouteOptions } from './conversations/draft-session-route.js';
 import type { MeRouteOptions } from './conversations/me-route.js';
 import type { ConversationRouteOptions } from './conversations/conversation-route.js';
@@ -93,6 +93,14 @@ import type { WaveRouteOptions } from './waves/wave-route.js';
 // Pacote B (H-086, H-088, H-089): avaliacoes e perfil publico de avaliacoes.
 import { montarAvaliacoes } from './reviews/review-composicao.js';
 import type { ReviewRouteOptions } from './reviews/review-route.js';
+import { montarGaleria } from './modules/media/gallery-composicao.js';
+import type { GalleryRouteOptions } from './gallery/gallery-route.js';
+import { montarPush } from './push/push-composicao.js';
+import { montarEdicaoDaConta } from './account-edit/account-edit-composicao.js';
+import type { AccountEditRouteOptions } from './account-edit/account-edit-route.js';
+import type { PushRouteOptions } from './push/push-route.js';
+import { montarArquivoProprio } from './own-file/own-file-composicao.js';
+import type { OwnFileRouteOptions } from './own-file/own-file-route.js';
 import type { RequestDetailRouteOptions } from './requests/detail-route.js';
 // Issue 120 (H-111) | Rotas do titular para direitos: liga so com DATABASE_URL_APP_SYSTEM e a fabrica do cliente SQL.
 import { montarPrivacidadeTitular } from './privacy/privacy-composicao.js';
@@ -227,7 +235,7 @@ export interface Integracoes {
   readonly conversations: ConversationRouteOptions | undefined;
   readonly me: MeRouteOptions | undefined;
   readonly draftSession: DraftSessionRouteOptions | undefined;
-  readonly adminCode: AdminCodeRouteOptions | undefined;
+  readonly adminLogin: AdminPasswordRouteOptions | undefined;
   readonly adminModeration: AdminModerationRouteOptions | undefined;
   /** Pacote A: rotas de concluir, desfazer, cancelar e retirar aceite, ou undefined (404 uniforme). */
   readonly lifecycle: LifecycleRouteOptions | undefined;
@@ -239,6 +247,14 @@ export interface Integracoes {
   readonly pendenciasOndas: readonly string[];
   /** Pacote B: rotas de avaliacao, ou undefined (404). */
   readonly reviews: ReviewRouteOptions | undefined;
+  /** Galeria do profissional, ou undefined (404). */
+  readonly gallery?: GalleryRouteOptions;
+  /** Aparelhos de notificacao push, ou undefined (404). */
+  readonly push?: PushRouteOptions;
+  /** Nome publico, biografia e foto do profissional, ou undefined (404). */
+  readonly accountEdit?: AccountEditRouteOptions;
+  /** Leitura do proprio arquivo pelo profissional, ou undefined (404). */
+  readonly ownFile?: OwnFileRouteOptions;
   readonly pendenciasAvaliacoes: readonly string[];
   /** Issue 120 (H-111): rotas do titular para direitos, ou undefined (404 uniforme). */
   readonly privacyTitular?: PrivacyTitularRouteOptions;
@@ -460,7 +476,7 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     conversations: conversas.options,
     me: montarQuemSou(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock }),
     draftSession: montarIdentidadeDaSessao(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock }),
-    adminCode: montarEntradaAdmin(env, { abrirCliente: opcoes.abrirClienteSistema }),
+    adminLogin: montarEntradaAdmin(env, { abrirCliente: opcoes.abrirClienteSistema }),
     adminModeration: montarModeracaoAdmin(env, { abrirCliente: opcoes.abrirClienteSistema }),
     pendenciasConversas: conversas.pendencias,
     lifecycle: ciclo.options,
@@ -468,6 +484,10 @@ export function montarIntegracoes(env: ComposicaoEnv, opcoes: ComposicaoOpcoes =
     waves: ondas.options,
     pendenciasOndas: ondas.pendencias,
     reviews: avaliacoes.options,
+    gallery: montarGaleria(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock }),
+    push: montarPush(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock }),
+    accountEdit: montarEdicaoDaConta(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock }),
+    ownFile: montarArquivoProprio(env, { abrirCliente: opcoes.abrirClienteSistema, relogio: opcoes.clock }),
     pendenciasAvaliacoes: avaliacoes.pendencias,
     pendenciasDetalhe: detalhe.pendencias,
     privacyTitular: privacidade.options,

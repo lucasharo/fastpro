@@ -10,6 +10,7 @@ import { chamarApi, MENSAGEM_LIMITE } from '@/lib/api';
 import { formatarData, formatarDataHora, rotuloUrgencia, UUID_RE } from '@/lib/formatos';
 import { fotoDoServico, urlFoto } from '@/lib/mock';
 import { FotosPedido } from '@/components/FotosPedido';
+import { BotaoWhatsApp } from '@/components/BotaoWhatsApp';
 import { distancia, ROTULO_MODALIDADE } from '@/lib/profissional';
 
 interface Detalhe {
@@ -41,8 +42,12 @@ export default function PedidoRegiao() {
     (async () => {
       const r = await chamarApi<Detalhe>(`/v1/professional/requests/${id}`);
       if (r.status === 401) router.replace('/profissional/entrar');
-      else if (r.status === 200 && r.corpo) setP(r.corpo);
-      else setErro(r.status === 404 ? 'Pedido não encontrado ou não está mais disponível.' : 'Não foi possível abrir o pedido agora.');
+      else if (r.status === 200 && r.corpo) {
+        // Pedido que ele ja aceitou abre com o contato, sem pedir o aceite de novo.
+        const c = await chamarApi<{ items?: { requestId: string; state: string }[] }>('/v1/conversations');
+        if (c.corpo?.items?.some((x) => x.requestId === id && x.state === 'ativa')) setAceite('ok');
+        setP(r.corpo);
+      } else setErro(r.status === 404 ? 'Pedido não encontrado ou não está mais disponível.' : 'Não foi possível abrir o pedido agora.');
     })();
   }, [id, router]);
 
@@ -108,10 +113,13 @@ export default function PedidoRegiao() {
         </div>
         <div className="glass-card painel-cartao pilha">
           <h2 style={{ fontSize: '1.25rem' }}>
-            Tem interesse? <span className="destaque">Aceite o pedido</span>
+            {aceite === 'ok' ? 'Fale com o ' : 'Tem interesse? '}
+            <span className="destaque">{aceite === 'ok' ? 'cliente' : 'Aceite o pedido'}</span>
           </h2>
           <p className="texto-suave">
-            Ao aceitar, o cliente vê seu perfil e pode conversar com você. O endereço completo só aparece se ele escolher você.
+            {aceite === 'ok'
+              ? 'Combine o serviço pelo WhatsApp.'
+              : 'Ao aceitar, o cliente vê seu perfil e você pode falar com ele pelo WhatsApp.'}
           </p>
           {p.acceptanceDeadlineAt ? (
             <div className="item-meta">
@@ -122,9 +130,10 @@ export default function PedidoRegiao() {
           ) : null}
           {aceite === 'ok' ? (
             <>
-              <Aviso tipo="sucesso">Pedido aceito! Avisamos o cliente. Acompanhe pelas conversas.</Aviso>
-              <Link href="/profissional/conversas" className="btn btn-primary btn-bloco">
-                Ir para as conversas <Icone nome="conversa" tamanho={18} />
+              <Aviso tipo="sucesso">Você aceitou este pedido. O cliente foi avisado.</Aviso>
+              <BotaoWhatsApp pedidoId={id} servico={p.serviceName ?? 'serviço'} />
+              <Link href="/profissional/aceitos" className="btn btn-secondary btn-bloco">
+                Ver pedidos aceitos
               </Link>
             </>
           ) : (

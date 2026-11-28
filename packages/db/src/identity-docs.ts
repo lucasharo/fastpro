@@ -50,6 +50,12 @@ function texto(valor: unknown): string {
   return typeof valor === 'string' ? valor : '';
 }
 
+/** Data do banco: o driver entrega Date; texto ISO tambem vale. */
+function instante(valor: unknown): string | null {
+  if (valor instanceof Date) return valor.toISOString();
+  return texto(valor) === '' ? null : new Date(texto(valor)).toISOString();
+}
+
 function tipoDeclarado(valor: unknown): IdentityDocDeclaredType | null {
   const v = texto(valor);
   if (v === 'image/jpeg' || v === 'image/png' || v === 'image/webp' || v === 'application/pdf') return v;
@@ -131,7 +137,7 @@ export class PgIdentityDocStore {
       documentKind: texto(l['out_kind']) === 'certificacao' ? 'certificacao' : 'identidade',
       serviceId: l['out_service_id'] ? texto(l['out_service_id']) : null,
       status: texto(l['out_status']) === 'recebido' ? 'recebido' : 'em_envio',
-      receivedAt: l['out_received_at'] ? new Date(texto(l['out_received_at'])).toISOString() : null,
+      receivedAt: instante(l['out_received_at']),
       deletable: l['out_deletable'] === true,
       analyzed: l['out_deletable'] !== true,
     }));

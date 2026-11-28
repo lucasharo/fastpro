@@ -3,8 +3,9 @@
 // Acessivel: cada campo tem rotulo ligado (label htmlFor), erro ligado ao campo (aria-invalid e aria-describedby),
 // resumo de erros com foco ao aparecer, tudo operavel so pelo teclado (botoes e campos nativos). O envio nao usa
 // action nativa do formulario: assim o navegador nao limpa o que foi digitado quando a API recusa a alteracao.
-import { useActionState, useEffect, useId, useRef, useTransition, type FormEvent } from 'react';
+import { useActionState, useEffect, useId, useRef, useState, useTransition, type FormEvent } from 'react';
 import { AvisoErro } from '../../../components/AvisoErro';
+import { Selecao } from '../../../components/Selecao';
 import { salvarCatalogo } from './actions';
 import {
   ESTADO_INICIAL,
@@ -37,6 +38,8 @@ export function FormularioItem({ entidade, item, grupos, servicos, titulo }: For
   const [, iniciarTransicao] = useTransition();
   const resumoRef = useRef<HTMLDivElement>(null);
   const criacao = item === undefined;
+  // Campos de selecao obrigatorios deixados em branco (o input oculto nao tem validacao nativa).
+  const [faltando, setFaltando] = useState<readonly string[]>([]);
 
   // Foco no resumo quando a API recusa (erro por campo ou conflito); o texto digitado nao e tocado.
   useEffect(() => {
@@ -49,13 +52,17 @@ export function FormularioItem({ entidade, item, grupos, servicos, titulo }: For
     const botao = (evento.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
     const dados = new FormData(formulario);
     if (botao?.name) dados.set(botao.name, botao.value);
+    const vazios = ['group_id', 'service_id'].filter((nome) => dados.get(nome) === '');
+    setFaltando(vazios);
+    if (vazios.length > 0) return;
     iniciarTransicao(() => {
       despachar(dados);
     });
   }
 
   const id = (nome: string) => `${prefixo}-${nome}`;
-  const erroDe = (nome: string): string | undefined => estado.campos[nome];
+  const erroDe = (nome: string): string | undefined =>
+    faltando.includes(nome) ? 'Campo obrigatório.' : estado.campos[nome];
   const descricaoDe = (nome: string): string | undefined => (erroDe(nome) ? id(`${nome}-erro`) : undefined);
   const camposComErro = Object.keys(estado.campos);
   const grupoOuServico = item as CatalogoGrupo | CatalogoServico | undefined;
@@ -117,38 +124,30 @@ export function FormularioItem({ entidade, item, grupos, servicos, titulo }: For
         <>
           <div className="catalogo-campo">
             <label htmlFor={id('group_id')}>Grupo</label>
-            <select
+            <Selecao
               id={id('group_id')}
-              name="group_id"
-              defaultValue={(item as CatalogoServico | undefined)?.group_id ?? ''}
-              aria-invalid={erroDe('group_id') ? true : undefined}
-              aria-describedby={descricaoDe('group_id')}
-              required
-            >
-              {criacao ? <option value="">Escolha um grupo</option> : null}
-              {grupos.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
+              nome="group_id"
+              valorInicial={(item as CatalogoServico | undefined)?.group_id ?? ''}
+              invalido={Boolean(erroDe('group_id'))}
+              descritoPor={descricaoDe('group_id')}
+              onMudar={() => setFaltando((f) => f.filter((nome) => nome !== 'group_id'))}
+              opcoes={[
+                ...(criacao ? [{ valor: '', rotulo: 'Escolha um grupo' }] : []),
+                ...grupos.map((g) => ({ valor: g.id, rotulo: g.name })),
+              ]}
+            />
             {descricaoDe('group_id') ? <p id={descricaoDe('group_id')}>{erroDe('group_id')}</p> : null}
           </div>
           <div className="catalogo-campo">
             <label htmlFor={id('modality')}>Modalidade</label>
-            <select
+            <Selecao
               id={id('modality')}
-              name="modality"
-              defaultValue={(item as CatalogoServico | undefined)?.modality ?? 'presencial'}
-              aria-invalid={erroDe('modality') ? true : undefined}
-              aria-describedby={descricaoDe('modality')}
-            >
-              {MODALIDADES.map((m) => (
-                <option key={m.valor} value={m.valor}>
-                  {m.rotulo}
-                </option>
-              ))}
-            </select>
+              nome="modality"
+              valorInicial={(item as CatalogoServico | undefined)?.modality ?? 'presencial'}
+              invalido={Boolean(erroDe('modality'))}
+              descritoPor={descricaoDe('modality')}
+              opcoes={MODALIDADES}
+            />
             {descricaoDe('modality') ? <p id={descricaoDe('modality')}>{erroDe('modality')}</p> : null}
           </div>
           <CampoMarca
@@ -176,21 +175,18 @@ export function FormularioItem({ entidade, item, grupos, servicos, titulo }: For
           {criacao ? (
             <div className="catalogo-campo">
               <label htmlFor={id('service_id')}>Serviço</label>
-              <select
+              <Selecao
                 id={id('service_id')}
-                name="service_id"
-                defaultValue=""
-                aria-invalid={erroDe('service_id') ? true : undefined}
-                aria-describedby={descricaoDe('service_id')}
-                required
-              >
-                <option value="">Escolha um serviço</option>
-                {servicos.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+                nome="service_id"
+                valorInicial=""
+                invalido={Boolean(erroDe('service_id'))}
+                descritoPor={descricaoDe('service_id')}
+                onMudar={() => setFaltando((f) => f.filter((nome) => nome !== 'service_id'))}
+                opcoes={[
+                  { valor: '', rotulo: 'Escolha um serviço' },
+                  ...servicos.map((s) => ({ valor: s.id, rotulo: s.name })),
+                ]}
+              />
               {descricaoDe('service_id') ? <p id={descricaoDe('service_id')}>{erroDe('service_id')}</p> : null}
             </div>
           ) : null}

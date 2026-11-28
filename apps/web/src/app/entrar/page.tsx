@@ -34,7 +34,7 @@ export default function Entrar() {
         sobretitulo="Área do cliente"
         titulo="Entrar"
         destaque="sem senha"
-        texto="Acompanhe seus pedidos e converse com os profissionais. Mandamos um código para o seu e-mail."
+        texto="Acompanhe seus pedidos e veja quem aceitou. Mandamos um código para o seu e-mail."
       />
       <div className="glass-card painel-cartao">
         {enviado ? (

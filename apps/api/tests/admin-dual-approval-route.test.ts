@@ -60,7 +60,7 @@ const LINHAS = new Map<string, AdminGuardRecord>([
   [SEG_MOD_B, linha('u-mod-b', ['moderador'])],
   [SEG_SUPERADMIN, linha('u-superadmin', ['superadmin'])],
   [SEG_AUDITOR, linha('u-auditor', ['auditor'])],
-  [SEG_TOTP_ANTIGO, linha('u-totp', ['suporte'], { totpAtMs: T0 - 31 * MIN })],
+  [SEG_TOTP_ANTIGO, linha('u-totp', ['suporte'], { totpAtMs: T0 - 481 * MIN })],
   [SEG_VENCIDA, linha('u-vencida', ['financeiro'], { expiresAtMs: T0 - 1 })],
 ]);
 
@@ -282,7 +282,7 @@ describe('T-H105-01 e T-H105-02 pedido e voto via HTTP', () => {
     expect(dois.json).toEqual({ status: 'consumida', votes: 2, required_approvals: 2 });
   });
 
-  it('suspensao com a prova de TOTP antiga (31 min): 403 step_up_required', async () => {
+  it('suspensao com a prova de TOTP antiga (mais de 8 h): 403 step_up_required', async () => {
     const r = await pedir(base, 'POST', CAMINHO_SUSPENSAO, { corpo: CORPO_SUSPENSAO, segredo: SEG_TOTP_ANTIGO });
     expect(r.status).toBe(403);
     expect(r.json).toEqual({ code: 'step_up_required' });

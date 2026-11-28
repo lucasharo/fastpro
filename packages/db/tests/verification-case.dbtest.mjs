@@ -211,6 +211,45 @@ test('T-03/T-10: atribuir, recusar, recurso, reatribuir; um evento e um audit po
     assert.deepEqual(ev.rows.map((x) => x.seq), [1, 2, 3, 4, 5, 6]);
   }));
 
+test('novo documento depois da recusa reabre o caso como pendente (decisao 2026-11-27)', () =>
+  tx(async () => {
+    const prof = await profissional();
+    await documentoRecebido(prof, T0);
+    const caso = await casoDe(prof);
+    const v1 = await staffComPapel('verificacao');
+    const s1 = await sessao(v1, T0);
+    await client.query('select * from private.verification_case_assign($1,$2,$3,$4,$5)',
+      [v1, s1, caso.id, caso.version, at(T0)]);
+    await client.query('select * from private.verification_case_decide($1,$2,$3,$4,$5,$6,$7,$8)',
+      [v1, s1, caso.id, 'recusada', 'documento_ilegivel', null, await versao(caso.id), at(T0)]);
+
+    await documentoRecebido(prof, T0 + 60_000);
+
+    assert.equal((await casoDe(prof)).status, 'pendente');
+    const perfil = await client.query('select verification_status from app.professional_profile where user_id = $1', [prof]);
+    assert.equal(perfil.rows[0].verification_status, 'pendente', 'perfil volta junto com o caso');
+    const ev = await client.query(
+      'select action from app.verification_case_event where case_id = $1 order by seq', [caso.id]);
+    assert.deepEqual(ev.rows.map((x) => x.action), ['created', 'assigned', 'decided', 'resubmitted']);
+  }));
+
+test('certificacoes do caso: um item por servico regulamentado e negado sem permissao', () =>
+  tx(async () => {
+    const prof = await profissional();
+    await documentoRecebido(prof, T0);
+    const caso = await casoDe(prof);
+    const v1 = await staffComPapel('verificacao');
+    const s1 = await sessao(v1, T0);
+    const r = await client.query('select * from private.verification_case_certificates($1,$2,$3,$4)',
+      [v1, s1, caso.id, at(T0)]);
+    assert.equal(r.rows.length, 0, 'sem servico regulamentado, lista vazia');
+    const semPapel = await staffComPapel('suporte');
+    const sSem = await sessao(semPapel, T0);
+    const negada = await falha('select * from private.verification_case_certificates($1,$2,$3,$4)',
+      [semPapel, sSem, caso.id, at(T0)]);
+    assert.equal(negada?.code, '42501');
+  }));
+
 test('decisao: aprovada exige identidade analisada (VRF04); motivo e complemento validados (VRF02, VRF03)', () =>
   tx(async () => {
     const prof = await profissional();
@@ -277,10 +316,10 @@ test('fila: lista so com colunas permitidas; prova recente ausente nega a leitur
     const sSem = await sessao(semPapel, T0);
     const fila = await client.query(
       'select * from private.verification_queue_list($1,$2,$3,$4,$5,$6,$7)',
-      [v1, s1, 'pendentes', 10, null, null, at(T0)]);
+      [v1, s1, 'pendentes', 50, null, null, at(T0)]);
     assert.ok(fila.rows.some((x) => x.out_id === caso.id), 'caso aparece na fila de pendentes');
     assert.deepEqual(Object.keys(fila.rows[0]).sort(),
-      ['out_appeal_status', 'out_assigned_to_me', 'out_id', 'out_overdue', 'out_received_at', 'out_services',
+      ['out_appeal_status', 'out_assigned_to_me', 'out_id', 'out_overdue', 'out_professional_email', 'out_received_at', 'out_services',
        'out_short_id', 'out_sla_target_at', 'out_status', 'out_version']);
     const negada = await falha('select * from private.verification_queue_list($1,$2,$3,$4,$5,$6,$7)',
       [semPapel, sSem, 'pendentes', 10, null, null, at(T0)]);

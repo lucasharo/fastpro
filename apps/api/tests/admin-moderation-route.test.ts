@@ -9,6 +9,8 @@ const DENUNCIA = '11111111-1111-4111-8111-111111111111';
 let permissoes: string[] = ['moderation.decide'];
 const consultas: string[] = [];
 let ultimaPagina: unknown[] | undefined;
+let ultimoCadastro: unknown[] | undefined;
+let resultadoCadastro = 'ok';
 
 const opts: AdminModerationRouteOptions = {
   adminUrl: ADMIN,
@@ -22,6 +24,10 @@ const opts: AdminModerationRouteOptions = {
       if (sql.includes('catalog_admin_page')) {
         ultimaPagina = params;
         return { rows: [{ r: { total: 1253, items: [{ id: 'y1' }] } }] };
+      }
+      if (sql.includes('admin_staff_create')) {
+        ultimoCadastro = params;
+        return { rows: [{ r: resultadoCadastro }] };
       }
       return { rows: [] };
     },
@@ -101,5 +107,65 @@ describe('console admin: moderacao', () => {
     expect(corpo).toMatchObject({ total: 1253, pagina: 3, porPagina: 50 });
     expect(ultimaPagina).toEqual(['synonym', 'pia', true, null, null, 100, 50]);
     expect((await fetch(`${base}/v1/admin/listas/catalogo?aba=outra`, { headers: COOKIE })).status).toBe(400);
+  });
+});
+
+describe('console admin: cadastro de admin pela Equipe', () => {
+  const senha = ['senha', 'sintetica', '2099'].join('-');
+  const novo = { email: 'Nova@Fastpro.example', password: senha, roles: ['verificacao'] };
+  const cadastrar = (corpo: unknown, headers: Record<string, string> = { ...COOKIE, Origin: ADMIN }) =>
+    fetch(`${base}/v1/admin/staff`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify(corpo),
+    });
+
+  it('sem sessao ou sem admin.role.manage: 404 vazio e nada gravado', async () => {
+    ultimoCadastro = undefined;
+    permissoes = ['admin.role.manage'];
+    expect((await cadastrar(novo, { Origin: ADMIN })).status).toBe(404);
+    permissoes = ['catalog.manage'];
+    expect((await cadastrar(novo)).status).toBe(404);
+    expect(ultimoCadastro).toBeUndefined();
+  });
+
+  it('fora da origem do admin: 403', async () => {
+    permissoes = ['admin.role.manage'];
+    expect((await cadastrar(novo, { ...COOKIE, Origin: 'https://outro.example' })).status).toBe(403);
+  });
+
+  it('recusa e-mail, senha curta, papel vazio, desconhecido ou superadmin', async () => {
+    permissoes = ['admin.role.manage'];
+    ultimoCadastro = undefined;
+    const curta = senha.slice(0, 5);
+    for (const [corpo, campo] of [
+      [{ ...novo, email: 'x' }, 'email'],
+      [{ ...novo, password: curta }, 'password'],
+      [{ ...novo, roles: [] }, 'roles'],
+      [{ ...novo, roles: ['dono'] }, 'roles'],
+      [{ ...novo, roles: ['superadmin'] }, 'roles'],
+    ] as const) {
+      const r = await cadastrar(corpo);
+      expect(r.status).toBe(422);
+      expect(((await r.json()) as { campo: string }).campo).toBe(campo);
+    }
+    expect(ultimoCadastro).toBeUndefined();
+  });
+
+  it('cadastra com o hash (nunca a senha) e o e-mail normalizado: 201', async () => {
+    permissoes = ['admin.role.manage'];
+    resultadoCadastro = 'ok';
+    expect((await cadastrar(novo)).status).toBe(201);
+    expect(ultimoCadastro?.[0]).toBe('adm-1');
+    expect(ultimoCadastro?.[1]).toBe('nova@fastpro.example');
+    expect(String(ultimoCadastro?.[2])).toMatch(/^scrypt\$/);
+    expect(JSON.stringify(ultimoCadastro)).not.toContain(novo.password);
+    expect(ultimoCadastro?.[3]).toEqual(['verificacao']);
+  });
+
+  it('e-mail que ja tem conta: 409', async () => {
+    permissoes = ['admin.role.manage'];
+    resultadoCadastro = 'email_indisponivel';
+    expect((await cadastrar(novo)).status).toBe(409);
   });
 });

@@ -1,5 +1,7 @@
 packages:
   - 'apps/*'
+  # O app Expo e instalado a parte com npm (apps/mobile/README.md).
+  - '!apps/mobile'
   - 'packages/*'
 
 supportedArchitectures:

@@ -3,19 +3,31 @@
 // GET /v1/requests/:id/review mostra a avaliacao; POST cria; PATCH edita ate 7 dias depois da publicacao.
 // As estrelas sao radios nativos (teclado com setas) dentro de um fieldset. Campos invalidos mantem a borda vermelha.
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { Aviso, Campo, type TipoAviso } from './ui';
+import { Campo, type TipoAviso } from './ui';
 import { Icone } from './Icone';
 import { EstrelasNota } from './Avaliacao';
+import { Selecao, type OpcaoSelecao } from './Selecao';
 import { chamarApi, codigoDe, MENSAGEM_LIMITE } from '@/lib/api';
 import { AUTOR_AVALIACAO, COMENTARIO_MAX, mensagemAvaliacao, prazoEdicaoAte, type AvaliacaoDoPedido } from '@/lib/avaliacoes';
 import { formatarDataHora } from '@/lib/formatos';
+import { Toast } from '@/components/Toast';
 
 interface RespostaAvaliacao {
   readonly selected: boolean;
   readonly review: AvaliacaoDoPedido | null;
 }
 
-export function AvaliacaoPedido({ pedidoId }: { readonly pedidoId: string }) {
+export function AvaliacaoPedido({
+  pedidoId,
+  profissionais,
+}: {
+  readonly pedidoId: string;
+  /** Quem aceitou o pedido (valor = id do aceite). */
+  readonly profissionais: readonly OpcaoSelecao[];
+}) {
+  const [avaliando, setAvaliando] = useState(false);
+  const [profissional, setProfissional] = useState('');
+  const [erroProfissional, setErroProfissional] = useState('');
   const [dados, setDados] = useState<RespostaAvaliacao | null>(null);
   const [editando, setEditando] = useState(false);
   const [nota, setNota] = useState<number | null>(null);
@@ -49,6 +61,10 @@ export function AvaliacaoPedido({ pedidoId }: { readonly pedidoId: string }) {
     setErroNota('');
     setErroComentario('');
     setAviso(null);
+    if (atual === null && profissional === '') {
+      setErroProfissional('Campo obrigatório.');
+      return;
+    }
     if (nota === null) {
       setErroNota('Campo obrigatório.');
       return;
@@ -62,7 +78,7 @@ export function AvaliacaoPedido({ pedidoId }: { readonly pedidoId: string }) {
     setEnviando(true);
     const r =
       atual === null
-        ? await chamarApi(`/v1/requests/${pedidoId}/review`, { body: corpo })
+        ? await chamarApi(`/v1/requests/${pedidoId}/review`, { body: { ...corpo, acceptance_id: profissional } })
         : await chamarApi(`/v1/requests/${pedidoId}/review`, { method: 'PATCH', body: corpo });
     setEnviando(false);
     if (r.status === 201 || r.status === 200) {
@@ -88,6 +104,15 @@ export function AvaliacaoPedido({ pedidoId }: { readonly pedidoId: string }) {
   if (dados === null || !dados.selected) return null;
 
   const avaliacao = dados.review;
+  if (avaliacao === null && !avaliando) {
+    return (
+      <div>
+        <button type="button" className="btn btn-primary btn-sm" onClick={() => setAvaliando(true)}>
+          <Icone nome="estrela" tamanho={16} /> Avaliar um profissional
+        </button>
+      </div>
+    );
+  }
   const mostrarFormulario = avaliacao === null || editando;
   const prazo = avaliacao && !avaliacao.prazoEncerrado ? prazoEdicaoAte(avaliacao.publishedAt) : null;
 
@@ -105,11 +130,7 @@ export function AvaliacaoPedido({ pedidoId }: { readonly pedidoId: string }) {
         )}
       </h2>
 
-      {aviso ? (
-        <div style={{ marginBottom: '1rem' }}>
-          <Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso>
-        </div>
-      ) : null}
+      <Toast aviso={aviso} />
 
       {avaliacao && !editando ? (
         <div className="pilha" style={{ gap: '0.75rem' }}>
@@ -143,6 +164,21 @@ export function AvaliacaoPedido({ pedidoId }: { readonly pedidoId: string }) {
 
       {mostrarFormulario ? (
         <form className="pilha" style={{ gap: '1rem' }} onSubmit={(e) => void enviar(e)} noValidate>
+          {avaliacao === null ? (
+            <Campo id="profissional-avaliado" rotulo="Profissional" erro={erroProfissional || undefined}>
+              <Selecao
+                id="profissional-avaliado"
+                valor={profissional}
+                opcoes={profissionais}
+                placeholder="Escolha quem fez o serviço"
+                invalido={Boolean(erroProfissional)}
+                onMudar={(v) => {
+                  setProfissional(v);
+                  setErroProfissional('');
+                }}
+              />
+            </Campo>
+          ) : null}
           <fieldset
             className="avaliacao-estrelas"
             aria-invalid={erroNota ? 'true' : undefined}

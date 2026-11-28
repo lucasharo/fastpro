@@ -102,6 +102,22 @@ describe('tela de detalhe do caso', () => {
     expect(alerta?.textContent).toBe(TEXTO_ERRO_LEITURA);
   });
 
+  it('certificacoes: botao so para a enviada, sem identificador do arquivo na pagina', () => {
+    montar(
+      estadoDoDetalhe(200, {
+        ...CORPO,
+        certificacoes: [
+          { servicoId: 'srv-1', servico: 'Eletricista', documento: 'CERT-SINTETICA', recebidoEm: '2026-11-13T10:00:00.000Z' },
+          { servicoId: 'srv-2', servico: 'Telhado', documento: null, recebidoEm: null },
+        ],
+      }),
+    );
+    expect(container.textContent).toContain('Eletricista');
+    expect(container.textContent).toContain('Não enviada');
+    expect(container.querySelectorAll('input[name="servico"]')).toHaveLength(1);
+    expect(container.innerHTML).not.toContain('CERT-SINTETICA');
+  });
+
   it('estado de erro mostra mensagem generica e nenhum formulario', () => {
     montar({ tipo: 'erro' });
     expect(container.querySelector('[role="alert"]')?.textContent).toBe(TEXTO_ERRO_CASO);
@@ -168,10 +184,14 @@ describe('acoes conforme a situacao do caso', () => {
 
   it('o motivo acompanha a decisao: Aprovar so "Documento conferido", Recusar sem ele', () => {
     montar(OK);
-    const opcoes = () => Array.from(container.querySelectorAll('select option')).map((o) => o.getAttribute('value'));
-    expect(opcoes()).toEqual(['aprovado']);
+    // A lista so existe aberta; com um unico motivo ela fica desabilitada e mostra so o valor.
+    const caixa = () => container.querySelector('[role="combobox"]') as HTMLButtonElement;
+    const opcoes = () => Array.from(container.querySelectorAll('[role="option"]')).map((o) => o.getAttribute('data-valor'));
+    expect(caixa().disabled).toBe(true);
+    expect(container.querySelector('form[aria-label="Decisão do caso"] input[name="motivo"]')?.getAttribute('value')).toBe('aprovado');
     const recusar = Array.from(container.querySelectorAll('button')).find((b) => b.textContent === 'Recusar');
     act(() => recusar?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    act(() => caixa().dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(opcoes()).not.toContain('aprovado');
     expect(opcoes()).not.toContain('duplicidade_suspeita');
     expect(opcoes()).toContain('outro');
@@ -210,8 +230,8 @@ describe('recusas do banco e caso sem documento', () => {
 
   it('sem documento: Aprovar nao aparece e a decisao comeca em Recusar', () => {
     montar(estadoDoDetalhe(200, { ...CORPO, documentoDisponivel: false }));
-    const botoes = Array.from(container.querySelectorAll('.verificacao-opcoes button')).map((b) => b.textContent);
+    const botoes = Array.from(container.querySelectorAll('[role="radio"]')).map((b) => b.textContent);
     expect(botoes).not.toContain('Aprovar');
-    expect(container.querySelector('.verificacao-opcoes button[aria-pressed="true"]')?.textContent).toBe('Recusar');
+    expect(container.querySelector('[role="radio"][aria-checked="true"]')?.textContent).toBe('Recusar');
   });
 });

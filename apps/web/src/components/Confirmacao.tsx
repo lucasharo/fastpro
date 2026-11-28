@@ -1,6 +1,6 @@
 'use client';
 // Pacote A | Confirmacao de acao que muda o pedido (concluir, desfazer, cancelar, retirar aceite). Usa o <dialog>
-// nativo: foco preso, Esc fecha e o botao de cancelar recebe o foco ao abrir (acao irreversivel).
+// nativo: foco preso, Esc e clique fora fecham e o botao de cancelar recebe o foco ao abrir (acao irreversivel).
 import { useEffect, useId, useRef } from 'react';
 import { Icone } from './Icone';
 
@@ -43,6 +43,10 @@ export function Confirmacao({
       aria-labelledby={idTitulo}
       aria-describedby={idTexto}
       onClose={onFechar}
+      onClick={(e) => {
+        // Clique no fundo escurecido (fora do corpo) fecha, como o Esc.
+        if (e.target === e.currentTarget && !ocupado) onFechar();
+      }}
     >
       <div className="pacote-a-dialogo-corpo">
         <h2 id={idTitulo} className="pacote-a-dialogo-titulo">

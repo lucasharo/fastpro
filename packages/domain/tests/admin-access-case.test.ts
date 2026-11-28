@@ -56,9 +56,9 @@ describe('T-H073-01 abrir caso', () => {
     expect(abrir({ conversationId: '3f2a9c1e-7b4d-4e8a-9c2f-1a2b3c4d5e6f' })).toBeNull();
   });
 
-  it('prova do segundo fator a 29:59 passa; a 30:00 exige nova prova (403 step_up_required)', () => {
-    expect(abrir({ nowMs: T0 + 29 * MIN + 59_000 })).toBeNull();
-    const aos30 = abrir({ nowMs: T0 + 30 * MIN });
+  it('prova vale pela sessao: 7:59:59 passa; com 8h exige nova prova (403 step_up_required)', () => {
+    expect(abrir({ nowMs: T0 + 479 * MIN + 59_000 })).toBeNull();
+    const aos30 = abrir({ nowMs: T0 + 480 * MIN });
     expect(aos30?.status).toBe(403);
     expect(aos30?.body).toEqual({ code: 'step_up_required' });
   });

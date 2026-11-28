@@ -130,6 +130,7 @@ function linhaJson(l: {
   readonly slaTargetAt: Date;
   readonly receivedAt: Date | null;
   readonly services: readonly string[];
+  readonly professionalEmail?: string | null;
   readonly overdue: boolean;
   readonly assignedToMe: boolean;
   readonly version: number;
@@ -142,6 +143,7 @@ function linhaJson(l: {
     prazoMeta: l.slaTargetAt.toISOString(),
     recebidoEm: l.receivedAt ? l.receivedAt.toISOString() : null,
     servicos: [...l.services],
+    email: l.professionalEmail ?? null,
     alemDaMeta: l.overdue,
     minha: l.assignedToMe,
     versao: l.version,
@@ -204,6 +206,12 @@ async function despachar(
           documentoDisponivel: d.documentAvailable,
           documento: d.documentId,
           documentoRecebidoEm: d.documentReceivedAt ? d.documentReceivedAt.toISOString() : null,
+          certificacoes: (d.certifications ?? []).map((c) => ({
+            servicoId: c.serviceId,
+            servico: c.serviceName,
+            documento: c.documentId,
+            recebidoEm: c.receivedAt ? c.receivedAt.toISOString() : null,
+          })),
         },
       };
     }

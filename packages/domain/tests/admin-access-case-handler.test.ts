@@ -138,10 +138,10 @@ describe('T-H073-01 abrir caso', () => {
     expect(chamadas).toEqual([]);
   });
 
-  it('prova do segundo fator: 29:59 passa; 30:00 exige nova confirmacao (403 step_up_required)', async () => {
+  it('prova vale pela sessao: quase 8h passa; com 8h exige nova entrada (403 step_up_required)', async () => {
     const { port } = porta();
-    const quase = linha('u-suporte', ['suporte'], SUPORTE, T0 - (30 * MIN - 1));
-    const limite = linha('u-suporte', ['suporte'], SUPORTE, T0 - 30 * MIN);
+    const quase = linha('u-suporte', ['suporte'], SUPORTE, T0 - (480 * MIN - 1));
+    const limite = linha('u-suporte', ['suporte'], SUPORTE, T0 - 480 * MIN);
     expect((await handleAccessCaseOpen(pedido(quase, { body: corpo }), deps(port), T0)).status).toBe(201);
     const r = await handleAccessCaseOpen(pedido(limite, { body: corpo }), deps(port), T0);
     expect(r.status).toBe(403);
@@ -209,7 +209,7 @@ describe('T-H073-02 aprovar caso (autorizacao por outra pessoa)', () => {
 
   it('prova do segundo fator antiga: 403 step_up_required, sem banco', async () => {
     const { port, chamadas } = porta();
-    const antiga = linha('u-superadmin', ['superadmin'], SUPERADMIN, T0 - 30 * MIN);
+    const antiga = linha('u-superadmin', ['superadmin'], SUPERADMIN, T0 - 480 * MIN);
     const r = await handleAccessCaseApprove(pedido(antiga, { caseId: CASO }), deps(port), T0);
     expect(r.status).toBe(403);
     expect(r.body).toEqual({ code: 'step_up_required' });

@@ -6,8 +6,10 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { construirTelaPerfil, type PublicProfileGroup, type TelaPerfil } from '@fastpro/domain';
 import { CartaoAvaliacao, EstrelasNota } from '@/components/Avaliacao';
+import { GaleriaPerfil } from '@/components/GaleriaPerfil';
+import { FotoPublica, SobreProfissional } from '@/components/SobreProfissional';
 import { Icone } from '@/components/Icone';
-import { iniciais } from '@/components/Conversa';
+import { iniciais } from '@/lib/iniciais';
 import { Aviso, Carregando, PaginaInterna } from '@/components/ui';
 import { chamarApi } from '@/lib/api';
 import type { AvaliacaoPublicada } from '@/lib/avaliacoes';
@@ -80,9 +82,7 @@ export default function PerfilPublico() {
     <PaginaInterna largura="media">
       <section className="glass-card" style={{ padding: '2rem', marginBottom: '1.5rem' }} aria-labelledby="perfil-nome">
         <div className="linha" style={{ gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span className="avatar-letra" style={{ width: '4.5rem', height: '4.5rem', fontSize: '1.5rem' }} aria-hidden="true">
-            {iniciais(nome)}
-          </span>
+          <FotoPublica slug={slug} iniciais={iniciais(nome)} />
           <div className="pilha" style={{ gap: '0.5rem' }}>
             <h1 id="perfil-nome" style={{ marginBottom: 0 }}>
               {nome}
@@ -107,6 +107,8 @@ export default function PerfilPublico() {
           <span className="texto-suave">{tela.reputacao?.rotulo}</span>
         </div>
       </section>
+
+      <SobreProfissional slug={slug} />
 
       <section className="pilha" style={{ gap: '1rem', marginBottom: '2rem' }} aria-labelledby="perfil-servicos">
         <h2 id="perfil-servicos" style={{ fontSize: '1.25rem' }}>
@@ -134,6 +136,8 @@ export default function PerfilPublico() {
           ))
         )}
       </section>
+
+      <GaleriaPerfil slug={slug} />
 
       <section className="pilha" style={{ gap: '1rem' }} aria-labelledby="perfil-avaliacoes">
         <h2 id="perfil-avaliacoes" style={{ fontSize: '1.25rem' }}>
